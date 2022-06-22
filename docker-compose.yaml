@@ -1,0 +1,105 @@
+version: '3.6'
+services:
+  # Ory - https://ory.sh
+  kratos-db:
+    container_name: kratos-db
+    image: postgres:14
+    environment:
+      POSTGRES_USER: ${ORY_KRATOS_DB_USER}
+      POSTGRES_PASSWORD: ${ORY_KRATOS_DB_PASS}
+      POSTGRES_DB: ${ORY_KRATOS_DB_NAME}
+    ports:
+      - ${ORY_KRATOS_DB_PORT}:5432
+    volumes:
+      - kratos-pg-data:/var/lib/postgresql/data
+
+  kratos-migrate:
+    depends_on:
+      - kratos-db
+    container_name: kratos-migrate
+    image: oryd/kratos:v0.10.1
+    environment:
+      DSN: postgres://${ORY_KRATOS_DB_USER}:${ORY_KRATOS_DB_PASS}@kratos-db/${ORY_KRATOS_DB_NAME}?sslmode=disable&max_conns=20&max_idle_conns=4
+    volumes:
+      - ./deploy/kratos:/etc/config/kratos
+    command: -c /etc/config/kratos/config.yaml migrate sql -e --yes
+
+  kratos-server:
+    depends_on:
+      - kratos-db
+      - kratos-migrate
+    container_name: kratos-server
+    image: oryd/kratos:v0.10.1
+    environment:
+      DSN: postgres://${ORY_KRATOS_DB_USER}:${ORY_KRATOS_DB_PASS}@kratos-db/${ORY_KRATOS_DB_NAME}?sslmode=disable&max_conns=20&max_idle_conns=4
+    ports:
+      - 4433:4433 # public
+      - 4434:4434 # admin
+    volumes:
+      - ./deploy/kratos:/etc/config/kratos
+    command: serve -c /etc/config/kratos/config.yaml --dev --watch-courier
+
+  kratos-selfservice:
+    container_name: kratos-selfservice
+    image: oryd/kratos-selfservice-ui-node:v0.10.1
+    environment:
+      - KRATOS_PUBLIC_URL=http://kratos-server:4433/
+      - KRATOS_BROWSER_URL=http://127.0.0.1:4433/
+    ports:
+      - 4455:3000
+
+
+  # Temporal - https://temporal.io
+  temporal-db:
+    container_name: temporal-db
+    image: postgres:14
+    environment:
+      POSTGRES_PASSWORD: ${TEMPORAL_DB_PASS}
+      POSTGRES_USER: ${TEMPORAL_DB_USER}
+    ports:
+      - 5432:5432
+    volumes:
+      - temporal-pg-data:/var/lib/postgresql/data
+
+  temporal:
+    container_name: temporal
+    depends_on:
+      - temporal-db
+    environment:
+      DB: postgresql
+      DB_PORT: 5432
+      POSTGRES_USER: ${TEMPORAL_DB_USER}
+      POSTGRES_PWD: ${TEMPORAL_DB_PASS}
+      POSTGRES_SEEDS: temporal-db
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/dev.yaml
+    image: temporalio/auto-setup:1.16.2
+    ports:
+      - 7233:7233
+    volumes:
+      - ./deploy/temporal/dynamicconfig:/etc/temporal/config/dynamicconfig
+
+  temporal-admin-tools:
+    container_name: temporal-admin-tools
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_CLI_ADDRESS=temporal:7233
+    image: temporalio/admin-tools:1.16.2
+    stdin_open: true
+    tty: true
+
+  temporal-ui:
+    container_name: temporal-ui
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    image: temporalio/ui:2.0.0
+    ports:
+      - 8080:8080
+
+
+volumes:
+  kratos-pg-data: {}
+  temporal-pg-data: {}

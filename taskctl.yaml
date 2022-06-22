@@ -1,0 +1,20 @@
+# This is an example of taskctl tasks configuration file.
+# More information at https://github.com/taskctl/taskctl
+pipelines:
+  dev:
+    - task: docker
+    - task: api
+
+tasks:
+  docker:
+    description: Run docker with docker-compose
+    command: docker-compose up --build --force-recreate
+  api:
+    description: Run the API server
+    command: go run ./cmd/api/main.go
+
+watchers:
+  go:
+    watch: ["**/*.go"]
+    events: [create, write, remove, rename, chmod]
+    task: api
