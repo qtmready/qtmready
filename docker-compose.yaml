@@ -5,11 +5,11 @@ services:
     container_name: kratos-db
     image: postgres:14
     environment:
-      POSTGRES_USER: ${ORY_KRATOS_DB_USER}
-      POSTGRES_PASSWORD: ${ORY_KRATOS_DB_PASS}
-      POSTGRES_DB: ${ORY_KRATOS_DB_NAME}
+      POSTGRES_USER: ${KRATOS_DB_USER}
+      POSTGRES_PASSWORD: ${KRATOS_DB_PASS}
+      POSTGRES_DB: ${KRATOS_DB_NAME}
     ports:
-      - ${ORY_KRATOS_DB_PORT}:5432
+      - ${KRATOS_DB_PORT}:5432
     volumes:
       - kratos-pg-data:/var/lib/postgresql/data
 
@@ -19,7 +19,7 @@ services:
     container_name: kratos-migrate
     image: oryd/kratos:v0.10.1
     environment:
-      DSN: postgres://${ORY_KRATOS_DB_USER}:${ORY_KRATOS_DB_PASS}@kratos-db/${ORY_KRATOS_DB_NAME}?sslmode=disable&max_conns=20&max_idle_conns=4
+      DSN: postgres://${KRATOS_DB_USER}:${KRATOS_DB_PASS}@kratos-db/${KRATOS_DB_NAME}?sslmode=disable&max_conns=20&max_idle_conns=4
     volumes:
       - ./deploy/kratos:/etc/config/kratos
     command: -c /etc/config/kratos/config.yaml migrate sql -e --yes
@@ -31,7 +31,7 @@ services:
     container_name: kratos-server
     image: oryd/kratos:v0.10.1
     environment:
-      DSN: postgres://${ORY_KRATOS_DB_USER}:${ORY_KRATOS_DB_PASS}@kratos-db/${ORY_KRATOS_DB_NAME}?sslmode=disable&max_conns=20&max_idle_conns=4
+      DSN: postgres://${KRATOS_DB_USER}:${KRATOS_DB_PASS}@kratos-db/${KRATOS_DB_NAME}?sslmode=disable&max_conns=20&max_idle_conns=4
     ports:
       - 4433:4433 # public
       - 4434:4434 # admin

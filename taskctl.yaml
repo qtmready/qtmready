@@ -12,6 +12,9 @@ tasks:
   api:
     description: Run the API server
     command: go run ./cmd/api/main.go
+  worker:
+    description: Run the Temporal Worker
+    command: go run ./cmd/worker/main.go
 
 watchers:
   go:

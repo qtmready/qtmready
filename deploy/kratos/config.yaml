@@ -30,6 +30,11 @@ selfservice:
     password:
       enabled: true
     oidc:
+      config:
+        # secrets will be provided via environment variables
+        id: github-app
+        provider: github-app
+        mapper_url: file:///etc/config/kratos/schemas/oidc.github.jsonnet
       enabled: true
 
   flows:
@@ -64,8 +69,10 @@ selfservice:
       after:
         password:
           hooks:
-            -
-              hook: session
+            - hook: session
+        oidc:
+          hooks:
+            - hook: session
 
 # secrets:
 #   cookie:
