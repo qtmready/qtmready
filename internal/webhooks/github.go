@@ -12,13 +12,11 @@ import (
 )
 
 func GithubWebhook(response http.ResponseWriter, request *http.Request) {
-	// id := request.Header.Get("X-GitHub-Delivery")
+	id := request.Header.Get("X-GitHub-Delivery")
 	signature := request.Header.Get("X-Hub-Signature")
 
 	if signature == "" {
-		defaults.Logger.Error(ErrorMissingHeaderGithubSignature.Error())
-		response.WriteHeader(http.StatusUnauthorized)
-		response.Write([]byte("Missing X-Hub-Signature Header"))
+		handleError(id, ErrorMissingHeaderGithubSignature, http.StatusUnauthorized, response)
 		return
 	}
 
@@ -53,20 +51,14 @@ func GithubWebhook(response http.ResponseWriter, request *http.Request) {
 			response.Write([]byte("Error parsing payload"))
 			return
 		}
+
 		consumeGithubInstallationEvent(payload, response)
+
 	default:
 		defaults.Logger.Error(ErrorInvalidEvent.Error())
 		response.WriteHeader(http.StatusBadRequest)
 		response.Write([]byte("Invalid event"))
 	}
-
-	// response.Write([]byte("Github Webhook received"))
-
-	// get event from header
-	// parse event
-	// parse payload
-	// verify HMAC
-	// handle event
 }
 
 func verifySignature(payload []byte, signature string) error {
@@ -80,4 +72,10 @@ func verifySignature(payload []byte, signature string) error {
 	}
 	defaults.Logger.Debug("Signature verified")
 	return nil
+}
+
+func handleError(requestId string, err error, status int, response http.ResponseWriter) {
+	defaults.Logger.Error(err.Error())
+	response.WriteHeader(status)
+	response.Write([]byte(err.Error()))
 }

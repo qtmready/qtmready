@@ -32,9 +32,10 @@ selfservice:
     oidc:
       config:
         # secrets will be provided via environment variables
-        id: github-app
-        provider: github-app
-        mapper_url: file:///etc/config/kratos/schemas/oidc.github.jsonnet
+        providers:
+          - id: github
+            provider: github
+            mapper_url: file:///etc/config/kratos/schemas/oidc.github.jsonnet
       enabled: true
 
   flows:

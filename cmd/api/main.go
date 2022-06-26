@@ -31,5 +31,5 @@ func main() {
 
 	router.Post("/webhooks/github", webhooks.GithubWebhook)
 
-	http.ListenAndServe(":3000", router)
+	http.ListenAndServe(":8000", router)
 }
