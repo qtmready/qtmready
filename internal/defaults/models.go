@@ -28,4 +28,5 @@ type kratosConf struct {
 type conf struct {
 	Github githubConf
 	Kratos kratosConf
+	Debug  bool `env:"DEBUG" env-default:"false"`
 }

@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	_zap "go.uber.org/zap"
+
 	"go.breu.io/ctrlplane/internal/defaults"
 )
 
@@ -23,18 +25,14 @@ func GithubWebhook(response http.ResponseWriter, request *http.Request) {
 	body, _ := ioutil.ReadAll(request.Body)
 
 	if err := verifySignature(body, signature); err != nil {
-		defaults.Logger.Error(err.Error())
-		response.WriteHeader(http.StatusUnauthorized)
-		response.Write([]byte("Signature verification failed"))
+		handleError(id, err, http.StatusUnauthorized, response)
 		return
 	}
 
 	headerEvent := request.Header.Get("X-GitHub-Event")
 
 	if headerEvent == "" {
-		defaults.Logger.Error(ErrorMissingHeaderGithubEvent.Error())
-		response.WriteHeader(http.StatusUnauthorized)
-		response.Write([]byte("Missing X-GitHub-Event Header"))
+		handleError(id, ErrorMissingHeaderGithubEvent, http.StatusBadRequest, response)
 		return
 	}
 
@@ -46,18 +44,14 @@ func GithubWebhook(response http.ResponseWriter, request *http.Request) {
 		err := json.Unmarshal(body, &payload)
 
 		if err != nil {
-			defaults.Logger.Error(ErrorPayloadParser.Error())
-			response.WriteHeader(http.StatusBadRequest)
-			response.Write([]byte("Error parsing payload"))
+			handleError(id, err, http.StatusBadRequest, response)
 			return
 		}
 
-		consumeGithubInstallationEvent(payload, response)
+		ConsumeGithubInstallationEvent(payload, response)
 
 	default:
-		defaults.Logger.Error(ErrorInvalidEvent.Error())
-		response.WriteHeader(http.StatusBadRequest)
-		response.Write([]byte("Invalid event"))
+		handleError(id, ErrorInvalidEvent, http.StatusBadRequest, response)
 	}
 }
 
@@ -75,7 +69,7 @@ func verifySignature(payload []byte, signature string) error {
 }
 
 func handleError(requestId string, err error, status int, response http.ResponseWriter) {
-	defaults.Logger.Error(err.Error())
+	defaults.Logger.Error(err.Error(), _zap.String("request_id", requestId))
 	response.WriteHeader(status)
 	response.Write([]byte(err.Error()))
 }
