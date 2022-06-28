@@ -8,6 +8,7 @@ import (
 
 var Conf conf
 var Logger *_zap.Logger
+
 var TemporalClient _tclient.Client
 
 var err error = nil
