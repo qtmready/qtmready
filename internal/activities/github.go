@@ -1,0 +1,3 @@
+package activities
+
+func SaveGithubInstallation() {}

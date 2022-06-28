@@ -1,6 +1,4 @@
-package webhooks
-
-// shamelessly copied from https://github.com/go-playground/webhooks
+package models
 
 import "time"
 

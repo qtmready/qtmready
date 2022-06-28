@@ -2,16 +2,12 @@ package defaults
 
 import (
 	_cleanenv "github.com/ilyakaznacheev/cleanenv"
-	_tclient "go.temporal.io/sdk/client"
+	_sdkClient "go.temporal.io/sdk/client"
 	_zap "go.uber.org/zap"
 )
 
 var Conf conf
 var Logger *_zap.Logger
-
-var TemporalClient _tclient.Client
-
-var err error = nil
 
 func init() {
 	_cleanenv.ReadEnv(&Conf)
@@ -23,11 +19,11 @@ func init() {
 	}
 
 	// TODO: ysf - handle this for production
-	TemporalClient, err = _tclient.Dial(_tclient.Options{})
+	client, err := _sdkClient.Dial(_sdkClient.Options{})
 
 	if err != nil {
 		Logger.Fatal(err.Error())
 	}
 
-	defer TemporalClient.Close()
+	Conf.Temporal.Client = client
 }

@@ -1,6 +1,10 @@
 package defaults
 
-import "encoding/base64"
+import (
+	"encoding/base64"
+
+	_tclient "go.temporal.io/sdk/client"
+)
 
 type Base64EncodedValue string
 
@@ -25,8 +29,16 @@ type kratosConf struct {
 	ServerUrl string `env:"KRATOS_SERVER_URL"`
 }
 
+type temporal struct {
+	Client _tclient.Client
+	QUEUES struct {
+		Webhooks string `default:"webhooks"`
+	}
+}
+
 type conf struct {
-	Github githubConf
-	Kratos kratosConf
-	Debug  bool `env:"DEBUG" env-default:"false"`
+	Debug    bool `env:"DEBUG" env-default:"false"`
+	Github   githubConf
+	Kratos   kratosConf
+	Temporal temporal
 }

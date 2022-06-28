@@ -11,8 +11,10 @@ import (
 	_zap "go.uber.org/zap"
 
 	"go.breu.io/ctrlplane/internal/defaults"
+	"go.breu.io/ctrlplane/internal/models"
 )
 
+// ConsumeGithubInstallationEvent handles GitHub installation events
 func GithubWebhook(response http.ResponseWriter, request *http.Request) {
 	id := request.Header.Get("X-GitHub-Delivery")
 	signature := request.Header.Get("X-Hub-Signature")
@@ -40,7 +42,7 @@ func GithubWebhook(response http.ResponseWriter, request *http.Request) {
 
 	switch event {
 	case GithubInstallationEvent:
-		var payload GithubInstallationEventPayload
+		var payload models.GithubInstallationEventPayload
 		err := json.Unmarshal(body, &payload)
 
 		if err != nil {
@@ -48,13 +50,14 @@ func GithubWebhook(response http.ResponseWriter, request *http.Request) {
 			return
 		}
 
-		ConsumeGithubInstallationEvent(payload, response)
+		consumeGithubInstallationEvent(payload, response)
 
 	default:
 		handleError(id, ErrorInvalidEvent, http.StatusBadRequest, response)
 	}
 }
 
+// VerifySignature verifies the signature of a request.
 func verifySignature(payload []byte, signature string) error {
 	key := hmac.New(sha1.New, []byte(defaults.Conf.Github.WebhookSecret))
 	key.Write(payload)
@@ -68,6 +71,7 @@ func verifySignature(payload []byte, signature string) error {
 	return nil
 }
 
+// handleError handles an error and writes it to the response.
 func handleError(requestId string, err error, status int, response http.ResponseWriter) {
 	defaults.Logger.Error(err.Error(), _zap.String("request_id", requestId))
 	response.WriteHeader(status)
