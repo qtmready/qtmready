@@ -1,16 +1,10 @@
 package webhooks
 
 import (
-	"crypto/hmac"
-	"crypto/sha1"
-	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
 
-	_zap "go.uber.org/zap"
-
-	"go.breu.io/ctrlplane/internal/defaults"
 	"go.breu.io/ctrlplane/internal/models"
 )
 
@@ -55,25 +49,4 @@ func GithubWebhook(response http.ResponseWriter, request *http.Request) {
 	default:
 		handleError(id, ErrorInvalidEvent, http.StatusBadRequest, response)
 	}
-}
-
-// VerifySignature verifies the signature of a request.
-func verifySignature(payload []byte, signature string) error {
-	key := hmac.New(sha1.New, []byte(defaults.Conf.Github.WebhookSecret))
-	key.Write(payload)
-	result := "sha1=" + hex.EncodeToString(key.Sum(nil))
-	defaults.Logger.Debug("ORIG: " + signature)
-	defaults.Logger.Debug("RSLT: " + result)
-	if result != signature {
-		return ErrorVerifySignature
-	}
-	defaults.Logger.Debug("Signature verified")
-	return nil
-}
-
-// handleError handles an error and writes it to the response.
-func handleError(requestId string, err error, status int, response http.ResponseWriter) {
-	defaults.Logger.Error(err.Error(), _zap.String("request_id", requestId))
-	response.WriteHeader(status)
-	response.Write([]byte(err.Error()))
 }

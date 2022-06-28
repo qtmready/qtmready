@@ -1,21 +1,8 @@
-package defaults
+package conf
 
 import (
-	"encoding/base64"
-
 	_tclient "go.temporal.io/sdk/client"
 )
-
-type Base64EncodedValue string
-
-func (field *Base64EncodedValue) SetValue(encoded string) error {
-	decoded, err := base64.StdEncoding.DecodeString(encoded)
-	if err != nil {
-		return err
-	}
-	*field = Base64EncodedValue(decoded)
-	return nil
-}
 
 type githubConf struct {
 	AppID         string `env:"GITHUB_APP_ID"`
@@ -36,9 +23,8 @@ type temporal struct {
 	}
 }
 
-type conf struct {
-	Debug    bool `env:"DEBUG" env-default:"false"`
-	Github   githubConf
-	Kratos   kratosConf
-	Temporal temporal
+type service struct {
+	Name    string
+	Debug   bool   `env:"DEBUG" env-default:"false"`
+	Version string `env:"VERSION" env-default:"0.0.0-dev"`
 }
