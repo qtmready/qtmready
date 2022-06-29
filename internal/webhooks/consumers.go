@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	_tmprlclient "go.temporal.io/sdk/client"
+	_tclient "go.temporal.io/sdk/client"
 
 	"go.breu.io/ctrlplane/internal/conf"
 	"go.breu.io/ctrlplane/internal/models"
@@ -14,7 +14,7 @@ import (
 
 func consumeGithubInstallationEvent(payload models.GithubInstallationEventPayload, response http.ResponseWriter) {
 	data, _ := json.MarshalIndent(payload, "", "  ")
-	options := _tmprlclient.StartWorkflowOptions{
+	options := _tclient.StartWorkflowOptions{
 		ID:        string(rune(payload.Installation.ID)),
 		TaskQueue: conf.Temporal.Queues.Webhooks,
 	}

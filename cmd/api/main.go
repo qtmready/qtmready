@@ -33,7 +33,7 @@ func main() {
 }
 
 func init() {
-	conf.InitService("api")
+	conf.InitService("ctrlplane-api")
 	conf.InitKratos()
 	conf.InitGithub()
 	conf.InitTemporal()

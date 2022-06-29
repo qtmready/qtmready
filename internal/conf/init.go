@@ -2,7 +2,7 @@ package conf
 
 import (
 	_cleanenv "github.com/ilyakaznacheev/cleanenv"
-	_tmprlclient "go.temporal.io/sdk/client"
+	_tclient "go.temporal.io/sdk/client"
 	_zap "go.uber.org/zap"
 )
 
@@ -42,7 +42,9 @@ func InitTemporal() {
 //
 // Must do `defer conf.TemporalClient.Close()` after calling `conf.InitTemporalClient()`
 func InitTemporalClient() {
-	client, err := _tmprlclient.Dial(_tmprlclient.Options{})
+	options := _tclient.Options{}
+
+	client, err := _tclient.Dial(options)
 
 	if err != nil {
 		Logger.Fatal(err.Error())
