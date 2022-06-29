@@ -4,8 +4,8 @@ dsn: memory
 
 log:
   level: debug
-  format: json
-  leak_sensitive_values: false
+  format: text
+  leak_sensitive_values: true
 
 serve:
   public:
