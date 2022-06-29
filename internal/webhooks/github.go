@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"go.breu.io/ctrlplane/internal/conf"
 	"go.breu.io/ctrlplane/internal/models"
 )
 
@@ -46,7 +47,19 @@ func GithubWebhook(response http.ResponseWriter, request *http.Request) {
 
 		consumeGithubInstallationEvent(payload, response)
 
+	case GithubAppAuthorizationEvent:
+		var payload models.GithubAppAuthorizationEventPayload
+		err := json.Unmarshal(body, &payload)
+
+		if err != nil {
+			handleError(id, err, http.StatusBadRequest, response)
+			return
+		}
+
+		consumeGithubAppAuthorizationEvent(payload, response)
+
 	default:
+		conf.Logger.Error("Unsupported event: " + headerEvent)
 		handleError(id, ErrorInvalidEvent, http.StatusBadRequest, response)
 	}
 }

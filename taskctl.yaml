@@ -2,8 +2,8 @@
 # More information at https://github.com/taskctl/taskctl
 pipelines:
   dev:
-    - task: docker
     - task: api
+    - task: worker
 
 tasks:
   docker:

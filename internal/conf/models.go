@@ -1,7 +1,7 @@
 package conf
 
 import (
-	_tclient "go.temporal.io/sdk/client"
+	_tmprlclient "go.temporal.io/sdk/client"
 )
 
 type githubConf struct {
@@ -17,9 +17,9 @@ type kratosConf struct {
 }
 
 type temporal struct {
-	Client _tclient.Client
-	QUEUES struct {
-		Webhooks string `default:"webhooks"`
+	Client _tmprlclient.Client
+	Queues struct {
+		Webhooks string `env-default:"webhooks"`
 	}
 }
 

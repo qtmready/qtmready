@@ -7,10 +7,13 @@ import (
 	_chi "github.com/go-chi/chi/v5"
 	_chiMiddleware "github.com/go-chi/chi/v5/middleware"
 
+	"go.breu.io/ctrlplane/internal/conf"
 	"go.breu.io/ctrlplane/internal/webhooks"
 )
 
 func main() {
+	defer conf.Temporal.Client.Close()
+
 	router := _chi.NewRouter()
 
 	router.Use(_chiMiddleware.RequestID)
@@ -27,4 +30,12 @@ func main() {
 	router.Post("/webhooks/github", webhooks.GithubWebhook)
 
 	http.ListenAndServe(":8000", router)
+}
+
+func init() {
+	conf.InitService("api")
+	conf.InitKratos()
+	conf.InitGithub()
+	conf.InitTemporal()
+	conf.InitTemporalClient()
 }

@@ -5,6 +5,7 @@ type GithubEvent string
 
 // GitHub hook types
 const (
+	GithubAppAuthorizationEvent                    GithubEvent = "github_app_authorization"
 	GithubCheckRunEvent                            GithubEvent = "check_run"
 	GithubCheckSuiteEvent                          GithubEvent = "check_suite"
 	GithubCommitCommentEvent                       GithubEvent = "commit_comment"
