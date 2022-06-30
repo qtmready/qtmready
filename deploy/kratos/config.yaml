@@ -9,11 +9,43 @@ log:
 
 serve:
   public:
-    base_url: http://127.0.0.1:4433/
+    base_url: https://auth.breu.ngrok.io/
     cors:
       enabled: true
+      allowed_origins:
+        - https://breu.ngrok.io
+        - https://*.breu.ngrok.io
+      allowed_methods:
+        - POST
+        - GET
+        - PUT
+        - PATCH
+        - DELETE
+      allowed_headers:
+        - Authorization
+        - Cookie
+        - Content-Type
+      exposed_headers:
+        - Content-Type
+        - Set-Cookie
   admin:
     base_url: http://kratos-server:4434/
+
+cookies:
+  domain: breu.ngrok.io
+  path: /
+  same_site: Lax
+
+session:
+  cookie:
+    # Overrides cookies.domain for session cookies
+    domain: breu.ngrok.io
+
+    # Overrides cookies.path for session cookies
+    path: /
+
+    # Overrides cookies.samesite for session cookies
+    same_site: Lax
 
 identity:
   default_schema_id: user
@@ -22,9 +54,9 @@ identity:
       url: file:///etc/config/kratos/schemas/user.json
 
 selfservice:
-  default_browser_return_url: http://127.0.0.1:4455/
+  default_browser_return_url: https://ui.breu.ngrok.io/
   allowed_return_urls:
-    - http://127.0.0.1:4455
+    - https://ui.breu.ngrok.io/
 
   methods:
     password:
@@ -33,40 +65,40 @@ selfservice:
       config:
         # secrets will be provided via environment variables
         providers:
-          - id: github
-            provider: github
+          - id: github-app
+            provider: github-app
             mapper_url: file:///etc/config/kratos/schemas/oidc.github.jsonnet
       enabled: true
 
   flows:
     error:
-      ui_url: http://127.0.0.1:4455/error
+      ui_url: https://ui.breu.ngrok.io/error
 
     settings:
-      ui_url: http://127.0.0.1:4455/settings
+      ui_url: https://ui.breu.ngrok.io/settings
       privileged_session_max_age: 15m
 
     recovery:
       enabled: true
-      ui_url: http://127.0.0.1:4455/recovery
+      ui_url: https://ui.breu.ngrok.io/recovery
 
     verification:
       enabled: true
-      ui_url: http://127.0.0.1:4455/verification
+      ui_url: https://ui.breu.ngrok.io/verification
       after:
-        default_browser_return_url: http://127.0.0.1:4455/
+        default_browser_return_url: https://ui.breu.ngrok.io/
 
     logout:
       after:
-        default_browser_return_url: http://127.0.0.1:4455/login
+        default_browser_return_url: https://ui.breu.ngrok.io/login
 
     login:
-      ui_url: http://127.0.0.1:4455/login
+      ui_url: https://ui.breu.ngrok.io/login
       lifespan: 10m
 
     registration:
       lifespan: 10m
-      ui_url: http://127.0.0.1:4455/registration
+      ui_url: https://ui.breu.ngrok.io/registration
       after:
         password:
           hooks:
