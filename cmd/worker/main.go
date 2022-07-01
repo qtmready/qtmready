@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	_tworker "go.temporal.io/sdk/worker"
+	tworker "go.temporal.io/sdk/worker"
 
 	"go.breu.io/ctrlplane/internal/conf"
 	"go.breu.io/ctrlplane/internal/workflows"
@@ -11,10 +11,12 @@ import (
 
 func main() {
 	defer conf.Temporal.Client.Close()
-	worker := _tworker.New(conf.Temporal.Client, conf.Temporal.Queues.Webhooks, _tworker.Options{})
+	options := tworker.Options{}
+	worker := tworker.New(conf.Temporal.Client, conf.Temporal.Queues.Webhooks, options)
+
 	worker.RegisterWorkflow(workflows.OnGithubInstall)
 
-	err := worker.Run(_tworker.InterruptCh())
+	err := worker.Run(tworker.InterruptCh())
 
 	if err != nil {
 		log.Fatal(err)

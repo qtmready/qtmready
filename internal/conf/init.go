@@ -1,39 +1,40 @@
 package conf
 
 import (
-	_cleanenv "github.com/ilyakaznacheev/cleanenv"
-	_tclient "go.temporal.io/sdk/client"
-	_zap "go.uber.org/zap"
+	"github.com/ilyakaznacheev/cleanenv"
+	tclient "go.temporal.io/sdk/client"
+	"go.uber.org/zap"
 )
 
 // Initialize the service
 func InitService(name string) {
-	_cleanenv.ReadEnv(&Service)
+	cleanenv.ReadEnv(&Service)
 
 	if Service.Name == "" {
 		Service.Name = name
 	}
 
 	if Service.Debug {
-		Logger, _ = _zap.NewDevelopment()
+		Logger, _ = zap.NewDevelopment()
 	} else {
-		Logger, _ = _zap.NewProduction()
+		Logger, _ = zap.NewProduction()
 	}
+	Logger.Info("Starting ...", zap.String("name", Service.Name), zap.String("version", Service.Version))
 }
 
 // Initialize Kratos (https://ory.sh)
 func InitKratos() {
-	_cleanenv.ReadEnv(&Kratos)
+	cleanenv.ReadEnv(&Kratos)
 }
 
 // Initialize Github App
 func InitGithub() {
-	_cleanenv.ReadEnv(&Github)
+	cleanenv.ReadEnv(&Github)
 }
 
 // Initialize Temporal
 func InitTemporal() {
-	_cleanenv.ReadEnv(&Temporal)
+	cleanenv.ReadEnv(&Temporal)
 }
 
 // Initalize Temporal Client.
@@ -42,9 +43,12 @@ func InitTemporal() {
 //
 // Must do `defer conf.TemporalClient.Close()` after calling `conf.InitTemporalClient()`
 func InitTemporalClient() {
-	options := _tclient.Options{}
+	Logger.Info("Initializing Temporal Client", zap.String("host", Temporal.ServerHost), zap.String("port", Temporal.ServerPort))
+	options := tclient.Options{
+		HostPort: Temporal.GetConnectionString(),
+	}
 
-	client, err := _tclient.Dial(options)
+	client, err := tclient.Dial(options)
 
 	if err != nil {
 		Logger.Fatal(err.Error())

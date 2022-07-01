@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"net/http"
 
-	_chi "github.com/go-chi/chi/v5"
-	_chiMiddleware "github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/chi/v5"
+	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"go.breu.io/ctrlplane/internal/conf"
 	"go.breu.io/ctrlplane/internal/webhooks"
@@ -14,12 +14,12 @@ import (
 func main() {
 	defer conf.Temporal.Client.Close()
 
-	router := _chi.NewRouter()
+	router := chi.NewRouter()
 
-	router.Use(_chiMiddleware.RequestID)
-	router.Use(_chiMiddleware.RealIP)
-	router.Use(_chiMiddleware.Logger)
-	router.Use(_chiMiddleware.Recoverer)
+	router.Use(chimiddleware.RequestID)
+	router.Use(chimiddleware.RealIP)
+	router.Use(chimiddleware.Logger)
+	router.Use(chimiddleware.Recoverer)
 
 	router.Get("/webhooks/github", func(response http.ResponseWriter, request *http.Request) {
 		fmt.Printf("%+v", request)

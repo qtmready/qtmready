@@ -85,7 +85,7 @@ services:
     ports:
       - 7233:7233
     volumes:
-      - ./deploy/temporal/dynamicconfig:/etc/temporal/config/dynamicconfig
+      - ./deploy/temporal/dynamicconfig/:/etc/temporal/config/dynamicconfig/
 
   temporal-admin-tools:
     container_name: temporal-admin-tools
@@ -102,13 +102,49 @@ services:
     depends_on:
       - temporal
     environment:
-      - TEMPORAL_ADDRESS=temporal:7233
-      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:3000
     image: temporalio/ui:2.0.0
     ports:
       - 8080:8080
+
+  ctrlplane-api:
+    container_name: ctrlplane-api
+    image: cosmtrek/air
+    environment:
+      TEMPORAL_HOST: temporal
+      TEMPORAL_PORT: 7233
+    env_file:
+      - ./.env
+    ports:
+      - 8000:8000
+    volumes:
+      - ./deploy/air/api.toml:/api/.air.toml
+      - ./:/api/
+      - ctrlplane-api-go-pkg-mod:/root/go/pkg/mod # TODO: not working, fix this
+      - ctrlplane-api-build-cache:/root/.cache/go-build # TODO: not working, fix this
+    working_dir: /api
+
+  ctrlplane-worker:
+    container_name: ctrlplane-worker
+    image: cosmtrek/air
+    environment:
+      TEMPORAL_HOST: temporal
+      TEMPORAL_PORT: 7233
+    env_file:
+      - ./.env
+    volumes:
+      - ./deploy/air/worker.toml:/worker/.air.toml
+      - ./:/worker/
+      - ctrlplane-worker-go-pkg-mod:/root/go/pkg/mod # TODO: not working, fix this
+      - ctrlplane-worker-build-cache:/root/.cache/go-build # TODO: not working, fix this
+    working_dir: /worker
 
 
 volumes:
   kratos-pg-data: {}
   temporal-pg-data: {}
+  ctrlplane-api-go-pkg-mod: {}
+  ctrlplane-api-build-cache: {}
+  ctrlplane-worker-go-pkg-mod: {}
+  ctrlplane-worker-build-cache: {}

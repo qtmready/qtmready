@@ -1,7 +1,7 @@
 package conf
 
 import (
-	_tclient "go.temporal.io/sdk/client"
+	tclient "go.temporal.io/sdk/client"
 )
 
 type githubConf struct {
@@ -17,10 +17,16 @@ type kratosConf struct {
 }
 
 type temporal struct {
-	Client _tclient.Client
-	Queues struct {
+	ServerHost string `env:"TEMPORAL_HOST"`
+	ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
+	Client     tclient.Client
+	Queues     struct {
 		Webhooks string `env-default:"webhooks"`
 	}
+}
+
+func (t *temporal) GetConnectionString() string {
+	return t.ServerHost + ":" + t.ServerPort
 }
 
 type service struct {
