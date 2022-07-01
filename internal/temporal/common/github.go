@@ -1,4 +1,4 @@
-package models
+package common
 
 import "time"
 
@@ -48,7 +48,7 @@ type installation struct {
 	SingleFileName      *string                 `json:"single_file_name"`
 }
 
-type installationReposiroty struct {
+type installationRepo struct {
 	ID       int64  `json:"id"`
 	NodeID   string `json:"node_id"`
 	Name     string `json:"name"`
@@ -84,8 +84,8 @@ type GithubAppAuthorizationEventPayload struct {
 
 // GithubInstallationEventPayload contains the information for GitHub's installation and integration_installation hook events
 type GithubInstallationEventPayload struct {
-	Action       string                   `json:"action"`
-	Installation installation             `json:"installation"`
-	Repositories []installationReposiroty `json:"repositories"`
-	Sender       installationSender       `json:"sender"`
+	Action       string             `json:"action"`
+	Installation installation       `json:"installation"`
+	Repositories []installationRepo `json:"repositories"`
+	Sender       installationSender `json:"sender"`
 }

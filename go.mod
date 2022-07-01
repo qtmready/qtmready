@@ -3,7 +3,9 @@ module go.breu.io/ctrlplane
 go 1.18
 
 require (
+	github.com/bradleyfalzon/ghinstallation/v2 v2.0.4
 	github.com/go-chi/chi/v5 v5.0.7
+	github.com/google/go-github/v45 v45.2.0
 	github.com/ilyakaznacheev/cleanenv v1.3.0
 	go.temporal.io/sdk v1.15.0
 	go.uber.org/zap v1.21.0
@@ -16,9 +18,11 @@ require (
 	github.com/gogo/googleapis v1.4.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gogo/status v1.1.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.4.2 // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
-	github.com/google/go-cmp v0.5.8 // indirect
+	github.com/google/go-github/v41 v41.0.0 // indirect
+	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
@@ -30,6 +34,7 @@ require (
 	go.temporal.io/api v1.8.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
 	golang.org/x/net v0.0.0-20220624214902-1bab6f366d9e // indirect
 	golang.org/x/sys v0.0.0-20220520151302-bc2c85ada10a // indirect
 	golang.org/x/text v0.3.7 // indirect

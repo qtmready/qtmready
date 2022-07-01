@@ -1,14 +1,14 @@
 package conf
 
 import (
-	tclient "go.temporal.io/sdk/client"
+	tc "go.temporal.io/sdk/client"
 )
 
 type githubConf struct {
-	AppID         string `env:"GITHUB_APP_ID"`
+	AppID         int64  `env:"GITHUB_APP_ID"`
 	ClinetID      string `env:"GITHUB_CLIENT_ID"`
 	WebhookSecret string `env:"GITHUB_WEBHOOK_SECRET"`
-	PrivateKey    string `env:"GITHUB_PRIVATE_KEY"`
+	PrivateKey    []byte `env:"GITHUB_PRIVATE_KEY"`
 	// PrivateKey Base64EncodedValue `env:"GITHUB_PRIVATE_KEY"`
 }
 
@@ -19,7 +19,7 @@ type kratosConf struct {
 type temporal struct {
 	ServerHost string `env:"TEMPORAL_HOST"`
 	ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
-	Client     tclient.Client
+	Client     tc.Client
 	Queues     struct {
 		Webhooks string `env-default:"webhooks"`
 	}

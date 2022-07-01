@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 	"net/http"
 
-	_tclient "go.temporal.io/sdk/client"
+	tc "go.temporal.io/sdk/client"
 
 	"go.breu.io/ctrlplane/internal/conf"
-	"go.breu.io/ctrlplane/internal/models"
-	"go.breu.io/ctrlplane/internal/workflows"
+	"go.breu.io/ctrlplane/internal/temporal/common"
+	"go.breu.io/ctrlplane/internal/temporal/workflows"
 )
 
-func consumeGithubInstallationEvent(payload models.GithubInstallationEventPayload, response http.ResponseWriter) {
+func consumeGithubInstallationEvent(payload common.GithubInstallationEventPayload, response http.ResponseWriter) {
 	data, _ := json.MarshalIndent(payload, "", "  ")
-	options := _tclient.StartWorkflowOptions{
+	options := tc.StartWorkflowOptions{
 		ID:        string(rune(payload.Installation.ID)),
 		TaskQueue: conf.Temporal.Queues.Webhooks,
 	}
@@ -33,7 +33,7 @@ func consumeGithubInstallationEvent(payload models.GithubInstallationEventPayloa
 	response.Write([]byte(exe.GetRunID()))
 }
 
-func consumeGithubAppAuthorizationEvent(payload models.GithubAppAuthorizationEventPayload, response http.ResponseWriter) {
+func consumeGithubAppAuthorizationEvent(payload common.GithubAppAuthorizationEventPayload, response http.ResponseWriter) {
 	data, _ := json.MarshalIndent(payload, "", "  ")
 	conf.Logger.Debug("App authorization event received")
 	conf.Logger.Debug(string(data))

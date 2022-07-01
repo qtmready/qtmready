@@ -1,11 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	chimw "github.com/go-chi/chi/v5/middleware"
 
 	"go.breu.io/ctrlplane/internal/conf"
 	"go.breu.io/ctrlplane/internal/webhooks"
@@ -16,16 +15,10 @@ func main() {
 
 	router := chi.NewRouter()
 
-	router.Use(chimiddleware.RequestID)
-	router.Use(chimiddleware.RealIP)
-	router.Use(chimiddleware.Logger)
-	router.Use(chimiddleware.Recoverer)
-
-	router.Get("/webhooks/github", func(response http.ResponseWriter, request *http.Request) {
-		fmt.Printf("%+v", request)
-
-		response.Write([]byte("Hello, World!"))
-	})
+	router.Use(chimw.RequestID)
+	router.Use(chimw.RealIP)
+	router.Use(chimw.Logger)
+	router.Use(chimw.Recoverer)
 
 	router.Post("/webhooks/github", webhooks.GithubWebhook)
 
@@ -33,7 +26,7 @@ func main() {
 }
 
 func init() {
-	conf.InitService("ctrlplane-api")
+	conf.InitService("web::api")
 	conf.InitKratos()
 	conf.InitGithub()
 	conf.InitTemporal()
