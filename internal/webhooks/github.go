@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"go.breu.io/ctrlplane/internal/conf"
-	"go.breu.io/ctrlplane/internal/temporal/common"
+	"go.breu.io/ctrlplane/internal/types"
 )
 
 // ConsumeGithubInstallationEvent handles GitHub installation events
@@ -33,11 +33,11 @@ func GithubWebhook(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	event := GithubEvent(headerEvent)
+	event := types.GithubEvent(headerEvent)
 
 	switch event {
-	case GithubInstallationEvent:
-		var payload common.GithubInstallationEventPayload
+	case types.GithubInstallationEvent:
+		var payload types.GithubInstallationEventPayload
 		err := json.Unmarshal(body, &payload)
 
 		if err != nil {
@@ -47,8 +47,8 @@ func GithubWebhook(response http.ResponseWriter, request *http.Request) {
 
 		consumeGithubInstallationEvent(payload, response)
 
-	case GithubAppAuthorizationEvent:
-		var payload common.GithubAppAuthorizationEventPayload
+	case types.GithubAppAuthorizationEvent:
+		var payload types.GithubAppAuthorizationEventPayload
 		err := json.Unmarshal(body, &payload)
 
 		if err != nil {

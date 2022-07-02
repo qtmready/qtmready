@@ -2,9 +2,15 @@ package conf
 
 import (
 	"github.com/ilyakaznacheev/cleanenv"
-	tclient "go.temporal.io/sdk/client"
+	tc "go.temporal.io/sdk/client"
 	"go.uber.org/zap"
 )
+
+var Github githubConf
+var Kratos kratosConf
+var Service service
+var Logger *zap.Logger
+var Temporal temporal
 
 // Initialize the service
 func InitService(name string) {
@@ -44,11 +50,11 @@ func InitTemporal() {
 // Must do `defer conf.TemporalClient.Close()` after calling `conf.InitTemporalClient()`
 func InitTemporalClient() {
 	Logger.Info("Initializing Temporal Client", zap.String("host", Temporal.ServerHost), zap.String("port", Temporal.ServerPort))
-	options := tclient.Options{
+	options := tc.Options{
 		HostPort: Temporal.GetConnectionString(),
 	}
 
-	client, err := tclient.Dial(options)
+	client, err := tc.Dial(options)
 
 	if err != nil {
 		Logger.Fatal(err.Error())

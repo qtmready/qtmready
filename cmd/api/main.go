@@ -10,6 +10,14 @@ import (
 	"go.breu.io/ctrlplane/internal/webhooks"
 )
 
+func init() {
+	conf.InitService("web::api")
+	conf.InitKratos()
+	conf.InitGithub()
+	conf.InitTemporal()
+	conf.InitTemporalClient()
+}
+
 func main() {
 	defer conf.Temporal.Client.Close()
 
@@ -23,12 +31,4 @@ func main() {
 	router.Post("/webhooks/github", webhooks.GithubWebhook)
 
 	http.ListenAndServe(":8000", router)
-}
-
-func init() {
-	conf.InitService("web::api")
-	conf.InitKratos()
-	conf.InitGithub()
-	conf.InitTemporal()
-	conf.InitTemporalClient()
 }

@@ -2,20 +2,26 @@ package workflows
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	gh "github.com/google/go-github/v45/github"
-	twf "go.temporal.io/sdk/workflow"
+	"github.com/google/go-github/v45/github"
+	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/ctrlplane/internal/conf"
 	"go.breu.io/ctrlplane/internal/temporal/activities"
-	"go.breu.io/ctrlplane/internal/temporal/common"
+	"go.breu.io/ctrlplane/internal/types"
 )
 
-func OnGithubInstall(ctx twf.Context, payload common.GithubInstallationEventPayload) error {
-	logger := twf.GetLogger(ctx)
-	logger.Info("Github installation event received")
-	logger.Info("Creating Github Client")
+// Workflow for handling a Github App Installation event.
+func OnGithubInstall(ctx workflow.Context, payload types.GithubInstallationEventPayload) error {
+	options := workflow.ActivityOptions{
+		StartToCloseTimeout: 10 * time.Second,
+	}
+	ctx = workflow.WithActivityOptions(ctx, options)
+	logger := workflow.GetLogger(ctx)
+
+	logger.Debug("Starting Workflow: OnGithubInstall")
 
 	client, err := createGithubClient(payload.Installation.ID)
 
@@ -23,20 +29,33 @@ func OnGithubInstall(ctx twf.Context, payload common.GithubInstallationEventPayl
 		return err
 	}
 
-	twf.ExecuteActivity(ctx, activities.GetOrCreateGithubInstallation, client, payload)
+	var result types.GithubInstallationEventPayload
+	err = workflow.ExecuteActivity(ctx, activities.SaveGithubInstallation, client, payload).Get(ctx, &result)
 
+	if err != nil {
+		return err
+	}
+
+	logger.Debug("Finished Workflow: OnGithubInstall")
 	return nil
 }
 
-func OnGithubPullRequest(ctx twf.Context) {}
+func OnGithubPullRequest(ctx workflow.Context) {}
 
-func createGithubClient(installationID int64) (*gh.Client, error) {
-	transport, err := ghinstallation.New(http.DefaultTransport, conf.Github.AppID, installationID, conf.Github.PrivateKey)
+// Creates a github client for the given installation ID.
+
+func createGithubClient(installationID int64) (*github.Client, error) {
+	transport, err := ghinstallation.New(
+		http.DefaultTransport,
+		conf.Github.AppID,
+		installationID,
+		[]byte(conf.Github.PrivateKey),
+	)
 
 	if err != nil {
 		return nil, err
 	}
 
-	client := gh.NewClient(&http.Client{Transport: transport})
+	client := github.NewClient(&http.Client{Transport: transport})
 	return client, nil
 }

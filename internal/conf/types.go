@@ -8,7 +8,7 @@ type githubConf struct {
 	AppID         int64  `env:"GITHUB_APP_ID"`
 	ClinetID      string `env:"GITHUB_CLIENT_ID"`
 	WebhookSecret string `env:"GITHUB_WEBHOOK_SECRET"`
-	PrivateKey    []byte `env:"GITHUB_PRIVATE_KEY"`
+	PrivateKey    string `env:"GITHUB_PRIVATE_KEY"`
 	// PrivateKey Base64EncodedValue `env:"GITHUB_PRIVATE_KEY"`
 }
 

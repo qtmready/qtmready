@@ -3,14 +3,11 @@ package activities
 import (
 	"context"
 
-	gh "github.com/google/go-github/v45/github"
-	tac "go.temporal.io/sdk/activity"
+	"github.com/google/go-github/v45/github"
 
-	"go.breu.io/ctrlplane/internal/temporal/common"
+	"go.breu.io/ctrlplane/internal/types"
 )
 
-func GetOrCreateGithubInstallation(ctx context.Context, client *gh.Client, payload common.GithubInstallationEventPayload) error {
-	logger := tac.GetLogger(ctx)
-	logger.Info("Github installation event received")
-	return nil
+func SaveGithubInstallation(ctx context.Context, client *github.Client, payload types.GithubInstallationEventPayload) (types.GithubInstallationEventPayload, error) {
+	return payload, nil
 }

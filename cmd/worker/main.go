@@ -18,7 +18,7 @@ func main() {
 	worker := tw.New(conf.Temporal.Client, queue, options)
 
 	worker.RegisterWorkflow(workflows.OnGithubInstall)
-	worker.RegisterActivity(activities.GetOrCreateGithubInstallation)
+	worker.RegisterActivity(activities.SaveGithubInstallation)
 
 	err := worker.Run(tw.InterruptCh())
 
@@ -29,6 +29,7 @@ func main() {
 
 func init() {
 	conf.InitService("worker::webhooks")
+	conf.InitGithub()
 	conf.InitTemporal()
 	conf.InitTemporalClient()
 }
