@@ -38,13 +38,14 @@ type User struct {
 	UpdatedAt  time.Time
 }
 
-// Tries to create a new user. If the email is already in use, returns an error.
+// Creates a new user. If email already exists, returns an error.
 func (u *User) Create() error {
 	if _, err := mail.ParseAddress(u.Email); err != nil {
 		return err
 	}
 
 	u.ID, _ = gocql.RandomUUID()
+	u.SetPassword(u.Password)
 
 	now := time.Now()
 	u.CreatedAt = now
@@ -59,16 +60,20 @@ func (u *User) Create() error {
 	return nil
 }
 
+// Get a user matching `params`.
 func (u *User) Get(params struct{}) error {
+	query := conf.DB.Session.Query(githubInstallationTable.Select()).BindStruct(params)
+
+	if err := query.GetRelease(&u); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (u *User) HashPassword(password string) (string, error) {
-	p, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		return "", err
-	}
-	return string(p), nil
+func (u *User) SetPassword(password string) {
+	p, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	u.Password = string(p)
 }
 
 func (u *User) VerifyPassword(password string) bool {

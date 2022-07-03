@@ -31,12 +31,22 @@ type GithubInstallation struct {
 	GithubSenderLogin       string
 }
 
-func (gi *GithubInstallation) Create() error {
-	gi.ID, _ = gocql.RandomUUID()
+func (g *GithubInstallation) Create() error {
+	g.ID, _ = gocql.RandomUUID()
 
-	query := conf.DB.Session.Query(githubInstallationTable.Insert()).BindStruct(gi)
+	query := conf.DB.Session.Query(githubInstallationTable.Insert()).BindStruct(g)
 
 	if err := query.ExecRelease(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (g *GithubInstallation) Get(params struct{}) error {
+	query := conf.DB.Session.Query(githubInstallationTable.Select()).BindStruct(params)
+
+	if err := query.GetRelease(&g); err != nil {
 		return err
 	}
 

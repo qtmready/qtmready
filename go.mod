@@ -7,7 +7,9 @@ require (
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/gocql/gocql v1.1.0
 	github.com/google/go-github/v45 v45.2.0
+	github.com/gosimple/slug v1.12.0
 	github.com/ilyakaznacheev/cleanenv v1.3.0
+	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/scylladb/gocqlx v1.5.0
 	github.com/scylladb/gocqlx/v2 v2.7.0
 	go.temporal.io/sdk v1.15.0
@@ -29,6 +31,7 @@ require (
 	github.com/google/go-github/v41 v41.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
+	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/joho/godotenv v1.4.0 // indirect

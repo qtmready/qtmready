@@ -33,6 +33,7 @@ func (t *Team) Create() error {
 	t.ID, _ = gocql.RandomUUID()
 
 	now := time.Now()
+	t.Slug = slugify(t.Name)
 	t.CreatedAt = now
 	t.UpdatedAt = now
 
