@@ -27,7 +27,7 @@ var userMeta = table.Metadata{
 var userTable = table.New(userMeta)
 
 type User struct {
-	ID         gocql.UUID `sql:"id"`
+	ID         gocql.UUID `cql:"id"`
 	FirstName  string
 	LastName   string
 	Email      string
