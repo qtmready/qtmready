@@ -1,5 +1,15 @@
 version: '3.6'
 services:
+  cassandra:
+    container_name: cassandra
+    image: cassandra:4
+    ports:
+      - '9042:9042'
+    environment:
+      - CASSNDRA_CLUSTER_NAME=ctrlplane
+    volumes:
+      - ctrlplane-db-data:/var/lib/cassandra
+
   # Ory - https://ory.sh
   kratos-db:
     container_name: kratos-db
@@ -114,6 +124,8 @@ services:
     environment:
       TEMPORAL_HOST: temporal
       TEMPORAL_PORT: 7233
+      CTRLPLANE_DB_HOSTS: db # This can be comma seperated value
+      CTRLPLANE_DB_KEYSPACE: ctrlplane
     env_file:
       - ./.env
     ports:
@@ -144,6 +156,7 @@ services:
 volumes:
   kratos-pg-data: {}
   temporal-pg-data: {}
+  ctrlplane-db-data: {}
   ctrlplane-api-go-pkg-mod: {}
   ctrlplane-api-build-cache: {}
   ctrlplane-worker-go-pkg-mod: {}

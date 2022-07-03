@@ -14,11 +14,16 @@ func init() {
 	conf.InitService("web::api")
 	conf.InitKratos()
 	conf.InitGithub()
+	conf.InitDB()
+	conf.InitDBSession()
 	conf.InitTemporal()
 	conf.InitTemporalClient()
+
+	conf.Logger.Info("Initializing Service ... Done")
 }
 
 func main() {
+	defer conf.DB.Session.Close()
 	defer conf.Temporal.Client.Close()
 
 	router := chi.NewRouter()

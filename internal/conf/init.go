@@ -1,13 +1,16 @@
 package conf
 
 import (
+	"github.com/gocql/gocql"
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/scylladb/gocqlx/v2"
 	tc "go.temporal.io/sdk/client"
 	"go.uber.org/zap"
 )
 
-var Github githubConf
-var Kratos kratosConf
+var DB cassandra
+var Github github
+var Kratos kratos
 var Service service
 var Logger *zap.Logger
 var Temporal temporal
@@ -25,7 +28,26 @@ func InitService(name string) {
 	} else {
 		Logger, _ = zap.NewProduction()
 	}
-	Logger.Info("Starting ...", zap.String("name", Service.Name), zap.String("version", Service.Version))
+
+	Logger.Info("Initializing Service ...", zap.String("name", Service.Name), zap.String("version", Service.Version))
+}
+
+func InitDB() {
+	cleanenv.ReadEnv(&DB)
+}
+
+func InitDBSession() {
+	Logger.Info("Initializing DB Session ...", zap.Strings("hosts", DB.Hosts), zap.String("keyspace", DB.KeySpace))
+	cluster := gocql.NewCluster(DB.Hosts...)
+	cluster.Keyspace = DB.KeySpace
+	session, err := gocqlx.WrapSession(cluster.CreateSession())
+
+	if err != nil {
+		Logger.Fatal(err.Error())
+	}
+
+	DB.Session = session
+	Logger.Info("Initializing DB Session ... Done")
 }
 
 // Initialize Kratos (https://ory.sh)
@@ -49,7 +71,7 @@ func InitTemporal() {
 //
 // Must do `defer conf.TemporalClient.Close()` after calling `conf.InitTemporalClient()`
 func InitTemporalClient() {
-	Logger.Info("Initializing Temporal Client", zap.String("host", Temporal.ServerHost), zap.String("port", Temporal.ServerPort))
+	Logger.Info("Initializing Temporal Client ...", zap.String("host", Temporal.ServerHost), zap.String("port", Temporal.ServerPort))
 	options := tc.Options{
 		HostPort: Temporal.GetConnectionString(),
 	}
@@ -61,4 +83,5 @@ func InitTemporalClient() {
 	}
 
 	Temporal.Client = client
+	Logger.Info("Initializing Temporal Client ... Done")
 }
