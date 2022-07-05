@@ -3,12 +3,14 @@ module go.breu.io/ctrlplane
 go 1.18
 
 require (
+	github.com/avast/retry-go/v4 v4.1.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.0.4
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/gocql/gocql v1.1.0
 	github.com/google/go-github/v45 v45.2.0
 	github.com/gosimple/slug v1.12.0
 	github.com/ilyakaznacheev/cleanenv v1.3.0
+	github.com/jinzhu/copier v0.3.5
 	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/scylladb/gocqlx v1.5.0
 	github.com/scylladb/gocqlx/v2 v2.7.0

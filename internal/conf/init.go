@@ -1,6 +1,9 @@
 package conf
 
 import (
+	"time"
+
+	"github.com/avast/retry-go/v4"
 	"github.com/gocql/gocql"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/scylladb/gocqlx/v2"
@@ -40,14 +43,25 @@ func InitDBSession() {
 	Logger.Info("Initializing DB Session ...", zap.Strings("hosts", DB.Hosts), zap.String("keyspace", DB.KeySpace))
 	cluster := gocql.NewCluster(DB.Hosts...)
 	cluster.Keyspace = DB.KeySpace
-	session, err := gocqlx.WrapSession(cluster.CreateSession())
 
-	if err != nil {
-		Logger.Fatal(err.Error())
+	retryCassandra := func() error {
+		session, err := gocqlx.WrapSession(cluster.CreateSession())
+		if err != nil {
+			return err
+		}
+
+		DB.Session = session
+		Logger.Info("Initializing DB Session ... Done")
+		return nil
 	}
 
-	DB.Session = session
-	Logger.Info("Initializing DB Session ... Done")
+	if err := retry.Do(
+		retryCassandra,
+		retry.Attempts(10),
+		retry.Delay(1*time.Second),
+	); err != nil {
+		Logger.Fatal("Failed to initialize DB Session", zap.Error(err))
+	}
 }
 
 // Initialize Kratos (https://ory.sh)
@@ -76,12 +90,22 @@ func InitTemporalClient() {
 		HostPort: Temporal.GetConnectionString(),
 	}
 
-	client, err := tc.Dial(options)
+	retryTemporal := func() error {
+		client, err := tc.Dial(options)
+		if err != nil {
+			return err
+		}
 
-	if err != nil {
-		Logger.Fatal(err.Error())
+		Temporal.Client = client
+		Logger.Info("Initializing Temporal Client ... Done")
+		return nil
 	}
 
-	Temporal.Client = client
-	Logger.Info("Initializing Temporal Client ... Done")
+	if err := retry.Do(
+		retryTemporal,
+		retry.Attempts(10),
+		retry.Delay(1*time.Second),
+	); err != nil {
+		Logger.Fatal("Failed to initialize Temporal Client", zap.Error(err))
+	}
 }

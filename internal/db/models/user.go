@@ -5,9 +5,11 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
+	"github.com/jinzhu/copier"
 	"github.com/scylladb/gocqlx/table"
-	"go.breu.io/ctrlplane/internal/conf"
 	"golang.org/x/crypto/bcrypt"
+
+	"go.breu.io/ctrlplane/internal/conf"
 )
 
 var userMeta = table.Metadata{
@@ -31,7 +33,7 @@ type User struct {
 	FirstName  string
 	LastName   string
 	Email      string
-	Password   string
+	Password   string `copier:"-"`
 	IsVerified bool
 	IsActive   bool
 	CreatedAt  time.Time
@@ -71,16 +73,33 @@ func (u *User) Get(params struct{}) error {
 	return nil
 }
 
+// Given a password, sets the user's password to a hashed version.
 func (u *User) SetPassword(password string) {
 	p, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	u.Password = string(p)
 }
 
+// Verifies the plain text password against the hashed password.
 func (u *User) VerifyPassword(password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)) == nil
 }
 
-func (u *User) Update()                {}
+// Updates a user.
+func (u *User) Update(params struct{}) error {
+	if err := copier.Copy(u, params); err != nil {
+		return err
+	}
+
+	u.UpdatedAt = time.Now()
+
+	query := conf.DB.Session.Query(userTable.Update()).BindStruct(u)
+
+	if err := query.ExecRelease(); err != nil {
+		return err
+	}
+
+	return nil
+}
 func (u *User) SendVerificationEmail() {}
 func (u *User) Suspend()               {}
 func (u *User) Restore()               {}
