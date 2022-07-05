@@ -10,12 +10,12 @@ var githubInstallMeta = table.Metadata{
 	Name: "github_installations",
 	Columns: []string{
 		"id",
-		"installation_id",
-		"installation_login",
-		"installation_type",
-		"sender_id",
-		"sender_login",
-		"ctrlplane_team_id",
+		"team_id",
+		"github_installation_id",
+		"github_installation_login",
+		"github_installation_type",
+		"github_sender_id",
+		"github_sender_login",
 	},
 }
 
@@ -24,8 +24,8 @@ var githubInstallationTable = table.New(githubInstallMeta)
 type GithubInstallation struct {
 	ID                      gocql.UUID `cql:"id"`
 	TeamID                  gocql.UUID `cql:"team_id"`
-	GithubInstallationID    int64      `cql:"installation_id"`
-	GithubSenderID          int64      `cql:"sender_id"`
+	GithubInstallationID    int64      `cql:"github_installation_id"`
+	GithubSenderID          int64      `cql:"github_sender_id"`
 	GithubInstallationLogin string
 	GithubInstallationType  string
 	GithubSenderLogin       string

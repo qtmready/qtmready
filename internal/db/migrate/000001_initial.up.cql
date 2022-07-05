@@ -32,8 +32,9 @@ create table if not exists github_installations
     team_id                     uuid,
     github_installation_id      bigint,
     github_installation_type    varchar,
-    github_sender_id            bigint,
+    github_installation_login   varchar,
     github_login                varchar, 
+    github_sender_id            bigint,
     github_sender_login         varchar,
     primary key                 (id),   
 );

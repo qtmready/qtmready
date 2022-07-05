@@ -19,7 +19,7 @@ var Logger *zap.Logger
 var Temporal temporal
 
 // Initialize the service
-func InitService(name string) {
+func ReadSvcConfig(name string) {
 	cleanenv.ReadEnv(&Service)
 
 	if Service.Name == "" {
@@ -35,7 +35,7 @@ func InitService(name string) {
 	Logger.Info("Initializing Service ...", zap.String("name", Service.Name), zap.String("version", Service.Version))
 }
 
-func InitDB() {
+func ReadDBConfig() {
 	cleanenv.ReadEnv(&DB)
 }
 
@@ -65,17 +65,17 @@ func InitDBSession() {
 }
 
 // Initialize Kratos (https://ory.sh)
-func InitKratos() {
+func ReadKratosConfig() {
 	cleanenv.ReadEnv(&Kratos)
 }
 
 // Initialize Github App
-func InitGithub() {
+func ReadGithubConfig() {
 	cleanenv.ReadEnv(&Github)
 }
 
 // Initialize Temporal
-func InitTemporal() {
+func ReadTemporalConfig() {
 	cleanenv.ReadEnv(&Temporal)
 }
 

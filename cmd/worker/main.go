@@ -10,6 +10,15 @@ import (
 	"go.breu.io/ctrlplane/internal/temporal/workflows"
 )
 
+func init() {
+	conf.ReadSvcConfig("worker::webhooks")
+	conf.ReadDBConfig()
+	conf.InitDBSession()
+	conf.ReadGithubConfig()
+	conf.ReadTemporalConfig()
+	conf.InitTemporalClient()
+}
+
 func main() {
 	defer conf.Temporal.Client.Close()
 
@@ -25,11 +34,4 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-}
-
-func init() {
-	conf.InitService("worker::webhooks")
-	conf.InitGithub()
-	conf.InitTemporal()
-	conf.InitTemporalClient()
 }

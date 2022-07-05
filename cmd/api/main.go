@@ -11,12 +11,12 @@ import (
 )
 
 func init() {
-	conf.InitService("web::api")
-	conf.InitKratos()
-	conf.InitGithub()
-	conf.InitDB()
+	conf.ReadSvcConfig("web::api")
+	conf.ReadKratosConfig()
+	conf.ReadGithubConfig()
+	conf.ReadDBConfig()
 	conf.InitDBSession()
-	conf.InitTemporal()
+	conf.ReadTemporalConfig()
 	conf.InitTemporalClient()
 
 	conf.Logger.Info("Initializing Service ... Done")
