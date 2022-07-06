@@ -10,56 +10,6 @@ services:
     volumes:
       - ctrlplane-db-data:/var/lib/cassandra
 
-  # Ory - https://ory.sh
-  kratos-db:
-    container_name: kratos-db
-    image: postgres:14
-    environment:
-      POSTGRES_USER: ${KRATOS_DB_USER}
-      POSTGRES_PASSWORD: ${KRATOS_DB_PASS}
-      POSTGRES_DB: ${KRATOS_DB_NAME}
-    ports:
-      - ${KRATOS_DB_PORT}:5432
-    volumes:
-      - kratos-pg-data:/var/lib/postgresql/data
-
-  kratos-migrate:
-    depends_on:
-      - kratos-db
-    container_name: kratos-migrate
-    image: oryd/kratos:v0.10.1
-    environment:
-      DSN: postgres://${KRATOS_DB_USER}:${KRATOS_DB_PASS}@kratos-db/${KRATOS_DB_NAME}?sslmode=disable&max_conns=20&max_idle_conns=4
-    volumes:
-      - ./deploy/kratos:/etc/config/kratos
-    command: -c /etc/config/kratos/config.yaml migrate sql -e --yes
-
-  kratos-server:
-    depends_on:
-      - kratos-db
-      - kratos-migrate
-    container_name: kratos-server
-    image: oryd/kratos:v0.10.1
-    environment:
-      SELFSERVICE_METHODS_OIDC_CONFIG_PROVIDERS_0_CLIENT_ID: ${GITHUB_CLIENT_ID}
-      SELFSERVICE_METHODS_OIDC_CONFIG_PROVIDERS_0_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET}
-      DSN: postgres://${KRATOS_DB_USER}:${KRATOS_DB_PASS}@kratos-db/${KRATOS_DB_NAME}?sslmode=disable&max_conns=20&max_idle_conns=4
-    ports:
-      - 4433:4433 # public
-      - 4434:4434 # admin
-    volumes:
-      - ./deploy/kratos:/etc/config/kratos
-    command: serve -c /etc/config/kratos/config.yaml --dev --watch-courier
-
-  kratos-selfservice:
-    container_name: kratos-selfservice
-    image: oryd/kratos-selfservice-ui-node:v0.10.1
-    environment:
-      - KRATOS_PUBLIC_URL=http://kratos-server:4433/
-      - KRATOS_BROWSER_URL=https://auth.breu.ngrok.io/
-    ports:
-      - 4455:3000
-
   mailslurper:
     container_name: mailslurper
     image: oryd/mailslurper:latest-smtps
@@ -124,8 +74,7 @@ services:
     environment:
       TEMPORAL_HOST: temporal
       TEMPORAL_PORT: 7233
-      CTRLPLANE_DB_HOSTS: db # This can be comma seperated value
-      CTRLPLANE_DB_KEYSPACE: ctrlplane
+      CASSANDRA_MIGRATION_FILES_PATH: /api/internal/db/migrations
     env_file:
       - ./.env
     ports:
@@ -154,7 +103,6 @@ services:
 
 
 volumes:
-  kratos-pg-data: {}
   temporal-pg-data: {}
   ctrlplane-db-data: {}
   ctrlplane-api-go-pkg-mod: {}

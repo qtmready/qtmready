@@ -37,7 +37,8 @@ type service struct {
 }
 
 type cassandra struct {
-	Hosts    []string `env:"CASSANDRA_HOSTS" env-default:"cassandra"`
-	KeySpace string   `env:"CASSANDRA_KEYSPACE" env-default:"ctrlplane"`
-	Session  gocqlx.Session
+	Hosts              []string `env:"CASSANDRA_HOSTS" env-default:"cassandra"`
+	KeySpace           string   `env:"CASSANDRA_KEYSPACE" env-default:"ctrlplane"`
+	MigrationFilesPath string   `env:"CASSANDRA_MIGRATION_FILES_PATH" env-default:""`
+	Session            gocqlx.Session
 }

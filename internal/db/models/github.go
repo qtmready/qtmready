@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/table"
 	"go.breu.io/ctrlplane/internal/conf"
@@ -11,28 +13,36 @@ var githubInstallMeta = table.Metadata{
 	Columns: []string{
 		"id",
 		"team_id",
-		"github_installation_id",
-		"github_installation_login",
-		"github_installation_type",
-		"github_sender_id",
-		"github_sender_login",
+		"installation_id",
+		"installation_login",
+		"installation_type",
+		"sender_id",
+		"sender_login",
+		"created_at",
+		"updated_at",
 	},
 }
 
 var githubInstallationTable = table.New(githubInstallMeta)
 
 type GithubInstallation struct {
-	ID                      gocql.UUID `cql:"id"`
-	TeamID                  gocql.UUID `cql:"team_id"`
-	GithubInstallationID    int64      `cql:"github_installation_id"`
-	GithubSenderID          int64      `cql:"github_sender_id"`
-	GithubInstallationLogin string
-	GithubInstallationType  string
-	GithubSenderLogin       string
+	ID                gocql.UUID `cql:"id"`
+	TeamID            gocql.UUID `cql:"team_id"`
+	InstallationID    int64      `cql:"installation_id"`
+	SenderID          int64      `cql:"sender_id"`
+	InstallationLogin string
+	InstallationType  string
+	SenderLogin       string
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
 }
 
 func (g *GithubInstallation) Create() error {
 	g.ID, _ = gocql.RandomUUID()
+
+	now := time.Now()
+	g.CreatedAt = now
+	g.UpdatedAt = now
 
 	query := conf.DB.Session.Query(githubInstallationTable.Insert()).BindStruct(g)
 

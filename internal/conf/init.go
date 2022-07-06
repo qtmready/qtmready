@@ -5,6 +5,9 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/gocql/gocql"
+	"github.com/golang-migrate/migrate/v4"
+	c "github.com/golang-migrate/migrate/v4/database/cassandra"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/scylladb/gocqlx/v2"
 	tc "go.temporal.io/sdk/client"
@@ -61,6 +64,26 @@ func InitDBSession() {
 		retry.Delay(1*time.Second),
 	); err != nil {
 		Logger.Fatal("Failed to initialize DB Session", zap.Error(err))
+	}
+
+	if DB.MigrationFilesPath != "" {
+		Logger.Info("Running DB Migration ...", zap.String("path", DB.MigrationFilesPath))
+
+		config := &c.Config{
+			KeyspaceName: DB.KeySpace,
+		}
+		driver, err := c.WithInstance(DB.Session.Session, config)
+		if err != nil {
+			Logger.Fatal("Failed to initialize DB Migration", zap.Error(err))
+		}
+
+		m, err := migrate.NewWithDatabaseInstance("file://"+DB.MigrationFilesPath, "cassandra", driver)
+		if err != nil {
+			Logger.Fatal("Failed to initialize DB Migration", zap.Error(err))
+		}
+		m.Up()
+
+		Logger.Info("Running DB Migration ... Done")
 	}
 }
 

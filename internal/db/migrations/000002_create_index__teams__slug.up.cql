@@ -1,0 +1,1 @@
+create index if not exists on teams (slug);
