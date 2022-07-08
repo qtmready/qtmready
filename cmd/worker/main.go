@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"sync"
 
 	tw "go.temporal.io/sdk/worker"
 
@@ -10,13 +11,25 @@ import (
 	"go.breu.io/ctrlplane/internal/temporal/workflows"
 )
 
+var wait sync.WaitGroup
+
 func init() {
-	conf.ReadSvcConfig("worker::webhooks")
-	conf.ReadDBConfig()
-	conf.InitDBSession()
-	conf.ReadGithubConfig()
-	conf.ReadTemporalConfig()
-	conf.InitTemporalClient()
+	conf.Service.ReadConf()
+	conf.Service.InitLogger()
+
+	conf.EventStream.ReadConf()
+	conf.Temporal.ReadConf()
+	conf.Github.ReadConf()
+	conf.DB.ReadConf()
+
+	defer wait.Done()
+	wait.Add(3)
+	go conf.DB.InitSession()
+	go conf.EventStream.InitConnection()
+	go conf.Temporal.InitClient()
+	wait.Wait()
+
+	conf.Logger.Info("Initializing Service ... Done")
 }
 
 func main() {

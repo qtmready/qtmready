@@ -17,6 +17,13 @@ services:
       - '4436:4436'
       - '4437:4437'
 
+  event-stream:
+    container_name: event-stream
+    image: nats:2.8.4
+    ports:
+      - 4222:4222
+    command: --cluster_name ctrlplane 
+
 
   # Temporal - https://temporal.io
   temporal-db:
@@ -72,9 +79,8 @@ services:
     container_name: ctrlplane-api
     image: cosmtrek/air
     environment:
-      TEMPORAL_HOST: temporal
-      TEMPORAL_PORT: 7233
-      CASSANDRA_MIGRATION_FILES_PATH: /api/internal/db/migrations
+      SERVICE_NAME: web::api
+      CASSANDRA_MIGRATION_SOURCE_URL: file:///api/internal/db/migrations
     env_file:
       - ./.env
     ports:
@@ -90,8 +96,7 @@ services:
     container_name: ctrlplane-worker
     image: cosmtrek/air
     environment:
-      TEMPORAL_HOST: temporal
-      TEMPORAL_PORT: 7233
+      SERVICE_NAME: worker::webhooks
     env_file:
       - ./.env
     volumes:

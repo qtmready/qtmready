@@ -41,7 +41,7 @@ type User struct {
 }
 
 // Creates a new user. If email already exists, returns an error.
-func (u *User) Create() error {
+func (u *User) Create(params interface{}) error {
 	if _, err := mail.ParseAddress(u.Email); err != nil {
 		return err
 	}
@@ -54,6 +54,23 @@ func (u *User) Create() error {
 	u.UpdatedAt = now
 
 	query := conf.DB.Session.Query(userTable.Insert()).BindStruct(u)
+
+	if err := query.ExecRelease(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Updates a user.
+func (u *User) Update(params interface{}) error {
+	if err := copier.Copy(u, params); err != nil {
+		return err
+	}
+
+	u.UpdatedAt = time.Now()
+
+	query := conf.DB.Session.Query(userTable.Update()).BindStruct(u)
 
 	if err := query.ExecRelease(); err != nil {
 		return err
@@ -84,22 +101,6 @@ func (u *User) VerifyPassword(password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)) == nil
 }
 
-// Updates a user.
-func (u *User) Update(params struct{}) error {
-	if err := copier.Copy(u, params); err != nil {
-		return err
-	}
-
-	u.UpdatedAt = time.Now()
-
-	query := conf.DB.Session.Query(userTable.Update()).BindStruct(u)
-
-	if err := query.ExecRelease(); err != nil {
-		return err
-	}
-
-	return nil
-}
 func (u *User) SendVerificationEmail() {}
 func (u *User) Suspend()               {}
 func (u *User) Restore()               {}

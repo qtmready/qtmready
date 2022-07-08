@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"sync"
 
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
@@ -10,14 +11,23 @@ import (
 	"go.breu.io/ctrlplane/internal/webhooks"
 )
 
+var wait sync.WaitGroup
+
 func init() {
-	conf.ReadSvcConfig("web::api")
-	conf.ReadKratosConfig()
-	conf.ReadGithubConfig()
-	conf.ReadDBConfig()
-	conf.InitDBSession()
-	conf.ReadTemporalConfig()
-	conf.InitTemporalClient()
+	defer wait.Done()
+	conf.Service.ReadConf()
+	conf.Service.InitLogger()
+
+	conf.EventStream.ReadConf()
+	conf.Temporal.ReadConf()
+	conf.Github.ReadConf()
+	conf.DB.ReadConf()
+
+	wait.Add(3)
+	go conf.DB.InitSessionWithRunMigrations()
+	go conf.EventStream.InitConnection()
+	go conf.Temporal.InitClient()
+	wait.Wait()
 
 	conf.Logger.Info("Initializing Service ... Done")
 }
@@ -33,7 +43,7 @@ func main() {
 	router.Use(chimw.Logger)
 	router.Use(chimw.Recoverer)
 
-	router.Post("/webhooks/github", webhooks.GithubWebhook)
+	router.Mount("/webhooks", webhooks.Router())
 
 	http.ListenAndServe(":8000", router)
 }
