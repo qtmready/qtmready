@@ -12,6 +12,7 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.3.0
 	github.com/jinzhu/copier v0.3.5
 	github.com/lithammer/shortuuid/v4 v4.0.0
+	github.com/nats-io/nats.go v1.16.0
 	github.com/scylladb/gocqlx v1.5.0
 	github.com/scylladb/gocqlx/v2 v2.7.0
 	go.temporal.io/sdk v1.15.0
@@ -40,7 +41,7 @@ require (
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
-	github.com/nats-io/nats.go v1.16.0 // indirect
+	github.com/nats-io/nats-server/v2 v2.8.4 // indirect
 	github.com/nats-io/nkeys v0.3.0 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect

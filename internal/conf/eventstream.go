@@ -10,7 +10,7 @@ import (
 
 type eventstream struct {
 	*nats.Conn
-	ServerURL string `env:"EVENTS_SERVERS_URL" env-default:"nats://events:4222"`
+	ServerURL string `env:"EVENTS_SERVERS_URL" env-default:"nats://event-stream:4222"`
 }
 
 var EventStream eventstream
