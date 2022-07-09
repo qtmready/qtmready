@@ -22,11 +22,23 @@ func init() {
 	conf.Github.ReadConf()
 	conf.DB.ReadConf()
 
-	defer wait.Done()
 	wait.Add(3)
-	go conf.DB.InitSession()
-	go conf.EventStream.InitConnection()
-	go conf.Temporal.InitClient()
+
+	go func() {
+		defer wait.Done()
+		conf.DB.InitSession()
+	}()
+
+	go func() {
+		defer wait.Done()
+		conf.EventStream.InitConnection()
+	}()
+
+	go func() {
+		defer wait.Done()
+		conf.Temporal.InitClient()
+	}()
+
 	wait.Wait()
 
 	conf.Logger.Info("Initializing Service ... Done")

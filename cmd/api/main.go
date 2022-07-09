@@ -11,10 +11,9 @@ import (
 	"go.breu.io/ctrlplane/internal/webhooks"
 )
 
-var wait sync.WaitGroup
+var waiter sync.WaitGroup
 
 func init() {
-	defer wait.Done()
 	conf.Service.ReadConf()
 	conf.Service.InitLogger()
 
@@ -23,11 +22,24 @@ func init() {
 	conf.Github.ReadConf()
 	conf.DB.ReadConf()
 
-	wait.Add(3)
-	go conf.DB.InitSessionWithRunMigrations()
-	go conf.EventStream.InitConnection()
-	go conf.Temporal.InitClient()
-	wait.Wait()
+	waiter.Add(3)
+
+	go func() {
+		defer waiter.Done()
+		conf.DB.InitSessionWithRunMigrations()
+	}()
+
+	go func() {
+		defer waiter.Done()
+		conf.EventStream.InitConnection()
+	}()
+
+	go func() {
+		defer waiter.Done()
+		conf.Temporal.InitClient()
+	}()
+
+	waiter.Wait()
 
 	conf.Logger.Info("Initializing Service ... Done")
 }
