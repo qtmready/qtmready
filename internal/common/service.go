@@ -1,24 +1,21 @@
-package conf
+package common
 
 import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.uber.org/zap"
 )
 
-type service struct {
+type serviceconf struct {
 	Name    string `env:"SERVICE_NAME" env-default:"service"`
 	Debug   bool   `env:"DEBUG" env-default:"false"`
 	Version string `env:"VERSION" env-default:"0.0.0-dev"`
 }
 
-var Service service
-var Logger *zap.Logger
-
-func (s *service) ReadConf() {
+func (s *serviceconf) ReadConf() {
 	cleanenv.ReadEnv(s)
 }
 
-func (s *service) InitLogger() {
+func (s *serviceconf) InitLogger() {
 	if s.Debug {
 		Logger, _ = zap.NewDevelopment()
 	} else {

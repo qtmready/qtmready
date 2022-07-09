@@ -7,46 +7,48 @@ import (
 	"github.com/go-chi/chi/v5"
 	chimw "github.com/go-chi/chi/v5/middleware"
 
-	"go.breu.io/ctrlplane/internal/conf"
+	"go.breu.io/ctrlplane/internal/common"
+	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/integrations"
+	"go.breu.io/ctrlplane/internal/integrations/github"
 )
 
 var waiter sync.WaitGroup
 
 func init() {
-	conf.Service.ReadConf()
-	conf.Service.InitLogger()
+	common.Service.ReadConf()
+	common.Service.InitLogger()
 
-	conf.EventStream.ReadConf()
-	conf.Temporal.ReadConf()
-	integrations.Github.ReadEnv()
-	conf.DB.ReadConf()
+	common.EventStream.ReadConf()
+	common.Temporal.ReadEnv()
+	github.Github.ReadEnv()
+	db.DB.ReadEnv()
 
 	waiter.Add(3)
 
 	go func() {
 		defer waiter.Done()
-		conf.DB.InitSessionWithRunMigrations()
+		db.DB.InitSessionWithMigrations()
 	}()
 
 	go func() {
 		defer waiter.Done()
-		conf.EventStream.InitConnection()
+		common.EventStream.InitConnection()
 	}()
 
 	go func() {
 		defer waiter.Done()
-		conf.Temporal.InitClient()
+		common.Temporal.InitClient()
 	}()
 
 	waiter.Wait()
 
-	conf.Logger.Info("Initializing Service ... Done")
+	common.Logger.Info("Initializing Service ... Done")
 }
 
 func main() {
-	defer conf.DB.Session.Close()
-	defer conf.Temporal.Client.Close()
+	defer db.DB.Session.Close()
+	defer common.Temporal.Client.Close()
 
 	router := chi.NewRouter()
 

@@ -6,49 +6,50 @@ import (
 
 	tw "go.temporal.io/sdk/worker"
 
-	"go.breu.io/ctrlplane/internal/conf"
+	"go.breu.io/ctrlplane/internal/common"
+	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/integrations/github"
 )
 
 var wait sync.WaitGroup
 
 func init() {
-	conf.Service.ReadConf()
-	conf.Service.InitLogger()
+	common.Service.ReadConf()
+	common.Service.InitLogger()
 
-	conf.EventStream.ReadConf()
-	conf.Temporal.ReadConf()
+	common.EventStream.ReadConf()
+	common.Temporal.ReadEnv()
 	github.Github.ReadEnv()
-	conf.DB.ReadConf()
+	db.DB.ReadEnv()
 
 	wait.Add(3)
 
 	go func() {
 		defer wait.Done()
-		conf.DB.InitSession()
+		db.DB.InitSession()
 	}()
 
 	go func() {
 		defer wait.Done()
-		conf.EventStream.InitConnection()
+		common.EventStream.InitConnection()
 	}()
 
 	go func() {
 		defer wait.Done()
-		conf.Temporal.InitClient()
+		common.Temporal.InitClient()
 	}()
 
 	wait.Wait()
 
-	conf.Logger.Info("Initializing Service ... Done")
+	common.Logger.Info("Initializing Service ... Done")
 }
 
 func main() {
-	defer conf.Temporal.Client.Close()
+	defer common.Temporal.Client.Close()
 
-	queue := conf.Temporal.Queues.Webhooks
+	queue := common.Temporal.Queues.Webhooks
 	options := tw.Options{}
-	worker := tw.New(conf.Temporal.Client, queue, options)
+	worker := tw.New(common.Temporal.Client, queue, options)
 
 	worker.RegisterWorkflow(github.OnGithubInstallWorkflow)
 	worker.RegisterActivity(github.SaveGithubInstallationActivity)

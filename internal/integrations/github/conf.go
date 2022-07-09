@@ -11,7 +11,7 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
-var Github = &githubconf{}
+var Github githubconf
 
 type githubconf struct {
 	AppID         int64  `env:"GITHUB_APP_ID"`

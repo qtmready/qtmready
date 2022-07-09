@@ -5,7 +5,7 @@ import (
 
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/table"
-	"go.breu.io/ctrlplane/internal/conf"
+	"go.breu.io/ctrlplane/internal/db"
 )
 
 var githubInstallMeta = table.Metadata{
@@ -44,7 +44,7 @@ func (g *GithubInstallation) Create() error {
 	g.CreatedAt = now
 	g.UpdatedAt = now
 
-	query := conf.DB.Session.Query(githubInstallationTable.Insert()).BindStruct(g)
+	query := db.DB.Session.Query(githubInstallationTable.Insert()).BindStruct(g)
 
 	if err := query.ExecRelease(); err != nil {
 		return err
@@ -54,7 +54,7 @@ func (g *GithubInstallation) Create() error {
 }
 
 func (g *GithubInstallation) Get(params struct{}) error {
-	query := conf.DB.Session.Query(githubInstallationTable.Select()).BindStruct(params)
+	query := db.DB.Session.Query(githubInstallationTable.Select()).BindStruct(params)
 
 	if err := query.GetRelease(&g); err != nil {
 		return err

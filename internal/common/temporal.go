@@ -1,4 +1,4 @@
-package conf
+package common
 
 import (
 	"time"
@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
-type temporal struct {
+type temporalconf struct {
 	ServerHost string `env:"TEMPORAL_HOST" env-default:"temporal"`
 	ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
 	Client     tc.Client
@@ -18,21 +18,19 @@ type temporal struct {
 	}
 }
 
-var Temporal temporal
-
-func (t *temporal) ReadConf() {
+func (t *temporalconf) ReadEnv() {
 	cleanenv.ReadEnv(t)
 }
 
-func (t *temporal) GetConnectionString() string {
+func (t *temporalconf) GetConnectionString() string {
 	return t.ServerHost + ":" + t.ServerPort
 }
 
-func (t *temporal) InitClient() {
+func (t *temporalconf) InitClient() {
 	Logger.Info(
 		"Initializing Temporal Client ...",
-		zap.String("host", Temporal.ServerHost),
-		zap.String("port", Temporal.ServerPort),
+		zap.String("host", t.ServerHost),
+		zap.String("port", t.ServerPort),
 	)
 	options := tc.Options{
 		HostPort: t.GetConnectionString(),

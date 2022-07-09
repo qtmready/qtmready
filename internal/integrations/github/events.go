@@ -9,7 +9,7 @@ import (
 	tc "go.temporal.io/sdk/client"
 	"go.uber.org/zap"
 
-	"go.breu.io/ctrlplane/internal/conf"
+	conf "go.breu.io/ctrlplane/internal/common"
 )
 
 // A Map of event types to their respective handlers

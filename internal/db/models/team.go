@@ -5,7 +5,7 @@ import (
 
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/table"
-	"go.breu.io/ctrlplane/internal/conf"
+	"go.breu.io/ctrlplane/internal/db"
 )
 
 var teamMeta = table.Metadata{
@@ -37,7 +37,7 @@ func (t *Team) Create() error {
 	t.CreatedAt = now
 	t.UpdatedAt = now
 
-	query := conf.DB.Session.Query(teamTable.Insert()).BindStruct(t)
+	query := db.DB.Session.Query(teamTable.Insert()).BindStruct(t)
 
 	if err := query.ExecRelease(); err != nil {
 		return err

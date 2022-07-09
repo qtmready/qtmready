@@ -9,7 +9,7 @@ import (
 	"github.com/scylladb/gocqlx/table"
 	"golang.org/x/crypto/bcrypt"
 
-	"go.breu.io/ctrlplane/internal/conf"
+	"go.breu.io/ctrlplane/internal/db"
 )
 
 var userMeta = table.Metadata{
@@ -53,7 +53,7 @@ func (u *User) Create(params interface{}) error {
 	u.CreatedAt = now
 	u.UpdatedAt = now
 
-	query := conf.DB.Session.Query(userTable.Insert()).BindStruct(u)
+	query := db.DB.Session.Query(userTable.Insert()).BindStruct(u)
 
 	if err := query.ExecRelease(); err != nil {
 		return err
@@ -70,7 +70,7 @@ func (u *User) Update(params interface{}) error {
 
 	u.UpdatedAt = time.Now()
 
-	query := conf.DB.Session.Query(userTable.Update()).BindStruct(u)
+	query := db.DB.Session.Query(userTable.Update()).BindStruct(u)
 
 	if err := query.ExecRelease(); err != nil {
 		return err
@@ -81,7 +81,7 @@ func (u *User) Update(params interface{}) error {
 
 // Get a user matching `params`.
 func (u *User) Get(params struct{}) error {
-	query := conf.DB.Session.Query(githubInstallationTable.Select()).BindStruct(params)
+	query := db.DB.Session.Query(githubInstallationTable.Select()).BindStruct(params)
 
 	if err := query.GetRelease(&u); err != nil {
 		return err

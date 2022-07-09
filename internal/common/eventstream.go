@@ -1,4 +1,4 @@
-package conf
+package common
 
 import (
 	"time"
@@ -8,18 +8,16 @@ import (
 	"go.uber.org/zap"
 )
 
-type eventstream struct {
+type eventstreamconf struct {
 	*nats.Conn
 	ServerURL string `env:"EVENTS_SERVERS_URL" env-default:"nats://event-stream:4222"`
 }
 
-var EventStream eventstream
-
-func (e *eventstream) ReadConf() {
+func (e *eventstreamconf) ReadConf() {
 	cleanenv.ReadEnv(e)
 }
 
-func (e *eventstream) InitConnection() {
+func (e *eventstreamconf) InitConnection() {
 	Logger.Info("Initializing Event Stream Client ...", zap.String("url", e.ServerURL))
 	conn, err := nats.Connect(e.ServerURL, nats.MaxReconnects(5), nats.ReconnectWait(2*time.Second))
 	if err != nil {

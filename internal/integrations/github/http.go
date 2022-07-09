@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	c "go.breu.io/ctrlplane/internal/conf"
+	"go.breu.io/ctrlplane/internal/common"
 	"go.uber.org/zap"
 )
 
@@ -35,10 +35,10 @@ func webhook(response http.ResponseWriter, request *http.Request) {
 	event := GithubEvent(headerEvent)
 
 	if handle, exists := eventHandlers[event]; exists {
-		c.Logger.Info("Received event", zap.String("event", string(event)), zap.String("request_id", id))
+		common.Logger.Info("Received event", zap.String("event", string(event)), zap.String("request_id", id))
 		handle(id, body, response)
 	} else {
-		c.Logger.Error("Unsupported event: " + headerEvent)
+		common.Logger.Error("Unsupported event: " + headerEvent)
 		handleError(id, ErrorInvalidEvent, http.StatusBadRequest, response)
 	}
 }
