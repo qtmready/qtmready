@@ -1,2 +1,2 @@
-// Everything required for github integration
+// Provides integration with Github, either via webhooks or via the API.
 package github

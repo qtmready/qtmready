@@ -8,7 +8,7 @@ import (
 	chimw "github.com/go-chi/chi/v5/middleware"
 
 	"go.breu.io/ctrlplane/internal/conf"
-	"go.breu.io/ctrlplane/internal/webhooks"
+	"go.breu.io/ctrlplane/internal/integrations"
 )
 
 var waiter sync.WaitGroup
@@ -19,7 +19,7 @@ func init() {
 
 	conf.EventStream.ReadConf()
 	conf.Temporal.ReadConf()
-	conf.Github.ReadConf()
+	integrations.Github.ReadEnv()
 	conf.DB.ReadConf()
 
 	waiter.Add(3)
@@ -55,7 +55,7 @@ func main() {
 	router.Use(chimw.Logger)
 	router.Use(chimw.Recoverer)
 
-	router.Mount("/webhooks", webhooks.Router())
+	router.Mount("/integrations", integrations.Router())
 
 	http.ListenAndServe(":8000", router)
 }

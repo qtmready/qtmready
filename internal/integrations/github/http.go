@@ -1,24 +1,15 @@
-package webhooks
+package github
 
 import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
+	c "go.breu.io/ctrlplane/internal/conf"
 	"go.uber.org/zap"
-
-	"go.breu.io/ctrlplane/internal/conf"
-	"go.breu.io/ctrlplane/internal/types"
 )
 
-func Router() http.Handler {
-	router := chi.NewRouter()
-	router.Post("/github", Github)
-	return router
-}
-
 // ConsumeGithubInstallationEvent handles GitHub installation events
-func Github(response http.ResponseWriter, request *http.Request) {
+func webhook(response http.ResponseWriter, request *http.Request) {
 	id := request.Header.Get("X-GitHub-Delivery")
 	signature := request.Header.Get("X-Hub-Signature")
 
@@ -29,7 +20,7 @@ func Github(response http.ResponseWriter, request *http.Request) {
 
 	body, _ := ioutil.ReadAll(request.Body)
 
-	if err := verifySignature(body, signature); err != nil {
+	if err := Github.VerifyWebhookSignature(body, signature); err != nil {
 		handleError(id, err, http.StatusUnauthorized, response)
 		return
 	}
@@ -41,13 +32,13 @@ func Github(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	event := types.GithubEvent(headerEvent)
+	event := GithubEvent(headerEvent)
 
 	if handle, exists := eventHandlers[event]; exists {
-		conf.Logger.Info("Received event", zap.String("event", string(event)), zap.String("request_id", id))
+		c.Logger.Info("Received event", zap.String("event", string(event)), zap.String("request_id", id))
 		handle(id, body, response)
 	} else {
-		conf.Logger.Error("Unsupported event: " + headerEvent)
+		c.Logger.Error("Unsupported event: " + headerEvent)
 		handleError(id, ErrorInvalidEvent, http.StatusBadRequest, response)
 	}
 }

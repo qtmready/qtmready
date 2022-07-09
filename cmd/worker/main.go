@@ -7,8 +7,7 @@ import (
 	tw "go.temporal.io/sdk/worker"
 
 	"go.breu.io/ctrlplane/internal/conf"
-	"go.breu.io/ctrlplane/internal/temporal/activities"
-	"go.breu.io/ctrlplane/internal/temporal/workflows"
+	"go.breu.io/ctrlplane/internal/integrations/github"
 )
 
 var wait sync.WaitGroup
@@ -19,7 +18,7 @@ func init() {
 
 	conf.EventStream.ReadConf()
 	conf.Temporal.ReadConf()
-	conf.Github.ReadConf()
+	github.Github.ReadEnv()
 	conf.DB.ReadConf()
 
 	wait.Add(3)
@@ -51,8 +50,8 @@ func main() {
 	options := tw.Options{}
 	worker := tw.New(conf.Temporal.Client, queue, options)
 
-	worker.RegisterWorkflow(workflows.OnGithubInstall)
-	worker.RegisterActivity(activities.SaveGithubInstallation)
+	worker.RegisterWorkflow(github.OnGithubInstallWorkflow)
+	worker.RegisterActivity(github.SaveGithubInstallationActivity)
 
 	err := worker.Run(tw.InterruptCh())
 

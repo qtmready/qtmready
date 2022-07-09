@@ -1,4 +1,4 @@
-package webhooks
+package github
 
 import (
 	"context"
@@ -7,22 +7,21 @@ import (
 	"strconv"
 
 	tc "go.temporal.io/sdk/client"
+	"go.uber.org/zap"
 
 	"go.breu.io/ctrlplane/internal/conf"
-	"go.breu.io/ctrlplane/internal/temporal/workflows"
-	"go.breu.io/ctrlplane/internal/types"
 )
 
 // A Map of event types to their respective handlers
-var eventHandlers = map[types.GithubEvent]func(string, []byte, http.ResponseWriter){
-	types.GithubInstallationEvent:     handleGithubInstallationEvent,
-	types.GithubAppAuthorizationEvent: handleGithubAppAuthorizationEvent,
-	types.GithubPushEvent:             handleGithubPushEvent,
+var eventHandlers = map[GithubEvent]func(string, []byte, http.ResponseWriter){
+	GithubInstallationEvent:     handleGithubInstallationEvent,
+	GithubAppAuthorizationEvent: handleGithubAppAuthorizationEvent,
+	GithubPushEvent:             handleGithubPushEvent,
 }
 
 // handle github installation event
 func handleGithubInstallationEvent(id string, body []byte, response http.ResponseWriter) {
-	payload := &types.GithubInstallationEventPayload{}
+	payload := &GithubInstallationEventPayload{}
 	if err := json.Unmarshal(body, payload); err != nil {
 		handleError(id, ErrorPayloadParser, http.StatusBadRequest, response)
 		return
@@ -33,7 +32,7 @@ func handleGithubInstallationEvent(id string, body []byte, response http.Respons
 		TaskQueue: conf.Temporal.Queues.Webhooks,
 	}
 
-	exe, err := conf.Temporal.Client.ExecuteWorkflow(context.Background(), options, workflows.OnGithubInstall, payload)
+	exe, err := conf.Temporal.Client.ExecuteWorkflow(context.Background(), options, OnGithubInstallWorkflow, payload)
 
 	if err != nil {
 		conf.Logger.Error(err.Error())
@@ -63,4 +62,11 @@ func handleGithubPushEvent(id string, body []byte, response http.ResponseWriter)
 
 	response.WriteHeader(http.StatusCreated)
 	response.Write([]byte(""))
+}
+
+// handleError handles an error and writes it to the response.
+func handleError(id string, err error, status int, response http.ResponseWriter) {
+	conf.Logger.Error(err.Error(), zap.String("request_id", id))
+	response.WriteHeader(status)
+	response.Write([]byte(err.Error()))
 }
