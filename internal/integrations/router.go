@@ -10,6 +10,6 @@ import (
 
 func Router() http.Handler {
 	router := chi.NewRouter()
-	router.Mount("github", github.Router())
+	router.Mount("/github", github.Router())
 	return router
 }

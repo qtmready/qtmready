@@ -9,6 +9,21 @@ services:
       - CASSNDRA_CLUSTER_NAME=ctrlplane
     volumes:
       - ctrlplane-db-data:/var/lib/cassandra
+  
+  cassandra-load-keyspace:
+    container_name: cassandra-load-keyspace
+    image: cassandra:4
+    depends_on:
+      - cassandra
+    volumes:
+      - ./deploy/cassandra/keyspace.cql:/keyspace.cql
+    command: /bin/bash -c "sleep 60 && echo loading cassandra keyspace && cqlsh cassandra -f /keyspace.cql"
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
 
   mailslurper:
     container_name: mailslurper

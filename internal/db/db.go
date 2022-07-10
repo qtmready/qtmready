@@ -1,6 +1,8 @@
 package db
 
 import (
+	"time"
+
 	"github.com/avast/retry-go/v4"
 	"github.com/gocql/gocql"
 	"github.com/golang-migrate/migrate/v4"
@@ -42,6 +44,7 @@ func (d *db) InitSession() {
 	if err := retry.Do(
 		retryCassandra,
 		retry.Attempts(10),
+		retry.Delay(6*time.Second),
 	); err != nil {
 		common.Logger.Fatal("Failed to initialize Cassandra Session", zap.Error(err))
 	}
