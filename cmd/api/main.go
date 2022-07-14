@@ -15,7 +15,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 
 	"go.breu.io/ctrlplane/cmd/api/middlewares"
-	cmn "go.breu.io/ctrlplane/internal/common"
+	"go.breu.io/ctrlplane/internal/common"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/integrations"
 	"go.breu.io/ctrlplane/internal/integrations/github"
@@ -25,11 +25,11 @@ var waiter sync.WaitGroup
 var traceProvider *sdktrace.TracerProvider
 
 func init() {
-	cmn.Service.ReadEnv()
-	cmn.Service.InitLogger()
+	common.Service.ReadEnv()
+	common.Service.InitLogger()
 
-	cmn.EventStream.ReadEnv()
-	cmn.Temporal.ReadEnv()
+	common.EventStream.ReadEnv()
+	common.Temporal.ReadEnv()
 	github.Github.ReadEnv()
 	db.DB.ReadEnv()
 
@@ -42,12 +42,12 @@ func init() {
 
 	go func() {
 		defer waiter.Done()
-		cmn.EventStream.InitConnection()
+		common.EventStream.InitConnection()
 	}()
 
 	go func() {
 		defer waiter.Done()
-		cmn.Temporal.InitClient()
+		common.Temporal.InitClient()
 	}()
 
 	go func() {
@@ -57,16 +57,16 @@ func init() {
 
 	waiter.Wait()
 
-	cmn.Logger.Info("Initializing Service ... Done")
+	common.Logger.Info("Initializing Service ... Done")
 }
 
 func main() {
 	// handling closing of the server
 	defer db.DB.Session.Close()
-	defer cmn.Temporal.Client.Close()
+	defer common.Temporal.Client.Close()
 	defer func() {
 		if err := traceProvider.Shutdown(context.Background()); err != nil {
-			cmn.Logger.Error(err.Error())
+			common.Logger.Error(err.Error())
 		}
 	}()
 
@@ -82,7 +82,7 @@ func main() {
 	router.Use(chimw.RealIP)
 	router.Use(chimw.Logger)
 	router.Use(middlewares.OtelMiddleware(
-		cmn.Service.Name,
+		common.Service.Name,
 		middlewares.IncludeChiRoutes(router),
 	))
 	router.Use(chimw.Recoverer)
@@ -93,19 +93,19 @@ func main() {
 }
 
 func initTraceProvider() *sdktrace.TracerProvider {
-	cmn.Logger.Info("Initializing OpenTelemetry Provider ... ")
+	common.Logger.Info("Initializing OpenTelemetry Provider ... ")
 	exporter, err := stdout.New(stdout.WithPrettyPrint())
 	if err != nil {
-		cmn.Logger.Fatal(err.Error())
+		common.Logger.Fatal(err.Error())
 	}
 
 	resource, err := sdkresource.New(
 		context.Background(),
-		sdkresource.WithAttributes(semconv.ServiceNameKey.String(cmn.Service.Name)),
+		sdkresource.WithAttributes(semconv.ServiceNameKey.String(common.Service.Name)),
 	)
 
 	if err != nil {
-		cmn.Logger.Fatal(err.Error())
+		common.Logger.Fatal(err.Error())
 	}
 
 	tp := sdktrace.NewTracerProvider(
@@ -114,6 +114,6 @@ func initTraceProvider() *sdktrace.TracerProvider {
 		sdktrace.WithBatcher(exporter),
 	)
 
-	cmn.Logger.Info("Initializing OpenTelemetry Provider ... Done")
+	common.Logger.Info("Initializing OpenTelemetry Provider ... Done")
 	return tp
 }

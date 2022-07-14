@@ -6,8 +6,9 @@ import (
 	"go.breu.io/ctrlplane/internal/db/models"
 )
 
-// Save the payload to the database.
-func SaveGithubInstallationActivity(ctx context.Context, payload GithubInstallationEventPayload) (models.GithubInstallation, error) {
+type Activities struct{}
+
+func (w *Activities) SaveInstallation(ctx context.Context, payload InstallationEventPayload) (models.GithubInstallation, error) {
 	g := models.GithubInstallation{}
 	g.InstallationID = payload.Installation.ID
 	g.InstallationLogin = payload.Installation.Account.Login

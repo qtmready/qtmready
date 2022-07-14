@@ -32,7 +32,7 @@ func webhook(response http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	event := GithubEvent(headerEvent)
+	event := WebhookEvent(headerEvent)
 
 	if handle, exists := eventHandlers[event]; exists {
 		common.Logger.Info("Received event", zap.String("event", string(event)), zap.String("request_id", id))

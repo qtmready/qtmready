@@ -2,56 +2,56 @@ package github
 
 import "time"
 
-// GithubEvent defines a GitHub hook event type
-type GithubEvent string
+// WebhookEvent defines a GitHub hook event type
+type WebhookEvent string
 
 // GitHub hook types
 const (
-	GithubAppAuthorizationEvent                    GithubEvent = "github_app_authorization"
-	GithubCheckRunEvent                            GithubEvent = "check_run"
-	GithubCheckSuiteEvent                          GithubEvent = "check_suite"
-	GithubCommitCommentEvent                       GithubEvent = "commit_comment"
-	GithubCreateEvent                              GithubEvent = "create"
-	GithubDeleteEvent                              GithubEvent = "delete"
-	GithubDeployKeyEvent                           GithubEvent = "deploy_key"
-	GithubDeploymentEvent                          GithubEvent = "deployment"
-	GithubDeploymentStatusEvent                    GithubEvent = "deployment_status"
-	GithubForkEvent                                GithubEvent = "fork"
-	GithubGollumEvent                              GithubEvent = "gollum"
-	GithubInstallationEvent                        GithubEvent = "installation"
-	GithubInstallationRepositoriesEvent            GithubEvent = "installation_repositories"
-	GithubIntegrationInstallationEvent             GithubEvent = "integration_installation"
-	GithubIntegrationInstallationRepositoriesEvent GithubEvent = "integration_installation_repositories"
-	GithubIssueCommentEvent                        GithubEvent = "issue_comment"
-	GithubIssuesEvent                              GithubEvent = "issues"
-	GithubLabelEvent                               GithubEvent = "label"
-	GithubMemberEvent                              GithubEvent = "member"
-	GithubMembershipEvent                          GithubEvent = "membership"
-	GithubMilestoneEvent                           GithubEvent = "milestone"
-	GithubMetaEvent                                GithubEvent = "meta"
-	GithubOrganizationEvent                        GithubEvent = "organization"
-	GithubOrgBlockEvent                            GithubEvent = "org_block"
-	GithubPageBuildEvent                           GithubEvent = "page_build"
-	GithubPingEvent                                GithubEvent = "ping"
-	GithubProjectCardEvent                         GithubEvent = "project_card"
-	GithubProjectColumnEvent                       GithubEvent = "project_column"
-	GithubProjectEvent                             GithubEvent = "project"
-	GithubPublicEvent                              GithubEvent = "public"
-	GithubPullRequestEvent                         GithubEvent = "pull_request"
-	GithubPullRequestReviewEvent                   GithubEvent = "pull_request_review"
-	GithubPullRequestReviewCommentEvent            GithubEvent = "pull_request_review_comment"
-	GithubPushEvent                                GithubEvent = "push"
-	GithubReleaseEvent                             GithubEvent = "release"
-	GithubRepositoryEvent                          GithubEvent = "repository"
-	GithubRepositoryVulnerabilityAlertEvent        GithubEvent = "repository_vulnerability_alert"
-	GithubSecurityAdvisoryEvent                    GithubEvent = "security_advisory"
-	GithubStatusEvent                              GithubEvent = "status"
-	GithubTeamEvent                                GithubEvent = "team"
-	GithubTeamAddEvent                             GithubEvent = "team_add"
-	GithubWatchEvent                               GithubEvent = "watch"
-	GithubWorkflowDispatchEvent                    GithubEvent = "workflow_dispatch"
-	GithubWorkflowJobEvent                         GithubEvent = "workflow_job"
-	GithubWorkflowRunEvent                         GithubEvent = "workflow_run"
+	AppAuthorizationEvent                    WebhookEvent = "github_app_authorization"
+	CheckRunEvent                            WebhookEvent = "check_run"
+	CheckSuiteEvent                          WebhookEvent = "check_suite"
+	CommitCommentEvent                       WebhookEvent = "commit_comment"
+	CreateEvent                              WebhookEvent = "create"
+	DeleteEvent                              WebhookEvent = "delete"
+	DeployKeyEvent                           WebhookEvent = "deploy_key"
+	DeploymentEvent                          WebhookEvent = "deployment"
+	DeploymentStatusEvent                    WebhookEvent = "deployment_status"
+	ForkEvent                                WebhookEvent = "fork"
+	GollumEvent                              WebhookEvent = "gollum"
+	InstallationEvent                        WebhookEvent = "installation"
+	InstallationRepositoriesEvent            WebhookEvent = "installation_repositories"
+	IntegrationInstallationEvent             WebhookEvent = "integration_installation"
+	IntegrationInstallationRepositoriesEvent WebhookEvent = "integration_installation_repositories"
+	IssueCommentEvent                        WebhookEvent = "issue_comment"
+	IssuesEvent                              WebhookEvent = "issues"
+	LabelEvent                               WebhookEvent = "label"
+	MemberEvent                              WebhookEvent = "member"
+	MembershipEvent                          WebhookEvent = "membership"
+	MilestoneEvent                           WebhookEvent = "milestone"
+	MetaEvent                                WebhookEvent = "meta"
+	OrganizationEvent                        WebhookEvent = "organization"
+	OrgBlockEvent                            WebhookEvent = "org_block"
+	PageBuildEvent                           WebhookEvent = "page_build"
+	PingEvent                                WebhookEvent = "ping"
+	ProjectCardEvent                         WebhookEvent = "project_card"
+	ProjectColumnEvent                       WebhookEvent = "project_column"
+	ProjectEvent                             WebhookEvent = "project"
+	PublicEvent                              WebhookEvent = "public"
+	PullRequestEvent                         WebhookEvent = "pull_request"
+	PullRequestReviewEvent                   WebhookEvent = "pull_request_review"
+	PullRequestReviewCommentEvent            WebhookEvent = "pull_request_review_comment"
+	PushEvent                                WebhookEvent = "push"
+	ReleaseEvent                             WebhookEvent = "release"
+	RepositoryEvent                          WebhookEvent = "repository"
+	RepositoryVulnerabilityAlertEvent        WebhookEvent = "repository_vulnerability_alert"
+	SecurityAdvisoryEvent                    WebhookEvent = "security_advisory"
+	StatusEvent                              WebhookEvent = "status"
+	TeamEvent                                WebhookEvent = "team"
+	TeamAddEvent                             WebhookEvent = "team_add"
+	WatchEvent                               WebhookEvent = "watch"
+	WorkflowDispatchEvent                    WebhookEvent = "workflow_dispatch"
+	WorkflowJobEvent                         WebhookEvent = "workflow_job"
+	WorkflowRunEvent                         WebhookEvent = "workflow_run"
 )
 
 // GithubEventSubtype defines a GitHub Hook Event subtype
@@ -66,20 +66,20 @@ const (
 	IssueSubtype  GithubEventSubtype = "issues"
 )
 
-type GithubAppAuthorizationEventPayload struct {
+type AppAuthorizationEventPayload struct {
 	Action string `json:"action"`
 	Sender sender `json:"sender"`
 }
 
-// GithubInstallationEventPayload contains the information for GitHub's installation and integration_installation hook events
-type GithubInstallationEventPayload struct {
+// InstallationEventPayload contains the information for GitHub's installation and integration_installation hook events
+type InstallationEventPayload struct {
 	Action       string             `json:"action"`
 	Installation installation       `json:"installation"`
 	Repositories []installationRepo `json:"repositories"`
 	Sender       sender             `json:"sender"`
 }
 
-type GithubPushEventPayload struct {
+type PushEventPayload struct {
 	Ref          string          `json:"ref"`
 	Before       string          `json:"before"`
 	After        string          `json:"after"`

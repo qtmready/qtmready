@@ -6,8 +6,9 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-// Workflow for handling a Github App Installation event.
-func WorkflowOnGithubInstall(ctx workflow.Context, payload GithubInstallationEventPayload) error {
+type Workflows struct{}
+
+func (w *Workflows) OnInstallationEvent(ctx workflow.Context, payload InstallationEventPayload) error {
 	ao := workflow.ActivityOptions{
 		StartToCloseTimeout: 10 * time.Second,
 	}
@@ -16,8 +17,9 @@ func WorkflowOnGithubInstall(ctx workflow.Context, payload GithubInstallationEve
 
 	logger.Debug("Starting Workflow: OnGithubInstall")
 
-	var result GithubInstallationEventPayload
-	err := workflow.ExecuteActivity(ctx, SaveGithubInstallationActivity, payload).Get(ctx, &result)
+	var a *Activities
+	var result InstallationEventPayload
+	err := workflow.ExecuteActivity(ctx, a.SaveInstallation, payload).Get(ctx, &result)
 
 	if err != nil {
 		return err
@@ -25,7 +27,3 @@ func WorkflowOnGithubInstall(ctx workflow.Context, payload GithubInstallationEve
 
 	return nil
 }
-
-func WorkflowOnGithubPush(ctx workflow.Context) {}
-
-func WorkflowOnGithubPR(ctx workflow.Context) {}

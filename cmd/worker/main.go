@@ -50,8 +50,10 @@ func main() {
 	options := tw.Options{}
 	worker := tw.New(common.Temporal.Client, queue, options)
 
-	worker.RegisterWorkflow(github.WorkflowOnGithubInstall)
-	worker.RegisterActivity(github.SaveGithubInstallationActivity)
+	workflows := github.Workflows{}
+
+	worker.RegisterWorkflow(workflows.OnInstallationEvent)
+	worker.RegisterActivity(&github.Activities{})
 
 	err := worker.Run(tw.InterruptCh())
 
