@@ -14,7 +14,8 @@ type temporalconf struct {
 	ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
 	Client     tc.Client
 	Queues     struct {
-		Webhooks string `env-default:"webhooks"`
+		Builder      string `env-default:"builder"`
+		Integrations string `env-default:"integrations"`
 	}
 }
 
@@ -27,11 +28,7 @@ func (t *temporalconf) GetConnectionString() string {
 }
 
 func (t *temporalconf) InitClient() {
-	Logger.Info(
-		"Initializing Temporal Client ...",
-		zap.String("host", t.ServerHost),
-		zap.String("port", t.ServerPort),
-	)
+	Logger.Info("Initializing Temporal Client ...", zap.String("host", t.ServerHost), zap.String("port", t.ServerPort))
 	options := tc.Options{
 		HostPort: t.GetConnectionString(),
 	}

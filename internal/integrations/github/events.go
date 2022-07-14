@@ -14,25 +14,25 @@ import (
 
 // A Map of event types to their respective handlers
 var eventHandlers = map[GithubEvent]func(string, []byte, http.ResponseWriter){
-	GithubInstallationEvent:     handleGithubInstallationEvent,
-	GithubAppAuthorizationEvent: handleGithubAppAuthorizationEvent,
-	GithubPushEvent:             handleGithubPushEvent,
+	GithubInstallationEvent:     handleInstallationEvent,
+	GithubAppAuthorizationEvent: handleAuthEvent,
+	GithubPushEvent:             handlePushEvent,
 }
 
 // handle github installation event
-func handleGithubInstallationEvent(id string, body []byte, response http.ResponseWriter) {
-	payload := &GithubInstallationEventPayload{}
-	if err := json.Unmarshal(body, payload); err != nil {
+func handleInstallationEvent(id string, body []byte, response http.ResponseWriter) {
+	payload := GithubInstallationEventPayload{}
+	if err := json.Unmarshal(body, &payload); err != nil {
 		handleError(id, ErrorPayloadParser, http.StatusBadRequest, response)
 		return
 	}
 
 	options := tc.StartWorkflowOptions{
 		ID:        id + "::" + strconv.Itoa(int(payload.Installation.ID)),
-		TaskQueue: conf.Temporal.Queues.Webhooks,
+		TaskQueue: conf.Temporal.Queues.Integrations,
 	}
 
-	exe, err := conf.Temporal.Client.ExecuteWorkflow(context.Background(), options, OnGithubInstallWorkflow, payload)
+	exe, err := conf.Temporal.Client.ExecuteWorkflow(context.Background(), options, WorkflowOnGithubInstall, payload)
 
 	if err != nil {
 		conf.Logger.Error(err.Error())
@@ -45,7 +45,7 @@ func handleGithubInstallationEvent(id string, body []byte, response http.Respons
 }
 
 // handle github app authorization event
-func handleGithubAppAuthorizationEvent(id string, body []byte, response http.ResponseWriter) {
+func handleAuthEvent(id string, body []byte, response http.ResponseWriter) {
 	data, _ := json.MarshalIndent(body, "", "  ")
 	conf.Logger.Debug("App authorization event received")
 	conf.Logger.Debug(string(data))
@@ -55,8 +55,13 @@ func handleGithubAppAuthorizationEvent(id string, body []byte, response http.Res
 }
 
 // handle github push event
-func handleGithubPushEvent(id string, body []byte, response http.ResponseWriter) {
-	data, _ := json.MarshalIndent(body, "", "  ")
+func handlePushEvent(id string, body []byte, response http.ResponseWriter) {
+	payload := GithubPushEventPayload{}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		handleError(id, ErrorPayloadParser, http.StatusBadRequest, response)
+		return
+	}
+	data, _ := json.MarshalIndent(payload, "", "  ")
 	conf.Logger.Debug("Push event received")
 	conf.Logger.Debug(string(data))
 

@@ -16,8 +16,8 @@ import (
 var tracerName = "go.breu.io/ctrlplane/cmd/api/middlewares"
 
 // Chi middleware for OpenTelemetry
-func OtelMiddleware(service string, options ...Option) func(next http.Handler) http.Handler {
-	cfg := &conf{}
+func OtelMiddleware(service string, options ...OtelMiddlewareOption) func(next http.Handler) http.Handler {
+	cfg := &otelmiddlewareconf{}
 
 	for _, option := range options {
 		option.apply(cfg)
@@ -34,7 +34,7 @@ func OtelMiddleware(service string, options ...Option) func(next http.Handler) h
 	tracer := cfg.TracerProvider.Tracer(tracerName, trace.WithInstrumentationVersion(contrib.SemVersion()))
 
 	return func(handler http.Handler) http.Handler {
-		return TraceOption{
+		return OtelRequestWrapper{
 			service:             service,
 			tracer:              tracer,
 			propagators:         cfg.Propagators,
@@ -45,43 +45,43 @@ func OtelMiddleware(service string, options ...Option) func(next http.Handler) h
 	}
 }
 
-type conf struct {
+type otelmiddlewareconf struct {
 	TracerProvider          trace.TracerProvider
 	Propagators             propagation.TextMapPropagator
 	Routes                  chi.Routes
 	RequestMethodInSpanName bool
 }
 
-type Option interface {
-	apply(*conf)
+type OtelMiddlewareOption interface {
+	apply(*otelmiddlewareconf)
 }
 
-type optionFn func(*conf)
+type otelMiddlewareOptionFn func(*otelmiddlewareconf)
 
-func (fn optionFn) apply(cfg *conf) {
+func (fn otelMiddlewareOptionFn) apply(cfg *otelmiddlewareconf) {
 	fn(cfg)
 }
 
-func IncludeOtelPropagators(propagators propagation.TextMapPropagator) Option {
-	return optionFn(func(cfg *conf) {
+func IncludeOtelPropagator(propagators propagation.TextMapPropagator) OtelMiddlewareOption {
+	return otelMiddlewareOptionFn(func(cfg *otelmiddlewareconf) {
 		cfg.Propagators = propagators
 	})
 }
 
-func IncludeOtelTraceProviders(provider trace.TracerProvider) Option {
-	return optionFn(func(cfg *conf) {
+func IncludeOtelTraceProvider(provider trace.TracerProvider) OtelMiddlewareOption {
+	return otelMiddlewareOptionFn(func(cfg *otelmiddlewareconf) {
 		cfg.TracerProvider = provider
 	})
 }
 
-func IncludeChiRoutes(routes chi.Routes) Option {
-	return optionFn(func(cfg *conf) {
+func IncludeChiRoutes(routes chi.Routes) OtelMiddlewareOption {
+	return otelMiddlewareOptionFn(func(cfg *otelmiddlewareconf) {
 		cfg.Routes = routes
 	})
 }
 
-func IncludeRequestMethodInSpanName(isActive bool) Option {
-	return optionFn(func(cfg *conf) {
+func IncludeRequestMethodInSpanName(isActive bool) OtelMiddlewareOption {
+	return otelMiddlewareOptionFn(func(cfg *otelmiddlewareconf) {
 		cfg.RequestMethodInSpanName = isActive
 	})
 }
@@ -130,7 +130,7 @@ func putRWR(rwr *ResponseWriterRecorder) {
 	rwrPool.Put(rwr)
 }
 
-type TraceOption struct {
+type OtelRequestWrapper struct {
 	service             string
 	tracer              trace.Tracer
 	propagators         propagation.TextMapPropagator
@@ -139,27 +139,27 @@ type TraceOption struct {
 	reqMethodInSpanName bool
 }
 
-func (opt TraceOption) ServeHTTP(response http.ResponseWriter, request *http.Request) {
-	ctx := opt.propagators.Extract(request.Context(), propagation.HeaderCarrier(request.Header))
+func (wrap OtelRequestWrapper) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+	ctx := wrap.propagators.Extract(request.Context(), propagation.HeaderCarrier(request.Header))
 	name := ""
 	pattern := ""
 
 	// Find the route that matches the request and set the name and pattern accordingly.
-	if opt.routes != nil {
+	if wrap.routes != nil {
 		rctx := chi.NewRouteContext()
-		if opt.routes.Match(rctx, request.Method, request.URL.Path) {
+		if wrap.routes.Match(rctx, request.Method, request.URL.Path) {
 			pattern = rctx.RoutePattern()
-			name = addMethodToSpan(opt.reqMethodInSpanName, request.Method, pattern)
+			name = addMethodToSpanName(wrap.reqMethodInSpanName, request.Method, pattern)
 		}
 	}
 
 	// Starting a new trace
-	ctx, span := opt.tracer.Start(
+	ctx, span := wrap.tracer.Start(
 		ctx,
 		name,
 		trace.WithAttributes(semconv.NetAttributesFromHTTPRequest("tcp", request)...),
 		trace.WithAttributes(semconv.EndUserAttributesFromHTTPRequest(request)...),
-		trace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest(opt.service, pattern, request)...),
+		trace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest(wrap.service, pattern, request)...),
 	)
 
 	defer span.End()
@@ -171,13 +171,13 @@ func (opt TraceOption) ServeHTTP(response http.ResponseWriter, request *http.Req
 	request = request.WithContext(ctx)
 
 	// Handle the next request
-	opt.handler.ServeHTTP(rwr.writer, request)
+	wrap.handler.ServeHTTP(rwr.writer, request)
 
 	// Setting span attributes if required
 	if len(pattern) == 0 {
 		pattern = chi.RouteContext(request.Context()).RoutePattern()
 		span.SetAttributes(semconv.HTTPRouteKey.String(pattern))
-		name = addMethodToSpan(opt.reqMethodInSpanName, request.Method, pattern)
+		name = addMethodToSpanName(wrap.reqMethodInSpanName, request.Method, pattern)
 		span.SetName(name)
 	}
 
@@ -188,7 +188,7 @@ func (opt TraceOption) ServeHTTP(response http.ResponseWriter, request *http.Req
 }
 
 // If the request method is not included in the span name, add it to the span name.
-func addMethodToSpan(shouldAdd bool, method string, span string) string {
+func addMethodToSpanName(shouldAdd bool, method string, span string) string {
 	if shouldAdd {
 		span = method + span
 	}

@@ -9,5 +9,6 @@ import (
 func Router() http.Handler {
 	router := chi.NewRouter()
 	router.Post("/webhook", webhook)
+	router.Get("/complete-installation", completeInstallation)
 	return router
 }

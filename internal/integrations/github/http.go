@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// ConsumeGithubInstallationEvent handles GitHub installation events
+// handles the incoming webhook
 func webhook(response http.ResponseWriter, request *http.Request) {
 	id := request.Header.Get("X-GitHub-Delivery")
 	signature := request.Header.Get("X-Hub-Signature")
@@ -42,3 +42,5 @@ func webhook(response http.ResponseWriter, request *http.Request) {
 		handleError(id, ErrorInvalidEvent, http.StatusBadRequest, response)
 	}
 }
+
+func completeInstallation(response http.ResponseWriter, request *http.Request) {}

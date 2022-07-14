@@ -7,11 +7,11 @@ import (
 )
 
 // Workflow for handling a Github App Installation event.
-func OnGithubInstallWorkflow(ctx workflow.Context, payload GithubInstallationEventPayload) error {
-	options := workflow.ActivityOptions{
+func WorkflowOnGithubInstall(ctx workflow.Context, payload GithubInstallationEventPayload) error {
+	ao := workflow.ActivityOptions{
 		StartToCloseTimeout: 10 * time.Second,
 	}
-	ctx = workflow.WithActivityOptions(ctx, options)
+	ctx = workflow.WithActivityOptions(ctx, ao)
 	logger := workflow.GetLogger(ctx)
 
 	logger.Debug("Starting Workflow: OnGithubInstall")
@@ -26,4 +26,6 @@ func OnGithubInstallWorkflow(ctx workflow.Context, payload GithubInstallationEve
 	return nil
 }
 
-func OnGithubPullRequest(ctx workflow.Context) {}
+func WorkflowOnGithubPush(ctx workflow.Context) {}
+
+func WorkflowOnGithubPR(ctx workflow.Context) {}

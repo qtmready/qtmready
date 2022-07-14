@@ -11,7 +11,7 @@ type serviceconf struct {
 	Version string `env:"VERSION" env-default:"0.0.0-dev"`
 }
 
-func (s *serviceconf) ReadConf() {
+func (s *serviceconf) ReadEnv() {
 	cleanenv.ReadEnv(s)
 }
 

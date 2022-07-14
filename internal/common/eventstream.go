@@ -13,7 +13,7 @@ type eventstreamconf struct {
 	ServerURL string `env:"EVENTS_SERVERS_URL" env-default:"nats://event-stream:4222"`
 }
 
-func (e *eventstreamconf) ReadConf() {
+func (e *eventstreamconf) ReadEnv() {
 	cleanenv.ReadEnv(e)
 }
 

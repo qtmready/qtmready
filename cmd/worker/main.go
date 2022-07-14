@@ -14,10 +14,9 @@ import (
 var wait sync.WaitGroup
 
 func init() {
-	common.Service.ReadConf()
+	common.Service.ReadEnv()
 	common.Service.InitLogger()
-
-	common.EventStream.ReadConf()
+	common.EventStream.ReadEnv()
 	common.Temporal.ReadEnv()
 	github.Github.ReadEnv()
 	db.DB.ReadEnv()
@@ -47,11 +46,11 @@ func init() {
 func main() {
 	defer common.Temporal.Client.Close()
 
-	queue := common.Temporal.Queues.Webhooks
+	queue := common.Temporal.Queues.Integrations
 	options := tw.Options{}
 	worker := tw.New(common.Temporal.Client, queue, options)
 
-	worker.RegisterWorkflow(github.OnGithubInstallWorkflow)
+	worker.RegisterWorkflow(github.WorkflowOnGithubInstall)
 	worker.RegisterActivity(github.SaveGithubInstallationActivity)
 
 	err := worker.Run(tw.InterruptCh())

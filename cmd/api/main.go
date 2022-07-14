@@ -15,7 +15,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 
 	"go.breu.io/ctrlplane/cmd/api/middlewares"
-	"go.breu.io/ctrlplane/internal/common"
+	cmn "go.breu.io/ctrlplane/internal/common"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/integrations"
 	"go.breu.io/ctrlplane/internal/integrations/github"
@@ -25,11 +25,11 @@ var waiter sync.WaitGroup
 var traceProvider *sdktrace.TracerProvider
 
 func init() {
-	common.Service.ReadConf()
-	common.Service.InitLogger()
+	cmn.Service.ReadEnv()
+	cmn.Service.InitLogger()
 
-	common.EventStream.ReadConf()
-	common.Temporal.ReadEnv()
+	cmn.EventStream.ReadEnv()
+	cmn.Temporal.ReadEnv()
 	github.Github.ReadEnv()
 	db.DB.ReadEnv()
 
@@ -42,12 +42,12 @@ func init() {
 
 	go func() {
 		defer waiter.Done()
-		common.EventStream.InitConnection()
+		cmn.EventStream.InitConnection()
 	}()
 
 	go func() {
 		defer waiter.Done()
-		common.Temporal.InitClient()
+		cmn.Temporal.InitClient()
 	}()
 
 	go func() {
@@ -57,29 +57,34 @@ func init() {
 
 	waiter.Wait()
 
-	common.Logger.Info("Initializing Service ... Done")
+	cmn.Logger.Info("Initializing Service ... Done")
 }
 
 func main() {
 	// handling closing of the server
 	defer db.DB.Session.Close()
-	defer common.Temporal.Client.Close()
+	defer cmn.Temporal.Client.Close()
 	defer func() {
 		if err := traceProvider.Shutdown(context.Background()); err != nil {
-			common.Logger.Error(err.Error())
+			cmn.Logger.Error(err.Error())
 		}
 	}()
 
-	// Setting up the OpenTelemetry tracer
+	// Setting up OpenTelemetry Global Tracer
 	otel.SetTracerProvider(traceProvider)
-	otel.SetTextMapPropagator(prop.NewCompositeTextMapPropagator(prop.TraceContext{}, prop.Baggage{}))
+	otel.SetTextMapPropagator(
+		prop.NewCompositeTextMapPropagator(prop.TraceContext{}, prop.Baggage{}),
+	)
 
 	router := chi.NewRouter()
 
 	router.Use(chimw.RequestID)
 	router.Use(chimw.RealIP)
 	router.Use(chimw.Logger)
-	router.Use(middlewares.OtelMiddleware(common.Service.Name, middlewares.IncludeChiRoutes(router)))
+	router.Use(middlewares.OtelMiddleware(
+		cmn.Service.Name,
+		middlewares.IncludeChiRoutes(router),
+	))
 	router.Use(chimw.Recoverer)
 
 	router.Mount("/integrations", integrations.Router())
@@ -88,21 +93,19 @@ func main() {
 }
 
 func initTraceProvider() *sdktrace.TracerProvider {
-	common.Logger.Info("Initializing OpenTelemetry Provider ... ")
+	cmn.Logger.Info("Initializing OpenTelemetry Provider ... ")
 	exporter, err := stdout.New(stdout.WithPrettyPrint())
 	if err != nil {
-		common.Logger.Fatal(err.Error())
+		cmn.Logger.Fatal(err.Error())
 	}
 
 	resource, err := sdkresource.New(
 		context.Background(),
-		sdkresource.WithAttributes(
-			semconv.ServiceNameKey.String(common.Service.Name),
-		),
+		sdkresource.WithAttributes(semconv.ServiceNameKey.String(cmn.Service.Name)),
 	)
 
 	if err != nil {
-		common.Logger.Fatal(err.Error())
+		cmn.Logger.Fatal(err.Error())
 	}
 
 	tp := sdktrace.NewTracerProvider(
@@ -111,6 +114,6 @@ func initTraceProvider() *sdktrace.TracerProvider {
 		sdktrace.WithBatcher(exporter),
 	)
 
-	common.Logger.Info("Initializing OpenTelemetry Provider ... Done")
+	cmn.Logger.Info("Initializing OpenTelemetry Provider ... Done")
 	return tp
 }
