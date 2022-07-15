@@ -4,7 +4,7 @@ import (
 	"log"
 	"sync"
 
-	tw "go.temporal.io/sdk/worker"
+	"go.temporal.io/sdk/worker"
 
 	"go.breu.io/ctrlplane/internal/common"
 	"go.breu.io/ctrlplane/internal/db"
@@ -47,15 +47,15 @@ func main() {
 	defer common.Temporal.Client.Close()
 
 	queue := common.Temporal.Queues.Integrations
-	options := tw.Options{}
-	worker := tw.New(common.Temporal.Client, queue, options)
+	options := worker.Options{}
+	wrkr := worker.New(common.Temporal.Client, queue, options)
 
 	workflows := github.Workflows{}
 
-	worker.RegisterWorkflow(workflows.OnInstallationEvent)
-	worker.RegisterActivity(&github.Activities{})
+	wrkr.RegisterWorkflow(workflows.OnInstallationEvent)
+	wrkr.RegisterActivity(&github.Activities{})
 
-	err := worker.Run(tw.InterruptCh())
+	err := wrkr.Run(worker.InterruptCh())
 
 	if err != nil {
 		log.Fatal(err)

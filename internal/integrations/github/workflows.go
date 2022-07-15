@@ -9,10 +9,10 @@ import (
 type Workflows struct{}
 
 func (w *Workflows) OnInstallationEvent(ctx workflow.Context, payload InstallationEventPayload) error {
-	ao := workflow.ActivityOptions{
+	opts := workflow.ActivityOptions{
 		StartToCloseTimeout: 10 * time.Second,
 	}
-	ctx = workflow.WithActivityOptions(ctx, ao)
+	ctx = workflow.WithActivityOptions(ctx, opts)
 	logger := workflow.GetLogger(ctx)
 
 	logger.Debug("Starting Workflow: OnGithubInstall")
@@ -27,3 +27,11 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context, payload Installati
 
 	return nil
 }
+
+func (w *Workflows) OnPush(ctx workflow.Context, payload PushEventPayload) error {
+	return nil
+}
+
+// func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEventPayload) error {
+// 	return nil
+// }

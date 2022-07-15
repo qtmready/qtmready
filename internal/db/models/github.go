@@ -53,7 +53,7 @@ func (g *GithubInstallation) Create() error {
 	return nil
 }
 
-func (g *GithubInstallation) Get(params struct{}) error {
+func (g *GithubInstallation) Get(params interface{}) error {
 	query := db.DB.Session.Query(githubInstallationTable.Select()).BindStruct(params)
 
 	if err := query.GetRelease(&g); err != nil {

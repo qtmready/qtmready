@@ -5,14 +5,14 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/ilyakaznacheev/cleanenv"
-	tc "go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/client"
 	"go.uber.org/zap"
 )
 
 type temporalconf struct {
 	ServerHost string `env:"TEMPORAL_HOST" env-default:"temporal"`
 	ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
-	Client     tc.Client
+	Client     client.Client
 	Queues     struct {
 		Builder      string `env-default:"builder"`
 		Integrations string `env-default:"integrations"`
@@ -29,12 +29,12 @@ func (t *temporalconf) GetConnectionString() string {
 
 func (t *temporalconf) InitClient() {
 	Logger.Info("Initializing Temporal Client ...", zap.String("host", t.ServerHost), zap.String("port", t.ServerPort))
-	options := tc.Options{
+	options := client.Options{
 		HostPort: t.GetConnectionString(),
 	}
 
 	retryTemporal := func() error {
-		client, err := tc.Dial(options)
+		client, err := client.Dial(options)
 		if err != nil {
 			return err
 		}
