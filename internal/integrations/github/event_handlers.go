@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"strconv"
 
-	tc "go.temporal.io/sdk/client"
-	"go.uber.org/zap"
+	"go.temporal.io/sdk/client"
 
 	"go.breu.io/ctrlplane/internal/common"
+	"go.breu.io/ctrlplane/internal/common/utils"
 )
 
 // A Map of event types to their respective handlers
@@ -20,57 +20,58 @@ var eventHandlers = map[WebhookEvent]func(string, []byte, http.ResponseWriter){
 }
 
 // handle github installation event
-func handleInstallationEvent(id string, body []byte, response http.ResponseWriter) {
+func handleInstallationEvent(id string, body []byte, writer http.ResponseWriter) {
 	payload := InstallationEventPayload{}
 	if err := json.Unmarshal(body, &payload); err != nil {
-		handleError(id, ErrorPayloadParser, http.StatusBadRequest, response)
+		utils.HandleHttpError(id, ErrorPayloadParser, http.StatusBadRequest, writer)
 		return
 	}
 
-	options := tc.StartWorkflowOptions{
-		ID:        id + "::" + strconv.Itoa(int(payload.Installation.ID)),
+	opts := client.StartWorkflowOptions{
+		ID:        "github.webhooks.installation.id." + strconv.Itoa(int(payload.Installation.ID)) + "." + string(InstallationEvent) + "." + payload.Action,
 		TaskQueue: common.Temporal.Queues.Integrations,
 	}
 
 	var w *Workflows
-	exe, err := common.Temporal.Client.ExecuteWorkflow(context.Background(), options, w.OnInstallationEvent, payload)
+	exe, err := common.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnInstall, payload)
 
 	if err != nil {
-		handleError(id, err, http.StatusInternalServerError, response)
+		utils.HandleHttpError(id, err, http.StatusInternalServerError, writer)
 	}
 
-	response.WriteHeader(http.StatusCreated)
-	response.Write([]byte(exe.GetRunID()))
+	writer.WriteHeader(http.StatusCreated)
+	writer.Write([]byte(exe.GetRunID()))
+}
+
+// handle github push event
+func handlePushEvent(id string, body []byte, writer http.ResponseWriter) {
+	payload := PushEventPayload{}
+	if err := json.Unmarshal(body, &payload); err != nil {
+		utils.HandleHttpError(id, ErrorPayloadParser, http.StatusBadRequest, writer)
+		return
+	}
+
+	opts := client.StartWorkflowOptions{
+		ID:        "github.webhooks.integrations.id" + strconv.Itoa(payload.Installation.ID) + "." + string(PushEvent) + ".ref." + payload.Ref,
+		TaskQueue: common.Temporal.Queues.Integrations,
+	}
+	var w *Workflows
+	exe, err := common.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPush, payload)
+
+	if err != nil {
+		utils.HandleHttpError(id, err, http.StatusInternalServerError, writer)
+	}
+
+	writer.WriteHeader(http.StatusCreated)
+	writer.Write([]byte(exe.GetRunID()))
 }
 
 // handle github app authorization event
-func handleAuthEvent(id string, body []byte, response http.ResponseWriter) {
+func handleAuthEvent(id string, body []byte, writer http.ResponseWriter) {
 	data, _ := json.MarshalIndent(body, "", "  ")
 	common.Logger.Debug("App authorization event received")
 	common.Logger.Debug(string(data))
 
-	response.WriteHeader(http.StatusCreated)
-	response.Write([]byte(""))
-}
-
-// handle github push event
-func handlePushEvent(id string, body []byte, response http.ResponseWriter) {
-	payload := PushEventPayload{}
-	if err := json.Unmarshal(body, &payload); err != nil {
-		handleError(id, ErrorPayloadParser, http.StatusBadRequest, response)
-		return
-	}
-	data, _ := json.MarshalIndent(payload, "", "  ")
-	common.Logger.Debug("Push event received")
-	common.Logger.Debug(string(data))
-
-	response.WriteHeader(http.StatusCreated)
-	response.Write([]byte(""))
-}
-
-// handleError handles an error and writes it to the response.
-func handleError(id string, err error, status int, response http.ResponseWriter) {
-	common.Logger.Error(err.Error(), zap.String("request_id", id))
-	response.WriteHeader(status)
-	response.Write([]byte(err.Error()))
+	writer.WriteHeader(http.StatusCreated)
+	writer.Write([]byte(""))
 }

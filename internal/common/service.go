@@ -9,6 +9,7 @@ type serviceconf struct {
 	Name    string `env:"SERVICE_NAME" env-default:"service"`
 	Debug   bool   `env:"DEBUG" env-default:"false"`
 	Version string `env:"VERSION" env-default:"0.0.0-dev"`
+	Secret  string `env:"SECRET" env-default:""`
 }
 
 func (s *serviceconf) ReadEnv() {

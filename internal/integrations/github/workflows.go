@@ -8,7 +8,7 @@ import (
 
 type Workflows struct{}
 
-func (w *Workflows) OnInstallationEvent(ctx workflow.Context, payload InstallationEventPayload) error {
+func (w *Workflows) OnInstall(ctx workflow.Context, payload InstallationEventPayload) error {
 	opts := workflow.ActivityOptions{
 		StartToCloseTimeout: 10 * time.Second,
 	}
@@ -32,6 +32,6 @@ func (w *Workflows) OnPush(ctx workflow.Context, payload PushEventPayload) error
 	return nil
 }
 
-// func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEventPayload) error {
-// 	return nil
-// }
+func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEventPayload) error {
+	return nil
+}

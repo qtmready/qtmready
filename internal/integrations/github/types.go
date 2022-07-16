@@ -96,8 +96,8 @@ type PushEventPayload struct {
 	Installation InstallationID `json:"installation"`
 }
 
-// PullRequestPayload contains the information for GitHub's pull_request hook event
-type PullRequestPayload struct {
+// PullRequestEventPayload contains the information for GitHub's pull_request hook event
+type PullRequestEventPayload struct {
 	Action            string         `json:"action"`
 	Number            int64          `json:"number"`
 	PullRequest       PullRequest    `json:"pull_request"`

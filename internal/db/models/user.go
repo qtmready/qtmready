@@ -12,18 +12,20 @@ import (
 	"go.breu.io/ctrlplane/internal/db"
 )
 
+var columns = []string{
+	"id",
+	"name",
+	"email",
+	"password",
+	"is_active",
+	"is_verified",
+	"created_at",
+	"updated_at",
+}
+
 var userMeta = table.Metadata{
-	Name: "users",
-	Columns: []string{
-		"id",
-		"name",
-		"email",
-		"password",
-		"is_active",
-		"is_verified",
-		"created_at",
-		"updated_at",
-	},
+	Name:    "users",
+	Columns: columns,
 }
 
 var userTable = table.New(userMeta)

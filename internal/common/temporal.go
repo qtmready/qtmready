@@ -14,7 +14,6 @@ type temporalconf struct {
 	ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
 	Client     client.Client
 	Queues     struct {
-		Builder      string `env-default:"builder"`
 		Integrations string `env-default:"integrations"`
 	}
 }
