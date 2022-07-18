@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"go.breu.io/ctrlplane/internal/common"
 	"go.breu.io/ctrlplane/internal/common/utils"
 )
 
@@ -24,17 +25,24 @@ func AuthRouter() http.Handler {
 
 type authRoutes struct{}
 
-func (a *authRoutes) register(writer http.ResponseWriter, request *http.Request) {
+func (a *authRoutes) register(response http.ResponseWriter, request *http.Request) {
 	body, _ := ioutil.ReadAll(request.Body)
-	response := &RegisterResponse{}
-	if err := json.Unmarshal(body, response); err != nil {
-		utils.HandleHttpError("", err, http.StatusBadRequest, writer)
+	common.Logger.Info(string(body))
+	data := &regRequest{}
+	if err := json.Unmarshal(body, data); err != nil {
+		utils.HandleHttpError("", err, http.StatusBadRequest, response)
+	}
+
+	// Validations are done in the `regRequest` struct. see `cmd/api/routes/requests.go`
+	if err := data.save(); err != nil {
+		common.Logger.Error(err.Error())
+		utils.HandleHttpError("", err, http.StatusBadRequest, response)
 	}
 }
 
-func (a *authRoutes) login(writer http.ResponseWriter, request *http.Request)         {}
-func (a *authRoutes) logout(writer http.ResponseWriter, request *http.Request)        {}
-func (a *authRoutes) refreshToken(writer http.ResponseWriter, request *http.Request)  {}
-func (a *authRoutes) activate(writer http.ResponseWriter, request *http.Request)      {}
-func (a *authRoutes) resetPassword(writer http.ResponseWriter, request *http.Request) {}
-func (a *authRoutes) recover(writer http.ResponseWriter, request *http.Request)       {}
+func (a *authRoutes) login(response http.ResponseWriter, request *http.Request)         {}
+func (a *authRoutes) logout(response http.ResponseWriter, request *http.Request)        {}
+func (a *authRoutes) refreshToken(response http.ResponseWriter, request *http.Request)  {}
+func (a *authRoutes) activate(response http.ResponseWriter, request *http.Request)      {}
+func (a *authRoutes) resetPassword(response http.ResponseWriter, request *http.Request) {}
+func (a *authRoutes) recover(response http.ResponseWriter, request *http.Request)       {}

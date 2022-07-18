@@ -82,7 +82,7 @@ func (u *User) Update(params interface{}) error {
 }
 
 // Get a user matching `params`.
-func (u *User) Get(params struct{}) error {
+func (u *User) Get(params interface{}) error {
 	query := db.DB.Session.Query(githubInstallationTable.Select()).BindStruct(params)
 
 	if err := query.GetRelease(&u); err != nil {

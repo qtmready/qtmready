@@ -40,4 +40,6 @@ func (a *Activities) GetInstallation(ctx context.Context, id string) (models.Git
 	return installation, nil
 }
 
-func (a *Activities) CloneRepo(ctx context.Context, payload PushEventPayload) {}
+func (a *Activities) CloneRepo(ctx context.Context, payload PushEventPayload) error {
+	return nil
+}

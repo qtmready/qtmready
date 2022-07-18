@@ -26,6 +26,11 @@ var waiter sync.WaitGroup
 var traceProvider *sdktrace.TracerProvider
 
 func init() {
+	// Setting up custom validators
+
+	// Setting up custom validators ... Done
+
+	// Reading the configuration from the environment
 	common.Service.ReadEnv()
 	common.Service.InitLogger()
 
@@ -33,7 +38,9 @@ func init() {
 	common.Temporal.ReadEnv()
 	github.Github.ReadEnv()
 	db.DB.ReadEnv()
+	// Reading the configuration from the environment ... Done
 
+	// Initializing singleton objects
 	waiter.Add(4)
 
 	go func() {
@@ -57,6 +64,7 @@ func init() {
 	}()
 
 	waiter.Wait()
+	// Initializing singleton objects ... Done
 
 	common.Logger.Info("Initializing Service ... Done")
 }
@@ -79,6 +87,7 @@ func main() {
 
 	router := chi.NewRouter()
 
+	router.Use(middlewares.ContentTypeJSON)
 	router.Use(chimw.RequestID)
 	router.Use(chimw.RealIP)
 	router.Use(chimw.Logger)
@@ -94,6 +103,8 @@ func main() {
 	http.ListenAndServe(":8000", router)
 }
 
+// initializes the OpenTelemetry TracerProvider
+// TODO: move this to a seperate package
 func initTraceProvider() *sdktrace.TracerProvider {
 	common.Logger.Info("Initializing OpenTelemetry Provider ... ")
 	exporter, err := stdout.New(stdout.WithPrettyPrint())

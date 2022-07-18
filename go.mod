@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	github.com/avast/retry-go/v4 v4.1.0
+	github.com/beego/beego/v2 v2.0.4
 	github.com/bradleyfalzon/ghinstallation/v2 v2.0.4
 	github.com/felixge/httpsnoop v1.0.3
 	github.com/go-chi/chi/v5 v5.0.7
@@ -24,6 +25,15 @@ require (
 	go.temporal.io/sdk v1.15.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
+)
+
+require (
+	github.com/go-playground/locales v0.14.0 // indirect
+	github.com/go-playground/universal-translator v0.18.0 // indirect
+	github.com/go-playground/validator/v10 v10.11.0 // indirect
+	github.com/leodido/go-urn v1.2.1 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+	github.com/shiena/ansicolor v0.0.0-20200904210342-c7312218db18 // indirect
 )
 
 require (
