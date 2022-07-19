@@ -67,7 +67,7 @@ func handlePushEvent(id string, body []byte, response http.ResponseWriter) {
 }
 
 // handle github app authorization event
-func handleAuthEvent(id string, body []byte, response http.ResponseWriter) {
+func handleAuthEvent(_ string, body []byte, response http.ResponseWriter) {
 	data, _ := json.MarshalIndent(body, "", "  ")
 	common.Logger.Debug("App authorization event received")
 	common.Logger.Debug(string(data))

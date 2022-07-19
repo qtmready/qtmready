@@ -54,9 +54,9 @@ func (g *GithubInstallation) Create() error {
 }
 
 func (g *GithubInstallation) Get(params interface{}) error {
-	query := db.DB.Session.Query(githubInstallationTable.Select()).BindStruct(params)
+	query := db.DB.Session.Query(githubInstallationTable.Get()).BindStruct(params)
 
-	if err := query.GetRelease(&g); err != nil {
+	if err := query.GetRelease(g); err != nil {
 		return err
 	}
 

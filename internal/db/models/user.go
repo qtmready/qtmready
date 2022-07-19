@@ -9,12 +9,14 @@ import (
 	"github.com/scylladb/gocqlx/table"
 	"golang.org/x/crypto/bcrypt"
 
+	"go.breu.io/ctrlplane/internal/common"
 	"go.breu.io/ctrlplane/internal/db"
 )
 
 var columns = []string{
 	"id",
-	"name",
+	"first_name",
+	"last_name",
 	"email",
 	"password",
 	"is_active",
@@ -32,10 +34,10 @@ var userTable = table.New(userMeta)
 
 type User struct {
 	ID         gocql.UUID `cql:"id"`
-	FirstName  string
-	LastName   string
-	Email      string
-	Password   string `copier:"-"`
+	FirstName  string     `validate:"required"`
+	LastName   string     `validate:"required"`
+	Email      string     `validate:"email,required,db_unique"`
+	Password   string     `copier:"-"`
 	IsVerified bool
 	IsActive   bool
 	CreatedAt  time.Time
@@ -45,6 +47,10 @@ type User struct {
 // Creates a new user. If email already exists, returns an error.
 func (u *User) Create(params interface{}) error {
 	if _, err := mail.ParseAddress(u.Email); err != nil {
+		return err
+	}
+
+	if err := common.Validator.Struct(u); err != nil {
 		return err
 	}
 
@@ -82,10 +88,11 @@ func (u *User) Update(params interface{}) error {
 }
 
 // Get a user matching `params`.
-func (u *User) Get(params interface{}) error {
-	query := db.DB.Session.Query(githubInstallationTable.Select()).BindStruct(params)
+func (u *User) Get(params map[string]interface{}) error {
+	query := db.DB.Session.Query(userTable.Get()).BindMap(params)
 
-	if err := query.GetRelease(&u); err != nil {
+	if err := query.GetRelease(u); err != nil {
+		common.Logger.Error(err.Error())
 		return err
 	}
 
@@ -106,3 +113,4 @@ func (u *User) VerifyPassword(password string) bool {
 func (u *User) SendVerificationEmail() {}
 func (u *User) Suspend()               {}
 func (u *User) Restore()               {}
+func (u *User) Save()                  {}

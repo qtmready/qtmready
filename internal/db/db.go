@@ -11,6 +11,7 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/scylladb/gocqlx/v2"
 	"go.breu.io/ctrlplane/internal/common"
+	"go.breu.io/ctrlplane/internal/db/validations"
 	"go.uber.org/zap"
 )
 
@@ -77,4 +78,8 @@ func (d *db) RunMigrations() {
 func (d *db) InitSessionWithMigrations() {
 	d.InitSession()
 	d.RunMigrations()
+}
+
+func (d *db) RegisterValidations() {
+	common.Validator.RegisterValidation("db_unique", validations.Unique)
 }

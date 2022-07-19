@@ -8,6 +8,8 @@ import (
 	"go.uber.org/zap"
 )
 
+var EventStream eventstreamconf
+
 type eventstreamconf struct {
 	*nats.Conn
 	ServerURL string `env:"EVENTS_SERVERS_URL" env-default:"nats://event-stream:4222"`

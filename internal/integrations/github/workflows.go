@@ -8,6 +8,8 @@ import (
 
 type Workflows struct{}
 
+var activity *Activity
+
 func (w *Workflows) OnInstall(ctx workflow.Context, payload InstallationEventPayload) error {
 	opts := workflow.ActivityOptions{
 		StartToCloseTimeout: 10 * time.Second,
@@ -17,9 +19,8 @@ func (w *Workflows) OnInstall(ctx workflow.Context, payload InstallationEventPay
 
 	logger.Debug("Starting Workflow: OnGithubInstall")
 
-	var a *Activities
 	var result InstallationEventPayload
-	err := workflow.ExecuteActivity(ctx, a.SaveInstallation, payload).Get(ctx, &result)
+	err := workflow.ExecuteActivity(ctx, activity.SaveInstallation, payload).Get(ctx, &result)
 
 	if err != nil {
 		return err

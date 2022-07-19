@@ -7,9 +7,9 @@ import (
 	"go.breu.io/ctrlplane/internal/db/models"
 )
 
-type Activities struct{}
+type Activity struct{}
 
-func (a *Activities) SaveInstallation(ctx context.Context, payload InstallationEventPayload) (models.GithubInstallation, error) {
+func (a *Activity) SaveInstallation(ctx context.Context, payload InstallationEventPayload) (models.GithubInstallation, error) {
 	installation := models.GithubInstallation{}
 	installation.InstallationID = payload.Installation.ID
 	installation.InstallationLogin = payload.Installation.Account.Login
@@ -24,7 +24,7 @@ func (a *Activities) SaveInstallation(ctx context.Context, payload InstallationE
 	return installation, nil
 }
 
-func (a *Activities) GetInstallation(ctx context.Context, id string) (models.GithubInstallation, error) {
+func (a *Activity) GetInstallation(ctx context.Context, id string) (models.GithubInstallation, error) {
 	installation := models.GithubInstallation{}
 	uuid, err := gocql.ParseUUID(id)
 	if err != nil {
@@ -40,6 +40,6 @@ func (a *Activities) GetInstallation(ctx context.Context, id string) (models.Git
 	return installation, nil
 }
 
-func (a *Activities) CloneRepo(ctx context.Context, payload PushEventPayload) error {
+func (a *Activity) CloneRepo(ctx context.Context, payload PushEventPayload) error {
 	return nil
 }

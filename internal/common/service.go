@@ -1,8 +1,15 @@
 package common
 
 import (
+	"github.com/go-playground/validator/v10"
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.uber.org/zap"
+)
+
+var (
+	Logger    *zap.Logger
+	Service   serviceconf
+	Validator *validator.Validate
 )
 
 type serviceconf struct {
@@ -16,12 +23,14 @@ func (s *serviceconf) ReadEnv() {
 	cleanenv.ReadEnv(s)
 }
 
+func (s *serviceconf) InitValidator() {
+	Validator = validator.New()
+}
+
 func (s *serviceconf) InitLogger() {
 	if s.Debug {
 		Logger, _ = zap.NewDevelopment()
 	} else {
 		Logger, _ = zap.NewProduction()
 	}
-
-	Logger.Info("Initializing Service ...", zap.String("name", s.Name), zap.String("version", s.Version))
 }

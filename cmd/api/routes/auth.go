@@ -28,14 +28,13 @@ type authRoutes struct{}
 func (a *authRoutes) register(response http.ResponseWriter, request *http.Request) {
 	body, _ := ioutil.ReadAll(request.Body)
 	common.Logger.Info(string(body))
-	data := &regRequest{}
+	data := &RegRequest{}
 	if err := json.Unmarshal(body, data); err != nil {
 		utils.HandleHttpError("", err, http.StatusBadRequest, response)
 	}
 
 	// Validations are done in the `regRequest` struct. see `cmd/api/routes/requests.go`
 	if err := data.save(); err != nil {
-		common.Logger.Error(err.Error())
 		utils.HandleHttpError("", err, http.StatusBadRequest, response)
 	}
 }

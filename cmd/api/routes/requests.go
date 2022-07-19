@@ -1,51 +1,40 @@
 package routes
 
 import (
-	"github.com/beego/beego/v2/core/validation"
-
 	"go.breu.io/ctrlplane/internal/common"
 	"go.breu.io/ctrlplane/internal/db/models"
 )
 
-type regRequest struct {
-	Email            string `json:"email" valid:"Required;Email"`
-	Password         string `json:"password valid:Required"`
-	ConfirmPassword  string `json:"confirm_password" valid:"Required"`
-	OrganizationName string `json:"organization_name" valid:"Required"`
+type RegRequest struct {
+	Email            string `json:"email" validate:"required,email"`
+	Password         string `json:"password" validate:"required"`
+	FirstName        string `json:"first_name" validate:"required"`
+	LastName         string `json:"last_name" validate:"required"`
+	ConfirmPassword  string `json:"confirm_password" validate:"required,eqfield=Password"`
+	OrganizationName string `json:"organization_name" validate:"required"`
 }
 
-// Validate validates the request.
-// TODO: leverage the validator package. See https://github.com/beego/beego/tree/develop/core/validation
-func (r *regRequest) validate() error {
-	if r.Password != r.ConfirmPassword {
-		return ErrorPasswordMismatch
-	}
+func (r *RegRequest) validate() error {
 
-	validator := validation.Validation{}
-
-	valid, err := validator.Valid(r)
-
-	if err != nil {
+	if err := common.Validator.Struct(r); err != nil {
 		return err
 	}
 
-	if !valid {
-		for _, err := range validator.Errors {
-			common.Logger.Info(err.Key)
-			common.Logger.Info(err.Message)
-		}
-	}
-
-	user := models.User{Email: r.Email}
-	if err := user.Get(user); err != nil {
-		return nil
-	}
-
-	return ErrorEmailAlreadyExists
+	return nil
 }
 
-func (r *regRequest) save() error {
+func (r *RegRequest) save() error {
 	if err := r.validate(); err != nil {
+		return err
+	}
+
+	user := models.User{
+		FirstName: r.FirstName,
+		Email:     r.Email,
+		Password:  r.Password,
+		LastName:  r.LastName,
+	}
+	if err := user.Create(user); err != nil {
 		return err
 	}
 	return nil

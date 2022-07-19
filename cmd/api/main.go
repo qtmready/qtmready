@@ -26,21 +26,19 @@ var waiter sync.WaitGroup
 var traceProvider *sdktrace.TracerProvider
 
 func init() {
-	// Setting up custom validators
-
-	// Setting up custom validators ... Done
-
 	// Reading the configuration from the environment
 	common.Service.ReadEnv()
 	common.Service.InitLogger()
+	common.Service.InitValidator()
 
 	common.EventStream.ReadEnv()
 	common.Temporal.ReadEnv()
 	github.Github.ReadEnv()
 	db.DB.ReadEnv()
+	db.DB.RegisterValidations()
 	// Reading the configuration from the environment ... Done
 
-	// Initializing singleton objects
+	// Initializing reference to adapters
 	waiter.Add(4)
 
 	go func() {

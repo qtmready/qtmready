@@ -9,6 +9,8 @@ import (
 	"go.uber.org/zap"
 )
 
+var Temporal temporalconf
+
 type temporalconf struct {
 	ServerHost string `env:"TEMPORAL_HOST" env-default:"temporal"`
 	ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
