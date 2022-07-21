@@ -2,11 +2,10 @@ package routes
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"go.breu.io/ctrlplane/internal/common"
+	"go.breu.io/ctrlplane/cmd/api/serializers"
 	"go.breu.io/ctrlplane/internal/common/utils"
 )
 
@@ -25,23 +24,29 @@ func AuthRouter() http.Handler {
 
 type authRoutes struct{}
 
-func (a *authRoutes) register(response http.ResponseWriter, request *http.Request) {
-	body, _ := ioutil.ReadAll(request.Body)
-	common.Logger.Info(string(body))
-	data := &RegRequest{}
-	if err := json.Unmarshal(body, data); err != nil {
-		utils.HandleHttpError("", err, http.StatusBadRequest, response)
+func (a *authRoutes) register(writer http.ResponseWriter, request *http.Request) {
+	data := &serializers.RegistrationRequest{}
+
+	if err := json.NewDecoder(request.Body).Decode(data); err != nil {
+		utils.HandleHttpError("", err, http.StatusBadRequest, writer)
 	}
 
-	// Validations are done in the `regRequest` struct. see `cmd/api/routes/requests.go`
-	if err := data.save(); err != nil {
-		utils.HandleHttpError("", err, http.StatusBadRequest, response)
+	// Validations are done in the `requests.Registration`
+	if user, err := data.Save(); err != nil {
+		utils.HandleHttpError("", err, http.StatusBadRequest, writer)
+	} else {
+		if response, err := json.Marshal(serializers.RegisterationResponse{User: user}); err != nil {
+			utils.HandleHttpError("", err, http.StatusBadRequest, writer)
+		} else {
+			writer.WriteHeader(http.StatusOK)
+			writer.Write([]byte(response))
+		}
 	}
 }
 
-func (a *authRoutes) login(response http.ResponseWriter, request *http.Request)         {}
-func (a *authRoutes) logout(response http.ResponseWriter, request *http.Request)        {}
-func (a *authRoutes) refreshToken(response http.ResponseWriter, request *http.Request)  {}
-func (a *authRoutes) activate(response http.ResponseWriter, request *http.Request)      {}
-func (a *authRoutes) resetPassword(response http.ResponseWriter, request *http.Request) {}
-func (a *authRoutes) recover(response http.ResponseWriter, request *http.Request)       {}
+func (a *authRoutes) login(writer http.ResponseWriter, request *http.Request)         {}
+func (a *authRoutes) logout(writer http.ResponseWriter, request *http.Request)        {}
+func (a *authRoutes) refreshToken(writer http.ResponseWriter, request *http.Request)  {}
+func (a *authRoutes) activate(writer http.ResponseWriter, request *http.Request)      {}
+func (a *authRoutes) resetPassword(writer http.ResponseWriter, request *http.Request) {}
+func (a *authRoutes) recover(writer http.ResponseWriter, request *http.Request)       {}

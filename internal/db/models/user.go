@@ -1,7 +1,6 @@
 package models
 
 import (
-	"net/mail"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -33,24 +32,21 @@ var userMeta = table.Metadata{
 var userTable = table.New(userMeta)
 
 type User struct {
-	ID         gocql.UUID `cql:"id"`
-	FirstName  string     `validate:"required"`
-	LastName   string     `validate:"required"`
-	Email      string     `validate:"email,required,db_unique"`
-	Password   string     `copier:"-"`
-	IsVerified bool
-	IsActive   bool
-	CreatedAt  time.Time
-	UpdatedAt  time.Time
+	ID         gocql.UUID `json:"id" cql:"id"`
+	FirstName  string     `json:"first_name"`
+	LastName   string     `json:"last_name"`
+	Email      string     `json:"email" validate:"email,required,db_unique"`
+	Password   string     `json:"-" copier:"-"`
+	IsVerified bool       `json:"is_verified"`
+	IsActive   bool       `json:"is_active"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
 // Creates a new user. If email already exists, returns an error.
-func (u *User) Create(params interface{}) error {
-	if _, err := mail.ParseAddress(u.Email); err != nil {
-		return err
-	}
-
+func (u *User) Create() error {
 	if err := common.Validator.Struct(u); err != nil {
+		common.Logger.Error(err.Error())
 		return err
 	}
 
@@ -88,11 +84,11 @@ func (u *User) Update(params interface{}) error {
 }
 
 // Get a user matching `params`.
+// TODO: The input currently is a map[string]interface{}, but it should be a interface{}
 func (u *User) Get(params map[string]interface{}) error {
 	query := db.DB.Session.Query(userTable.Get()).BindMap(params)
 
 	if err := query.GetRelease(u); err != nil {
-		common.Logger.Error(err.Error())
 		return err
 	}
 

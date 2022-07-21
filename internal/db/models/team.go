@@ -9,14 +9,10 @@ import (
 )
 
 var teamMeta = table.Metadata{
-	Name: "orgs",
-	Columns: []string{
-		"id",
-		"name",
-		"slug",
-		"created_at",
-		"updated_at",
-	},
+	Name:    "orgs",
+	Columns: []string{"id", "name", "slug", "created_at", "updated_at"},
+	PartKey: []string{},
+	SortKey: []string{},
 }
 
 var teamTable = table.New(teamMeta)
