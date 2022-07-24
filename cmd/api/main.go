@@ -15,7 +15,7 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 
 	"go.breu.io/ctrlplane/cmd/api/middlewares"
-	"go.breu.io/ctrlplane/cmd/api/routes"
+	"go.breu.io/ctrlplane/cmd/api/routers"
 	"go.breu.io/ctrlplane/internal/common"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/integrations"
@@ -95,7 +95,7 @@ func main() {
 	))
 	router.Use(chimw.Recoverer)
 
-	router.Mount("/auth", routes.AuthRouter())
+	router.Mount("/auth", routers.AuthRouter())
 	router.Mount("/integrations", integrations.Router())
 
 	http.ListenAndServe(":8000", router)

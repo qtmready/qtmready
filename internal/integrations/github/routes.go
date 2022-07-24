@@ -15,21 +15,21 @@ func webhook(response http.ResponseWriter, request *http.Request) {
 	signature := request.Header.Get("X-Hub-Signature")
 
 	if signature == "" {
-		utils.HandleHttpError(id, ErrorMissingHeaderGithubSignature, http.StatusUnauthorized, response)
+		utils.HandleHTTPError(id, ErrorMissingHeaderGithubSignature, http.StatusUnauthorized, response)
 		return
 	}
 
 	body, _ := ioutil.ReadAll(request.Body)
 
 	if err := Github.VerifyWebhookSignature(body, signature); err != nil {
-		utils.HandleHttpError(id, err, http.StatusUnauthorized, response)
+		utils.HandleHTTPError(id, err, http.StatusUnauthorized, response)
 		return
 	}
 
 	headerEvent := request.Header.Get("X-GitHub-Event")
 
 	if headerEvent == "" {
-		utils.HandleHttpError(id, ErrorMissingHeaderGithubEvent, http.StatusBadRequest, response)
+		utils.HandleHTTPError(id, ErrorMissingHeaderGithubEvent, http.StatusBadRequest, response)
 		return
 	}
 
@@ -41,7 +41,7 @@ func webhook(response http.ResponseWriter, request *http.Request) {
 		handle(id, body, response)
 	} else {
 		common.Logger.Error("Unsupported event: " + headerEvent)
-		utils.HandleHttpError(id, ErrorInvalidEvent, http.StatusBadRequest, response)
+		utils.HandleHTTPError(id, ErrorInvalidEvent, http.StatusBadRequest, response)
 	}
 }
 

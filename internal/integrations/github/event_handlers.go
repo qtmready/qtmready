@@ -23,7 +23,7 @@ var eventHandlers = map[WebhookEvent]func(string, []byte, http.ResponseWriter){
 func handleInstallationEvent(id string, body []byte, response http.ResponseWriter) {
 	payload := InstallationEventPayload{}
 	if err := json.Unmarshal(body, &payload); err != nil {
-		utils.HandleHttpError(id, ErrorPayloadParser, http.StatusBadRequest, response)
+		utils.HandleHTTPError(id, ErrorPayloadParser, http.StatusBadRequest, response)
 		return
 	}
 
@@ -36,7 +36,7 @@ func handleInstallationEvent(id string, body []byte, response http.ResponseWrite
 	exe, err := common.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnInstall, payload)
 
 	if err != nil {
-		utils.HandleHttpError(id, err, http.StatusInternalServerError, response)
+		utils.HandleHTTPError(id, err, http.StatusInternalServerError, response)
 	}
 
 	response.WriteHeader(http.StatusCreated)
@@ -47,7 +47,7 @@ func handleInstallationEvent(id string, body []byte, response http.ResponseWrite
 func handlePushEvent(id string, body []byte, response http.ResponseWriter) {
 	payload := PushEventPayload{}
 	if err := json.Unmarshal(body, &payload); err != nil {
-		utils.HandleHttpError(id, ErrorPayloadParser, http.StatusBadRequest, response)
+		utils.HandleHTTPError(id, ErrorPayloadParser, http.StatusBadRequest, response)
 		return
 	}
 
@@ -59,7 +59,7 @@ func handlePushEvent(id string, body []byte, response http.ResponseWriter) {
 	exe, err := common.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPush, payload)
 
 	if err != nil {
-		utils.HandleHttpError(id, err, http.StatusInternalServerError, response)
+		utils.HandleHTTPError(id, err, http.StatusInternalServerError, response)
 	}
 
 	response.WriteHeader(http.StatusCreated)
