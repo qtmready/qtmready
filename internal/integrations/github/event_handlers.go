@@ -13,17 +13,17 @@ import (
 )
 
 // A Map of event types to their respective handlers
-var eventHandlers = map[WebhookEvent]func(string, []byte, http.ResponseWriter){
+var eventHandlers = map[WebhookEvent]func(http.ResponseWriter, []byte, string){
 	InstallationEvent:     handleInstallationEvent,
 	AppAuthorizationEvent: handleAuthEvent,
 	PushEvent:             handlePushEvent,
 }
 
 // handle github installation event
-func handleInstallationEvent(id string, body []byte, response http.ResponseWriter) {
+func handleInstallationEvent(writer http.ResponseWriter, body []byte, id string) {
 	payload := InstallationEventPayload{}
 	if err := json.Unmarshal(body, &payload); err != nil {
-		utils.HandleHTTPError(id, ErrorPayloadParser, http.StatusBadRequest, response)
+		utils.HandleHTTPError(writer, ErrorPayloadParser, http.StatusBadRequest)
 		return
 	}
 
@@ -36,18 +36,18 @@ func handleInstallationEvent(id string, body []byte, response http.ResponseWrite
 	exe, err := common.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnInstall, payload)
 
 	if err != nil {
-		utils.HandleHTTPError(id, err, http.StatusInternalServerError, response)
+		utils.HandleHTTPError(writer, err, http.StatusInternalServerError)
 	}
 
-	response.WriteHeader(http.StatusCreated)
-	response.Write([]byte(exe.GetRunID()))
+	writer.WriteHeader(http.StatusCreated)
+	writer.Write([]byte(exe.GetRunID()))
 }
 
 // handle github push event
-func handlePushEvent(id string, body []byte, response http.ResponseWriter) {
+func handlePushEvent(writer http.ResponseWriter, body []byte, id string) {
 	payload := PushEventPayload{}
 	if err := json.Unmarshal(body, &payload); err != nil {
-		utils.HandleHTTPError(id, ErrorPayloadParser, http.StatusBadRequest, response)
+		utils.HandleHTTPError(writer, ErrorPayloadParser, http.StatusBadRequest)
 		return
 	}
 
@@ -59,19 +59,19 @@ func handlePushEvent(id string, body []byte, response http.ResponseWriter) {
 	exe, err := common.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPush, payload)
 
 	if err != nil {
-		utils.HandleHTTPError(id, err, http.StatusInternalServerError, response)
+		utils.HandleHTTPError(writer, err, http.StatusInternalServerError)
 	}
 
-	response.WriteHeader(http.StatusCreated)
-	response.Write([]byte(exe.GetRunID()))
+	writer.WriteHeader(http.StatusCreated)
+	writer.Write([]byte(exe.GetRunID()))
 }
 
 // handle github app authorization event
-func handleAuthEvent(_ string, body []byte, response http.ResponseWriter) {
+func handleAuthEvent(writer http.ResponseWriter, body []byte, id string) {
 	data, _ := json.MarshalIndent(body, "", "  ")
 	common.Logger.Debug("App authorization event received")
 	common.Logger.Debug(string(data))
 
-	response.WriteHeader(http.StatusCreated)
-	response.Write([]byte(""))
+	writer.WriteHeader(http.StatusCreated)
+	writer.Write([]byte(""))
 }

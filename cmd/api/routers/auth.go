@@ -27,7 +27,7 @@ func (a *authRoutes) register(writer http.ResponseWriter, request *http.Request)
 	serializer := &serializers.RegistrationRequest{}
 
 	if reply, err := serializer.Reply(request.Body); err != nil {
-		utils.HandleHTTPError("", err, http.StatusBadRequest, writer)
+		utils.HandleHTTPError(writer, err, http.StatusBadRequest)
 	} else {
 		reply, _ := json.Marshal(&reply)
 		writer.WriteHeader(http.StatusCreated)
@@ -35,17 +35,19 @@ func (a *authRoutes) register(writer http.ResponseWriter, request *http.Request)
 	}
 }
 
+// Login Route
 func (a *authRoutes) login(writer http.ResponseWriter, request *http.Request) {
 	serializer := &serializers.LoginRequest{}
 
 	if reply, err := serializer.Reply(request.Body); err != nil {
-		utils.HandleHTTPError("", err, http.StatusBadRequest, writer)
+		utils.HandleHTTPError(writer, err, http.StatusBadRequest)
 	} else {
 		reply, _ := json.Marshal(&reply)
 		writer.WriteHeader(http.StatusCreated)
 		writer.Write(reply)
 	}
 }
+
 func (a *authRoutes) refreshToken(writer http.ResponseWriter, request *http.Request)  {}
 func (a *authRoutes) activate(writer http.ResponseWriter, request *http.Request)      {}
 func (a *authRoutes) resetPassword(writer http.ResponseWriter, request *http.Request) {}

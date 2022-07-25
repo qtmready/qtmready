@@ -1,4 +1,4 @@
-version: '3.6'
+version: '3.9'
 services:
   cassandra:
     container_name: cassandra
@@ -29,8 +29,8 @@ services:
     container_name: mailslurper
     image: oryd/mailslurper:latest-smtps
     ports:
-      - '4436:4436'
-      - '4437:4437'
+      - 4436:4436
+      - 4437:4437
 
   event-stream:
     container_name: event-stream

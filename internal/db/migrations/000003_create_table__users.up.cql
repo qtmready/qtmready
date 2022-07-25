@@ -1,5 +1,6 @@
 create table if not exists users (
     id                          uuid,
+    team_id                     uuid,
     email                       varchar,
     password                    varchar,
     first_name                  varchar,

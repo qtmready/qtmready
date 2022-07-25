@@ -2,10 +2,12 @@ package serializers
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 
 	"go.breu.io/ctrlplane/internal/common"
 	"go.breu.io/ctrlplane/internal/db/models"
+	"go.uber.org/zap"
 )
 
 type (
@@ -39,35 +41,61 @@ type (
 	}
 )
 
-func (r *RegistrationRequest) Reply(body io.ReadCloser) (RegistrationResponse, error) {
-	response := RegistrationResponse{
-		Team: &models.Team{Name: r.TeamName},
-		User: &models.User{FirstName: r.FirstName, Email: r.Email, Password: r.Password, LastName: r.LastName},
-	}
-
-	if err := json.NewDecoder(body).Decode(r); err != nil {
+// Composing reply for RegistrationRequest
+func (request *RegistrationRequest) Reply(body io.ReadCloser) (RegistrationResponse, error) {
+	if err := json.NewDecoder(body).Decode(request); err != nil {
 		return RegistrationResponse{}, err
 	}
 
-	if err := common.Validator.Struct(r); err != nil {
+	response := RegistrationResponse{
+		Team: &models.Team{Name: request.TeamName},
+		User: &models.User{FirstName: request.FirstName, Email: request.Email, Password: request.Password, LastName: request.LastName},
+	}
+
+	if err := common.Validator.Struct(request); err != nil {
+		common.Logger.Error(err.Error())
 		return response, err
 	}
 
 	if err := response.Team.Save(); err != nil {
+		common.Logger.Error(err.Error())
 		return response, err
 	}
 
 	response.User.TeamID = response.Team.ID
 
 	if err := response.User.Save(); err != nil {
-		response.User.SendEmail()
+		common.Logger.Info("User ...", zap.Any("user", response.User))
+		common.Logger.Error(err.Error())
 		return response, err
 	}
 
 	return response, nil
 }
 
-func (r *LoginRequest) Reply(body io.ReadCloser) (TokenResponse, error) {
+// Composing Request for LoginRequest
+func (request *LoginRequest) Reply(body io.ReadCloser) (TokenResponse, error) {
 	response := TokenResponse{}
-	return response, nil
+
+	if err := json.NewDecoder(body).Decode(request); err != nil {
+		return response, err
+	}
+
+	if err := common.Validator.Struct(request); err != nil {
+		return response, err
+	}
+	params := map[string]interface{}{"email": request.Email}
+	user := models.User{}
+	if err := user.Get(params); err != nil {
+		return response, err
+	}
+
+	if user.VerifyPassword(request.Password) {
+		payload := map[string]interface{}{"user_id": user.ID, "team_id": user.TeamID}
+		_, response.Token, _ = common.JWT.Encode(payload)
+		return response, nil
+	}
+
+	err := errors.New("invalid credentials")
+	return response, err
 }

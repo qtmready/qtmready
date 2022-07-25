@@ -30,6 +30,7 @@ func init() {
 	common.Service.ReadEnv()
 	common.Service.InitLogger()
 	common.Service.InitValidator()
+	common.Service.InitJWT()
 
 	common.EventStream.ReadEnv()
 	common.Temporal.ReadEnv()

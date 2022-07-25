@@ -16,7 +16,9 @@ type eventstreamconf struct {
 }
 
 func (e *eventstreamconf) ReadEnv() {
-	cleanenv.ReadEnv(e)
+	if err := cleanenv.ReadEnv(e); err != nil {
+		Logger.Fatal("Failed to read environment variables", zap.Error(err))
+	}
 }
 
 func (e *eventstreamconf) InitConnection() {

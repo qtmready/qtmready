@@ -21,7 +21,9 @@ type temporalconf struct {
 }
 
 func (t *temporalconf) ReadEnv() {
-	cleanenv.ReadEnv(t)
+	if err := cleanenv.ReadEnv(t); err != nil {
+		Logger.Fatal("Failed to read environment variables", zap.Error(err))
+	}
 }
 
 func (t *temporalconf) GetConnectionString() string {

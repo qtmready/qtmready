@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.uber.org/zap"
@@ -13,6 +14,7 @@ var (
 	Logger    *zap.Logger
 	Service   serviceconf
 	Validator *validator.Validate
+	JWT       *jwtauth.JWTAuth
 )
 
 type serviceconf struct {
@@ -24,7 +26,9 @@ type serviceconf struct {
 
 // Reads the environment variables and initializes the service.
 func (s *serviceconf) ReadEnv() {
-	cleanenv.ReadEnv(s)
+	if err := cleanenv.ReadEnv(s); err != nil {
+		Logger.Fatal("Failed to read environment variables", zap.Error(err))
+	}
 }
 
 // Sets up global validator.
@@ -38,6 +42,10 @@ func (s *serviceconf) InitValidator() {
 		}
 		return name
 	})
+}
+
+func (s *serviceconf) InitJWT() {
+	JWT = jwtauth.New("HS256", []byte(s.Secret), nil)
 }
 
 // Sets up global logger.
