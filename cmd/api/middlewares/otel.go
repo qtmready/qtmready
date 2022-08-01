@@ -62,25 +62,25 @@ func (fn otelMiddlewareOptionFn) apply(cfg *otelmiddlewareconf) {
 	fn(cfg)
 }
 
-func IncludeOtelPropagator(propagators propagation.TextMapPropagator) OtelMiddlewareOption {
+func OtelPropagator(propagators propagation.TextMapPropagator) OtelMiddlewareOption {
 	return otelMiddlewareOptionFn(func(cfg *otelmiddlewareconf) {
 		cfg.Propagators = propagators
 	})
 }
 
-func IncludeOtelTraceProvider(provider trace.TracerProvider) OtelMiddlewareOption {
+func OtelTraceProvider(provider trace.TracerProvider) OtelMiddlewareOption {
 	return otelMiddlewareOptionFn(func(cfg *otelmiddlewareconf) {
 		cfg.TracerProvider = provider
 	})
 }
 
-func IncludeChiRoutes(routes chi.Routes) OtelMiddlewareOption {
+func WrapRouterWithOtel(routes chi.Routes) OtelMiddlewareOption {
 	return otelMiddlewareOptionFn(func(cfg *otelmiddlewareconf) {
 		cfg.Routes = routes
 	})
 }
 
-func IncludeRequestMethodInSpanName(isActive bool) OtelMiddlewareOption {
+func IncludeRequestMethodOtel(isActive bool) OtelMiddlewareOption {
 	return otelMiddlewareOptionFn(func(cfg *otelmiddlewareconf) {
 		cfg.RequestMethodInSpanName = isActive
 	})
@@ -139,27 +139,27 @@ type OtelRequestWrapper struct {
 	reqMethodInSpanName bool
 }
 
-func (wrap OtelRequestWrapper) ServeHTTP(response http.ResponseWriter, request *http.Request) {
-	ctx := wrap.propagators.Extract(request.Context(), propagation.HeaderCarrier(request.Header))
+func (wrapper OtelRequestWrapper) ServeHTTP(response http.ResponseWriter, request *http.Request) {
+	ctx := wrapper.propagators.Extract(request.Context(), propagation.HeaderCarrier(request.Header))
 	name := ""
 	pattern := ""
 
 	// Find the route that matches the request and set the name and pattern accordingly.
-	if wrap.routes != nil {
+	if wrapper.routes != nil {
 		rctx := chi.NewRouteContext()
-		if wrap.routes.Match(rctx, request.Method, request.URL.Path) {
+		if wrapper.routes.Match(rctx, request.Method, request.URL.Path) {
 			pattern = rctx.RoutePattern()
-			name = addMethodToSpanName(wrap.reqMethodInSpanName, request.Method, pattern)
+			name = addMethodToSpanName(wrapper.reqMethodInSpanName, request.Method, pattern)
 		}
 	}
 
 	// Starting a new trace
-	ctx, span := wrap.tracer.Start(
+	ctx, span := wrapper.tracer.Start(
 		ctx,
 		name,
 		trace.WithAttributes(semconv.NetAttributesFromHTTPRequest("tcp", request)...),
 		trace.WithAttributes(semconv.EndUserAttributesFromHTTPRequest(request)...),
-		trace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest(wrap.service, pattern, request)...),
+		trace.WithAttributes(semconv.HTTPServerAttributesFromHTTPRequest(wrapper.service, pattern, request)...),
 	)
 
 	defer span.End()
@@ -171,13 +171,13 @@ func (wrap OtelRequestWrapper) ServeHTTP(response http.ResponseWriter, request *
 	request = request.WithContext(ctx)
 
 	// Handle the next request
-	wrap.handler.ServeHTTP(rwr.writer, request)
+	wrapper.handler.ServeHTTP(rwr.writer, request)
 
 	// Setting span attributes if required
 	if len(pattern) == 0 {
 		pattern = chi.RouteContext(request.Context()).RoutePattern()
 		span.SetAttributes(semconv.HTTPRouteKey.String(pattern))
-		name = addMethodToSpanName(wrap.reqMethodInSpanName, request.Method, pattern)
+		name = addMethodToSpanName(wrapper.reqMethodInSpanName, request.Method, pattern)
 		span.SetName(name)
 	}
 

@@ -9,20 +9,38 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/cassandra"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/scylladb/gocqlx/table"
 	"github.com/scylladb/gocqlx/v2"
 	"go.breu.io/ctrlplane/internal/common"
 	"go.breu.io/ctrlplane/internal/db/validations"
 	"go.uber.org/zap"
 )
 
-var DB db
+var (
+	DB         db
+	NullUUID   = "00000000-0000-0000-0000-000000000000"
+	NullString = ""
+)
 
-type db struct {
-	gocqlx.Session
-	Hosts              []string `env:"CASSANDRA_HOSTS" env-default:"cassandra"`
-	Keyspace           string   `env:"CASSANDRA_KEYSPACE" env-default:"ctrlplane"`
-	MigrationSourceURL string   `env:"CASSANDRA_MIGRATION_SOURCE_URL"`
-}
+type (
+	// Defines the query params required for DB lookup queries
+	QueryParams map[string]interface{}
+
+	// An Entity defines the interface for a database entity
+	Entity interface {
+		GetTable() *table.Table
+		PreCreate() error
+		PreUpdate() error
+	}
+
+	// Holds the information about the database
+	db struct {
+		gocqlx.Session
+		Hosts              []string `env:"CASSANDRA_HOSTS" env-default:"cassandra"`
+		Keyspace           string   `env:"CASSANDRA_KEYSPACE" env-default:"ctrlplane"`
+		MigrationSourceURL string   `env:"CASSANDRA_MIGRATION_SOURCE_URL"`
+	}
+)
 
 func (d *db) ReadEnv() {
 	cleanenv.ReadEnv(d)
@@ -32,7 +50,7 @@ func (d *db) InitSession() {
 	cluster := gocql.NewCluster(d.Hosts...)
 	cluster.Keyspace = d.Keyspace
 
-	retryCassandra := func() error {
+	createSession := func() error {
 		session, err := gocqlx.WrapSession(cluster.CreateSession())
 		if err != nil {
 			return err
@@ -43,7 +61,7 @@ func (d *db) InitSession() {
 	}
 
 	if err := retry.Do(
-		retryCassandra,
+		createSession,
 		retry.Attempts(10),
 		retry.Delay(6*time.Second),
 	); err != nil {

@@ -92,7 +92,7 @@ func main() {
 	router.Use(chimw.Logger)
 	router.Use(middlewares.OtelMiddleware(
 		common.Service.Name,
-		middlewares.IncludeChiRoutes(router),
+		middlewares.WrapRouterWithOtel(router),
 	))
 	router.Use(chimw.Recoverer)
 
