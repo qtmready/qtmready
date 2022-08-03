@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
+	"go.breu.io/ctrlplane/internal/common"
+	"go.uber.org/zap"
 )
 
 // Get the entity by given query params. A simple example:
@@ -17,6 +19,7 @@ import (
 //   params := db.QueryParams{"email": "email@example.com"}
 //   user, err := db.Get[User](params)
 func Get[T Entity](params QueryParams) (T, error) {
+	common.Logger.Info("Get[T Entity]", zap.Any("params", params))
 	entity := *new(T)
 	query := DB.Session.Query(entity.GetTable().Get()).BindMap(params)
 
@@ -38,7 +41,7 @@ func Get[T Entity](params QueryParams) (T, error) {
 func Save[T Entity](entity T) error {
 	pk := getid(entity)
 
-	if pk == NullUUID {
+	if pk.String() == NullUUID {
 		return create(entity)
 	} else {
 		return update(entity)
@@ -56,16 +59,15 @@ func Filter[T Entity](params QueryParams) ([]T, error) {
 }
 
 func create[T Entity](entity T) error {
-	elem := reflect.ValueOf(&entity).Elem() // NOTE: reflect must use pointer
 	id, err := gocql.RandomUUID()
 	if err != nil {
 		return err
 	}
 	now := time.Now()
 
-	setvalue(elem, "ID", id)
-	setvalue(elem, "CreatedAt", now)
-	setvalue(elem, "UpdatedAt", now)
+	setvalue(&entity, "ID", id)
+	setvalue(&entity, "CreatedAt", now)
+	setvalue(&entity, "UpdatedAt", now)
 
 	if err := entity.PreCreate(); err != nil {
 		return err
@@ -81,8 +83,7 @@ func create[T Entity](entity T) error {
 
 func update[T Entity](entity T) error {
 	now := time.Now()
-	elem := reflect.ValueOf(&entity).Elem()
-	setvalue(elem, "UpdatedAt", now)
+	setvalue(entity, "UpdatedAt", now)
 
 	query := DB.Session.Query(entity.GetTable().Update()).BindStruct(entity)
 	if err := query.ExecRelease(); err != nil {
@@ -92,10 +93,12 @@ func update[T Entity](entity T) error {
 	return nil
 }
 
-func getid(entity Entity) string {
-	return reflect.ValueOf(&entity).Elem().FieldByName("ID").Interface().(string)
+func getid(entity Entity) gocql.UUID {
+	return reflect.ValueOf(&entity).Elem().Elem().FieldByName("ID").Interface().(gocql.UUID)
 }
 
-func setvalue(elem reflect.Value, name string, val interface{}) {
+// Set the value of the field of the entity. The entity value is a pointer to the struct.
+func setvalue(entity interface{}, name string, val interface{}) {
+	elem := reflect.ValueOf(entity).Elem()
 	elem.FieldByName(name).Set(reflect.ValueOf(val))
 }

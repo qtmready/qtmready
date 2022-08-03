@@ -6,8 +6,8 @@ import (
 	"io"
 
 	"go.breu.io/ctrlplane/internal/common"
-	"go.breu.io/ctrlplane/internal/db/models"
-	"go.uber.org/zap"
+	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/ctrlplane/internal/db/entities"
 )
 
 type (
@@ -23,8 +23,8 @@ type (
 
 	// Registration Response Serializer
 	RegistrationResponse struct {
-		User *models.User `json:"user"`
-		Team *models.Team `json:"team"`
+		User entities.User `json:"user"`
+		Team entities.Team `json:"team"`
 	}
 
 	LoginRequest struct {
@@ -44,36 +44,32 @@ type (
 // Composing reply for RegistrationRequest
 func (request *RegistrationRequest) Reply(body io.ReadCloser) (RegistrationResponse, error) {
 	if err := json.NewDecoder(body).Decode(request); err != nil {
-		return RegistrationResponse{}, err
+		return RegistrationResponse{Team: entities.Team{}, User: entities.User{}}, err
 	}
 
-	response := RegistrationResponse{
-		Team: &models.Team{Name: request.TeamName},
-		User: &models.User{FirstName: request.FirstName, Email: request.Email, Password: request.Password, LastName: request.LastName},
-	}
+	team := entities.Team{Name: request.TeamName}
+	user := entities.User{Email: request.Email, FirstName: request.FirstName, LastName: request.LastName, Password: request.Password}
 
 	if err := common.Validator.Struct(request); err != nil {
 		common.Logger.Error(err.Error())
-		return response, err
+		return RegistrationResponse{Team: team, User: user}, err
 	}
 
-	if err := response.Team.Save(); err != nil {
-		common.Logger.Error(err.Error())
-		return response, err
+	if err := db.Save(team); err != nil {
+		return RegistrationResponse{Team: team, User: user}, err
 	}
 
-	response.User.TeamID = response.Team.ID
+	user.SetPassword(request.Password)
+	user.TeamID = team.ID
 
-	if err := response.User.Save(); err != nil {
-		common.Logger.Info("User ...", zap.Any("user", response.User))
-		common.Logger.Error(err.Error())
-		return response, err
+	if err := db.Save(user); err != nil {
+		return RegistrationResponse{Team: team, User: user}, err
 	}
 
-	return response, nil
+	return RegistrationResponse{Team: team, User: user}, nil
 }
 
-// Composing Request for LoginRequest
+// Verifys the user's email and password
 func (request *LoginRequest) Reply(body io.ReadCloser) (TokenResponse, error) {
 	response := TokenResponse{}
 
@@ -81,21 +77,19 @@ func (request *LoginRequest) Reply(body io.ReadCloser) (TokenResponse, error) {
 		return response, err
 	}
 
-	if err := common.Validator.Struct(request); err != nil {
-		return response, err
-	}
-	params := map[string]interface{}{"email": request.Email}
-	user := models.User{}
-	if err := user.Get(params); err != nil {
+	params := db.QueryParams{"email": request.Email}
+	user, err := db.Get[entities.User](params)
+
+	if err != nil {
 		return response, err
 	}
 
 	if user.VerifyPassword(request.Password) {
-		payload := map[string]interface{}{"user_id": user.ID, "team_id": user.TeamID}
+		payload := db.QueryParams{"user_id": user.ID, "team_id": user.TeamID}
 		_, response.Token, _ = common.JWT.Encode(payload)
 		return response, nil
 	}
 
-	err := errors.New("invalid credentials")
+	err = errors.New("invalid email or password")
 	return response, err
 }
