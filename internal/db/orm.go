@@ -29,7 +29,8 @@ func Get[T Entity](params QueryParams) (T, error) {
 	return entity, nil
 }
 
-// Save the entity
+// Saves the entity. If the entity has an ID, it will be updated. Otherwise,
+// it will be created. A pointer to the entity must be passed.
 //
 //   type User struct {
 //     ID     string `json:"id" cql:"id"`
@@ -37,7 +38,7 @@ func Get[T Entity](params QueryParams) (T, error) {
 //   }
 //
 //   user := User{Email: "user@example.com"}
-//   user, err := db.Save[User](user)
+//   user, err := db.Save(&user)
 func Save[T Entity](entity T) error {
 	pk := getid(entity)
 
@@ -65,9 +66,9 @@ func create[T Entity](entity T) error {
 	}
 	now := time.Now()
 
-	setvalue(&entity, "ID", id)
-	setvalue(&entity, "CreatedAt", now)
-	setvalue(&entity, "UpdatedAt", now)
+	setvalue(entity, "ID", id)
+	setvalue(entity, "CreatedAt", now)
+	setvalue(entity, "UpdatedAt", now)
 
 	if err := entity.PreCreate(); err != nil {
 		return err
@@ -94,7 +95,7 @@ func update[T Entity](entity T) error {
 }
 
 func getid(entity Entity) gocql.UUID {
-	return reflect.ValueOf(&entity).Elem().Elem().FieldByName("ID").Interface().(gocql.UUID)
+	return reflect.ValueOf(entity).Elem().FieldByName("ID").Interface().(gocql.UUID)
 }
 
 // Set the value of the field of the entity. The entity value is a pointer to the struct.

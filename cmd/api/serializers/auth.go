@@ -55,14 +55,22 @@ func (request *RegistrationRequest) Reply(body io.ReadCloser) (RegistrationRespo
 		return RegistrationResponse{Team: team, User: user}, err
 	}
 
-	if err := db.Save(team); err != nil {
+	if err := common.Validator.Struct(&team); err != nil {
+		return RegistrationResponse{Team: team, User: user}, err
+	}
+
+	if err := common.Validator.Struct(&user); err != nil {
+		return RegistrationResponse{Team: team, User: user}, err
+	}
+
+	if err := db.Save(&team); err != nil {
 		return RegistrationResponse{Team: team, User: user}, err
 	}
 
 	user.SetPassword(request.Password)
 	user.TeamID = team.ID
 
-	if err := db.Save(user); err != nil {
+	if err := db.Save(&user); err != nil {
 		return RegistrationResponse{Team: team, User: user}, err
 	}
 

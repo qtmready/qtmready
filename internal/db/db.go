@@ -1,3 +1,6 @@
+/**
+ * db provides set of utilities for working with cassandra.
+ */
 package db
 
 import (
@@ -12,7 +15,6 @@ import (
 	"github.com/scylladb/gocqlx/table"
 	"github.com/scylladb/gocqlx/v2"
 	"go.breu.io/ctrlplane/internal/common"
-	"go.breu.io/ctrlplane/internal/db/validations"
 	"go.uber.org/zap"
 )
 
@@ -42,10 +44,12 @@ type (
 	}
 )
 
+// Reads the environment variables
 func (d *db) ReadEnv() {
 	cleanenv.ReadEnv(d)
 }
 
+// Initializes the session with the configured hosts
 func (d *db) InitSession() {
 	cluster := gocql.NewCluster(d.Hosts...)
 	cluster.Keyspace = d.Keyspace
@@ -69,6 +73,7 @@ func (d *db) InitSession() {
 	}
 }
 
+// Runs the migrations
 func (d *db) RunMigrations() {
 	common.Logger.Info("Running Migrations ...", zap.String("source", d.MigrationSourceURL))
 	driver, err := cassandra.WithInstance(d.Session.Session, &cassandra.Config{KeyspaceName: d.Keyspace})
@@ -93,11 +98,13 @@ func (d *db) RunMigrations() {
 	common.Logger.Info("Running Migrations ... Done")
 }
 
+// Shorthand for initializing the database along with running migrations
 func (d *db) InitSessionWithMigrations() {
 	d.InitSession()
 	d.RunMigrations()
 }
 
+// Register DB related validators
 func (d *db) RegisterValidations() {
-	common.Validator.RegisterValidation("db_unique", validations.Unique)
+	common.Validator.RegisterValidation("db_unique", UniqueField)
 }

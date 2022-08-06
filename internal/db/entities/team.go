@@ -34,6 +34,6 @@ type Team struct {
 	UpdatedAt time.Time  `json:"updated_at"`
 }
 
-func (t Team) GetTable() *table.Table { return teamTable }
-func (t Team) PreCreate() error       { return nil }
-func (t Team) PreUpdate() error       { return nil }
+func (t *Team) GetTable() *table.Table { return teamTable }
+func (t *Team) PreCreate() error       { return nil }
+func (t *Team) PreUpdate() error       { return nil }
