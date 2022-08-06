@@ -27,6 +27,8 @@ require (
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 )
 
+require github.com/gosimple/unidecode v1.0.1 // indirect
+
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -47,7 +49,6 @@ require (
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
-	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect

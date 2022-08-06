@@ -4,39 +4,36 @@ import (
 	"context"
 
 	"github.com/gocql/gocql"
-	"go.breu.io/ctrlplane/internal/db/models"
+	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/ctrlplane/internal/db/entities"
 )
 
 type Activity struct{}
 
-func (a *Activity) SaveInstallation(ctx context.Context, payload InstallationEventPayload) (models.GithubInstallation, error) {
-	installation := models.GithubInstallation{}
+func (a *Activity) SaveInstallation(ctx context.Context, payload InstallationEventPayload) (*entities.GithubInstallation, error) {
+	installation := entities.GithubInstallation{}
 	installation.InstallationID = payload.Installation.ID
 	installation.InstallationLogin = payload.Installation.Account.Login
 	installation.InstallationType = payload.Installation.Account.Type
 	installation.SenderID = payload.Sender.ID
 	installation.SenderLogin = payload.Sender.Login
 
-	if err := installation.Create(); err != nil {
-		return installation, err
+	if err := db.Save(&installation); err != nil {
+		return &installation, err
 	}
 
-	return installation, nil
+	return &installation, nil
 }
 
-func (a *Activity) GetInstallation(ctx context.Context, id string) (models.GithubInstallation, error) {
-	installation := models.GithubInstallation{}
+func (a *Activity) GetInstallation(ctx context.Context, id string) (entities.GithubInstallation, error) {
 	uuid, err := gocql.ParseUUID(id)
 	if err != nil {
-		return installation, err
+		return entities.GithubInstallation{}, err
 	}
-
-	params := models.GithubInstallation{ID: uuid}
-	installation.ID = uuid
-	if err = installation.Get(params); err != nil {
-		return installation, err
+	installation, err := db.Get[entities.GithubInstallation](db.QueryParams{"id": uuid})
+	if err != nil {
+		return entities.GithubInstallation{}, err
 	}
-
 	return installation, nil
 }
 
