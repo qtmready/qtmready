@@ -85,9 +85,9 @@ type User struct {
 	UpdatedAt  time.Time  `json:"updated_at"`
 }
 
-func (u User) GetTable() *table.Table { return userTable }
-func (u User) PreCreate() error       { u.SetPassword(u.Password); return nil }
-func (u User) PreUpdate() error       { return nil }
+func (u *User) GetTable() *table.Table { return userTable }
+func (u *User) PreCreate() error       { u.SetPassword(u.Password); return nil }
+func (u *User) PreUpdate() error       { return nil }
 
 // Given a password, sets the user's password to a hashed version.
 // NOTE: This only updates the field. You will have to run the method to persist the change.

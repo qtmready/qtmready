@@ -1,7 +1,7 @@
 package github
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"go.breu.io/ctrlplane/internal/common"
@@ -19,7 +19,7 @@ func webhook(writer http.ResponseWriter, request *http.Request) {
 		return
 	}
 
-	body, _ := ioutil.ReadAll(request.Body)
+	body, _ := io.ReadAll(request.Body)
 
 	if err := Github.VerifyWebhookSignature(body, signature); err != nil {
 		utils.HandleHTTPError(writer, err, http.StatusUnauthorized)

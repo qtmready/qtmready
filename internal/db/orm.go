@@ -5,28 +5,25 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
-	"go.breu.io/ctrlplane/internal/common"
-	"go.uber.org/zap"
 )
 
 // Get the entity by given query params. A simple example:
 //
-//	type User struct {
-//	  ID     string `json:"id" cql:"id"`
-//	  Email  string `json:"name" cql:"name"`
-//	}
+//		type User struct {
+//		  ID     string `json:"id" cql:"id"`
+//		  Email  string `json:"name" cql:"name"`
+//		}
 //
-//	params := db.QueryParams{"email": "email@example.com"}
-//	user, err := db.Get[User](params)
-func Get[T Entity](params QueryParams) (T, error) {
-	common.Logger.Info("Get[T Entity]", zap.Any("params", params))
-	entity := *new(T)
+//		params := db.QueryParams{"email": "email@example.com"}
+//	  user := &User{}
+//		user, err := db.Get(params)
+func Get[T Entity](entity T, params QueryParams) error {
 	query := DB.Session.Query(entity.GetTable().Get()).BindMap(params)
 
-	if err := query.GetRelease(&entity); err != nil {
-		return entity, err
+	if err := query.GetRelease(entity); err != nil {
+		return err
 	}
-	return entity, nil
+	return nil
 }
 
 // Saves the entity. If the entity has an ID, it will be updated. Otherwise,

@@ -85,9 +85,9 @@ func (request *LoginRequest) Reply(body io.ReadCloser) (TokenResponse, error) {
 	}
 
 	params := db.QueryParams{"email": request.Email}
-	user, err := db.Get[entities.User](params)
+	user := &entities.User{}
 
-	if err != nil {
+	if err := db.Get(user, params); err != nil {
 		return response, err
 	}
 
@@ -97,6 +97,6 @@ func (request *LoginRequest) Reply(body io.ReadCloser) (TokenResponse, error) {
 		return response, nil
 	}
 
-	err = errors.New("invalid email or password")
+	err := errors.New("invalid email or password")
 	return response, err
 }
