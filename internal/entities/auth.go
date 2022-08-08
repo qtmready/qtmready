@@ -7,7 +7,7 @@ import (
 	"github.com/scylladb/gocqlx/table"
 	"golang.org/x/crypto/bcrypt"
 
-	"go.breu.io/ctrlplane/internal/common/utils"
+	"go.breu.io/ctrlplane/internal/cmn/utils"
 )
 
 /**

@@ -3,11 +3,11 @@ package serializers
 import (
 	"encoding/json"
 	"errors"
+	"go.breu.io/ctrlplane/internal/entities"
 	"io"
 
-	"go.breu.io/ctrlplane/internal/common"
+	"go.breu.io/ctrlplane/internal/cmn"
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/db/entities"
 )
 
 type (
@@ -50,16 +50,16 @@ func (request *RegistrationRequest) Reply(body io.ReadCloser) (RegistrationRespo
 	team := entities.Team{Name: request.TeamName}
 	user := entities.User{Email: request.Email, FirstName: request.FirstName, LastName: request.LastName, Password: request.Password}
 
-	if err := common.Validator.Struct(request); err != nil {
-		common.Logger.Error(err.Error())
+	if err := cmn.Validator.Struct(request); err != nil {
+		cmn.Log.Error(err.Error())
 		return RegistrationResponse{Team: team, User: user}, err
 	}
 
-	if err := common.Validator.Struct(&team); err != nil {
+	if err := cmn.Validator.Struct(&team); err != nil {
 		return RegistrationResponse{Team: team, User: user}, err
 	}
 
-	if err := common.Validator.Struct(&user); err != nil {
+	if err := cmn.Validator.Struct(&user); err != nil {
 		return RegistrationResponse{Team: team, User: user}, err
 	}
 
@@ -93,7 +93,7 @@ func (request *LoginRequest) Reply(body io.ReadCloser) (TokenResponse, error) {
 
 	if user.VerifyPassword(request.Password) {
 		payload := db.QueryParams{"user_id": user.ID, "team_id": user.TeamID}
-		_, response.Token, _ = common.JWT.Encode(payload)
+		_, response.Token, _ = cmn.JWT.Encode(payload)
 		return response, nil
 	}
 

@@ -4,8 +4,8 @@ import (
 	"io"
 	"net/http"
 
-	"go.breu.io/ctrlplane/internal/common"
-	"go.breu.io/ctrlplane/internal/common/utils"
+	"go.breu.io/ctrlplane/internal/cmn"
+	"go.breu.io/ctrlplane/internal/cmn/utils"
 	"go.uber.org/zap"
 )
 
@@ -37,10 +37,10 @@ func webhook(writer http.ResponseWriter, request *http.Request) {
 
 	// We get the handler for the event. see event_handlers.go
 	if handle, exists := eventHandlers[event]; exists {
-		common.Logger.Info("Received event", zap.String("event", string(event)), zap.String("request_id", id))
+		cmn.Log.Info("Received event", zap.String("event", string(event)), zap.String("request_id", id))
 		handle(writer, body, id)
 	} else {
-		common.Logger.Error("Unsupported event: " + headerEvent)
+		cmn.Log.Error("Unsupported event: " + headerEvent)
 		utils.HandleHTTPError(writer, ErrorInvalidEvent, http.StatusBadRequest)
 	}
 }

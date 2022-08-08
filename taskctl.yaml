@@ -3,7 +3,7 @@
 pipelines:
   dev:
     - task: api
-    - task: worker
+    - task: mothership
 
 tasks:
   docker:
@@ -14,7 +14,7 @@ tasks:
     command: go run ./cmd/api/main.go
   worker:
     description: Run the Temporal Worker
-    command: go run ./cmd/worker/main.go
+    command: go run ./cmd/mothership/main.go
 
 watchers:
   go:

@@ -1,6 +1,7 @@
-package common
+package cmn
 
 import (
+	"strings"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -9,9 +10,9 @@ import (
 	"go.uber.org/zap"
 )
 
-var Temporal temporalconf
+var Temporal = &temporal{}
 
-type temporalconf struct {
+type temporal struct {
 	ServerHost string `env:"TEMPORAL_HOST" env-default:"temporal"`
 	ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
 	Client     client.Client
@@ -20,18 +21,18 @@ type temporalconf struct {
 	}
 }
 
-func (t *temporalconf) ReadEnv() {
+func (t *temporal) ReadEnv() {
 	if err := cleanenv.ReadEnv(t); err != nil {
-		Logger.Fatal("Failed to read environment variables", zap.Error(err))
+		Log.Fatal("Failed to read environment variables", zap.Error(err))
 	}
 }
 
-func (t *temporalconf) GetConnectionString() string {
+func (t *temporal) GetConnectionString() string {
 	return t.ServerHost + ":" + t.ServerPort
 }
 
-func (t *temporalconf) InitClient() {
-	Logger.Info("Initializing Temporal Client ...", zap.String("host", t.ServerHost), zap.String("port", t.ServerPort))
+func (t *temporal) InitClient() {
+	Log.Info("Initializing Temporal Client ...", zap.String("host", t.ServerHost), zap.String("port", t.ServerPort))
 	options := client.Options{
 		HostPort: t.GetConnectionString(),
 	}
@@ -43,7 +44,7 @@ func (t *temporalconf) InitClient() {
 		}
 
 		t.Client = client
-		Logger.Info("Initializing Temporal Client ... Done")
+		Log.Info("Initializing Temporal Client ... Done")
 		return nil
 	}
 
@@ -52,6 +53,10 @@ func (t *temporalconf) InitClient() {
 		retry.Attempts(10),
 		retry.Delay(1*time.Second),
 	); err != nil {
-		Logger.Fatal("Failed to initialize Temporal Client", zap.Error(err))
+		Log.Fatal("Failed to initialize Temporal Client", zap.Error(err))
 	}
+}
+
+func (t *temporal) CreateWorkflowID(args ...string) string {
+	return strings.Join(args, ".")
 }

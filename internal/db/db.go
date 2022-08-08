@@ -14,12 +14,12 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/scylladb/gocqlx/table"
 	"github.com/scylladb/gocqlx/v2"
-	"go.breu.io/ctrlplane/internal/common"
+	"go.breu.io/ctrlplane/internal/cmn"
 	"go.uber.org/zap"
 )
 
 var (
-	DB         db
+	DB         = &db{}
 	NullUUID   = "00000000-0000-0000-0000-000000000000"
 	NullString = ""
 )
@@ -69,33 +69,33 @@ func (d *db) InitSession() {
 		retry.Attempts(10),
 		retry.Delay(6*time.Second),
 	); err != nil {
-		common.Logger.Fatal("Failed to initialize Cassandra Session", zap.Error(err))
+		cmn.Log.Fatal("Failed to initialize Cassandra Session", zap.Error(err))
 	}
 }
 
 // Runs the migrations
 func (d *db) RunMigrations() {
-	common.Logger.Info("Running Migrations ...", zap.String("source", d.MigrationSourceURL))
+	cmn.Log.Info("Running Migrations ...", zap.String("source", d.MigrationSourceURL))
 	driver, err := cassandra.WithInstance(d.Session.Session, &cassandra.Config{KeyspaceName: d.Keyspace})
 	if err != nil {
-		common.Logger.Fatal("Failed to initialize DB Driver", zap.Error(err))
+		cmn.Log.Fatal("Failed to initialize DB Driver", zap.Error(err))
 	}
 
 	migrations, err := migrate.NewWithDatabaseInstance(d.MigrationSourceURL, "cassandra", driver)
 	if err != nil {
-		common.Logger.Fatal("Failed to initialize DB Migrations", zap.Error(err))
+		cmn.Log.Fatal("Failed to initialize DB Migrations", zap.Error(err))
 	}
 
 	err = migrations.Up()
 
 	if err == migrate.ErrNoChange {
-		common.Logger.Info("Running Migrations ... No Changes")
+		cmn.Log.Info("Running Migrations ... No Changes")
 	}
 
 	if err != nil && err != migrate.ErrNoChange {
-		common.Logger.Fatal("Failed to run DB Migrations", zap.Error(err))
+		cmn.Log.Fatal("Failed to run DB Migrations", zap.Error(err))
 	}
-	common.Logger.Info("Running Migrations ... Done")
+	cmn.Log.Info("Running Migrations ... Done")
 }
 
 // Shorthand for initializing the database along with running migrations
@@ -106,5 +106,5 @@ func (d *db) InitSessionWithMigrations() {
 
 // Register DB related validators
 func (d *db) RegisterValidations() {
-	common.Validator.RegisterValidation("db_unique", UniqueField)
+	cmn.Validator.RegisterValidation("db_unique", UniqueField)
 }

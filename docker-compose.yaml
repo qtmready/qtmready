@@ -103,23 +103,23 @@ services:
     volumes:
       - ./deploy/air/api.toml:/api/.air.toml
       - ./:/api/
-      - ctrlplane-api-go-pkg-mod:/go/pkg/mod # TODO: not working, fix this
-      - ctrlplane-api-build-cache:/root/.cache/go-build # TODO: not working, fix this
+      - ctrlplane-api-go-pkg-mod:/go/pkg/mod
+      - ctrlplane-api-build-cache:/root/.cache/go-build
     working_dir: /api
 
-  ctrlplane-worker:
-    container_name: ctrlplane-worker
+  ctrlplane-worker--mothership:
+    container_name: ctrlplane-worker--mothership
     image: cosmtrek/air
     environment:
-      SERVICE_NAME: worker::webhooks
+      SERVICE_NAME: worker::mothership
     env_file:
       - ./.env
     volumes:
-      - ./deploy/air/worker.toml:/worker/.air.toml
-      - ./:/worker/
-      - ctrlplane-worker-go-pkg-mod:/go/pkg/mod # TODO: not working, fix this
-      - ctrlplane-worker-build-cache:/root/.cache/go-build # TODO: not working, fix this
-    working_dir: /worker
+      - ./deploy/air/mothership.toml:/mothership/.air.toml
+      - ./:/mothership/
+      - ctrlplane-worker-mothership-go-pkg-mod:/go/pkg/mod
+      - ctrlplane-worker-mothership-build-cache:/root/.cache/go-build
+    working_dir: /mothership
 
 
 volumes:
@@ -127,5 +127,5 @@ volumes:
   ctrlplane-db-data: {}
   ctrlplane-api-go-pkg-mod: {}
   ctrlplane-api-build-cache: {}
-  ctrlplane-worker-go-pkg-mod: {}
-  ctrlplane-worker-build-cache: {}
+  ctrlplane-worker-mothership-go-pkg-mod: {}
+  ctrlplane-worker-mothership-build-cache: {}

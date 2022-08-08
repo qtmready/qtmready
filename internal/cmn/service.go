@@ -1,4 +1,4 @@
-package common
+package cmn
 
 import (
 	"reflect"
@@ -11,28 +11,28 @@ import (
 )
 
 var (
-	Logger    *zap.Logger
-	Service   serviceconf
+	Log       *zap.Logger
+	Service   = &service{}
 	Validator *validator.Validate
 	JWT       *jwtauth.JWTAuth
 )
 
-type serviceconf struct {
+type service struct {
 	Name    string `env:"SERVICE_NAME" env-default:"service"`
 	Debug   bool   `env:"DEBUG" env-default:"false"`
 	Version string `env:"VERSION" env-default:"0.0.0-dev"`
 	Secret  string `env:"SECRET" env-default:""`
 }
 
-// Reads the environment variables and initializes the service.
-func (s *serviceconf) ReadEnv() {
+// ReadEnv reads the environment variables and initializes the service.
+func (s *service) ReadEnv() {
 	if err := cleanenv.ReadEnv(s); err != nil {
-		Logger.Fatal("Failed to read environment variables", zap.Error(err))
+		Log.Fatal("Failed to read environment variables", zap.Error(err))
 	}
 }
 
-// Sets up global validator.
-func (s *serviceconf) InitValidator() {
+// InitValidator sets up global validator.
+func (s *service) InitValidator() {
 	Validator = validator.New()
 	// by default, the validator will try to get json tag.
 	Validator.RegisterTagNameFunc(func(fld reflect.StructField) string {
@@ -44,15 +44,16 @@ func (s *serviceconf) InitValidator() {
 	})
 }
 
-func (s *serviceconf) InitJWT() {
+// InitJWT sets up global JWT.
+func (s *service) InitJWT() {
 	JWT = jwtauth.New("HS256", []byte(s.Secret), nil)
 }
 
-// Sets up global logger.
-func (s *serviceconf) InitLogger() {
+// InitLogger sets up global logger.
+func (s *service) InitLogger() {
 	if s.Debug {
-		Logger, _ = zap.NewDevelopment()
+		Log, _ = zap.NewDevelopment()
 	} else {
-		Logger, _ = zap.NewProduction()
+		Log, _ = zap.NewProduction()
 	}
 }

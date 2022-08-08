@@ -6,7 +6,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"go.breu.io/ctrlplane/cmd/api/serializers"
-	"go.breu.io/ctrlplane/internal/common/utils"
+	"go.breu.io/ctrlplane/internal/cmn/utils"
 )
 
 func AuthRouter() http.Handler {

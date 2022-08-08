@@ -8,18 +8,20 @@ import (
 
 	"go.temporal.io/sdk/client"
 
-	"go.breu.io/ctrlplane/internal/common"
-	"go.breu.io/ctrlplane/internal/common/utils"
+	"go.breu.io/ctrlplane/internal/cmn"
+	"go.breu.io/ctrlplane/internal/cmn/utils"
 )
 
+type eventHandler func(writer http.ResponseWriter, payload []byte, id string)
+
 // A Map of event types to their respective handlers
-var eventHandlers = map[WebhookEvent]func(http.ResponseWriter, []byte, string){
+var eventHandlers = map[WebhookEvent]eventHandler{
 	InstallationEvent:     handleInstallationEvent,
 	AppAuthorizationEvent: handleAuthEvent,
 	PushEvent:             handlePushEvent,
 }
 
-// handle github installation event
+// handles GitHub installation event
 func handleInstallationEvent(writer http.ResponseWriter, body []byte, id string) {
 	payload := InstallationEventPayload{}
 	if err := json.Unmarshal(body, &payload); err != nil {
@@ -29,11 +31,11 @@ func handleInstallationEvent(writer http.ResponseWriter, body []byte, id string)
 
 	opts := client.StartWorkflowOptions{
 		ID:        "github.webhooks.installation.id." + strconv.Itoa(int(payload.Installation.ID)) + "." + string(InstallationEvent) + "." + payload.Action,
-		TaskQueue: common.Temporal.Queues.Integrations,
+		TaskQueue: cmn.Temporal.Queues.Integrations,
 	}
 
 	var w *Workflows
-	exe, err := common.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnInstall, payload)
+	exe, err := cmn.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnInstall, payload)
 
 	if err != nil {
 		utils.HandleHTTPError(writer, err, http.StatusInternalServerError)
@@ -43,7 +45,7 @@ func handleInstallationEvent(writer http.ResponseWriter, body []byte, id string)
 	writer.Write([]byte(exe.GetRunID()))
 }
 
-// handle github push event
+// handles GitHub push event
 func handlePushEvent(writer http.ResponseWriter, body []byte, id string) {
 	payload := PushEventPayload{}
 	if err := json.Unmarshal(body, &payload); err != nil {
@@ -52,11 +54,11 @@ func handlePushEvent(writer http.ResponseWriter, body []byte, id string) {
 	}
 
 	opts := client.StartWorkflowOptions{
-		ID:        "github.webhooks.integrations.id" + strconv.Itoa(payload.Installation.ID) + "." + string(PushEvent) + ".ref." + payload.Ref,
-		TaskQueue: common.Temporal.Queues.Integrations,
+		ID:        "github.webhooks.integrations.id." + strconv.Itoa(payload.Installation.ID) + "." + string(PushEvent) + ".ref." + payload.Ref,
+		TaskQueue: cmn.Temporal.Queues.Integrations,
 	}
 	var w *Workflows
-	exe, err := common.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPush, payload)
+	exe, err := cmn.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPush, payload)
 
 	if err != nil {
 		utils.HandleHTTPError(writer, err, http.StatusInternalServerError)
@@ -66,11 +68,11 @@ func handlePushEvent(writer http.ResponseWriter, body []byte, id string) {
 	writer.Write([]byte(exe.GetRunID()))
 }
 
-// handle github app authorization event
+// handles github app authorization event
 func handleAuthEvent(writer http.ResponseWriter, body []byte, id string) {
 	data, _ := json.MarshalIndent(body, "", "  ")
-	common.Logger.Debug("App authorization event received")
-	common.Logger.Debug(string(data))
+	cmn.Log.Debug("App authorization event received")
+	cmn.Log.Debug(string(data))
 
 	writer.WriteHeader(http.StatusCreated)
 	writer.Write([]byte(""))

@@ -2,10 +2,10 @@ package github
 
 import (
 	"context"
+	"go.breu.io/ctrlplane/internal/entities"
 
 	"github.com/gocql/gocql"
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/db/entities"
 )
 
 type Activity struct{}

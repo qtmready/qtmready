@@ -15,12 +15,12 @@ type placeholder struct {
 
 // UniqueField validates that the value of the field is unique in the database.
 //
-//   type User struct {
-//     Email string `json:"email" validate:"required,email,db_unique"`
-//   }
+//	type User struct {
+//	  Email string `json:"email" validate:"required,email,db_unique"`
+//	}
 //
-//   user := User{Email: "user@example.com"}
-//   common.Validator.Struct(&user)
+//	user := User{Email: "user@example.com"}
+//	cmn.Validator.Struct(&user)
 //
 // The validator will check if the field is unique in the database.
 func UniqueField(fl validator.FieldLevel) bool {
