@@ -67,7 +67,6 @@ func (request *RegistrationRequest) Reply(body io.ReadCloser) (RegistrationRespo
 		return RegistrationResponse{Team: team, User: user}, err
 	}
 
-	user.SetPassword(request.Password)
 	user.TeamID = team.ID
 
 	if err := db.Save(&user); err != nil {

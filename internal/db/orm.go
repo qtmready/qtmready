@@ -11,13 +11,13 @@ import (
 
 // Get the entity by given query params. A simple example:
 //
-//   type User struct {
-//     ID     string `json:"id" cql:"id"`
-//     Email  string `json:"name" cql:"name"`
-//   }
+//	type User struct {
+//	  ID     string `json:"id" cql:"id"`
+//	  Email  string `json:"name" cql:"name"`
+//	}
 //
-//   params := db.QueryParams{"email": "email@example.com"}
-//   user, err := db.Get[User](params)
+//	params := db.QueryParams{"email": "email@example.com"}
+//	user, err := db.Get[User](params)
 func Get[T Entity](params QueryParams) (T, error) {
 	common.Logger.Info("Get[T Entity]", zap.Any("params", params))
 	entity := *new(T)
@@ -32,13 +32,13 @@ func Get[T Entity](params QueryParams) (T, error) {
 // Saves the entity. If the entity has an ID, it will be updated. Otherwise,
 // it will be created. A pointer to the entity must be passed.
 //
-//   type User struct {
-//     ID     string `json:"id" cql:"id"`
-//     Email  string `json:"name" cql:"name"`
-//   }
+//	type User struct {
+//	  ID     string `json:"id" cql:"id"`
+//	  Email  string `json:"name" cql:"name"`
+//	}
 //
-//   user := User{Email: "user@example.com"}
-//   user, err := db.Save(&user)
+//	user := User{Email: "user@example.com"}
+//	user, err := db.Save(&user)
 func Save[T Entity](entity T) error {
 	pk := getid(entity)
 
@@ -49,6 +49,7 @@ func Save[T Entity](entity T) error {
 	}
 }
 
+// Filters the entity. NOTE: Work in progress.
 func Filter[T Entity](params QueryParams) ([]T, error) {
 	entity := *new(T)
 	var entities []T
