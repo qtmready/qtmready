@@ -10,13 +10,6 @@ import (
 	"go.uber.org/zap"
 )
 
-var (
-	Log       *zap.Logger
-	Service   = &service{}
-	Validator *validator.Validate
-	JWT       *jwtauth.JWTAuth
-)
-
 type service struct {
 	Name    string `env:"SERVICE_NAME" env-default:"service"`
 	Debug   bool   `env:"DEBUG" env-default:"false"`
@@ -57,3 +50,10 @@ func (s *service) InitLogger() {
 		Log, _ = zap.NewProduction()
 	}
 }
+
+var (
+	Log       *zap.Logger
+	Service   = &service{}
+	Validator *validator.Validate
+	JWT       *jwtauth.JWTAuth
+)

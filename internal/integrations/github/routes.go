@@ -4,9 +4,7 @@ import (
 	"io"
 	"net/http"
 
-	"go.breu.io/ctrlplane/internal/cmn"
 	"go.breu.io/ctrlplane/internal/cmn/utils"
-	"go.uber.org/zap"
 )
 
 // handles the incoming webhook
@@ -22,14 +20,14 @@ func webhook(writer http.ResponseWriter, request *http.Request) {
 	body, _ := io.ReadAll(request.Body)
 
 	if err := Github.VerifyWebhookSignature(body, signature); err != nil {
-		utils.HandleHTTPError(writer, err, http.StatusUnauthorized)
+		http.Error(writer, err.Error(), http.StatusUnauthorized)
 		return
 	}
 
 	headerEvent := request.Header.Get("X-GitHub-Event")
 
 	if headerEvent == "" {
-		utils.HandleHTTPError(writer, ErrorMissingHeaderGithubEvent, http.StatusBadRequest)
+		http.Error(writer, ErrorMissingHeaderGithubEvent.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -37,11 +35,10 @@ func webhook(writer http.ResponseWriter, request *http.Request) {
 
 	// We get the handler for the event. see event_handlers.go
 	if handle, exists := eventHandlers[event]; exists {
-		cmn.Log.Info("Received event", zap.String("event", string(event)), zap.String("request_id", id))
 		handle(writer, body, id)
 	} else {
-		cmn.Log.Error("Unsupported event: " + headerEvent)
-		utils.HandleHTTPError(writer, ErrorInvalidEvent, http.StatusBadRequest)
+		http.Error(writer, ErrorInvalidEvent.Error(), http.StatusBadRequest)
+		return
 	}
 }
 

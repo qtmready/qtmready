@@ -46,7 +46,7 @@ func init() {
 func main() {
 	defer cmn.Temporal.Client.Close()
 
-	queue := cmn.Temporal.Queues.Integrations
+	queue := cmn.Temporal.Queues[cmn.GithubIntegrationQueue].GetName()
 	options := worker.Options{}
 	wrkr := worker.New(cmn.Temporal.Client, queue, options)
 

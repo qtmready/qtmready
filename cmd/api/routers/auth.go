@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"go.breu.io/ctrlplane/cmd/api/serializers"
-	"go.breu.io/ctrlplane/internal/cmn/utils"
 )
 
 func AuthRouter() http.Handler {
@@ -27,7 +26,8 @@ func (a *authRoutes) register(writer http.ResponseWriter, request *http.Request)
 	serializer := &serializers.RegistrationRequest{}
 
 	if reply, err := serializer.Reply(request.Body); err != nil {
-		utils.HandleHTTPError(writer, err, http.StatusBadRequest)
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
 	} else {
 		reply, _ := json.Marshal(&reply)
 		writer.WriteHeader(http.StatusCreated)
@@ -40,7 +40,8 @@ func (a *authRoutes) login(writer http.ResponseWriter, request *http.Request) {
 	serializer := &serializers.LoginRequest{}
 
 	if reply, err := serializer.Reply(request.Body); err != nil {
-		utils.HandleHTTPError(writer, err, http.StatusBadRequest)
+		http.Error(writer, err.Error(), http.StatusBadRequest)
+		return
 	} else {
 		reply, _ := json.Marshal(&reply)
 		writer.WriteHeader(http.StatusCreated)

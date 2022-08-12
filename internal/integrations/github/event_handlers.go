@@ -6,13 +6,12 @@ import (
 	"net/http"
 	"strconv"
 
-	"go.temporal.io/sdk/client"
-
 	"go.breu.io/ctrlplane/internal/cmn"
-	"go.breu.io/ctrlplane/internal/cmn/utils"
 )
 
 type eventHandler func(writer http.ResponseWriter, payload []byte, id string)
+
+var w *Workflows
 
 // A Map of event types to their respective handlers
 var eventHandlers = map[WebhookEvent]eventHandler{
@@ -25,20 +24,17 @@ var eventHandlers = map[WebhookEvent]eventHandler{
 func handleInstallationEvent(writer http.ResponseWriter, body []byte, id string) {
 	payload := InstallationEventPayload{}
 	if err := json.Unmarshal(body, &payload); err != nil {
-		utils.HandleHTTPError(writer, ErrorPayloadParser, http.StatusBadRequest)
+		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	opts := client.StartWorkflowOptions{
-		ID:        "github.webhooks.installation.id." + strconv.Itoa(int(payload.Installation.ID)) + "." + string(InstallationEvent) + "." + payload.Action,
-		TaskQueue: cmn.Temporal.Queues.Integrations,
-	}
-
-	var w *Workflows
+	opts := cmn.Temporal.
+		Queues[cmn.GithubIntegrationQueue].
+		CreateWorkflowOptions(strconv.Itoa(int(payload.Installation.ID)), string(InstallationEvent))
 	exe, err := cmn.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnInstall, payload)
 
 	if err != nil {
-		utils.HandleHTTPError(writer, err, http.StatusInternalServerError)
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
 	}
 
 	writer.WriteHeader(http.StatusCreated)
@@ -49,19 +45,19 @@ func handleInstallationEvent(writer http.ResponseWriter, body []byte, id string)
 func handlePushEvent(writer http.ResponseWriter, body []byte, id string) {
 	payload := PushEventPayload{}
 	if err := json.Unmarshal(body, &payload); err != nil {
-		utils.HandleHTTPError(writer, ErrorPayloadParser, http.StatusBadRequest)
+		http.Error(writer, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	opts := client.StartWorkflowOptions{
-		ID:        "github.webhooks.integrations.id." + strconv.Itoa(payload.Installation.ID) + "." + string(PushEvent) + ".ref." + payload.Ref,
-		TaskQueue: cmn.Temporal.Queues.Integrations,
-	}
-	var w *Workflows
+	opts := cmn.Temporal.
+		Queues[cmn.GithubIntegrationQueue].
+		CreateWorkflowOptions(strconv.Itoa(int(payload.Installation.ID)), string(PushEvent), "ref", payload.Ref)
+
 	exe, err := cmn.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPush, payload)
 
 	if err != nil {
-		utils.HandleHTTPError(writer, err, http.StatusInternalServerError)
+		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	writer.WriteHeader(http.StatusCreated)

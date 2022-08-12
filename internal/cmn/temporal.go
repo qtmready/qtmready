@@ -10,14 +10,50 @@ import (
 	"go.uber.org/zap"
 )
 
-var Temporal = &temporal{}
+const (
+	GithubIntegrationQueue QueueName = "github"
+)
 
-type temporal struct {
-	ServerHost string `env:"TEMPORAL_HOST" env-default:"temporal"`
-	ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
-	Client     client.Client
-	Queues     struct {
-		Integrations string `env-default:"integrations"`
+type (
+	QueueName string
+
+	Queue interface {
+		CreateWorkflowID(args ...string) string
+		CreateWorkflowOptions(args ...string) client.StartWorkflowOptions
+		GetName() string
+	}
+
+	Queues map[QueueName]Queue
+
+	queue struct {
+		Name   QueueName
+		Prefix string
+	}
+
+	temporal struct {
+		ServerHost string `env:"TEMPORAL_HOST" env-default:"temporal"`
+		ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
+		Client     client.Client
+		Queues     Queues
+	}
+)
+
+func (q QueueName) ToString() string {
+	return string(q)
+}
+
+func (q *queue) CreateWorkflowID(args ...string) string {
+	return q.Prefix + "." + strings.Join(args, ".")
+}
+
+func (q *queue) GetName() string {
+	return q.Name.ToString()
+}
+
+func (q *queue) CreateWorkflowOptions(args ...string) client.StartWorkflowOptions {
+	return client.StartWorkflowOptions{
+		ID:        q.CreateWorkflowID(args...),
+		TaskQueue: q.GetName(),
 	}
 }
 
@@ -59,4 +95,10 @@ func (t *temporal) InitClient() {
 
 func (t *temporal) CreateWorkflowID(args ...string) string {
 	return strings.Join(args, ".")
+}
+
+var Temporal = &temporal{
+	Queues: Queues{
+		GithubIntegrationQueue: &queue{GithubIntegrationQueue, "integrations.github"},
+	},
 }
