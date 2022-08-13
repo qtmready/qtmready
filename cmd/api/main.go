@@ -1,36 +1,42 @@
 package main
 
 import (
-	"context"
 	"net/http"
 	"sync"
 
-	"github.com/go-chi/chi/v5"
-	chimw "github.com/go-chi/chi/v5/middleware"
-	"go.opentelemetry.io/otel"
-	stdout "go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-	prop "go.opentelemetry.io/otel/propagation"
-	sdkresource "go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
+	"github.com/go-playground/validator/v10"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 
-	"go.breu.io/ctrlplane/cmd/api/middlewares"
-	"go.breu.io/ctrlplane/cmd/api/routers"
+	"go.breu.io/ctrlplane/cmd/api/routes/auth"
 	"go.breu.io/ctrlplane/internal/cmn"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/integrations"
 	"go.breu.io/ctrlplane/internal/integrations/github"
 )
 
-var waiter sync.WaitGroup
-var traceProvider *sdktrace.TracerProvider
+var (
+	waiter sync.WaitGroup
+)
+
+type (
+	EchoValidator struct {
+		validator *validator.Validate
+	}
+)
+
+func (ev *EchoValidator) Validate(i interface{}) error {
+	if err := ev.validator.Struct(i); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	return nil
+}
 
 func init() {
 	// Reading the configuration from the environment
 	cmn.Service.ReadEnv()
 	cmn.Service.InitLogger()
 	cmn.Service.InitValidator()
-	cmn.Service.InitJWT()
 	cmn.EventStream.ReadEnv()
 	db.DB.ReadEnv()
 	db.DB.RegisterValidations()
@@ -39,7 +45,7 @@ func init() {
 	// Reading the configuration from the environment ... Done
 
 	// Initializing reference to adapters
-	waiter.Add(4)
+	waiter.Add(3)
 
 	go func() {
 		defer waiter.Done()
@@ -56,11 +62,6 @@ func init() {
 		cmn.Temporal.InitClient()
 	}()
 
-	go func() {
-		defer waiter.Done()
-		traceProvider = initTraceProvider()
-	}()
-
 	waiter.Wait()
 	// Initializing singleton objects ... Done
 
@@ -71,60 +72,31 @@ func main() {
 	// handling closing of the server
 	defer db.DB.Session.Close()
 	defer cmn.Temporal.Client.Close()
-	defer func() {
-		if err := traceProvider.Shutdown(context.Background()); err != nil {
-			cmn.Log.Error(err.Error())
-		}
-	}()
 
-	// Setting up OpenTelemetry Global Tracer
-	otel.SetTracerProvider(traceProvider)
-	otel.SetTextMapPropagator(
-		prop.NewCompositeTextMapPropagator(prop.TraceContext{}, prop.Baggage{}),
-	)
+	e := echo.New()
 
-	router := chi.NewRouter()
+	e.Validator = &EchoValidator{validator: cmn.Validator}
 
-	router.Use(middlewares.ContentTypeJSON)
-	router.Use(chimw.RequestID)
-	router.Use(chimw.RealIP)
-	router.Use(chimw.Logger)
-	router.Use(middlewares.OtelMiddleware(
-		cmn.Service.Name,
-		middlewares.WrapRouterWithOtel(router),
-	))
-	router.Use(chimw.Recoverer)
+	e.Use(middleware.CORS())
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
 
-	router.Mount("/auth", routers.AuthRouter())
-	router.Mount("/integrations", integrations.Router())
+	// Unauthenticated routes
+	e.GET("/healthcheck", healthcheck)
+	auth.CreateRoutes(e.Group("/auth"))
+	integrations.CreateRoutes(e.Group("/integrations"))
 
-	http.ListenAndServe(":8000", router)
+	// Protected routes
+	jwtconf := middleware.JWTConfig{
+		Claims:     &auth.JWTClains{},
+		SigningKey: []byte(cmn.Service.Secret),
+	}
+	protected := e.Group("/")
+	protected.Use(middleware.JWTWithConfig(jwtconf))
+
+	e.Start(":8000")
 }
 
-// initializes the OpenTelemetry TracerProvider
-// TODO: move this to a seperate package
-func initTraceProvider() *sdktrace.TracerProvider {
-	cmn.Log.Info("Initializing OpenTelemetry Provider ... ")
-	exporter, err := stdout.New(stdout.WithPrettyPrint())
-	if err != nil {
-		cmn.Log.Fatal(err.Error())
-	}
-
-	resource, err := sdkresource.New(
-		context.Background(),
-		sdkresource.WithAttributes(semconv.ServiceNameKey.String(cmn.Service.Name)),
-	)
-
-	if err != nil {
-		cmn.Log.Fatal(err.Error())
-	}
-
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithSampler(sdktrace.AlwaysSample()),
-		sdktrace.WithResource(resource),
-		sdktrace.WithBatcher(exporter),
-	)
-
-	cmn.Log.Info("Initializing OpenTelemetry Provider ... Done")
-	return tp
+func healthcheck(ctx echo.Context) error {
+	return ctx.String(http.StatusOK, "OK")
 }

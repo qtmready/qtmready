@@ -10,10 +10,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const (
-	GithubIntegrationQueue QueueName = "github"
-)
-
 type (
 	QueueName string
 
@@ -36,6 +32,14 @@ type (
 		Client     client.Client
 		Queues     Queues
 	}
+)
+
+// We will move each tenant to its own namespace.
+const (
+	GithubIntegrationQueue QueueName = "github"
+	BuilderQueue           QueueName = "builder"
+	ProvisionerQueue       QueueName = "provisioner"
+	DeployerQueue          QueueName = "deployer"
 )
 
 func (q QueueName) ToString() string {

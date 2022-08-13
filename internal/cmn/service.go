@@ -4,18 +4,26 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/go-chi/jwtauth/v5"
 	"github.com/go-playground/validator/v10"
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.uber.org/zap"
 )
 
-type service struct {
-	Name    string `env:"SERVICE_NAME" env-default:"service"`
-	Debug   bool   `env:"DEBUG" env-default:"false"`
-	Version string `env:"VERSION" env-default:"0.0.0-dev"`
-	Secret  string `env:"SECRET" env-default:""`
-}
+type (
+	service struct {
+		Name    string `env:"SERVICE_NAME" env-default:"service"`
+		Debug   bool   `env:"DEBUG" env-default:"false"`
+		Version string `env:"VERSION" env-default:"0.0.0-dev"`
+		Secret  string `env:"SECRET" env-default:""`
+	}
+)
+
+var (
+	Log       *zap.Logger
+	Service   = &service{}
+	Validator *validator.Validate
+	// JWT       *jwtauth.JWTAuth
+)
 
 // ReadEnv reads the environment variables and initializes the service.
 func (s *service) ReadEnv() {
@@ -37,11 +45,6 @@ func (s *service) InitValidator() {
 	})
 }
 
-// InitJWT sets up global JWT.
-func (s *service) InitJWT() {
-	JWT = jwtauth.New("HS256", []byte(s.Secret), nil)
-}
-
 // InitLogger sets up global logger.
 func (s *service) InitLogger() {
 	if s.Debug {
@@ -50,10 +53,3 @@ func (s *service) InitLogger() {
 		Log, _ = zap.NewProduction()
 	}
 }
-
-var (
-	Log       *zap.Logger
-	Service   = &service{}
-	Validator *validator.Validate
-	JWT       *jwtauth.JWTAuth
-)

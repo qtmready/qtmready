@@ -2,51 +2,49 @@ package github
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"strconv"
 
+	"github.com/labstack/echo/v4"
 	"go.breu.io/ctrlplane/internal/cmn"
+	"go.uber.org/zap"
 )
 
-type eventHandler func(writer http.ResponseWriter, payload []byte, id string)
+type eventHandler func(ctx echo.Context) error
 
 var w *Workflows
 
 // A Map of event types to their respective handlers
 var eventHandlers = map[WebhookEvent]eventHandler{
-	InstallationEvent:     handleInstallationEvent,
-	AppAuthorizationEvent: handleAuthEvent,
-	PushEvent:             handlePushEvent,
+	InstallationEvent: handleInstallationEvent,
+	PushEvent:         handlePushEvent,
 }
 
 // handles GitHub installation event
-func handleInstallationEvent(writer http.ResponseWriter, body []byte, id string) {
+func handleInstallationEvent(ctx echo.Context) error {
 	payload := InstallationEventPayload{}
-	if err := json.Unmarshal(body, &payload); err != nil {
-		http.Error(writer, err.Error(), http.StatusBadRequest)
-		return
+	if err := ctx.Bind(&payload); err != nil {
+		return err
 	}
 
 	opts := cmn.Temporal.
 		Queues[cmn.GithubIntegrationQueue].
 		CreateWorkflowOptions(strconv.Itoa(int(payload.Installation.ID)), string(InstallationEvent))
-	exe, err := cmn.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnInstall, payload)
 
+	exe, err := cmn.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnInstall, payload)
 	if err != nil {
-		http.Error(writer, err.Error(), http.StatusInternalServerError)
+		return err
 	}
 
-	writer.WriteHeader(http.StatusCreated)
-	writer.Write([]byte(exe.GetRunID()))
+	return ctx.JSON(http.StatusCreated, exe.GetRunID())
 }
 
 // handles GitHub push event
-func handlePushEvent(writer http.ResponseWriter, body []byte, id string) {
+func handlePushEvent(ctx echo.Context) error {
 	payload := PushEventPayload{}
-	if err := json.Unmarshal(body, &payload); err != nil {
-		http.Error(writer, err.Error(), http.StatusBadRequest)
-		return
+	if err := ctx.Bind(&payload); err != nil {
+		cmn.Log.Info("Error: ", zap.Any("body", ctx.Request().Body), zap.String("error", err.Error()))
+		return err
 	}
 
 	opts := cmn.Temporal.
@@ -54,22 +52,9 @@ func handlePushEvent(writer http.ResponseWriter, body []byte, id string) {
 		CreateWorkflowOptions(strconv.Itoa(int(payload.Installation.ID)), string(PushEvent), "ref", payload.Ref)
 
 	exe, err := cmn.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPush, payload)
-
 	if err != nil {
-		http.Error(writer, err.Error(), http.StatusInternalServerError)
-		return
+		return err
 	}
 
-	writer.WriteHeader(http.StatusCreated)
-	writer.Write([]byte(exe.GetRunID()))
-}
-
-// handles github app authorization event
-func handleAuthEvent(writer http.ResponseWriter, body []byte, id string) {
-	data, _ := json.MarshalIndent(body, "", "  ")
-	cmn.Log.Debug("App authorization event received")
-	cmn.Log.Debug(string(data))
-
-	writer.WriteHeader(http.StatusCreated)
-	writer.Write([]byte(""))
+	return ctx.JSON(http.StatusCreated, exe.GetRunID())
 }
