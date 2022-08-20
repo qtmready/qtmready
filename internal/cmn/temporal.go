@@ -15,12 +15,22 @@ type (
 
 	Queue interface {
 		CreateWorkflowID(args ...string) string
-		CreateWorkflowOptions(args ...string) client.StartWorkflowOptions
+		GetWorkflowOptions(args ...string) client.StartWorkflowOptions
 		GetName() string
 	}
 
 	Queues map[QueueName]Queue
+)
 
+// TODO: The greater plan is to move each tennant in its own namespace.
+const (
+	GithubIntegrationQueue QueueName = "github"
+	BuilderQueue           QueueName = "builder"
+	ProvisionerQueue       QueueName = "provisioner"
+	DeployerQueue          QueueName = "deployer"
+)
+
+type (
 	queue struct {
 		Name   QueueName
 		Prefix string
@@ -32,14 +42,6 @@ type (
 		Client     client.Client
 		Queues     Queues
 	}
-)
-
-// We will move each tenant to its own namespace.
-const (
-	GithubIntegrationQueue QueueName = "github"
-	BuilderQueue           QueueName = "builder"
-	ProvisionerQueue       QueueName = "provisioner"
-	DeployerQueue          QueueName = "deployer"
 )
 
 func (q QueueName) ToString() string {
@@ -54,7 +56,7 @@ func (q *queue) GetName() string {
 	return q.Name.ToString()
 }
 
-func (q *queue) CreateWorkflowOptions(args ...string) client.StartWorkflowOptions {
+func (q *queue) GetWorkflowOptions(args ...string) client.StartWorkflowOptions {
 	return client.StartWorkflowOptions{
 		ID:        q.CreateWorkflowID(args...),
 		TaskQueue: q.GetName(),

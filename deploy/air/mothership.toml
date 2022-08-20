@@ -4,7 +4,7 @@ tmp_dir = "tmp"
 
 [build]
 args_bin = []
-bin = "./tmp/worker"
+bin = "./tmp/mothership"
 cmd = "go build -gcflags=\"-m\" -o ./tmp/mothership ./cmd/workers/mothership"
 delay = 1000
 exclude_dir = ["assets", "tmp", "vendor", "testdata"]

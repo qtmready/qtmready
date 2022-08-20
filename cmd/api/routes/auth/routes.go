@@ -75,7 +75,7 @@ func login(ctx echo.Context) error {
 	}
 
 	if user.VerifyPassword(request.Password) {
-		claims := JWTClains{
+		claims := &cmn.JWTClaims{
 			UserID:         user.ID.String(),
 			TeamID:         user.TeamID.String(),
 			StandardClaims: jwt.StandardClaims{ExpiresAt: time.Now().Add(time.Hour * 24).Unix(), Issuer: cmn.Service.Name},

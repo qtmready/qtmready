@@ -10,28 +10,47 @@ import (
 	"go.uber.org/zap"
 )
 
-type eventHandler func(ctx echo.Context) error
-
-var w *Workflows
-
-// A Map of event types to their respective handlers
-var eventHandlers = map[WebhookEvent]eventHandler{
-	InstallationEvent: handleInstallationEvent,
-	PushEvent:         handlePushEvent,
-}
-
-// handles GitHub installation event
+// handles GitHub installation event. Below is the mermaid workflow.
+//
+//	sequenceDiagram
+//	  autonumber
+//	  actor UR as User
+//	  participant UI as Browser
+//	  participant GH as Github APP
+//	  participant WH as API :: Webhook RX
+//	  participant CI as API :: Comlete Installation
+//	  participant WF as Workflow Engine
+//	  participant DB
+//	  UR ->> UI: Integrate Github
+//	  UI ->> GH: Redirect to Github App Permissions Screen
+//	  activate GH
+//	    GH ->> WH: Receive Installation Data
+//	      WH ->> WF: Send Installation Data to WF
+//	      activate WF
+//	    GH ->> UI: Receive Installation ID
+//	  deactivate GH
+//	  UI ->> CI: Send Installation ID
+//	  activate CI
+//	    CI ->> CI: Parse Team ID from Session
+//	    CI ->> WF: Send to OnInstall workflow
+//	    deactivate WF
+//	  deactivate CI
+//	  WF ->> DB: Save Installation
+//	  activate WF
+//	    WF ->> UI: Complete Installation
+//	  deactivate WF
 func handleInstallationEvent(ctx echo.Context) error {
 	payload := InstallationEventPayload{}
 	if err := ctx.Bind(&payload); err != nil {
 		return err
 	}
 
+	workflows := &Workflows{}
 	opts := cmn.Temporal.
 		Queues[cmn.GithubIntegrationQueue].
-		CreateWorkflowOptions(strconv.Itoa(int(payload.Installation.ID)), string(InstallationEvent))
+		GetWorkflowOptions(strconv.Itoa(int(payload.Installation.ID)), string(InstallationEvent))
 
-	exe, err := cmn.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnInstall, payload)
+	exe, err := cmn.Temporal.Client.ExecuteWorkflow(context.Background(), opts, workflows.OnInstall, payload)
 	if err != nil {
 		return err
 	}
@@ -47,9 +66,10 @@ func handlePushEvent(ctx echo.Context) error {
 		return err
 	}
 
+	w := &Workflows{}
 	opts := cmn.Temporal.
 		Queues[cmn.GithubIntegrationQueue].
-		CreateWorkflowOptions(strconv.Itoa(int(payload.Installation.ID)), string(PushEvent), "ref", payload.Ref)
+		GetWorkflowOptions(strconv.Itoa(int(payload.Installation.ID)), string(PushEvent), "ref", payload.After)
 
 	exe, err := cmn.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPush, payload)
 	if err != nil {

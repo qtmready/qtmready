@@ -8,6 +8,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"go.breu.io/ctrlplane/internal/cmn/utils"
+	"go.breu.io/ctrlplane/internal/db"
 )
 
 /**
@@ -44,7 +45,14 @@ type Team struct {
 func (t *Team) GetTable() *table.Table { return teamTable }
 func (t *Team) PreCreate() error       { t.Slug = utils.CreateSlug(t.Name); return nil }
 func (t *Team) PreUpdate() error       { return nil }
-func (t *Team) Users()                 {}
+
+func (t *Team) Users() ([]User, error) {
+	users, err := db.Filter[User](&User{}, db.QueryParams{"team_id": t.ID})
+	if err != nil {
+		return []User{}, err
+	}
+	return users, nil
+}
 
 var (
 	userColumns = []string{
@@ -98,8 +106,7 @@ func (u *User) PreUpdate() error       { return nil }
 //	db.Save(user)
 func (u *User) SetPassword(password string) {
 	p, _ := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	encrypted := string(p)
-	u.Password = encrypted
+	u.Password = string(p)
 }
 
 // Verifies the plain text password against the hashed password.
@@ -109,6 +116,7 @@ func (u *User) VerifyPassword(password string) bool {
 
 /**
  * TeamUser
+ * NOTE: this needs to be implemented
  */
 
 var (

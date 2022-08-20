@@ -106,5 +106,5 @@ func (d *db) InitSessionWithMigrations() {
 
 // Register DB related validators
 func (d *db) RegisterValidations() {
-	cmn.Validator.RegisterValidation("db_unique", UniqueField)
+	cmn.Validate.RegisterValidation("db_unique", UniqueField)
 }

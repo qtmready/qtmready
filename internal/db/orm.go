@@ -16,7 +16,7 @@ import (
 //
 //		params := db.QueryParams{"email": "email@example.com"}
 //	  user := &User{}
-//		user, err := db.Get(params)
+//		err := db.Get(user, params)
 func Get[T Entity](entity T, params QueryParams) error {
 	query := DB.Session.Query(entity.GetTable().Get()).BindMap(params)
 
@@ -47,10 +47,9 @@ func Save[T Entity](entity T) error {
 }
 
 // Filters the entity. NOTE: Work in progress.
-func Filter[T Entity](params QueryParams) ([]T, error) {
-	entity := *new(T)
-	var entities []T
-	query := DB.Session.Query(entity.GetTable().Select()).BindMap(params)
+func Filter[OUT any](entity Entity, params QueryParams, columns ...string) ([]OUT, error) {
+	entities := make([]OUT, 0)
+	query := DB.Session.Query(entity.GetTable().Select(columns...)).BindMap(params)
 	if err := query.SelectRelease(&entities); err != nil {
 		return entities, err
 	}

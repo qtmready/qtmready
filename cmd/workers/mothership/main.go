@@ -54,7 +54,7 @@ func main() {
 
 	wrkr.RegisterWorkflow(workflows.OnInstall)
 	wrkr.RegisterWorkflow(workflows.OnPush)
-	wrkr.RegisterActivity(&github.Activity{})
+	wrkr.RegisterActivity(&github.Activities{})
 
 	err := wrkr.Run(worker.InterruptCh())
 

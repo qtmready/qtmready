@@ -74,8 +74,12 @@ func main() {
 	defer cmn.Temporal.Client.Close()
 
 	e := echo.New()
+	jwtconf := middleware.JWTConfig{
+		Claims:     &cmn.JWTClaims{},
+		SigningKey: []byte(cmn.Service.Secret),
+	}
 
-	e.Validator = &EchoValidator{validator: cmn.Validator}
+	e.Validator = &EchoValidator{validator: cmn.Validate}
 
 	e.Use(middleware.CORS())
 	e.Use(middleware.Logger())
@@ -84,13 +88,9 @@ func main() {
 	// Unauthenticated routes
 	e.GET("/healthcheck", healthcheck)
 	auth.CreateRoutes(e.Group("/auth"))
-	integrations.CreateRoutes(e.Group("/integrations"))
+	integrations.CreateRoutes(e.Group("/integrations"), middleware.JWTWithConfig(jwtconf))
 
 	// Protected routes
-	jwtconf := middleware.JWTConfig{
-		Claims:     &auth.JWTClains{},
-		SigningKey: []byte(cmn.Service.Secret),
-	}
 	protected := e.Group("/")
 	protected.Use(middleware.JWTWithConfig(jwtconf))
 

@@ -31,7 +31,7 @@ var (
 type GithubInstallation struct {
 	ID                gocql.UUID `json:"id" cql:"id"`
 	TeamID            gocql.UUID `json:"team_id" cql:"team_id"`
-	InstallationID    int64      `json:"installation_id" cql:"installation_id"`
+	InstallationID    int64      `json:"installation_id" cql:"installation_id" validate:"required,db_unique"`
 	InstallationLogin string     `json:"installation_login" cql:"installation_login"`
 	InstallationType  string     `json:"installation_type" cql:"installation_type"`
 	SenderID          int64      `json:"sender_id" cql:"sender_id"`

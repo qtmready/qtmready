@@ -19,9 +19,9 @@ type (
 )
 
 var (
-	Log       *zap.Logger
-	Service   = &service{}
-	Validator *validator.Validate
+	Log      *zap.Logger
+	Service  = &service{}
+	Validate *validator.Validate
 	// JWT       *jwtauth.JWTAuth
 )
 
@@ -34,9 +34,9 @@ func (s *service) ReadEnv() {
 
 // InitValidator sets up global validator.
 func (s *service) InitValidator() {
-	Validator = validator.New()
+	Validate = validator.New()
 	// by default, the validator will try to get json tag.
-	Validator.RegisterTagNameFunc(func(fld reflect.StructField) string {
+	Validate.RegisterTagNameFunc(func(fld reflect.StructField) string {
 		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
 		if name == "-" {
 			return ""

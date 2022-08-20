@@ -8,8 +8,11 @@ import (
 
 type Workflows struct{}
 
-var activity *Activity
+var activities *Activities
 
+// OnInstall is a workflow that is executed when an installation is created.
+// NOTE: This workflow will only partially update the database. We would need to handle the complete event
+// from Github to assign the team id.
 func (w *Workflows) OnInstall(ctx workflow.Context, payload InstallationEventPayload) error {
 	opts := workflow.ActivityOptions{
 		StartToCloseTimeout: 10 * time.Second,
@@ -20,7 +23,9 @@ func (w *Workflows) OnInstall(ctx workflow.Context, payload InstallationEventPay
 	logger.Debug("Starting Workflow: OnGithubInstall")
 
 	var result InstallationEventPayload
-	err := workflow.ExecuteActivity(ctx, activity.SaveInstallation, payload).Get(ctx, &result)
+	err := workflow.
+		ExecuteActivity(ctx, activities.GetOrCreateInstallation, payload).
+		Get(ctx, &result)
 
 	if err != nil {
 		return err
