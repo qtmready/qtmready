@@ -7,7 +7,6 @@ import (
 	"github.com/scylladb/gocqlx/table"
 	"golang.org/x/crypto/bcrypt"
 
-	"go.breu.io/ctrlplane/internal/cmn/utils"
 	"go.breu.io/ctrlplane/internal/db"
 )
 
@@ -43,7 +42,7 @@ type Team struct {
 }
 
 func (t *Team) GetTable() *table.Table { return teamTable }
-func (t *Team) PreCreate() error       { t.Slug = utils.CreateSlug(t.Name); return nil }
+func (t *Team) PreCreate() error       { t.Slug = db.CreateSlug(t.Name); return nil }
 func (t *Team) PreUpdate() error       { return nil }
 
 func (t *Team) Users() ([]User, error) {

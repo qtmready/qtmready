@@ -12,29 +12,21 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/cassandra"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/scylladb/gocqlx/table"
 	"github.com/scylladb/gocqlx/v2"
 	"go.breu.io/ctrlplane/internal/cmn"
 	"go.uber.org/zap"
 )
 
-var (
-	DB         = &db{}
+const (
 	NullUUID   = "00000000-0000-0000-0000-000000000000"
 	NullString = ""
 )
 
+var (
+	DB = &db{}
+)
+
 type (
-	// Defines the query params required for DB lookup queries
-	QueryParams map[string]interface{}
-
-	// An Entity defines the interface for a database entity
-	Entity interface {
-		GetTable() *table.Table
-		PreCreate() error
-		PreUpdate() error
-	}
-
 	// Holds the information about the database
 	db struct {
 		gocqlx.Session

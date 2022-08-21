@@ -13,6 +13,16 @@ type (
 	WorkflowSignal string                        // WorkflowSignal is the name of a workflow signal.
 )
 
+// Supporting functions for WebhookEvent and WorkflowSignal
+
+func (e WebhookEvent) String() string {
+	return string(e)
+}
+
+func (s WorkflowSignal) String() string {
+	return string(s)
+}
+
 // Webhook event types. We get this from the header `X-Github-Event`.
 // For payload information, see https://developer.github.com/webhooks/event-payloads/
 const (
@@ -63,12 +73,6 @@ const (
 	WorkflowRunEvent                         WebhookEvent = "workflow_run"
 )
 
-// Temporal WorkflowSignal and Queries
-const (
-	InstallationEventSignal    WorkflowSignal = "installation_event"
-	CompleteInstallationSignal WorkflowSignal = "complete_installation"
-)
-
 // Payloads against the webhook event types
 type (
 	AppAuthorizationEventPayload struct {
@@ -110,6 +114,12 @@ type (
 		RequestedTeam     RequestedTeam  `json:"requested_team"`
 		Installation      InstallationID `json:"installation"`
 	}
+)
+
+// Temporal WorkflowSignal and Queries
+const (
+	InstallationEventSignal    WorkflowSignal = "installation_event"
+	CompleteInstallationSignal WorkflowSignal = "complete_installation"
 )
 
 type (

@@ -5,6 +5,19 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
+	"github.com/scylladb/gocqlx/table"
+)
+
+type (
+	// Defines the query params required for DB lookup queries
+	QueryParams map[string]interface{}
+
+	// An Entity defines the interface for a database entity
+	Entity interface {
+		GetTable() *table.Table
+		PreCreate() error
+		PreUpdate() error
+	}
 )
 
 // Get the entity by given query params. A simple example:
