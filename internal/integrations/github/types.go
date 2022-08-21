@@ -3,6 +3,7 @@ package github
 import (
 	"time"
 
+	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 )
 
@@ -116,12 +117,29 @@ type (
 	}
 )
 
+// HTTP requests and responses
+
+type (
+	CompleteInstallationRequest struct {
+		InstallationID int64 `json:"installation_id"`
+	}
+)
+
 // Temporal WorkflowSignal and Queries
 const (
 	InstallationEventSignal    WorkflowSignal = "installation_event"
 	CompleteInstallationSignal WorkflowSignal = "complete_installation"
 )
 
+// Signal Payload
+type (
+	CompleteInstallationPayload struct {
+		InstallationID string     `json:"installation_id"`
+		TeamID         gocql.UUID `json:"team_id"`
+	}
+)
+
+// embedded types
 type (
 	Pusher struct {
 		Name  string `json:"name"`
