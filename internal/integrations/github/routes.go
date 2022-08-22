@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/gocql/gocql"
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
-	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/entities"
+	"go.breu.io/ctrlplane/internal/cmn"
 )
 
 func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
@@ -56,17 +56,31 @@ func completeInstallation(ctx echo.Context) error {
 	if err := ctx.Bind(request); err != nil {
 		return err
 	}
+
 	teamID, err := gocql.ParseUUID(ctx.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["team_id"].(string))
 	if err != nil {
 		return err
 	}
-	installation := &entities.GithubInstallation{}
-	if err := db.Get(installation, db.QueryParams{"installation_id": request.InstallationID}); err != nil {
+
+	payload := &CompleteInstallationPayload{request.InstallationID, teamID}
+	workflows := &Workflows{}
+	opts := cmn.Temporal.
+		Queues[cmn.GithubIntegrationQueue].
+		GetWorkflowOptions(strconv.Itoa(int(payload.InstallationID)), string(InstallationEvent))
+
+	run, err := cmn.Temporal.Client.
+		SignalWithStartWorkflow(
+			ctx.Request().Context(),
+			opts.ID,
+			CompleteInstallationSignal.String(),
+			payload,
+			opts,
+			workflows.OnInstall,
+			payload,
+		)
+	if err != nil {
 		return err
 	}
-	installation.TeamID = teamID
-	if err := db.Save(installation); err != nil {
-		return err
-	}
-	return nil
+
+	return ctx.JSON(http.StatusOK, run.GetRunID())
 }

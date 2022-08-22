@@ -40,8 +40,8 @@ import (
 //	    WF ->> UI: Complete Installation
 //	  deactivate WF
 func handleInstallationEvent(ctx echo.Context) error {
-	payload := InstallationEventPayload{}
-	if err := ctx.Bind(&payload); err != nil {
+	payload := &InstallationEventPayload{}
+	if err := ctx.Bind(payload); err != nil {
 		return err
 	}
 
@@ -50,12 +50,21 @@ func handleInstallationEvent(ctx echo.Context) error {
 		Queues[cmn.GithubIntegrationQueue].
 		GetWorkflowOptions(strconv.Itoa(int(payload.Installation.ID)), string(InstallationEvent))
 
-	exe, err := cmn.Temporal.Client.ExecuteWorkflow(context.Background(), opts, workflows.OnInstall, payload)
+	run, err := cmn.Temporal.Client.
+		SignalWithStartWorkflow(
+			ctx.Request().Context(),
+			opts.ID,
+			InstallationEventSignal.String(),
+			payload,
+			opts,
+			workflows.OnInstall,
+			payload,
+		)
 	if err != nil {
-		return err
+		return nil
 	}
 
-	return ctx.JSON(http.StatusCreated, exe.GetRunID())
+	return ctx.JSON(http.StatusCreated, run.GetRunID())
 }
 
 // handles GitHub push event

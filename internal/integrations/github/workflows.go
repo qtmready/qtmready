@@ -1,7 +1,11 @@
 package github
 
 import (
+	"time"
+
+	"go.breu.io/ctrlplane/internal/entities"
 	"go.temporal.io/sdk/workflow"
+	"go.uber.org/zap"
 )
 
 type Workflows struct{}
@@ -9,40 +13,41 @@ type Workflows struct{}
 var activities *Activities
 
 // OnInstall workflow is executed when we initiate the installation of github app.
-// It has two possible entry points
 //
-// 1. When we receive a webhook event from github. The payload has all the data, except the team_id.
-// 2. When we receive the complete installation event from our ui. Github redirects to the ui, which knows the team_id.
+// In an ideal world, the complete installation request would hit the API after the installation event has hit the
+// webhook, however, there can be number of things that can go wrong and we can recieve the complete installation
+// request before the push event. To handle this, we use temporal.io signal API to provide two possible entry points
+// for the system. See the README.md for a detailsed explaination on how this workflow works.
 //
-// In order to cater to latency and hops, we might recieve the complete installation event first. Therefore, we are
-// handling for whichever comes first. In order to do that, this workflow is only meant to be started via signals. See
-// README.md for more details.
+// NOTE: This workflow is only meant to be started with `SignalWithStartWorkflow`
 func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	// prelude
+	log := workflow.GetLogger(ctx)
+	selector := workflow.NewSelector(ctx)
 	webhook := &InstallationEventPayload{}
 	request := &CompleteInstallationPayload{}
 	webhookDone := false
 	requestDone := false
-	// result := &entities.GithubInstallation{}
-	selector := workflow.NewSelector(ctx)
 
 	// setting up channels to recieve signals
 	webhookChannel := workflow.GetSignalChannel(ctx, InstallationEventSignal.String())
 	requestChannel := workflow.GetSignalChannel(ctx, CompleteInstallationSignal.String())
 
-	// setting up signal reciever for webhook
+	// push event entry point
 	selector.AddReceive(
 		webhookChannel,
 		func(channel workflow.ReceiveChannel, more bool) {
+			log.Info("webhook: ", zap.Any("payload", webhook))
 			channel.Receive(ctx, webhook)
 			webhookDone = true
 		},
 	)
 
-	// setting up signal reciever for http request
+	// complete installation entry point
 	selector.AddReceive(
 		requestChannel,
 		func(channel workflow.ReceiveChannel, more bool) {
+			log.Info("request: ", zap.Any("payload", request))
 			channel.Receive(ctx, request)
 			requestDone = true
 		},
@@ -52,6 +57,28 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	for !webhookDone && !requestDone {
 		selector.Select(ctx)
 	}
+
+	// Finalizing the installation
+	installation := &entities.GithubInstallation{
+		TeamID:            request.TeamID,
+		InstallationID:    webhook.Installation.ID,
+		InstallationLogin: webhook.Installation.Account.Login,
+		InstallationType:  webhook.Installation.Account.Type,
+		SenderID:          webhook.Sender.ID,
+		SenderLogin:       webhook.Sender.Login,
+	}
+
+	opt := workflow.ActivityOptions{StartToCloseTimeout: 30 * time.Second}
+	ctx = workflow.WithActivityOptions(ctx, opt)
+	err := workflow.
+		ExecuteActivity(ctx, activities.GetOrCreateInstallation, installation).
+		Get(ctx, installation)
+
+	if err != nil {
+		return err
+	}
+
+	// TODO: save the repository related data.
 
 	return nil
 }

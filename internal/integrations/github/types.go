@@ -134,7 +134,7 @@ const (
 // Signal Payload
 type (
 	CompleteInstallationPayload struct {
-		InstallationID string     `json:"installation_id"`
+		InstallationID int64      `json:"installation_id"`
 		TeamID         gocql.UUID `json:"team_id"`
 	}
 )
