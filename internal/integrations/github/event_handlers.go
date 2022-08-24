@@ -7,7 +7,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"go.breu.io/ctrlplane/internal/cmn"
-	"go.uber.org/zap"
 )
 
 // handles GitHub installation event. Below is the mermaid workflow.
@@ -40,8 +39,8 @@ import (
 //	    WF ->> UI: Complete Installation
 //	  deactivate WF
 func handleInstallationEvent(ctx echo.Context) error {
-	payload := &InstallationEventPayload{}
-	if err := ctx.Bind(payload); err != nil {
+	payload := InstallationEventPayload{}
+	if err := ctx.Bind(&payload); err != nil {
 		return err
 	}
 
@@ -50,28 +49,25 @@ func handleInstallationEvent(ctx echo.Context) error {
 		Queues[cmn.GithubIntegrationQueue].
 		GetWorkflowOptions(strconv.Itoa(int(payload.Installation.ID)), string(InstallationEvent))
 
-	run, err := cmn.Temporal.Client.
-		SignalWithStartWorkflow(
-			ctx.Request().Context(),
-			opts.ID,
-			InstallationEventSignal.String(),
-			payload,
-			opts,
-			workflows.OnInstall,
-			payload,
-		)
+	exe, err := cmn.Temporal.Client.SignalWithStartWorkflow(
+		ctx.Request().Context(),
+		opts.ID,
+		InstallationEventSignal.String(),
+		payload,
+		opts,
+		workflows.OnInstall,
+	)
 	if err != nil {
 		return nil
 	}
 
-	return ctx.JSON(http.StatusCreated, run.GetRunID())
+	return ctx.JSON(http.StatusCreated, exe.GetRunID())
 }
 
 // handles GitHub push event
 func handlePushEvent(ctx echo.Context) error {
 	payload := PushEventPayload{}
 	if err := ctx.Bind(&payload); err != nil {
-		cmn.Log.Info("Error: ", zap.Any("body", ctx.Request().Body), zap.String("error", err.Error()))
 		return err
 	}
 

@@ -17,7 +17,7 @@ var activities *Activities
 // In an ideal world, the complete installation request would hit the API after the installation event has hit the
 // webhook, however, there can be number of things that can go wrong and we can recieve the complete installation
 // request before the push event. To handle this, we use temporal.io signal API to provide two possible entry points
-// for the system. See the README.md for a detailsed explaination on how this workflow works.
+// for the system. See the README.md for a detailed explaination on how this workflow works.
 //
 // NOTE: This workflow is only meant to be started with `SignalWithStartWorkflow`
 func (w *Workflows) OnInstall(ctx workflow.Context) error {
@@ -40,6 +40,14 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 			log.Info("webhook: ", zap.Any("payload", webhook))
 			channel.Receive(ctx, webhook)
 			webhookDone = true
+
+			switch webhook.Action {
+			case "deleted", "suspend", "unsuspend":
+				log.Info("delete/suspend/unsuspend event.")
+				requestDone = true
+			default:
+				log.Info("create event.")
+			}
 		},
 	)
 
@@ -55,6 +63,7 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 
 	// keep listening for signals until we have received both the installation id and the team id
 	for !webhookDone && !requestDone {
+		log.Info("selecting...")
 		selector.Select(ctx)
 	}
 
@@ -66,6 +75,7 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 		InstallationType:  webhook.Installation.Account.Type,
 		SenderID:          webhook.Sender.ID,
 		SenderLogin:       webhook.Sender.Login,
+		Status:            webhook.Action,
 	}
 
 	opt := workflow.ActivityOptions{StartToCloseTimeout: 30 * time.Second}
@@ -75,6 +85,7 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 		Get(ctx, installation)
 
 	if err != nil {
+		log.Error("error saving installation", zap.Error(err))
 		return err
 	}
 

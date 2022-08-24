@@ -16,6 +16,7 @@ var (
 		"installation_type",
 		"sender_id",
 		"sender_login",
+		"status",
 		"created_at",
 		"updated_at",
 	}
@@ -36,6 +37,7 @@ type GithubInstallation struct {
 	InstallationType  string     `json:"installation_type" cql:"installation_type"`
 	SenderID          int64      `json:"sender_id" cql:"sender_id"`
 	SenderLogin       string     `json:"sender_login" cql:"sender_login"`
+	Status            string     `json:"status" cql:"status"`
 	CreatedAt         time.Time  `json:"created_at" cql:"created_at"`
 	UpdatedAt         time.Time  `json:"updated_at" cql:"updated_at"`
 }

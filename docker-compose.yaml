@@ -2,7 +2,7 @@ version: '3.9'
 services:
   cassandra:
     container_name: cassandra
-    image: cassandra:4
+    image: scylladb/scylla
     ports:
       - '9042:9042'
     environment:

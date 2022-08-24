@@ -6,6 +6,8 @@ import (
 
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/table"
+	"go.breu.io/ctrlplane/internal/cmn"
+	"go.uber.org/zap"
 )
 
 type (
@@ -60,8 +62,8 @@ func Save[T Entity](entity T) error {
 }
 
 // Filters the entity. NOTE: Work in progress.
-func Filter[OUT any](entity Entity, params QueryParams, columns ...string) ([]OUT, error) {
-	entities := make([]OUT, 0)
+func Filter[T any](entity Entity, params QueryParams, columns ...string) ([]T, error) {
+	entities := make([]T, 0)
 	query := DB.Session.Query(entity.GetTable().Select(columns...)).BindMap(params)
 	if err := query.SelectRelease(&entities); err != nil {
 		return entities, err
@@ -85,6 +87,7 @@ func create[T Entity](entity T) error {
 	}
 
 	query := DB.Session.Query(entity.GetTable().Insert()).BindStruct(entity)
+	cmn.Log.Info("query", zap.String("query", query.String()))
 	if err := query.ExecRelease(); err != nil {
 		return err
 	}
@@ -97,6 +100,7 @@ func update[T Entity](entity T) error {
 	setvalue(entity, "UpdatedAt", now)
 
 	query := DB.Session.Query(entity.GetTable().Update()).BindStruct(entity)
+	cmn.Log.Info("query", zap.Any("query", query))
 	if err := query.ExecRelease(); err != nil {
 		return err
 	}

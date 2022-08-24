@@ -8,6 +8,8 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.temporal.io/sdk/client"
 	"go.uber.org/zap"
+	zapadapter "logur.dev/adapter/zap"
+	"logur.dev/logur"
 )
 
 type (
@@ -77,6 +79,7 @@ func (t *temporal) InitClient() {
 	Log.Info("Initializing Temporal Client ...", zap.String("host", t.ServerHost), zap.String("port", t.ServerPort))
 	options := client.Options{
 		HostPort: t.GetConnectionString(),
+		Logger:   logur.LoggerToKV(zapadapter.New(Log)),
 	}
 
 	retryTemporal := func() error {
