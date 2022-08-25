@@ -5,8 +5,8 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gocql/gocql"
-	"github.com/scylladb/gocqlx/table"
 	"github.com/scylladb/gocqlx/v2/qb"
+	"github.com/scylladb/gocqlx/v2/table"
 )
 
 type placeholder struct {

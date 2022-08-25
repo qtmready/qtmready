@@ -45,20 +45,21 @@ func (d *db) ReadEnv() {
 func (d *db) InitSession() {
 	cluster := gocql.NewCluster(d.Hosts...)
 	cluster.Keyspace = d.Keyspace
-
 	createSession := func() error {
+		cmn.Log.Info("db: connecting ...")
 		session, err := gocqlx.WrapSession(cluster.CreateSession())
 		if err != nil {
 			return err
 		}
 
 		d.Session = session
+		cmn.Log.Info("db: connected")
 		return nil
 	}
 
 	if err := retry.Do(
 		createSession,
-		retry.Attempts(10),
+		retry.Attempts(15),
 		retry.Delay(6*time.Second),
 	); err != nil {
 		cmn.Log.Fatal("Failed to initialize Cassandra Session", zap.Error(err))

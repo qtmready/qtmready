@@ -2,7 +2,9 @@ package github
 
 import (
 	"context"
+	"strconv"
 
+	"github.com/scylladb/gocqlx/v2/qb"
 	"go.breu.io/ctrlplane/internal/entities"
 	"go.temporal.io/sdk/activity"
 	"go.uber.org/zap"
@@ -18,10 +20,10 @@ func (a *Activities) GetOrCreateInstallation(ctx context.Context, payload *entit
 
 	// if we get the installation, the error will be nil
 	if err == nil {
-		log.Info("installation found, updating status", zap.Any("installation", installation))
+		log.Info("installation found, updating status ...", zap.Any("installation", installation))
 		installation.Status = payload.Status
 	} else {
-		log.Info("installation not found, preparing create", zap.Any("installation", payload))
+		log.Info("installation not found, preparing create ...", zap.Any("installation", payload))
 		installation = payload
 	}
 
@@ -37,9 +39,18 @@ func (a *Activities) GetOrCreateInstallation(ctx context.Context, payload *entit
 func (a *Activities) GetInstallation(ctx context.Context, id int64) (*entities.GithubInstallation, error) {
 	installation := &entities.GithubInstallation{}
 
-	if err := db.Get(installation, db.QueryParams{"installation_id": id}); err != nil {
+	table := installation.GetTable()
+	clause := qb.EqLit("installation_id", strconv.FormatInt(id, 10))
+	query := qb.
+		Select(table.Name()).
+		AllowFiltering().
+		Columns(table.Metadata().Columns...).
+		Where(clause)
+
+	if err := db.DB.Session.Query(query.ToCql()).GetRelease(installation); err != nil {
 		return installation, err
 	}
+
 	return installation, nil
 }
 

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/scylladb/gocqlx/table"
+	"github.com/scylladb/gocqlx/v2/table"
 	"go.breu.io/ctrlplane/internal/cmn"
 	"go.uber.org/zap"
 )
@@ -33,7 +33,7 @@ type (
 //	  user := &User{}
 //		err := db.Get(user, params)
 func Get[T Entity](entity T, params QueryParams) error {
-	query := DB.Session.Query(entity.GetTable().Get()).BindMap(params)
+	query := DB.Session.Query(entity.GetTable().Select()).BindMap(params)
 
 	if err := query.GetRelease(entity); err != nil {
 		return err
@@ -52,12 +52,12 @@ func Get[T Entity](entity T, params QueryParams) error {
 //	user := User{Email: "user@example.com"}
 //	user, err := db.Save(&user)
 func Save[T Entity](entity T) error {
-	pk := getid(entity)
+	pk := getID(entity)
 
 	if pk.String() == NullUUID {
-		return create(entity)
+		return Create(entity)
 	} else {
-		return update(entity)
+		return Update(entity)
 	}
 }
 
@@ -71,11 +71,9 @@ func Filter[T any](entity Entity, params QueryParams, columns ...string) ([]T, e
 	return entities, nil
 }
 
-func create[T Entity](entity T) error {
-	id, err := gocql.RandomUUID()
-	if err != nil {
-		return err
-	}
+// Creates the entity. The entity value is a pointer to the struct.
+func Create[T Entity](entity T) error {
+	id, _ := gocql.RandomUUID()
 	now := time.Now()
 
 	setvalue(entity, "ID", id)
@@ -95,25 +93,29 @@ func create[T Entity](entity T) error {
 	return nil
 }
 
-func update[T Entity](entity T) error {
+// Updates the entity. The entity value is a pointer to the struct.
+func Update[T Entity](entity T) error {
 	now := time.Now()
 	setvalue(entity, "UpdatedAt", now)
 
-	query := DB.Session.Query(entity.GetTable().Update()).BindStruct(entity)
-	cmn.Log.Info("query", zap.Any("query", query))
-	if err := query.ExecRelease(); err != nil {
+	table := entity.GetTable()
+	columns := table.Metadata().Columns[1:] // Remove the first element. We are assuming it is the primary key.
+	// query := table.UpdateBuilder(columns...).Existing()
+
+	if err := DB.Session.Query(table.Update(columns...)).BindStruct(entity).ExecRelease(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func getid(entity Entity) gocql.UUID {
+// gets the ID of the entity. The entity value is a pointer to the struct.
+func getID(entity Entity) gocql.UUID {
 	return reflect.ValueOf(entity).Elem().FieldByName("ID").Interface().(gocql.UUID)
 }
 
 // Set the value of the field of the entity. The entity value is a pointer to the struct.
-func setvalue(entity interface{}, name string, val interface{}) {
+func setvalue(entity Entity, name string, val interface{}) {
 	elem := reflect.ValueOf(entity).Elem()
 	elem.FieldByName(name).Set(reflect.ValueOf(val))
 }

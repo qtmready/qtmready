@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/scylladb/gocqlx/table"
+	"github.com/scylladb/gocqlx/v2/table"
 )
 
 var (
@@ -24,6 +24,7 @@ var (
 	githubInstallationMeta = table.Metadata{
 		Name:    "github_installations",
 		Columns: githubInstallationColumns,
+		PartKey: []string{"id"},
 	}
 
 	githubInstallationTable = table.New(githubInstallationMeta)

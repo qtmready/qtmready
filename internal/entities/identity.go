@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
-	"github.com/scylladb/gocqlx/table"
+	"github.com/scylladb/gocqlx/v2/table"
 	"golang.org/x/crypto/bcrypt"
 
 	"go.breu.io/ctrlplane/internal/db"
@@ -26,8 +26,6 @@ var (
 	teamMeta = table.Metadata{
 		Name:    "teams",
 		Columns: teamColumns,
-		PartKey: []string{},
-		SortKey: []string{},
 	}
 
 	teamTable = table.New(teamMeta)

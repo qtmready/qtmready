@@ -13,7 +13,6 @@ require (
 	github.com/labstack/echo/v4 v4.8.0
 	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/nats-io/nats.go v1.16.0
-	github.com/scylladb/gocqlx v1.5.0
 	github.com/scylladb/gocqlx/v2 v2.7.0
 	go.temporal.io/sdk v1.16.0
 	go.uber.org/zap v1.22.0
@@ -21,6 +20,8 @@ require (
 	logur.dev/adapter/zap v0.5.0
 	logur.dev/logur v0.17.0
 )
+
+replace github.com/scylladb/gocqlx/v2 => github.com/debuggerpk/gocqlx/v2 v2.7.1
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect

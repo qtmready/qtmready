@@ -130,5 +130,5 @@ $RECYCLE.BIN/
 # End of https://www.toptal.com/developers/gitignore/api/go,dotenv,osx,linux,windows,visualstudiocode
 
 # Project specific
-
+__debug_*
 /tmp

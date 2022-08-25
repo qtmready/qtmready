@@ -39,8 +39,8 @@ import (
 //	    WF ->> UI: Complete Installation
 //	  deactivate WF
 func handleInstallationEvent(ctx echo.Context) error {
-	payload := InstallationEventPayload{}
-	if err := ctx.Bind(&payload); err != nil {
+	payload := &InstallationEventPayload{}
+	if err := ctx.Bind(payload); err != nil {
 		return err
 	}
 

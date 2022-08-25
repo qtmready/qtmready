@@ -8,7 +8,7 @@ services:
     environment:
       - CASSNDRA_CLUSTER_NAME=ctrlplane
     volumes:
-      - ctrlplane-db-data:/var/lib/cassandra
+      - ctrlplane-db-data:/var/lib/scylla
   
   cassandra-load-keyspace:
     container_name: cassandra-load-keyspace
