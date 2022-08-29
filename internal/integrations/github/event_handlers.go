@@ -47,7 +47,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 	workflows := &Workflows{}
 	opts := cmn.Temporal.
 		Queues[cmn.GithubIntegrationQueue].
-		GetWorkflowOptions(strconv.Itoa(int(payload.Installation.ID)), string(InstallationEvent))
+		GetWorkflowOptions(strconv.FormatInt(payload.Installation.ID, 10), string(InstallationEvent))
 
 	exe, err := cmn.Temporal.Client.SignalWithStartWorkflow(
 		ctx.Request().Context(),
@@ -74,7 +74,7 @@ func handlePushEvent(ctx echo.Context) error {
 	w := &Workflows{}
 	opts := cmn.Temporal.
 		Queues[cmn.GithubIntegrationQueue].
-		GetWorkflowOptions(strconv.Itoa(int(payload.Installation.ID)), string(PushEvent), "ref", payload.After)
+		GetWorkflowOptions(strconv.FormatInt(payload.Installation.ID, 10), PushEvent.String(), "ref", payload.After)
 
 	exe, err := cmn.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPush, payload)
 	if err != nil {

@@ -46,14 +46,14 @@ func (d *db) InitSession() {
 	cluster := gocql.NewCluster(d.Hosts...)
 	cluster.Keyspace = d.Keyspace
 	createSession := func() error {
-		cmn.Log.Info("db: connecting ...")
+		cmn.Logger.Info("db: connecting ...")
 		session, err := gocqlx.WrapSession(cluster.CreateSession())
 		if err != nil {
 			return err
 		}
 
 		d.Session = session
-		cmn.Log.Info("db: connected")
+		cmn.Logger.Info("db: connected")
 		return nil
 	}
 
@@ -62,33 +62,33 @@ func (d *db) InitSession() {
 		retry.Attempts(15),
 		retry.Delay(6*time.Second),
 	); err != nil {
-		cmn.Log.Fatal("Failed to initialize Cassandra Session", zap.Error(err))
+		cmn.Logger.Error("Failed to initialize Cassandra Session", zap.Error(err))
 	}
 }
 
 // Runs the migrations
 func (d *db) RunMigrations() {
-	cmn.Log.Info("Running Migrations ...", zap.String("source", d.MigrationSourceURL))
+	cmn.Logger.Info("Running Migrations ...", zap.String("source", d.MigrationSourceURL))
 	driver, err := cassandra.WithInstance(d.Session.Session, &cassandra.Config{KeyspaceName: d.Keyspace})
 	if err != nil {
-		cmn.Log.Fatal("Failed to initialize DB Driver", zap.Error(err))
+		cmn.Logger.Error("Failed to initialize DB Driver", zap.Error(err))
 	}
 
 	migrations, err := migrate.NewWithDatabaseInstance(d.MigrationSourceURL, "cassandra", driver)
 	if err != nil {
-		cmn.Log.Fatal("Failed to initialize DB Migrations", zap.Error(err))
+		cmn.Logger.Error("Failed to initialize DB Migrations", zap.Error(err))
 	}
 
 	err = migrations.Up()
 
 	if err == migrate.ErrNoChange {
-		cmn.Log.Info("Running Migrations ... No Changes")
+		cmn.Logger.Info("Running Migrations ... No Changes")
 	}
 
 	if err != nil && err != migrate.ErrNoChange {
-		cmn.Log.Fatal("Failed to run DB Migrations", zap.Error(err))
+		cmn.Logger.Error("Failed to run DB Migrations")
 	}
-	cmn.Log.Info("Running Migrations ... Done")
+	cmn.Logger.Info("Running Migrations ... Done")
 }
 
 // Shorthand for initializing the database along with running migrations

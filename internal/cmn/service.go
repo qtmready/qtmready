@@ -19,7 +19,7 @@ type (
 )
 
 var (
-	Log      *zap.Logger
+	Logger   *zap.Logger
 	Service  = &service{}
 	Validate *validator.Validate
 	// JWT       *jwtauth.JWTAuth
@@ -28,7 +28,7 @@ var (
 // ReadEnv reads the environment variables and initializes the service.
 func (s *service) ReadEnv() {
 	if err := cleanenv.ReadEnv(s); err != nil {
-		Log.Fatal("Failed to read environment variables", zap.Error(err))
+		Logger.Error("Failed to read environment variables", zap.Error(err))
 	}
 }
 
@@ -47,9 +47,12 @@ func (s *service) InitValidator() {
 
 // InitLogger sets up global logger.
 func (s *service) InitLogger() {
+	var zaplogger *zap.Logger
 	if s.Debug {
-		Log, _ = zap.NewDevelopment()
+		zaplogger, _ = zap.NewDevelopment()
 	} else {
-		Log, _ = zap.NewProduction()
+		zaplogger, _ = zap.NewProduction()
 	}
+
+	Logger = zaplogger
 }

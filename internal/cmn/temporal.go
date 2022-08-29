@@ -8,8 +8,6 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.temporal.io/sdk/client"
 	"go.uber.org/zap"
-	zapadapter "logur.dev/adapter/zap"
-	"logur.dev/logur"
 )
 
 type (
@@ -67,7 +65,7 @@ func (q *queue) GetWorkflowOptions(args ...string) client.StartWorkflowOptions {
 
 func (t *temporal) ReadEnv() {
 	if err := cleanenv.ReadEnv(t); err != nil {
-		Log.Fatal("Failed to read environment variables", zap.Error(err))
+		Logger.Error("Failed to read environment variables", zap.Error(err))
 	}
 }
 
@@ -76,10 +74,10 @@ func (t *temporal) GetConnectionString() string {
 }
 
 func (t *temporal) InitClient() {
-	Log.Info("Initializing Temporal Client ...", zap.String("host", t.ServerHost), zap.String("port", t.ServerPort))
+	Logger.Info("Initializing Temporal Client ...", zap.String("host", t.ServerHost), zap.String("port", t.ServerPort))
 	options := client.Options{
 		HostPort: t.GetConnectionString(),
-		Logger:   logur.LoggerToKV(zapadapter.New(Log)),
+		// Logger:   utils.NewZapAdapter(Logger),
 	}
 
 	retryTemporal := func() error {
@@ -89,7 +87,7 @@ func (t *temporal) InitClient() {
 		}
 
 		t.Client = client
-		Log.Info("Initializing Temporal Client ... Done")
+		Logger.Info("Initializing Temporal Client ... Done")
 		return nil
 	}
 
@@ -98,7 +96,7 @@ func (t *temporal) InitClient() {
 		retry.Attempts(10),
 		retry.Delay(1*time.Second),
 	); err != nil {
-		Log.Fatal("Failed to initialize Temporal Client", zap.Error(err))
+		Logger.Error("Failed to initialize Temporal Client", zap.Error(err))
 	}
 }
 

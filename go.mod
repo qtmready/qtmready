@@ -17,8 +17,6 @@ require (
 	go.temporal.io/sdk v1.16.0
 	go.uber.org/zap v1.22.0
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8
-	logur.dev/adapter/zap v0.5.0
-	logur.dev/logur v0.17.0
 )
 
 replace github.com/scylladb/gocqlx/v2 => github.com/debuggerpk/gocqlx/v2 v2.7.1

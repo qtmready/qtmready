@@ -85,7 +85,7 @@ func Create[T Entity](entity T) error {
 	}
 
 	query := DB.Session.Query(entity.GetTable().Insert()).BindStruct(entity)
-	cmn.Log.Info("query", zap.String("query", query.String()))
+	cmn.Logger.Info("query", zap.String("query", query.String()))
 	if err := query.ExecRelease(); err != nil {
 		return err
 	}
@@ -93,14 +93,13 @@ func Create[T Entity](entity T) error {
 	return nil
 }
 
-// Updates the entity. The entity value is a pointer to the struct.
+// Updates the entity. The assumption is that ID is the primary key and the first one defined in the struct.
 func Update[T Entity](entity T) error {
 	now := time.Now()
 	setvalue(entity, "UpdatedAt", now)
 
 	table := entity.GetTable()
 	columns := table.Metadata().Columns[1:] // Remove the first element. We are assuming it is the primary key.
-	// query := table.UpdateBuilder(columns...).Existing()
 
 	if err := DB.Session.Query(table.Update(columns...)).BindStruct(entity).ExecRelease(); err != nil {
 		return err

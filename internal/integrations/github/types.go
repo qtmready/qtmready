@@ -147,7 +147,7 @@ type (
 	}
 
 	InstallationID struct {
-		ID int `json:"id"`
+		ID int64 `json:"id"`
 	}
 
 	Commit struct {

@@ -65,13 +65,14 @@ func init() {
 	waiter.Wait()
 	// Initializing singleton objects ... Done
 
-	cmn.Log.Info("Initializing Service ... Done")
+	cmn.Logger.Info("Initializing Service ... Done")
 }
 
 func main() {
 	// handling closing of the server
 	defer db.DB.Session.Close()
 	defer cmn.Temporal.Client.Close()
+	defer cmn.Logger.Sync()
 
 	e := echo.New()
 	jwtconf := middleware.JWTConfig{

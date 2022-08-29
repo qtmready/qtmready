@@ -40,10 +40,11 @@ func init() {
 
 	wait.Wait()
 
-	cmn.Log.Info("Initializing Service ... Done")
+	cmn.Logger.Info("Initializing Service ... Done")
 }
 
 func main() {
+	defer cmn.Logger.Sync()
 	defer cmn.Temporal.Client.Close()
 
 	queue := cmn.Temporal.Queues[cmn.GithubIntegrationQueue].GetName()

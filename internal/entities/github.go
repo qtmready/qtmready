@@ -34,7 +34,7 @@ type GithubInstallation struct {
 	ID                gocql.UUID `json:"id" cql:"id"`
 	TeamID            gocql.UUID `json:"team_id" cql:"team_id"`
 	InstallationID    int64      `json:"installation_id" cql:"installation_id" validate:"required,db_unique"`
-	InstallationLogin string     `json:"installation_login" cql:"installation_login"`
+	InstallationLogin string     `json:"installation_login" cql:"installation_login" validate:"required,db_unique"`
 	InstallationType  string     `json:"installation_type" cql:"installation_type"`
 	SenderID          int64      `json:"sender_id" cql:"sender_id"`
 	SenderLogin       string     `json:"sender_login" cql:"sender_login"`
@@ -46,3 +46,37 @@ type GithubInstallation struct {
 func (g GithubInstallation) GetTable() *table.Table { return githubInstallationTable }
 func (g GithubInstallation) PreCreate() error       { return nil }
 func (g GithubInstallation) PreUpdate() error       { return nil }
+
+var (
+	githubRepoColumns = []string{
+		"id",
+		"github_id",
+		"team_id",
+		"name",
+		"full_name",
+		"created_at",
+		"updated_at",
+	}
+
+	githubRepoMeta = table.Metadata{
+		Name:    "github_repo",
+		Columns: githubRepoColumns,
+		PartKey: []string{"id"},
+	}
+
+	githubRepoTable = table.New(githubRepoMeta)
+)
+
+type GithubRepo struct {
+	ID        gocql.UUID `json:"id" cql:"id"`
+	GithubID  int64      `json:"github_id" cql:"github_id" validate:"required,db_unique"`
+	TeamID    gocql.UUID `json:"team_id" cql:"team_id"`
+	Name      string     `json:"name" cql:"name" validate:"required,db_unique"`
+	FullName  string     `json:"full_name" cql:"full_name" validate:"required,db_unique"`
+	CreatedAt time.Time  `json:"created_at" cql:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at" cql:"updated_at"`
+}
+
+func (g GithubRepo) GetTable() *table.Table { return githubRepoTable }
+func (g GithubRepo) PreCreate() error       { return nil }
+func (g GithubRepo) PreUpdate() error       { return nil }
