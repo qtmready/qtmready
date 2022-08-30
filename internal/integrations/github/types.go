@@ -121,7 +121,8 @@ type (
 
 type (
 	CompleteInstallationRequest struct {
-		InstallationID int64 `json:"installation_id"`
+		InstallationID int64  `json:"installation_id"`
+		SetupAction    string `json:"setup_action"`
 	}
 )
 
@@ -135,6 +136,7 @@ const (
 type (
 	CompleteInstallationPayload struct {
 		InstallationID int64      `json:"installation_id"`
+		SetupAction    string     `json:"setup_action"`
 		TeamID         gocql.UUID `json:"team_id"`
 	}
 )

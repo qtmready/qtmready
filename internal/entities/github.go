@@ -69,7 +69,7 @@ var (
 
 type GithubRepo struct {
 	ID        gocql.UUID `json:"id" cql:"id"`
-	GithubID  int64      `json:"github_id" cql:"github_id" validate:"required,db_unique"`
+	GithubID  int64      `json:"github_id" cql:"github_id" validate:"required"`
 	TeamID    gocql.UUID `json:"team_id" cql:"team_id"`
 	Name      string     `json:"name" cql:"name" validate:"required,db_unique"`
 	FullName  string     `json:"full_name" cql:"full_name" validate:"required,db_unique"`

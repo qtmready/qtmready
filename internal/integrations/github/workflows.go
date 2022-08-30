@@ -5,7 +5,6 @@ import (
 
 	"go.breu.io/ctrlplane/internal/entities"
 	"go.temporal.io/sdk/workflow"
-	"go.uber.org/zap"
 )
 
 type Workflows struct{}
@@ -37,16 +36,16 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	selector.AddReceive(
 		webhookChannel,
 		func(channel workflow.ReceiveChannel, more bool) {
-			log.Info("webhook: ", zap.Any("payload", webhook))
+			log.Info("recieved webhook ...", "payload", webhook)
 			channel.Receive(ctx, webhook)
 			webhookDone = true
 
 			switch webhook.Action {
 			case "deleted", "suspend", "unsuspend":
-				log.Info("delete/suspend/unsuspend event.")
+				log.Info("installation removed, skipping complete installation request ...")
 				requestDone = true
 			default:
-				log.Info("create event.")
+				log.Info("installation created, waiting for complete installation request ...")
 			}
 		},
 	)
@@ -55,17 +54,19 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	selector.AddReceive(
 		requestChannel,
 		func(channel workflow.ReceiveChannel, more bool) {
-			log.Info("request: ", zap.Any("payload", request))
+			log.Info("received request ...", "payload", request)
 			channel.Receive(ctx, request)
 			requestDone = true
 		},
 	)
 
 	// keep listening for signals until we have received both the installation id and the team id
-	for !webhookDone && !requestDone {
-		log.Info("selecting...")
+	for !(webhookDone && requestDone) {
+		log.Info("waiting for signals ....")
 		selector.Select(ctx)
 	}
+
+	log.Info("all signals recieved, processing ...")
 
 	// Finalizing the installation
 	installation := &entities.GithubInstallation{
@@ -78,19 +79,43 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 		Status:            webhook.Action,
 	}
 
-	opt := workflow.ActivityOptions{StartToCloseTimeout: 30 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opt)
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	ctx = workflow.WithActivityOptions(ctx, activityOpts)
 	err := workflow.
-		ExecuteActivity(ctx, activities.GetOrCreateInstallation, installation).
+		ExecuteActivity(ctx, activities.CreateOrUpdateInstallation, installation).
 		Get(ctx, installation)
 
 	if err != nil {
-		log.Error("error saving installation", zap.Error(err))
+		log.Error("error saving installation", "error", err)
 		return err
 	}
 
-	// TODO: save the repository related data.
+	// If webhook.Action == "created", the we save the repoistory information to the database.
+	if webhook.Action == "created" {
+		log.Info("saving associated repositories ...")
 
+		// schedule the activity
+		for _, repository := range webhook.Repositories {
+			log.Info("saving repository ...", "repository", repository.ID)
+
+			repo := &entities.GithubRepo{
+				GithubID: repository.ID,
+				Name:     repository.Name,
+				FullName: repository.FullName,
+				TeamID:   installation.TeamID,
+			}
+
+			future := workflow.ExecuteActivity(ctx, activities.CreateRepo, repo)
+			selector.AddFuture(future, func(f workflow.Future) { log.Info("repository saved ...", repo, repo.GithubID) })
+		}
+
+		// block until all activities are completed
+		for range webhook.Repositories {
+			selector.Select(ctx)
+		}
+	}
+
+	log.Info("installation complete", "installation", installation)
 	return nil
 }
 

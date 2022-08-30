@@ -14,6 +14,7 @@ import (
 
 func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
 	g.POST("/webhook", webhook)
+
 	g.Use(middlewares...)
 	g.POST("/complete-installation", completeInstallation)
 }
@@ -57,12 +58,17 @@ func completeInstallation(ctx echo.Context) error {
 		return err
 	}
 
-	teamID, err := gocql.ParseUUID(ctx.Get("user").(*jwt.Token).Claims.(jwt.MapClaims)["team_id"].(string))
+	// TODO: abstract this out to a common function
+	claims := ctx.Get("user").(*jwt.Token).Claims.(*cmn.JWTClaims)
+	cmn.Logger.Info("claims", "claims", claims)
+	teamID, err := gocql.ParseUUID(claims.TeamID)
 	if err != nil {
+		cmn.Logger.Error("error", "error", err)
 		return err
 	}
 
-	payload := &CompleteInstallationPayload{request.InstallationID, teamID}
+	payload := &CompleteInstallationPayload{request.InstallationID, request.SetupAction, teamID}
+
 	workflows := &Workflows{}
 	opts := cmn.Temporal.
 		Queues[cmn.GithubIntegrationQueue].
@@ -76,9 +82,10 @@ func completeInstallation(ctx echo.Context) error {
 			payload,
 			opts,
 			workflows.OnInstall,
-			payload,
 		)
+
 	if err != nil {
+		cmn.Logger.Error("error", "error", err)
 		return err
 	}
 

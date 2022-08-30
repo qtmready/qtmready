@@ -7,7 +7,6 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/table"
 	"go.breu.io/ctrlplane/internal/cmn"
-	"go.uber.org/zap"
 )
 
 type (
@@ -85,7 +84,7 @@ func Create[T Entity](entity T) error {
 	}
 
 	query := DB.Session.Query(entity.GetTable().Insert()).BindStruct(entity)
-	cmn.Logger.Info("query", zap.String("query", query.String()))
+	cmn.Logger.Debug("query", "query", query.String())
 	if err := query.ExecRelease(); err != nil {
 		return err
 	}

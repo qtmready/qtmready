@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/ilyakaznacheev/cleanenv"
+	"go.breu.io/ctrlplane/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -19,7 +20,7 @@ type (
 )
 
 var (
-	Logger   *zap.Logger
+	Logger   *utils.ZapAdapter
 	Service  = &service{}
 	Validate *validator.Validate
 	// JWT       *jwtauth.JWTAuth
@@ -28,7 +29,7 @@ var (
 // ReadEnv reads the environment variables and initializes the service.
 func (s *service) ReadEnv() {
 	if err := cleanenv.ReadEnv(s); err != nil {
-		Logger.Error("Failed to read environment variables", zap.Error(err))
+		Logger.Error("Failed to read environment variables", "error", err)
 	}
 }
 
@@ -47,12 +48,7 @@ func (s *service) InitValidator() {
 
 // InitLogger sets up global logger.
 func (s *service) InitLogger() {
-	var zaplogger *zap.Logger
-	if s.Debug {
-		zaplogger, _ = zap.NewDevelopment()
-	} else {
-		zaplogger, _ = zap.NewProduction()
-	}
+	zaplogger, _ := zap.NewProduction()
 
-	Logger = zaplogger
+	Logger = utils.NewZapAdapter(zaplogger)
 }

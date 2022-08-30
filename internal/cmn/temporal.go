@@ -7,7 +7,6 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.temporal.io/sdk/client"
-	"go.uber.org/zap"
 )
 
 type (
@@ -65,7 +64,7 @@ func (q *queue) GetWorkflowOptions(args ...string) client.StartWorkflowOptions {
 
 func (t *temporal) ReadEnv() {
 	if err := cleanenv.ReadEnv(t); err != nil {
-		Logger.Error("Failed to read environment variables", zap.Error(err))
+		Logger.Error("Failed to read environment variables", "error", err)
 	}
 }
 
@@ -74,10 +73,10 @@ func (t *temporal) GetConnectionString() string {
 }
 
 func (t *temporal) InitClient() {
-	Logger.Info("Initializing Temporal Client ...", zap.String("host", t.ServerHost), zap.String("port", t.ServerPort))
+	Logger.Info("Initializing Temporal Client ...", "host", t.ServerHost, "port", t.ServerPort)
 	options := client.Options{
 		HostPort: t.GetConnectionString(),
-		// Logger:   utils.NewZapAdapter(Logger),
+		Logger:   Logger,
 	}
 
 	retryTemporal := func() error {
@@ -96,7 +95,7 @@ func (t *temporal) InitClient() {
 		retry.Attempts(10),
 		retry.Delay(1*time.Second),
 	); err != nil {
-		Logger.Error("Failed to initialize Temporal Client", zap.Error(err))
+		Logger.Error("Failed to initialize Temporal Client", "error", err)
 	}
 }
 

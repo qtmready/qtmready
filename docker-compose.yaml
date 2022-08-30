@@ -63,7 +63,7 @@ services:
       POSTGRES_PWD: ${TEMPORAL_DB_PASS}
       POSTGRES_SEEDS: temporal-db
       DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/dev.yaml
-    image: temporalio/auto-setup:1.16.2
+    image: temporalio/auto-setup:1.17.4
     ports:
       - 7233:7233
     volumes:
@@ -75,7 +75,7 @@ services:
       - temporal
     environment:
       - TEMPORAL_CLI_ADDRESS=temporal:7233
-    image: temporalio/admin-tools:1.16.2
+    image: temporalio/admin-tools:1.17.4
     stdin_open: true
     tty: true
 
@@ -86,7 +86,7 @@ services:
     environment:
       TEMPORAL_ADDRESS: temporal:7233
       TEMPORAL_CORS_ORIGINS: http://localhost:3000
-    image: temporalio/ui:2.0.0
+    image: temporalio/ui:2.5.1
     ports:
       - 8080:8080
 

@@ -6,5 +6,5 @@ import (
 )
 
 func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
-	github.CreateRoutes(g.Group("/github"))
+	github.CreateRoutes(g.Group("/github"), middlewares...)
 }
