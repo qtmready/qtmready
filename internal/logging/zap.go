@@ -1,4 +1,4 @@
-package utils
+package logging
 
 import (
 	"context"
@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// ZapAdapter is a wrapper around zap.Logger. Makes it compatible with the logging.Logger interface.
 type ZapAdapter struct {
 	logger *zap.Logger
 	core   zapcore.Core
@@ -58,8 +59,8 @@ func (adapter *ZapAdapter) Error(msg string, fields ...interface{}) {
 	adapter.logger.Error(msg, adapter.fields(fields)...)
 }
 
-func (adapter *ZapAdapter) Sync() {
-	adapter.logger.Sync()
+func (adapter *ZapAdapter) Sync() error {
+	return adapter.logger.Sync()
 }
 
 func (adapter *ZapAdapter) TraceContext(_ context.Context, msg string, fields ...interface{}) {
@@ -82,18 +83,18 @@ func (adapter *ZapAdapter) ErrorContext(_ context.Context, msg string, fields ..
 	adapter.Error(msg, fields...)
 }
 
-func (adapter *ZapAdapter) fields(keyvals []interface{}) []zap.Field {
+func (adapter *ZapAdapter) fields(kv []interface{}) []zap.Field {
 	var fields []zap.Field
-	if len(keyvals)%2 != 0 {
-		return []zap.Field{zap.Error(fmt.Errorf("odd number of keyvals pairs: %v", keyvals))}
+	if len(kv)%2 != 0 {
+		return []zap.Field{zap.Error(fmt.Errorf("odd number of kv pairs: %v", kv))}
 	}
 
-	for i := 0; i < len(keyvals); i += 2 {
-		key, ok := keyvals[i].(string)
+	for i := 0; i < len(kv); i += 2 {
+		key, ok := kv[i].(string)
 		if !ok {
-			key = fmt.Sprintf("%v", keyvals[i])
+			key = fmt.Sprintf("%v", kv[i])
 		}
-		fields = append(fields, zap.Any(key, keyvals[i+1]))
+		fields = append(fields, zap.Any(key, kv[i+1]))
 	}
 
 	return fields

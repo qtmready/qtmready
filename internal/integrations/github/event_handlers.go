@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/labstack/echo/v4"
-	"go.breu.io/ctrlplane/internal/cmn"
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 // handles GitHub installation event. Below is the mermaid workflow.
@@ -45,11 +45,11 @@ func handleInstallationEvent(ctx echo.Context) error {
 	}
 
 	workflows := &Workflows{}
-	opts := cmn.Temporal.
-		Queues[cmn.GithubIntegrationQueue].
-		GetWorkflowOptions(strconv.FormatInt(payload.Installation.ID, 10), string(InstallationEvent))
+	opts := shared.Temporal.
+		Queues[shared.IntegrationsQueue].
+		GetWorkflowOptions("github", strconv.FormatInt(payload.Installation.ID, 10), string(InstallationEvent))
 
-	exe, err := cmn.Temporal.Client.SignalWithStartWorkflow(
+	exe, err := shared.Temporal.Client.SignalWithStartWorkflow(
 		ctx.Request().Context(),
 		opts.ID,
 		InstallationEventSignal.String(),
@@ -72,11 +72,11 @@ func handlePushEvent(ctx echo.Context) error {
 	}
 
 	w := &Workflows{}
-	opts := cmn.Temporal.
-		Queues[cmn.GithubIntegrationQueue].
-		GetWorkflowOptions(strconv.FormatInt(payload.Installation.ID, 10), PushEvent.String(), "ref", payload.After)
+	opts := shared.Temporal.
+		Queues[shared.IntegrationsQueue].
+		GetWorkflowOptions("github", strconv.FormatInt(payload.Installation.ID, 10), PushEvent.String(), "ref", payload.After)
 
-	exe, err := cmn.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPush, payload)
+	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPush, payload)
 	if err != nil {
 		return err
 	}

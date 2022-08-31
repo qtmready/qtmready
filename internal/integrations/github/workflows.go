@@ -24,7 +24,7 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	log := workflow.GetLogger(ctx)
 	selector := workflow.NewSelector(ctx)
 	webhook := &InstallationEventPayload{}
-	request := &CompleteInstallationPayload{}
+	request := &CompleteInstallationSignalPayload{}
 	webhookDone := false
 	requestDone := false
 

@@ -8,10 +8,10 @@ import (
 )
 
 type (
-	EventHandler   func(ctx echo.Context) error  // EventHandler is the signature of the event handler function
-	EventHandlers  map[WebhookEvent]EventHandler // EventHandlers maps event types to their respective event handlers
-	WebhookEvent   string                        // WebhookEvent defines the event type.
-	WorkflowSignal string                        // WorkflowSignal is the name of a workflow signal.
+	WebhookEventHandler  func(ctx echo.Context) error         // EventHandler is the signature of the event handler function
+	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers
+	WebhookEvent         string                               // WebhookEvent defines the event type.
+	WorkflowSignal       string                               // WorkflowSignal is the name of a workflow signal.
 )
 
 // Supporting functions for WebhookEvent and WorkflowSignal
@@ -24,9 +24,9 @@ func (s WorkflowSignal) String() string {
 	return string(s)
 }
 
-// Webhook event types. We get this from the header `X-Github-Event`.
-// For payload information, see https://developer.github.com/webhooks/event-payloads/
 const (
+	// Webhook event types. We get this from the header `X-Github-Event`.
+	// For payload information, see https://developer.github.com/webhooks/event-payloads/
 	AppAuthorizationEvent                    WebhookEvent = "github_app_authorization"
 	CheckRunEvent                            WebhookEvent = "check_run"
 	CheckSuiteEvent                          WebhookEvent = "check_suite"
@@ -72,9 +72,13 @@ const (
 	WorkflowDispatchEvent                    WebhookEvent = "workflow_dispatch"
 	WorkflowJobEvent                         WebhookEvent = "workflow_job"
 	WorkflowRunEvent                         WebhookEvent = "workflow_run"
+
+	// Workflow signal types.
+	InstallationEventSignal    WorkflowSignal = "installation_event"
+	CompleteInstallationSignal WorkflowSignal = "complete_installation"
 )
 
-// Payloads against the webhook event types
+// Payloads for Webhooks, Signals & HTTP Requests
 type (
 	AppAuthorizationEventPayload struct {
 		Action string `json:"action"`
@@ -115,29 +119,16 @@ type (
 		RequestedTeam     RequestedTeam  `json:"requested_team"`
 		Installation      InstallationID `json:"installation"`
 	}
-)
 
-// HTTP requests and responses
-
-type (
-	CompleteInstallationRequest struct {
-		InstallationID int64  `json:"installation_id"`
-		SetupAction    string `json:"setup_action"`
-	}
-)
-
-// Temporal WorkflowSignal and Queries
-const (
-	InstallationEventSignal    WorkflowSignal = "installation_event"
-	CompleteInstallationSignal WorkflowSignal = "complete_installation"
-)
-
-// Signal Payload
-type (
-	CompleteInstallationPayload struct {
+	CompleteInstallationSignalPayload struct {
 		InstallationID int64      `json:"installation_id"`
 		SetupAction    string     `json:"setup_action"`
 		TeamID         gocql.UUID `json:"team_id"`
+	}
+
+	CompleteInstallationRequest struct {
+		InstallationID int64  `json:"installation_id"`
+		SetupAction    string `json:"setup_action"`
 	}
 )
 
@@ -196,7 +187,7 @@ type (
 		FullName         string    `json:"full_name"`
 		Owner            User      `json:"owner"`
 		Private          bool      `json:"private"`
-		HTMLURL          string    `json:"html_url"`
+		HtmlURL          string    `json:"html_url"`
 		Description      string    `json:"description"`
 		Fork             bool      `json:"fork"`
 		URL              string    `json:"url"`
@@ -239,7 +230,7 @@ type (
 		UpdatedAt        time.Time `json:"updated_at"`
 		PushedAt         int64     `json:"pushed_at"`
 		GitURL           string    `json:"git_url"`
-		SSHURL           string    `json:"ssh_url"`
+		SshURL           string    `json:"ssh_url"`
 		CloneURL         string    `json:"clone_url"`
 		SvnURL           string    `json:"svn_url"`
 		Homepage         *string   `json:"homepage"`
@@ -269,7 +260,7 @@ type (
 		AvatarURL         string `json:"avatar_url"`
 		GravatarID        string `json:"gravatar_id"`
 		URL               string `json:"url"`
-		HTMLURL           string `json:"html_url"`
+		HtmlURL           string `json:"html_url"`
 		FollowersURL      string `json:"followers_url"`
 		FollowingURL      string `json:"following_url"`
 		GistsURL          string `json:"gists_url"`
@@ -293,7 +284,7 @@ type (
 	// Milestone contains GitHub's milestone information
 	Milestone struct {
 		URL          string    `json:"url"`
-		HTMLURL      string    `json:"html_url"`
+		HtmlURL      string    `json:"html_url"`
 		LabelsURL    string    `json:"labels_url"`
 		ID           int64     `json:"id"`
 		NodeID       string    `json:"node_id"`
@@ -317,7 +308,7 @@ type (
 		RepositorySelection string      `json:"repository_selection"`
 		AccessTokensURL     string      `json:"access_tokens_url"`
 		RepositoriesURL     string      `json:"repositories_url"`
-		HTMLURL             string      `json:"html_url"`
+		HtmlURL             string      `json:"html_url"`
 		AppID               int         `json:"app_id"`
 		TargetID            int         `json:"target_id"`
 		TargetType          string      `json:"target_type"`
@@ -383,7 +374,7 @@ type (
 		URL                string           `json:"url"`
 		ID                 int64            `json:"id"`
 		NodeID             string           `json:"node_id"`
-		HTMLURL            string           `json:"html_url"`
+		HtmlURL            string           `json:"html_url"`
 		DiffURL            string           `json:"diff_url"`
 		PatchURL           string           `json:"patch_url"`
 		IssueURL           string           `json:"issue_url"`
@@ -442,7 +433,7 @@ type (
 		Description     string `json:"description"`
 		Privacy         string `json:"privacy"`
 		URL             string `json:"url"`
-		HTMLURL         string `json:"html_url"`
+		HtmlURL         string `json:"html_url"`
 		MembersURL      string `json:"members_url"`
 		RepositoriesURL string `json:"repositories_url"`
 		Permission      string `json:"permission"`

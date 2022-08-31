@@ -6,18 +6,18 @@ import (
 
 	"go.temporal.io/sdk/worker"
 
-	"go.breu.io/ctrlplane/internal/cmn"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/integrations/github"
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 var wait sync.WaitGroup
 
 func init() {
-	cmn.Service.ReadEnv()
-	cmn.Service.InitLogger()
-	cmn.EventStream.ReadEnv()
-	cmn.Temporal.ReadEnv()
+	shared.Service.ReadEnv()
+	shared.Service.InitLogger()
+	shared.EventStream.ReadEnv()
+	shared.Temporal.ReadEnv()
 	github.Github.ReadEnv()
 	db.DB.ReadEnv()
 
@@ -30,26 +30,26 @@ func init() {
 
 	go func() {
 		defer wait.Done()
-		cmn.EventStream.InitConnection()
+		shared.EventStream.InitConnection()
 	}()
 
 	go func() {
 		defer wait.Done()
-		cmn.Temporal.InitClient()
+		shared.Temporal.InitClient()
 	}()
 
 	wait.Wait()
 
-	cmn.Logger.Info("Initializing Service ... Done")
+	shared.Logger.Info("Initializing Service ... Done")
 }
 
 func main() {
-	defer cmn.Logger.Sync()
-	defer cmn.Temporal.Client.Close()
+	defer shared.Logger.Sync()
+	defer shared.Temporal.Client.Close()
 
-	queue := cmn.Temporal.Queues[cmn.GithubIntegrationQueue].GetName()
+	queue := shared.Temporal.Queues[shared.IntegrationsQueue].GetName()
 	options := worker.Options{}
-	wrkr := worker.New(cmn.Temporal.Client, queue, options)
+	wrkr := worker.New(shared.Temporal.Client, queue, options)
 
 	workflows := &github.Workflows{}
 

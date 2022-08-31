@@ -19,6 +19,8 @@ require (
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8
 )
 
+require golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
+
 replace github.com/scylladb/gocqlx/v2 => github.com/debuggerpk/gocqlx/v2 v2.7.1
 
 require (
@@ -64,7 +66,7 @@ require (
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/net v0.0.0-20220728181054-f92ba40d432d // indirect
-	golang.org/x/sys v0.0.0-20220728004956-3c1f35247d10 // indirect
+	golang.org/x/sys v0.0.0-20220829200755-d48e67d00261 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20220224211638-0e9765cccd65 // indirect
 	google.golang.org/genproto v0.0.0-20220725144611-272f38e5d71b // indirect

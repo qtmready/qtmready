@@ -20,7 +20,7 @@ type placeholder struct {
 //	}
 //
 //	user := User{Email: "user@example.com"}
-//	cmn.Validator.Struct(&user)
+//	shared.Validator.Struct(&user)
 //
 // The validator will check if the field is unique in the database.
 func UniqueField(fl validator.FieldLevel) bool {

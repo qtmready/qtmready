@@ -9,10 +9,10 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 
 	"go.breu.io/ctrlplane/cmd/api/routes/auth"
-	"go.breu.io/ctrlplane/internal/cmn"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/integrations"
 	"go.breu.io/ctrlplane/internal/integrations/github"
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 var (
@@ -34,13 +34,13 @@ func (ev *EchoValidator) Validate(i interface{}) error {
 
 func init() {
 	// Reading the configuration from the environment
-	cmn.Service.ReadEnv()
-	cmn.Service.InitLogger()
-	cmn.Service.InitValidator()
-	cmn.EventStream.ReadEnv()
+	shared.Service.ReadEnv()
+	shared.Service.InitLogger()
+	shared.Service.InitValidator()
+	shared.EventStream.ReadEnv()
 	db.DB.ReadEnv()
 	db.DB.RegisterValidations()
-	cmn.Temporal.ReadEnv()
+	shared.Temporal.ReadEnv()
 	github.Github.ReadEnv()
 	// Reading the configuration from the environment ... Done
 
@@ -54,33 +54,33 @@ func init() {
 
 	go func() {
 		defer waiter.Done()
-		cmn.EventStream.InitConnection()
+		shared.EventStream.InitConnection()
 	}()
 
 	go func() {
 		defer waiter.Done()
-		cmn.Temporal.InitClient()
+		shared.Temporal.InitClient()
 	}()
 
 	waiter.Wait()
 	// Initializing singleton objects ... Done
 
-	cmn.Logger.Info("Initializing Service ... Done")
+	shared.Logger.Info("Initializing Service ... Done")
 }
 
 func main() {
 	// handling closing of the server
 	defer db.DB.Session.Close()
-	defer cmn.Temporal.Client.Close()
-	defer cmn.Logger.Sync()
+	defer shared.Temporal.Client.Close()
+	defer shared.Logger.Sync()
 
 	e := echo.New()
 	jwtconf := middleware.JWTConfig{
-		Claims:     &cmn.JWTClaims{},
-		SigningKey: []byte(cmn.Service.Secret),
+		Claims:     &shared.JWTClaims{},
+		SigningKey: []byte(shared.Service.Secret),
 	}
 
-	e.Validator = &EchoValidator{validator: cmn.Validate}
+	e.Validator = &EchoValidator{validator: shared.Validate}
 
 	e.Use(middleware.CORS())
 	e.Use(middleware.Logger())
@@ -98,6 +98,7 @@ func main() {
 	e.Start(":8000")
 }
 
+// TODO: ensure connectivity with external services
 func healthcheck(ctx echo.Context) error {
 	return ctx.String(http.StatusOK, "OK")
 }

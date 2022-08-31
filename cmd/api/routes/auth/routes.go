@@ -6,9 +6,9 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
-	"go.breu.io/ctrlplane/internal/cmn"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/entities"
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
@@ -75,12 +75,12 @@ func login(ctx echo.Context) error {
 	}
 
 	if user.VerifyPassword(request.Password) {
-		claims := &cmn.JWTClaims{
+		claims := &shared.JWTClaims{
 			UserID:         user.ID.String(),
 			TeamID:         user.TeamID.String(),
-			StandardClaims: jwt.StandardClaims{ExpiresAt: time.Now().Add(time.Hour * 24).Unix(), Issuer: cmn.Service.Name},
+			StandardClaims: jwt.StandardClaims{ExpiresAt: time.Now().Add(time.Hour * 24).Unix(), Issuer: shared.Service.Name},
 		}
-		token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(cmn.Service.Secret))
+		token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(shared.Service.Secret))
 		if err != nil {
 			return err
 		}

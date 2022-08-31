@@ -94,7 +94,7 @@ func (u *User) GetTable() *table.Table { return userTable }
 func (u *User) PreCreate() error       { u.SetPassword(u.Password); return nil }
 func (u *User) PreUpdate() error       { return nil }
 
-// Given a password, sets the user's password to a hashed version.
+// SetPassword hashes the clear text password using bcrypt.
 // NOTE: This only updates the field. You will have to run the method to persist the change.
 //
 //	params := db.QueryParams{"email": "user@example.com"}
@@ -106,9 +106,17 @@ func (u *User) SetPassword(password string) {
 	u.Password = string(p)
 }
 
-// Verifies the plain text password against the hashed password.
+// VerifyPassword verifies the plain text password against the hashed password.
 func (u *User) VerifyPassword(password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)) == nil
+}
+
+func (u *User) SendVerificationEmail() error {
+	return nil
+}
+
+func (u *User) SendEmail() error {
+	return nil
 }
 
 /**

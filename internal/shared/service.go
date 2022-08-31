@@ -1,12 +1,12 @@
-package cmn
+package shared
 
 import (
+	"go.breu.io/ctrlplane/internal/logging"
 	"reflect"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/ilyakaznacheev/cleanenv"
-	"go.breu.io/ctrlplane/internal/utils"
 	"go.uber.org/zap"
 )
 
@@ -20,10 +20,9 @@ type (
 )
 
 var (
-	Logger   *utils.ZapAdapter
+	Logger   *logging.ZapAdapter
 	Service  = &service{}
 	Validate *validator.Validate
-	// JWT       *jwtauth.JWTAuth
 )
 
 // ReadEnv reads the environment variables and initializes the service.
@@ -48,7 +47,6 @@ func (s *service) InitValidator() {
 
 // InitLogger sets up global logger.
 func (s *service) InitLogger() {
-	zaplogger, _ := zap.NewProduction()
-
-	Logger = utils.NewZapAdapter(zaplogger)
+	z, _ := zap.NewProduction()
+	Logger = logging.NewZapAdapter(z)
 }

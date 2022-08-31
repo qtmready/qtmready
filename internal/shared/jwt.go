@@ -1,4 +1,4 @@
-package cmn
+package shared
 
 import (
 	"github.com/golang-jwt/jwt"
