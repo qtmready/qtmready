@@ -11,12 +11,12 @@ type Workflows struct{}
 
 var activities *Activities
 
-// OnInstall workflow is executed when we initiate the installation of github app.
+// OnInstall workflow is executed when we initiate the installation of GitHub app.
 //
 // In an ideal world, the complete installation request would hit the API after the installation event has hit the
-// webhook, however, there can be number of things that can go wrong and we can recieve the complete installation
+// webhook, however, there can be number of things that can go wrong, and we can receive the complete installation
 // request before the push event. To handle this, we use temporal.io signal API to provide two possible entry points
-// for the system. See the README.md for a detailed explaination on how this workflow works.
+// for the system. See the README.md for a detailed explanation on how this workflow works.
 //
 // NOTE: This workflow is only meant to be started with `SignalWithStartWorkflow`
 func (w *Workflows) OnInstall(ctx workflow.Context) error {
@@ -28,15 +28,15 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	webhookDone := false
 	requestDone := false
 
-	// setting up channels to recieve signals
+	// setting up channels to receive signals
 	webhookChannel := workflow.GetSignalChannel(ctx, InstallationEventSignal.String())
 	requestChannel := workflow.GetSignalChannel(ctx, CompleteInstallationSignal.String())
 
-	// push event entry point
+	// webhook entry point
 	selector.AddReceive(
 		webhookChannel,
 		func(channel workflow.ReceiveChannel, more bool) {
-			log.Info("recieved webhook ...", "payload", webhook)
+			log.Info("received webhook ...", "payload", webhook)
 			channel.Receive(ctx, webhook)
 			webhookDone = true
 
@@ -66,7 +66,7 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 		selector.Select(ctx)
 	}
 
-	log.Info("all signals recieved, processing ...")
+	log.Info("all signals received, processing ...")
 
 	// Finalizing the installation
 	installation := &entities.GithubInstallation{
@@ -90,11 +90,11 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 		return err
 	}
 
-	// If webhook.Action == "created", the we save the repoistory information to the database.
+	// If webhook.Action == "created", save the repository information to the database.
 	if webhook.Action == "created" {
 		log.Info("saving associated repositories ...")
 
-		// schedule the activity
+		// asynchronously save the repos
 		for _, repository := range webhook.Repositories {
 			log.Info("saving repository ...", "repository", repository.ID)
 
@@ -109,7 +109,7 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 			selector.AddFuture(future, func(f workflow.Future) { log.Info("repository saved ...", repo, repo.GithubID) })
 		}
 
-		// block until all activities are completed
+		// wait for all repositories to be saved.
 		for range webhook.Repositories {
 			selector.Select(ctx)
 		}

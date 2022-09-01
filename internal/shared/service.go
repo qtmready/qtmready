@@ -1,13 +1,14 @@
 package shared
 
 import (
-	"go.breu.io/ctrlplane/internal/logging"
 	"reflect"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.uber.org/zap"
+
+  "go.breu.io/ctrlplane/internal/shared/logger"
 )
 
 type (
@@ -20,7 +21,7 @@ type (
 )
 
 var (
-	Logger   *logging.ZapAdapter
+	Logger   *logger.ZapAdapter
 	Service  = &service{}
 	Validate *validator.Validate
 )
@@ -48,5 +49,5 @@ func (s *service) InitValidator() {
 // InitLogger sets up global logger.
 func (s *service) InitLogger() {
 	z, _ := zap.NewProduction()
-	Logger = logging.NewZapAdapter(z)
+	Logger = logger.NewZapAdapter(z)
 }

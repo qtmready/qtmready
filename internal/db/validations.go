@@ -24,21 +24,21 @@ type placeholder struct {
 //
 // The validator will check if the field is unique in the database.
 func UniqueField(fl validator.FieldLevel) bool {
-	args := []reflect.Value{} // Empty args for relect.Call
-	dest := &placeholder{}    // Initializing the empty placeholder to act as a destination for Get call
+	var args []reflect.Value // Empty args for reflect.Call
+	dest := &placeholder{}   // Initializing the empty placeholder to act as a destination for Get call
 
-	table := fl.
+	tbl := fl.
 		Parent().Addr().            // Getting the pointer the parent struct
 		MethodByName("GetTable").   // Getting the "GetTable" function by name
 		Call(args)[0].              // Calling the function and getting the return value
-		Interface().(*table.Table). // Casting the value to *table.Table
-		Metadata().Name             // Getting the table name
+		Interface().(*table.Table). // Casting the value to *tbl.Table
+		Metadata().Name             // Getting the tbl name
 
 	clause := qb.
 		EqLit(fl.FieldName(), "'"+fl.Field().Interface().(string)+"'") // forcing args inside '' to provide escaping
 
 	query := qb.
-		Select(table).                 // Using the querybuilder to compose select query
+		Select(tbl).                   // Using the qb to compose select query
 		Columns("id", fl.FieldName()). // Selecting the return columns
 		Where(clause).                 // composing the where clause
 		Query(DB.Session)              // using the existing database connection

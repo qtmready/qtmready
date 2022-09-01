@@ -7,4 +7,4 @@ create table if not exists github_repo(
   created_at        timestamp,
   updated_at        timestamp,
   primary key       (id),
-)
+);

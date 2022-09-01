@@ -1,6 +1,7 @@
 package main
 
 import (
+	"go.breu.io/ctrlplane/cmd/api/auth"
 	"net/http"
 	"sync"
 
@@ -8,7 +9,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	"go.breu.io/ctrlplane/cmd/api/routes/auth"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/integrations"
 	"go.breu.io/ctrlplane/internal/integrations/github"
@@ -95,7 +95,9 @@ func main() {
 	protected := e.Group("/")
 	protected.Use(middleware.JWTWithConfig(jwtconf))
 
-	e.Start(":8000")
+	if err := e.Start(":8000"); err != nil {
+		shared.Logger.Error("Error starting web server", "error", err)
+	}
 }
 
 // TODO: ensure connectivity with external services

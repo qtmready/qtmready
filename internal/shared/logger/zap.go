@@ -1,4 +1,4 @@
-package logging
+package logger
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// ZapAdapter is a wrapper around zap.Logger. Makes it compatible with the logging.Logger interface.
+// ZapAdapter is a wrapper around zap.Logger. Makes it compatible with the logger.Logger interface.
 type ZapAdapter struct {
 	logger *zap.Logger
 	core   zapcore.Core

@@ -43,14 +43,6 @@ func (t *Team) GetTable() *table.Table { return teamTable }
 func (t *Team) PreCreate() error       { t.Slug = db.CreateSlug(t.Name); return nil }
 func (t *Team) PreUpdate() error       { return nil }
 
-func (t *Team) Users() ([]User, error) {
-	users, err := db.Filter[User](&User{}, db.QueryParams{"team_id": t.ID})
-	if err != nil {
-		return []User{}, err
-	}
-	return users, nil
-}
-
 var (
 	userColumns = []string{
 		"id",

@@ -3,7 +3,7 @@ package auth
 import "go.breu.io/ctrlplane/internal/entities"
 
 type (
-	// Registration request serializer and validator
+	// RegistrationRequest is the http request for user registration
 	RegistrationRequest struct {
 		Email           string `json:"email" validate:"required,email"`
 		Password        string `json:"password" validate:"required"`
@@ -13,12 +13,13 @@ type (
 		TeamName        string `json:"team_name" validate:"required"`
 	}
 
-	// Registration Response Serializer
+	// RegistrationResponse is the http response after user registration is done
 	RegistrationResponse struct {
 		User *entities.User `json:"user"`
 		Team *entities.Team `json:"team"`
 	}
 
+	// LoginRequest is the http request for login
 	LoginRequest struct {
 		Email    string `json:"email" validate:"required,email"`
 		Password string `json:"password" validate:"required"`
