@@ -133,6 +133,8 @@ var (
 	teamUserTable = table.New(teamUserMeta)
 )
 
+// NOTE: this needs to be implemented. The long term plan is that we are going to have relationships and `User.TeamID`
+// will represent the primary team. This will be used for the initial setup of the user.
 type TeamUser struct {
 	ID        gocql.UUID `json:"id" cql:"id"`
 	UserID    gocql.UUID `json:"user_id" cql:"user_id"`

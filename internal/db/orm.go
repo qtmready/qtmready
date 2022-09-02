@@ -22,11 +22,13 @@ type (
 	}
 )
 
-// Get the entity by given query params. A simple example:
+// Get the entity by given query params.
+// FIXME: sometimes you have to manually surround the value with "'" to make cql work
+// A simple example:
 //
 //		type User struct {
 //		  ID     string `json:"getID" cql:"getID"`
-//		  Email  string `json:"name" cql:"name"`
+//		  Email  string `json:"email" cql:"email"`
 //		}
 //
 //		params := db.QueryParams{"email": "email@example.com"}
@@ -36,8 +38,7 @@ func Get[T Entity](entity T, params QueryParams) error {
 	clause := make([]qb.Cmp, 0)
 
 	for key, value := range params {
-		shared.Logger.Info("key/val", key, value)
-		clause = append(clause, qb.EqLit(key, "'"+value+"'"))
+		clause = append(clause, qb.EqLit(key, value))
 	}
 
 	query := qb.
@@ -46,9 +47,40 @@ func Get[T Entity](entity T, params QueryParams) error {
 		Columns(entity.GetTable().Metadata().Columns...).
 		Where(clause...)
 
-	shared.Logger.Info("query", "query", DB.Session.Query(query.ToCql()).String())
-
 	if err := DB.Session.Query(query.ToCql()).GetRelease(entity); err != nil {
+		shared.Logger.Error("unable to get", "error", err)
+		return err
+	}
+
+	return nil
+}
+
+// Filter the entity by given query params.
+// FIXME: sometimes you have to manually surround the value with "'" to make cql work
+// A simple example:
+//
+//			type User struct {
+//			  ID     string `json:"getID" cql:"getID"`
+//			  Email  string `json:"name" cql:"name"`
+//			}
+//
+//			params := db.QueryParams{"email": "email@example.com"}
+//		  users := make([]User, 0)
+//	    err := db.Filter(&User{}, &users, params)
+func Filter(entity Entity, dest interface{}, params QueryParams) error {
+	clause := make([]qb.Cmp, 0)
+
+	for key, value := range params {
+		clause = append(clause, qb.EqLit(key, value))
+	}
+
+	query := qb.
+		Select(entity.GetTable().Name()).
+		AllowFiltering().
+		Columns(entity.GetTable().Metadata().Columns...).
+		Where(clause...)
+
+	if err := DB.Session.Query(query.ToCql()).SelectRelease(dest); err != nil {
 		shared.Logger.Error("unable to get", "error", err)
 		return err
 	}
@@ -100,6 +132,7 @@ func Create[T Entity](entity T) error {
 
 // Update updates the entity.
 // NOTE: The assumption is that ID is the primary key and the first one defined in the struct.
+// NOTE: you must pass the complete struct.
 func Update[T Entity](entity T) error {
 	now := time.Now()
 	setval(entity, "UpdatedAt", now)

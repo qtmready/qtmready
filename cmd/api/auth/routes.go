@@ -67,7 +67,7 @@ func login(ctx echo.Context) error {
 		return err
 	}
 
-	params := db.QueryParams{"email": request.Email}
+	params := db.QueryParams{"email": "'" + request.Email + "'"}
 	user := &entities.User{}
 
 	if err := db.Get(user, params); err != nil {
@@ -80,10 +80,12 @@ func login(ctx echo.Context) error {
 			TeamID:         user.TeamID.String(),
 			StandardClaims: jwt.StandardClaims{ExpiresAt: time.Now().Add(time.Hour * 24).Unix(), Issuer: shared.Service.Name},
 		}
+
 		token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(shared.Service.Secret))
 		if err != nil {
 			return err
 		}
+
 		return ctx.JSON(http.StatusOK, &TokenResponse{Token: token})
 	}
 

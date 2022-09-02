@@ -1,4 +1,4 @@
-create table if not exists github_repo(
+create table if not exists github_repos (
   id                uuid,
   team_id           uuid,
   github_id         bigint,

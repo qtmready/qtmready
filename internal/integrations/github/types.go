@@ -16,13 +16,8 @@ type (
 
 // Supporting functions for WebhookEvent and WorkflowSignal
 
-func (e WebhookEvent) String() string {
-	return string(e)
-}
-
-func (s WorkflowSignal) String() string {
-	return string(s)
-}
+func (e WebhookEvent) String() string   { return string(e) }
+func (s WorkflowSignal) String() string { return string(s) }
 
 const (
 	// Webhook event types. We get this from the header `X-Github-Event`.

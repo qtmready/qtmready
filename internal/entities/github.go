@@ -59,7 +59,7 @@ var (
 	}
 
 	githubRepoMeta = table.Metadata{
-		Name:    "github_repo",
+		Name:    "github_repos",
 		Columns: githubRepoColumns,
 		PartKey: []string{"id"},
 	}
