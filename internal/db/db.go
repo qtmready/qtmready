@@ -66,7 +66,9 @@ func (d *db) InitSession() {
 // RunMigrations runs database migrations if any.
 func (d *db) RunMigrations() {
 	shared.Logger.Info("db: running migrations ...", "source", d.MigrationSourceURL)
-	driver, err := cassandra.WithInstance(d.Session.Session, &cassandra.Config{KeyspaceName: d.Keyspace})
+
+	config := &cassandra.Config{KeyspaceName: d.Keyspace, MultiStatementEnabled: true}
+	driver, err := cassandra.WithInstance(d.Session.Session, config)
 	if err != nil {
 		shared.Logger.Error("db: failed to initialize driver for migrations ...", "error", err)
 	}

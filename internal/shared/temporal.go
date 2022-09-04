@@ -63,7 +63,7 @@ func (q *queue) GetName() string {
 // CreateWorkflowID creates the unique workflow ID from the workflow sender and appropriate arguments.
 // TODO: document the grand scheme of things.
 func (q *queue) CreateWorkflowID(sender string, args ...string) string {
-	return q.Prefix + "." + strings.Join(args, ".")
+	return q.Prefix + "." + sender + "." + strings.Join(args, ".")
 }
 
 func (q *queue) GetWorkflowOptions(sender string, args ...string) client.StartWorkflowOptions {

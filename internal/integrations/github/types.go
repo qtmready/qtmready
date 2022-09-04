@@ -19,9 +19,9 @@ type (
 func (e WebhookEvent) String() string   { return string(e) }
 func (s WorkflowSignal) String() string { return string(s) }
 
+// Webhook event types. We get this from the header `X-Github-Event`.
+// For payload information, see https://developer.github.com/webhooks/event-payloads/
 const (
-	// Webhook event types. We get this from the header `X-Github-Event`.
-	// For payload information, see https://developer.github.com/webhooks/event-payloads/
 	AppAuthorizationEvent                    WebhookEvent = "github_app_authorization"
 	CheckRunEvent                            WebhookEvent = "check_run"
 	CheckSuiteEvent                          WebhookEvent = "check_suite"
@@ -67,13 +67,15 @@ const (
 	WorkflowDispatchEvent                    WebhookEvent = "workflow_dispatch"
 	WorkflowJobEvent                         WebhookEvent = "workflow_job"
 	WorkflowRunEvent                         WebhookEvent = "workflow_run"
+)
 
-	// Workflow signal types.
+// Workflow signal types.
+const (
 	InstallationEventSignal    WorkflowSignal = "installation_event"
 	CompleteInstallationSignal WorkflowSignal = "complete_installation"
 )
 
-// Payloads for Webhooks, Signals & HTTP Requests
+// Payloads for Webhooks Events
 type (
 	AppAuthorizationEventPayload struct {
 		Action string `json:"action"`

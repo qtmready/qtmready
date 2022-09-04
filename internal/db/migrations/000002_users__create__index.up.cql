@@ -11,3 +11,6 @@ create table if not exists users (
     updated_at                  timestamp,
     primary key                 (id),
 );
+
+create index if not exists on users (team_id);
+create index if not exists on users (email);

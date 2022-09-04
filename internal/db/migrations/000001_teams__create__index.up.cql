@@ -5,4 +5,6 @@ create table if not exists teams (
     created_at                  timestamp,
     updated_at                  timestamp,
     primary key                 (id),
-);
+) with comment = 'team is the primary unit to define RBAC';
+
+create index if not exists on teams (slug);

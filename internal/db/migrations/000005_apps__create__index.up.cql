@@ -1,10 +1,10 @@
-create table if not exists github_repos (
+create table if not exists apps (
   id                uuid,
   team_id           uuid,
-  github_id         bigint,
   name              varchar,
-  full_name         varchar,
   created_at        timestamp,
   updated_at        timestamp,
   primary key       (id),
-);
+) with comment = 'the main application construct';
+
+create index if not exists on apps(team_id);

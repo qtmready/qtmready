@@ -1,1 +1,0 @@
-create index if not exists on users (email);

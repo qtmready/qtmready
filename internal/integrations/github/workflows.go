@@ -120,6 +120,8 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 }
 
 func (w *Workflows) OnPush(ctx workflow.Context, payload PushEventPayload) error {
+	log := workflow.GetLogger(ctx)
+	log.Info("received push event ...", "payload", payload)
 	return nil
 }
 
