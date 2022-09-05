@@ -7,8 +7,8 @@ create table if not exists github_repos (
   created_at        timestamp,
   updated_at        timestamp,
   primary key       (id),
-);
+) with comment = 'repositories provided by github installation';
 
-create index if not exists on github_repos(team_id);
-create index if not exists on github_repos(github_id);
+create index if not exists on github_repos (team_id);
+create index if not exists on github_repos (github_id);
 

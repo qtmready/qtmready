@@ -65,8 +65,8 @@ selfservice:
       config:
         # secrets will be provided via environment variables
         providers:
-          - id: github-app
-            provider: github-app
+          - id: github-core
+            provider: github-core
             mapper_url: file:///etc/config/kratos/schemas/oidc.github.jsonnet
       enabled: true
 

@@ -11,7 +11,7 @@ type Workflows struct{}
 
 var activities *Activities
 
-// OnInstall workflow is executed when we initiate the installation of GitHub app.
+// OnInstall workflow is executed when we initiate the installation of GitHub core.
 //
 // In an ideal world, the complete installation request would hit the API after the installation event has hit the
 // webhook, however, there can be number of things that can go wrong, and we can receive the complete installation

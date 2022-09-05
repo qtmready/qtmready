@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
+
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/entities"
 	"go.breu.io/ctrlplane/internal/shared"
@@ -71,22 +72,26 @@ func login(ctx echo.Context) error {
 	user := &entities.User{}
 
 	if err := db.Get(user, params); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusNotFound, "user not found")
 	}
 
 	if user.VerifyPassword(request.Password) {
-		claims := &shared.JWTClaims{
+		short := &shared.JWTClaims{
 			UserID:         user.ID.String(),
 			TeamID:         user.TeamID.String(),
-			StandardClaims: jwt.StandardClaims{ExpiresAt: time.Now().Add(time.Hour * 24).Unix(), Issuer: shared.Service.Name},
+			StandardClaims: jwt.StandardClaims{ExpiresAt: time.Now().Add(time.Minute * 15).Unix(), Issuer: shared.Service.Name},
 		}
 
-		token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString([]byte(shared.Service.Secret))
-		if err != nil {
-			return err
+		long := &shared.JWTClaims{
+			UserID:         user.ID.String(),
+			TeamID:         user.TeamID.String(),
+			StandardClaims: jwt.StandardClaims{ExpiresAt: time.Now().Add(time.Minute * 60).Unix(), Issuer: shared.Service.Name},
 		}
 
-		return ctx.JSON(http.StatusOK, &TokenResponse{Token: token})
+		access, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, short).SignedString([]byte(shared.Service.Secret))
+		refresh, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, long).SignedString([]byte(shared.Service.Secret))
+
+		return ctx.JSON(http.StatusOK, &TokenResponse{AccessToken: access, RefreshToken: refresh})
 	}
 
 	return echo.NewHTTPError(http.StatusUnauthorized, "invalid credentials")

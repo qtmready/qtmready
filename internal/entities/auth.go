@@ -10,10 +10,6 @@ import (
 	"go.breu.io/ctrlplane/internal/db"
 )
 
-/**
- * Team
- */
-
 var (
 	teamColumns = []string{
 		"id",
@@ -31,6 +27,7 @@ var (
 	teamTable = table.New(teamMeta)
 )
 
+// Team is the primary owner of the App & primary driver of system-wide RBAC.
 type Team struct {
 	ID        gocql.UUID `json:"id" cql:"id"`
 	Name      string     `json:"name" validate:"required"`
@@ -65,10 +62,7 @@ var (
 	userTable = table.New(userMeta)
 )
 
-/**
- * User
- */
-
+// User defines the auth user. A user can be part of multiple teams. The key User.TeamID represents the default team.
 type User struct {
 	ID         gocql.UUID `json:"id" cql:"id"`
 	TeamID     gocql.UUID `json:"team_id" cql:"team_id"`
@@ -103,10 +97,16 @@ func (u *User) VerifyPassword(password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(u.Password), []byte(password)) == nil
 }
 
+// SetActiveTeam sets the active team for the given user.
+// TODO: verify that the team exists
+func (u *User) SetActiveTeam(id gocql.UUID) { u.TeamID = id }
+
+// SendVerificationEmail sends a verification email.
 func (u *User) SendVerificationEmail() error {
 	return nil
 }
 
+// SendEmail is the main function responsible for sending emails to users.
 func (u *User) SendEmail() error {
 	return nil
 }
@@ -133,6 +133,7 @@ var (
 	teamUserTable = table.New(teamUserMeta)
 )
 
+// TeamUser maintains the relationship between teams and users. One user can be part of multiple teams
 // NOTE: this needs to be implemented. The long term plan is that we are going to have relationships and `User.TeamID`
 // will represent the primary team. This will be used for the initial setup of the user.
 type TeamUser struct {

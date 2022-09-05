@@ -8,7 +8,7 @@ services:
     environment:
       - CASSNDRA_CLUSTER_NAME=ctrlplane
     volumes:
-      - ctrlplane-db-data:/var/lib/scylla
+      - db-data:/var/lib/scylla
   
   cassandra-load-keyspace:
     container_name: cassandra-load-keyspace
@@ -103,8 +103,8 @@ services:
     volumes:
       - ./deploy/air/api.toml:/api/.air.toml
       - ./:/api/
-      - ctrlplane-api-go-pkg-mod:/go/pkg/mod
-      - ctrlplane-api-build-cache:/root/.cache/go-build
+      - api-go-pkg-mod:/go/pkg/mod
+      - api-build-cache:/root/.cache/go-build
     working_dir: /api
 
   ctrlplane-worker--mothership:
@@ -117,15 +117,15 @@ services:
     volumes:
       - ./deploy/air/mothership.toml:/mothership/.air.toml
       - ./:/mothership/
-      - ctrlplane-worker-mothership-go-pkg-mod:/go/pkg/mod
-      - ctrlplane-worker-mothership-build-cache:/root/.cache/go-build
+      - worker-mothership-go-pkg-mod:/go/pkg/mod
+      - worker-mothership-build-cache:/root/.cache/go-build
     working_dir: /mothership
 
 
 volumes:
   temporal-pg-data: {}
-  ctrlplane-db-data: {}
-  ctrlplane-api-go-pkg-mod: {}
-  ctrlplane-api-build-cache: {}
-  ctrlplane-worker-mothership-go-pkg-mod: {}
-  ctrlplane-worker-mothership-build-cache: {}
+  db-data: {}
+  api-go-pkg-mod: {}
+  api-build-cache: {}
+  worker-mothership-go-pkg-mod: {}
+  worker-mothership-build-cache: {}

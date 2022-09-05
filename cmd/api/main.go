@@ -1,7 +1,6 @@
 package main
 
 import (
-	"go.breu.io/ctrlplane/cmd/api/auth"
 	"net/http"
 	"sync"
 
@@ -9,6 +8,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
+	"go.breu.io/ctrlplane/cmd/api/auth"
+	"go.breu.io/ctrlplane/cmd/api/core"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/integrations"
 	"go.breu.io/ctrlplane/internal/integrations/github"
@@ -92,8 +93,9 @@ func main() {
 	integrations.CreateRoutes(e.Group("/integrations"), middleware.JWTWithConfig(jwtconf))
 
 	// Protected routes
-	protected := e.Group("/")
+	protected := e.Group("")
 	protected.Use(middleware.JWTWithConfig(jwtconf))
+	core.CreateRoutes(protected)
 
 	if err := e.Start(":8000"); err != nil {
 		shared.Logger.Error("Error starting web server", "error", err)
@@ -101,6 +103,4 @@ func main() {
 }
 
 // TODO: ensure connectivity with external services
-func healthcheck(ctx echo.Context) error {
-	return ctx.String(http.StatusOK, "OK")
-}
+func healthcheck(ctx echo.Context) error { return ctx.String(http.StatusOK, "OK") }

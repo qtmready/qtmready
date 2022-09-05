@@ -1,6 +1,8 @@
 package auth
 
-import "go.breu.io/ctrlplane/internal/entities"
+import (
+	"go.breu.io/ctrlplane/internal/entities"
+)
 
 type (
 	// RegistrationRequest is the http request for user registration
@@ -30,6 +32,12 @@ type (
 	}
 
 	TokenResponse struct {
-		Token string `json:"token"`
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+	}
+
+	RequestBuilder[T any] struct {
+		Data  *T
+		Error *error
 	}
 )
