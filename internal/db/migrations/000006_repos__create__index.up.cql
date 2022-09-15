@@ -4,7 +4,7 @@ create table if not exists app_repos (
   repo_id        uuid,
   default_branch varchar,
   is_monorepo    boolean,
-  provider       varchar,
+  driver         varchar,
   created_at     timestamp,
   updated_at     timestamp,
   primary key    (id),
@@ -12,4 +12,4 @@ create table if not exists app_repos (
 
 create index if not exists on app_repos (app_id);
 create index if not exists on app_repos (repo_id);
-create index if not exists on app_repos (provider)
+create index if not exists on app_repos (driver);

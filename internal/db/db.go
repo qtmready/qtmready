@@ -26,7 +26,7 @@ type (
 	// Holds the information about the database
 	db struct {
 		gocqlx.Session
-		Hosts              []string `env:"CASSANDRA_HOSTS" env-default:"cassandra"`
+		Hosts              []string `env:"CASSANDRA_HOSTS" env-default:"ctrlplane-database"`
 		Keyspace           string   `env:"CASSANDRA_KEYSPACE" env-default:"ctrlplane"`
 		MigrationSourceURL string   `env:"CASSANDRA_MIGRATION_SOURCE_URL"`
 	}

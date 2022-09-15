@@ -7,7 +7,7 @@ import (
 	"go.temporal.io/sdk/worker"
 
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/integrations/github"
+	"go.breu.io/ctrlplane/internal/drivers/github"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 

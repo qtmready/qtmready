@@ -12,7 +12,7 @@ import (
 var Temporal = &temporal{
 	Queues: Queues{
 		MothershipQueue:   &queue{MothershipQueue, "ai.ctrlplane.mothership"},
-		IntegrationsQueue: &queue{IntegrationsQueue, "ai.ctrlplane.integrations"},
+		IntegrationsQueue: &queue{IntegrationsQueue, "ai.ctrlplane.drivers"},
 	},
 }
 
@@ -31,7 +31,7 @@ type (
 // TODO: The greater plan is to move each tenant in its own namespace.
 const (
 	MothershipQueue   QueueName = "mothership"
-	IntegrationsQueue QueueName = "integrations"
+	IntegrationsQueue QueueName = "drivers"
 	BuilderQueue      QueueName = "builder"
 	ProvisionerQueue  QueueName = "provisioner"
 	DeployerQueue     QueueName = "deployer"

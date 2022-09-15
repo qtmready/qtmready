@@ -1,29 +1,60 @@
 version: '3.9'
 services:
-  cassandra:
-    container_name: cassandra
-    image: scylladb/scylla
+  ctrlplane-database:
+    container_name: ctrlplane-database
+    image: cassandra:4
     ports:
       - '9042:9042'
     environment:
       - CASSNDRA_CLUSTER_NAME=ctrlplane
     volumes:
-      - db-data:/var/lib/scylla
+      - db-data:/var/lib/cassandra
   
-  cassandra-load-keyspace:
-    container_name: cassandra-load-keyspace
+  ctrlplane-database-init:
+    container_name: ctrlplane-db-init
     image: cassandra:4
     depends_on:
-      - cassandra
+      - ctrlplane-database
     volumes:
       - ./deploy/cassandra/keyspace.cql:/keyspace.cql
-    command: /bin/bash -c "sleep 60 && echo loading cassandra keyspace && cqlsh cassandra -f /keyspace.cql"
+    command: /bin/bash -c "sleep 60 && echo loading database keyspace && cqlsh ctrlplane-database -f /keyspace.cql"
     deploy:
       restart_policy:
         condition: on-failure
         delay: 5s
         max_attempts: 3
         window: 120s
+
+  ctrlplane-api:
+    container_name: ctrlplane-api
+    image: cosmtrek/air
+    environment:
+      SERVICE_NAME: web::api
+      CASSANDRA_MIGRATION_SOURCE_URL: file:///api/internal/db/migrations
+    env_file:
+      - ./.env
+    ports:
+      - 8000:8000
+    volumes:
+      - ./deploy/air/api.toml:/api/.air.toml
+      - ./:/api/
+      - api-go-pkg-mod:/go/pkg/mod
+      - api-build-cache:/root/.cache/go-build
+    working_dir: /api
+
+  ctrlplane-worker--mothership:
+    container_name: ctrlplane-worker--mothership
+    image: cosmtrek/air
+    environment:
+      SERVICE_NAME: worker::mothership
+    env_file:
+      - ./.env
+    volumes:
+      - ./deploy/air/mothership.toml:/mothership/.air.toml
+      - ./:/mothership/
+      - worker-mothership-go-pkg-mod:/go/pkg/mod
+      - worker-mothership-build-cache:/root/.cache/go-build
+    working_dir: /mothership
 
   mailslurper:
     container_name: mailslurper
@@ -89,37 +120,6 @@ services:
     image: temporalio/ui:2.5.1
     ports:
       - 8080:8080
-
-  ctrlplane-api:
-    container_name: ctrlplane-api
-    image: cosmtrek/air
-    environment:
-      SERVICE_NAME: web::api
-      CASSANDRA_MIGRATION_SOURCE_URL: file:///api/internal/db/migrations
-    env_file:
-      - ./.env
-    ports:
-      - 8000:8000
-    volumes:
-      - ./deploy/air/api.toml:/api/.air.toml
-      - ./:/api/
-      - api-go-pkg-mod:/go/pkg/mod
-      - api-build-cache:/root/.cache/go-build
-    working_dir: /api
-
-  ctrlplane-worker--mothership:
-    container_name: ctrlplane-worker--mothership
-    image: cosmtrek/air
-    environment:
-      SERVICE_NAME: worker::mothership
-    env_file:
-      - ./.env
-    volumes:
-      - ./deploy/air/mothership.toml:/mothership/.air.toml
-      - ./:/mothership/
-      - worker-mothership-go-pkg-mod:/go/pkg/mod
-      - worker-mothership-build-cache:/root/.cache/go-build
-    working_dir: /mothership
 
 
 volumes:

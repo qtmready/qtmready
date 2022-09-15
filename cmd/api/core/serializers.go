@@ -11,6 +11,6 @@ type (
 		RepoID        gocql.UUID `json:"repo_id"`
 		DefaultBranch string     `json:"default_branch"`
 		IsMonorepo    bool       `json:"is_monorepo"`
-		Provider      string     `json:"provider"`
+		Driver        string     `json:"driver"`
 	}
 )

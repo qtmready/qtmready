@@ -46,7 +46,7 @@ var (
 		"repo_id",
 		"default_branch",
 		"is_monorepo",
-		"provider",
+		"driver",
 		"created_at",
 		"updated_at",
 	}
@@ -65,7 +65,7 @@ type AppRepo struct {
 	RepoID        gocql.UUID `json:"repo_id" cql:"repo_id"`
 	DefaultBranch string     `json:"default_branch" cql:"default_branch"` // The default branch to keep track of major releases.
 	IsMonorepo    bool       `json:"is_monorepo" cql:"is_monorepo"`       // an core can have multiple repos, our of which one can be a monorepo.
-	Provider      string     `json:"provider" cql:"provider"`             // can be github, gitlab, bitbucket, etc
+	Driver        string     `json:"driver" cql:"driver"`                 // can be github, gitlab, bitbucket, etc
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 }

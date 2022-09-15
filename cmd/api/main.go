@@ -11,8 +11,8 @@ import (
 	"go.breu.io/ctrlplane/cmd/api/auth"
 	"go.breu.io/ctrlplane/cmd/api/core"
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/integrations"
-	"go.breu.io/ctrlplane/internal/integrations/github"
+	"go.breu.io/ctrlplane/internal/drivers"
+	"go.breu.io/ctrlplane/internal/drivers/github"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -90,7 +90,7 @@ func main() {
 	// Unauthenticated routes
 	e.GET("/healthcheck", healthcheck)
 	auth.CreateRoutes(e.Group("/auth"))
-	integrations.CreateRoutes(e.Group("/integrations"), middleware.JWTWithConfig(jwtconf))
+	drivers.CreateRoutes(e.Group("/drivers"), middleware.JWTWithConfig(jwtconf))
 
 	// Protected routes
 	protected := e.Group("")

@@ -97,7 +97,7 @@ func (a *AppRoutes) CreateAppRepo(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "not found")
 	}
 
-	switch request.Provider {
+	switch request.Driver {
 	case "github":
 		return a.github(ctx, request, app)
 	default:
@@ -115,7 +115,7 @@ func (a *AppRoutes) github(ctx echo.Context, request *AppRepoCreateRequest, app 
 		RepoID:        request.RepoID,
 		DefaultBranch: request.DefaultBranch,
 		IsMonorepo:    request.IsMonorepo,
-		Provider:      request.Provider,
+		Driver:        request.Driver,
 	}
 
 	if err := db.Save(repo); err != nil {
