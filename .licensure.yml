@@ -2,16 +2,20 @@
 # Regexes which if matched by a file path will always be excluded from
 # getting a license header
 excludes:
+  - \.editorconfig
+  - \.env
   - \.gitignore
   - .*lock
   - \.git/.*
   - \.licensure\.yml
   - README.*
   - LICENSE.*
-  - .*\.(md|rst|txt|yml|yaml)
+  - .*\.(md|rst|txt)
   - .*\.(png|jpg|jpeg|gif|svg|ico)
   - .*\.(ttf|woff|woff2|eot)
   - .*\.(zip|tar|gz|tgz|rar|7z|bz2|exe|msi)
+  - .*\.(json|xml|csv|tsv|log|ini|conf|cfg|toml|env)
+  - go.(mod|sum)
 
 authors:
   - name: Breu Inc.
@@ -64,6 +68,8 @@ comments:
 
   - extension:
       - py
+      - yaml
+      - yml
     commenter:
       type: line
       comment_char: "#"

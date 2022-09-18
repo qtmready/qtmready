@@ -1,3 +1,5 @@
+-- Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.  
+
 create table if not exists github_installations
 (
   id                 uuid,

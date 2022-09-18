@@ -1,3 +1,5 @@
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.  
+
 // A sentinel runs on customer premise. It acts as tunnel to ctrlplane.ai main server.
 // It is responsible for:
 // - cloning the repo
