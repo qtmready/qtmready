@@ -2,9 +2,7 @@ package auth
 
 import (
 	"net/http"
-	"time"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/ctrlplane/internal/db"
@@ -76,20 +74,8 @@ func login(ctx echo.Context) error {
 	}
 
 	if user.VerifyPassword(request.Password) {
-		short := &shared.JWTClaims{
-			UserID:         user.ID.String(),
-			TeamID:         user.TeamID.String(),
-			StandardClaims: jwt.StandardClaims{ExpiresAt: time.Now().Add(time.Minute * 15).Unix(), Issuer: shared.Service.Name},
-		}
-
-		long := &shared.JWTClaims{
-			UserID:         user.ID.String(),
-			TeamID:         user.TeamID.String(),
-			StandardClaims: jwt.StandardClaims{ExpiresAt: time.Now().Add(time.Minute * 60).Unix(), Issuer: shared.Service.Name},
-		}
-
-		access, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, short).SignedString([]byte(shared.Service.Secret))
-		refresh, _ := jwt.NewWithClaims(jwt.SigningMethodHS256, long).SignedString([]byte(shared.Service.Secret))
+		access, _ := shared.GenerateAccessToken(user.ID.String(), user.TeamID.String())
+		refresh, _ := shared.GenerateRefreshToken(user.ID.String(), user.TeamID.String())
 
 		return ctx.JSON(http.StatusOK, &TokenResponse{AccessToken: access, RefreshToken: refresh})
 	}

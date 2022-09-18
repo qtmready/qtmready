@@ -22,6 +22,7 @@ var activities *Activities
 func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	// prelude
 	log := workflow.GetLogger(ctx)
+	log.Info("received installation event ...")
 	selector := workflow.NewSelector(ctx)
 	webhook := &InstallationEventPayload{}
 	request := &CompleteInstallationSignalPayload{}
@@ -36,7 +37,7 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	selector.AddReceive(
 		webhookChannel,
 		func(channel workflow.ReceiveChannel, more bool) {
-			log.Info("received webhook ...", "payload", webhook)
+			log.Info("received installation webhook ...")
 			channel.Receive(ctx, webhook)
 			webhookDone = true
 
@@ -54,7 +55,7 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	selector.AddReceive(
 		requestChannel,
 		func(channel workflow.ReceiveChannel, more bool) {
-			log.Info("received request ...", "payload", request)
+			log.Info("received complete installation request ...")
 			channel.Receive(ctx, request)
 			requestDone = true
 		},
@@ -105,7 +106,7 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 				TeamID:   installation.TeamID,
 			}
 
-			future := workflow.ExecuteActivity(ctx, activities.CreateRepo, repo)
+			future := workflow.ExecuteActivity(ctx, activities.CreateOrUpdateRepo, repo)
 			selector.AddFuture(future, func(f workflow.Future) { log.Info("repository saved ...", repo, repo.GithubID) })
 		}
 
@@ -121,7 +122,7 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 
 func (w *Workflows) OnPush(ctx workflow.Context, payload PushEventPayload) error {
 	log := workflow.GetLogger(ctx)
-	log.Info("received push event ...", "payload", payload)
+	log.Debug("received push event ...")
 	return nil
 }
 

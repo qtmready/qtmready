@@ -19,14 +19,14 @@ func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *en
 
 	// if we get the installation, the error will be nil
 	if err == nil {
-		log.Info("installation found, updating status ...", "installation", installation)
+		log.Info("installation found, updating status ...")
 		installation.Status = payload.Status
 	} else {
-		log.Info("installation not found, preparing create ...", "payload", payload)
+		log.Info("installation not found, creating ...", "payload", payload)
 		installation = payload
 	}
 
-	log.Info("saving installation", "installation", installation)
+	log.Info("saving installation ...", "installation", installation)
 	if err := db.Save(installation); err != nil {
 		log.Error("error saving installation", "error", err)
 		return installation, err
@@ -35,17 +35,41 @@ func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *en
 	return installation, nil
 }
 
-// CreateRepo creates a single row for entities.GithubRepo
-func (a *Activities) CreateRepo(ctx context.Context, payload *entities.GithubRepo) error {
+// CreateOrUpdateRepo creates a single row for entities.GithubRepo
+func (a *Activities) CreateOrUpdateRepo(ctx context.Context, payload *entities.GithubRepo) error {
 	log := activity.GetLogger(ctx)
+	repo, err := a.GetRepo(ctx, payload)
 
-	log.Info("saving repository", "repository", payload)
-	if err := db.Save(payload); err != nil {
+	// if we get the repo, the error will be nil
+	if err == nil {
+		log.Info("repository found, updating ...")
+	} else {
+		log.Info("repository not found, creating ...", "payload", payload)
+	}
+
+	if err := db.Save(repo); err != nil {
 		log.Error("error saving repository", "error", err)
 		return err
 	}
 
 	return nil
+}
+
+// GetRepo gets entities.GithubRepo against given entities.GithubRepo
+func (a *Activities) GetRepo(ctx context.Context, payload *entities.GithubRepo) (*entities.GithubRepo, error) {
+	repo := &entities.GithubRepo{}
+	params := db.QueryParams{
+		"name":      "'" + payload.Name + "'",
+		"full_name": "'" + payload.FullName + "'",
+		"github_id": strconv.FormatInt(payload.GithubID, 10),
+		"team_id":   payload.TeamID.String(),
+	}
+
+	if err := db.Get(repo, params); err != nil {
+		return payload, err
+	}
+
+	return repo, nil
 }
 
 // GetInstallation gets entities.GithubInstallation against given installation_id
@@ -57,8 +81,4 @@ func (a *Activities) GetInstallation(ctx context.Context, id int64) (*entities.G
 	}
 
 	return installation, nil
-}
-
-func (a *Activities) CloneRepo(ctx context.Context, payload PushEventPayload) error {
-	return nil
 }

@@ -68,9 +68,9 @@ func (q *queue) CreateWorkflowID(sender string, args ...string) string {
 
 func (q *queue) GetWorkflowOptions(sender string, args ...string) client.StartWorkflowOptions {
 	return client.StartWorkflowOptions{
-		ID:                    q.CreateWorkflowID(sender, args...),
-		TaskQueue:             q.GetName(),
-		WorkflowIDReusePolicy: 3, // client.WorkflowIDReusePolicyRejectDuplicate
+		ID:        q.CreateWorkflowID(sender, args...),
+		TaskQueue: q.GetName(),
+		// WorkflowIDReusePolicy: 3, // client.WorkflowIDReusePolicyRejectDuplicate
 	}
 }
 

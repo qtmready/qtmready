@@ -1,10 +1,14 @@
 package core
 
-import "github.com/gocql/gocql"
+import (
+	"github.com/gocql/gocql"
+	"go.breu.io/ctrlplane/internal/entities"
+)
 
 type (
 	AppCreateRequest struct {
-		Name string `json:"name"`
+		Name   string             `json:"name"`
+		Config entities.AppConfig `json:"config"`
 	}
 
 	AppRepoCreateRequest struct {

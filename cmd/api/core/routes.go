@@ -68,7 +68,7 @@ func (a *AppRoutes) List(ctx echo.Context) error {
 
 // GetAppRepos gets an app repos by slug
 func (a *AppRoutes) GetAppRepos(ctx echo.Context) error {
-	result := make([]entities.AppRepo, 0)
+	result := make([]entities.Repo, 0)
 	app := &entities.App{}
 
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": shared.GetTeamIDFromContext(ctx)}
@@ -77,7 +77,7 @@ func (a *AppRoutes) GetAppRepos(ctx echo.Context) error {
 	}
 
 	params = db.QueryParams{"app_id": app.ID.String()}
-	if err := db.Filter(&entities.AppRepo{}, &result, params); err != nil {
+	if err := db.Filter(&entities.Repo{}, &result, params); err != nil {
 		return err
 	}
 
@@ -110,7 +110,7 @@ func (a *AppRoutes) github(ctx echo.Context, request *AppRepoCreateRequest, app 
 		return echo.NewHTTPError(http.StatusNotFound, "repo not found")
 	}
 
-	repo := &entities.AppRepo{
+	repo := &entities.Repo{
 		AppID:         app.ID,
 		RepoID:        request.RepoID,
 		DefaultBranch: request.DefaultBranch,

@@ -1,4 +1,4 @@
-create table if not exists app_repos (
+create table if not exists repos (
   id             uuid,
   app_id         uuid,
   repo_id        uuid,
@@ -10,6 +10,6 @@ create table if not exists app_repos (
   primary key    (id),
 ) with comment = 'repo associated with the app';
 
-create index if not exists on app_repos (app_id);
-create index if not exists on app_repos (repo_id);
-create index if not exists on app_repos (driver);
+create index if not exists on repos (app_id);
+create index if not exists on repos (repo_id);
+create index if not exists on repos (driver);

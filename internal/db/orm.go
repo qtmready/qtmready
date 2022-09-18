@@ -20,6 +20,11 @@ type (
 		PreCreate() error
 		PreUpdate() error
 	}
+
+	GetOrCreateResponse[T Entity] struct {
+		Entity  T
+		Created bool
+	}
 )
 
 // Get the entity by given query params.

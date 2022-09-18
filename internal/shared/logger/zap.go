@@ -17,8 +17,7 @@ type ZapAdapter struct {
 func NewZapAdapter(logger *zap.Logger) *ZapAdapter {
 	return &ZapAdapter{
 		logger: logger.WithOptions(zap.AddCallerSkip(1)), // skip the caller of this function
-		// logger: logger,
-		core: logger.Core(),
+		core:   logger.Core(),
 	}
 }
 

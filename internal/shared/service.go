@@ -8,7 +8,7 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.uber.org/zap"
 
-  "go.breu.io/ctrlplane/internal/shared/logger"
+	"go.breu.io/ctrlplane/internal/shared/logger"
 )
 
 type (
@@ -48,6 +48,13 @@ func (s *service) InitValidator() {
 
 // InitLogger sets up global logger.
 func (s *service) InitLogger() {
-	z, _ := zap.NewProduction()
-	Logger = logger.NewZapAdapter(z)
+	var zl *zap.Logger
+
+	if s.Debug {
+		zl, _ = zap.NewDevelopment()
+	} else {
+		zl, _ = zap.NewProduction()
+	}
+
+	Logger = logger.NewZapAdapter(zl)
 }
