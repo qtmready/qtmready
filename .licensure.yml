@@ -1,0 +1,79 @@
+
+# Regexes which if matched by a file path will always be excluded from
+# getting a license header
+excludes:
+  - \.gitignore
+  - .*lock
+  - \.git/.*
+  - \.licensure\.yml
+  - README.*
+  - LICENSE.*
+  - .*\.(md|rst|txt|yml|yaml)
+  - .*\.(png|jpg|jpeg|gif|svg|ico)
+  - .*\.(ttf|woff|woff2|eot)
+  - .*\.(zip|tar|gz|tgz|rar|7z|bz2|exe|msi)
+
+authors:
+  - name: Breu Inc.
+    email: info@breu.io
+
+licenses:
+  - files: any
+    authors:
+    - name: Breu Inc.
+      email: info@breu.io
+    ident: Unlicense
+    template: |
+      Copyright © [year], [name of author]. All rights reserved. 
+
+comments:
+  - extensions:
+      - ts
+      - js
+      - rs
+      - go
+    commenter:
+      type: line
+      comment_char: "//"
+      trailing_lines: 1
+ 
+  - extensions:
+      - css
+      - cpp
+      - c
+    commenter:
+      type: block
+      start_block_char: "/*\n"
+      end_block_char: "*/"
+      per_line_char: "*"
+      trailing_lines: 1
+
+  - extension: html
+    commenter:
+      type: block
+      start_block_char: "<!--\n"
+      end_block_char: "-->"
+
+  - extensions:
+      - el
+      - lisp
+    commenter:
+      type: line
+      comment_char: ";;;"
+      trailing_lines: 1
+
+  - extension:
+      - py
+    commenter:
+      type: line
+      comment_char: "#"
+      trailing_lines: 1
+
+  - extension:
+      - cql
+      - sql
+    commenter:
+      type: line
+      comment_char: "--"
+      trailing_lines: 1
+    

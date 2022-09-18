@@ -1,6 +1,3 @@
-/*
-Copyright © 2022 Breu Inc. <info@breu.io>
-*/
 package cmd
 
 import (
