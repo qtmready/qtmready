@@ -14,14 +14,17 @@ require (
 	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/nats-io/nats.go v1.16.0
 	github.com/scylladb/gocqlx/v2 v2.7.0
+	github.com/spf13/cobra v1.5.0
 	go.temporal.io/sdk v1.16.0
 	go.uber.org/zap v1.22.0
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8
 )
 
-require golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-
-replace github.com/scylladb/gocqlx/v2 => github.com/debuggerpk/gocqlx/v2 v2.7.1
+require (
+	github.com/inconshreveable/mousetrap v1.0.0 // indirect
+	github.com/spf13/pflag v1.0.5 // indirect
+	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
+)
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
