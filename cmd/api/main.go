@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.  
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package main
 
@@ -75,7 +75,11 @@ func main() {
 	// handling closing of the server
 	defer db.DB.Session.Close()
 	defer shared.Temporal.Client.Close()
-	defer shared.Logger.Sync()
+	defer func() {
+		if err := shared.Logger.Sync(); err != nil {
+			panic(err)
+		}
+	}()
 
 	e := echo.New()
 	jwtconf := middleware.JWTConfig{

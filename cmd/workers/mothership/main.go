@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.  
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package main
 
@@ -46,8 +46,12 @@ func init() {
 }
 
 func main() {
-	defer shared.Logger.Sync()
 	defer shared.Temporal.Client.Close()
+	defer func() {
+		if err := shared.Logger.Sync(); err != nil {
+			panic(err)
+		}
+	}()
 
 	queue := shared.Temporal.Queues[shared.IntegrationsQueue].GetName()
 	options := worker.Options{}

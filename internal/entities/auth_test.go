@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.  
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package entities
 
@@ -25,7 +25,7 @@ type (
 
 func TestUser(t *testing.T) {
 	user := &User{Password: "password"}
-	user.PreCreate()
+	_ = user.PreCreate()
 	createTests := testMap{
 		"SetPassword":    fn{user, nil, testUserSetPassword},
 		"VerifyPassword": fn{testVerifyPasswordArgs{user, "password"}, nil, testUserVerifyPassword},
