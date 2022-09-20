@@ -14,7 +14,7 @@ var rootCmd = &cobra.Command{
 	Short: "ctrlplane is a multi stage release rollout engine with pre-emptive rollbacks.",
 	Long: `
 ctrlplane is a multi stage release rollout engine for distributed systems. It is designed to be
-used in conjunction with a CI/CD & OpenTelemetry Signals pipeline to provide a safe and 
+used in conjunction with a CI/CD pipeline, Github & OpenTelemetry Signals to provide a safe and 
 reliable rollout process for microservices. Currently, it only supports monorepo, but we
 polyrepo support is on the roadmap. To learn more, visit https://breu.io/ctrlplane
   `,

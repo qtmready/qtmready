@@ -1,4 +1,4 @@
-# Github Driver
+# Github Provider
 
 ## Workflows
 

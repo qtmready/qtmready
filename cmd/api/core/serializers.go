@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.  
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package core
 
@@ -17,6 +17,6 @@ type (
 		RepoID        gocql.UUID `json:"repo_id"`
 		DefaultBranch string     `json:"default_branch"`
 		IsMonorepo    bool       `json:"is_monorepo"`
-		Driver        string     `json:"driver"`
+		Provider      string     `json:"provider"`
 	}
 )

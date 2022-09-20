@@ -9,7 +9,7 @@ import (
 	"go.temporal.io/sdk/worker"
 
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/drivers/github"
+	"go.breu.io/ctrlplane/internal/providers/github"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -53,7 +53,7 @@ func main() {
 		}
 	}()
 
-	queue := shared.Temporal.Queues[shared.IntegrationsQueue].GetName()
+	queue := shared.Temporal.Queues[shared.ProvidersQueue].GetName()
 	options := worker.Options{}
 	wrkr := worker.New(shared.Temporal.Client, queue, options)
 

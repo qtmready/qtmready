@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.  
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package core
 
@@ -99,7 +99,7 @@ func (a *AppRoutes) CreateAppRepo(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, "not found")
 	}
 
-	switch request.Driver {
+	switch request.Provider {
 	case "github":
 		return a.github(ctx, request, app)
 	default:
@@ -117,7 +117,7 @@ func (a *AppRoutes) github(ctx echo.Context, request *AppRepoCreateRequest, app 
 		RepoID:        request.RepoID,
 		DefaultBranch: request.DefaultBranch,
 		IsMonorepo:    request.IsMonorepo,
-		Driver:        request.Driver,
+		Provider:      request.Provider,
 	}
 
 	if err := db.Save(repo); err != nil {

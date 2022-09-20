@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.  
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package entities
 
@@ -52,7 +52,7 @@ var (
 		"repo_id",
 		"default_branch",
 		"is_monorepo",
-		"driver",
+		"provider",
 		"created_at",
 		"updated_at",
 	}
@@ -72,7 +72,7 @@ type Repo struct {
 	RepoID        gocql.UUID `json:"repo_id" cql:"repo_id"`
 	DefaultBranch string     `json:"default_branch" cql:"default_branch"` // The default branch to keep track of major releases.
 	IsMonorepo    bool       `json:"is_monorepo" cql:"is_monorepo"`       // app can have multiple repos
-	Driver        string     `json:"driver" cql:"driver"`                 // can be github, gitlab, bitbucket, etc
+	Provider      string     `json:"provider" cql:"provider"`             // can be github, gitlab, bitbucket, etc
 	CreatedAt     time.Time  `json:"created_at"`
 	UpdatedAt     time.Time  `json:"updated_at"`
 }
@@ -127,8 +127,8 @@ var (
 		"app_id",
 		"repo_id",
 		"name",
+		"provider",
 		"driver",
-		"kind",
 		"is_immutable",
 		"created_at",
 		"updated_at",
@@ -148,8 +148,8 @@ type Resource struct {
 	AppID       gocql.UUID `json:"app_id" cql:"app_id"`
 	RepoID      gocql.UUID `json:"repo_id" cql:"repo_id"`
 	Name        string     `json:"name" cql:"name"`
-	Driver      string     `json:"driver" cql:"driver"` // "aws" | "gcp" | "azure"
-	Kind        string     `json:"kind" cql:"kind"`     // "s3" | "sqs" | "sns" | "dynamodb" | "postgres" | "mysql" etc.
+	Provider    string     `json:"provider" cql:"provider"` // "aws" | "gcp" | "azure"
+	Driver      string     `json:"driver" cql:"driver"`     // "s3" | "sqs" | "sns" | "dynamodb" | "postgres" | "mysql" etc.
 	IsImmutable bool       `json:"is_immutable" cql:"is_immutable"`
 	CreatedAt   time.Time  `json:"created_at"`
 	UpdatedAt   time.Time  `json:"updated_at"`

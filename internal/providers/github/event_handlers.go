@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.  
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package github
 
@@ -21,7 +21,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 
 	workflows := &Workflows{}
 	opts := shared.Temporal.
-		Queues[shared.IntegrationsQueue].
+		Queues[shared.ProvidersQueue].
 		GetWorkflowOptions("github", strconv.FormatInt(payload.Installation.ID, 10), string(InstallationEvent))
 
 	exe, err := shared.Temporal.Client.SignalWithStartWorkflow(
@@ -50,7 +50,7 @@ func handlePushEvent(ctx echo.Context) error {
 
 	w := &Workflows{}
 	opts := shared.Temporal.
-		Queues[shared.IntegrationsQueue].
+		Queues[shared.ProvidersQueue].
 		GetWorkflowOptions("github", strconv.FormatInt(payload.Installation.ID, 10), PushEvent.String(), "ref", payload.After)
 
 	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPush, payload)

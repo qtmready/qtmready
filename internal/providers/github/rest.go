@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.  
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package github
 
@@ -75,7 +75,7 @@ func completeInstallation(ctx echo.Context) error {
 
 	workflows := &Workflows{}
 	opts := shared.Temporal.
-		Queues[shared.IntegrationsQueue].
+		Queues[shared.ProvidersQueue].
 		GetWorkflowOptions("github", strconv.Itoa(int(payload.InstallationID)), string(InstallationEvent))
 
 	run, err := shared.Temporal.Client.

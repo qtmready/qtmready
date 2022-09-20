@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.  
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package shared
 
@@ -13,8 +13,8 @@ import (
 
 var Temporal = &temporal{
 	Queues: Queues{
-		MothershipQueue:   &queue{MothershipQueue, "ai.ctrlplane.mothership"},
-		IntegrationsQueue: &queue{IntegrationsQueue, "ai.ctrlplane.drivers"},
+		MothershipQueue: &queue{MothershipQueue, "ai.ctrlplane.mothership"},
+		ProvidersQueue:  &queue{ProvidersQueue, "ai.ctrlplane.providers"},
 	},
 }
 
@@ -32,11 +32,11 @@ type (
 
 // TODO: The greater plan is to move each tenant in its own namespace.
 const (
-	MothershipQueue   QueueName = "mothership"
-	IntegrationsQueue QueueName = "drivers"
-	BuilderQueue      QueueName = "builder"
-	ProvisionerQueue  QueueName = "provisioner"
-	DeployerQueue     QueueName = "deployer"
+	MothershipQueue  QueueName = "mothership"
+	ProvidersQueue   QueueName = "providers"
+	BuilderQueue     QueueName = "builder"
+	ProvisionerQueue QueueName = "provisioner"
+	DeployerQueue    QueueName = "deployer"
 )
 
 func (q QueueName) ToString() string {

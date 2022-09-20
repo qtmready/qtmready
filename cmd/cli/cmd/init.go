@@ -15,8 +15,8 @@ import (
 	"go.breu.io/ctrlplane/cmd/cli/utils"
 )
 
-//go:embed schema.cue
-var schema string
+// //go:embed schema.cue
+// var schema string
 var ErrInvalidLength = errors.New("must be no more than 63 characters")
 
 const (
