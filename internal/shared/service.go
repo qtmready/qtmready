@@ -7,7 +7,6 @@ import (
 	"path"
 	"reflect"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"time"
 
@@ -44,7 +43,7 @@ func (s *service) Version() string {
 	if s.version == "" {
 		if info, ok := debug.ReadBuildInfo(); ok {
 			var revision string
-			var modified bool
+			var modified string
 			var timestamp time.Time
 			for _, s := range info.Settings {
 				if s.Key == "vcs.revision" {
@@ -52,7 +51,7 @@ func (s *service) Version() string {
 				}
 
 				if s.Key == "vcs.modified" {
-					modified, _ = strconv.ParseBool(s.Value)
+					modified = s.Value
 				}
 
 				if s.Key == "vcs.time" {
@@ -61,8 +60,8 @@ func (s *service) Version() string {
 			}
 
 			version := timestamp.Format("060102") + "." + revision[:8]
-			if modified {
-				version += "-dirty"
+			if modified == "true" {
+				version += "-dev"
 			}
 			s.version = version
 		}
