@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.  
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package auth
 
@@ -13,12 +13,15 @@ import (
 )
 
 func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
-	g.POST("/register", register)
-	g.POST("/login", login)
+	r := &AuthRoutes{}
+	g.POST("/register", r.register)
+	g.POST("/login", r.login)
 }
 
+type AuthRoutes struct{}
+
 // register is a handler for /auth/register endpoint
-func register(ctx echo.Context) error {
+func (routes *AuthRoutes) register(ctx echo.Context) error {
 	request := &RegistrationRequest{}
 
 	// Translating request to json
@@ -55,7 +58,7 @@ func register(ctx echo.Context) error {
 }
 
 // login is a handler for /auth/login endpoint
-func login(ctx echo.Context) error {
+func (routes *AuthRoutes) login(ctx echo.Context) error {
 	request := &LoginRequest{}
 
 	// Translating request to json

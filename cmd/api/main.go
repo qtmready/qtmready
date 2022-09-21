@@ -68,7 +68,7 @@ func init() {
 	waiter.Wait()
 	// Initializing singleton objects ... Done
 
-	shared.Logger.Info("Initializing Service ... Done")
+	shared.Logger.Info("Initializing Service ... Done", "version", shared.Service.Version())
 }
 
 func main() {

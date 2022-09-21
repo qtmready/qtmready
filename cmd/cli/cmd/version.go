@@ -16,7 +16,7 @@ var versionCmd = &cobra.Command{
 Displays the build id and git short sha for the current binary. This is useful for debugging and reporting issues.
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("TODO: integrate versioning ...")
+		fmt.Println("TODO: integrate versioning ...") // TODO: integrate versioning
 	},
 }
 

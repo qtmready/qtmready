@@ -15,7 +15,7 @@ import (
 
 // CreateRoutes creates the routes for the app
 func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
-	apps := &AppRoutes{}
+	apps := &CoreRoutes{}
 	g.POST("/apps", apps.Create)
 	g.GET("/apps", apps.List)
 	g.GET("/apps/:slug", apps.Get)
@@ -25,11 +25,11 @@ func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
 }
 
 type (
-	AppRoutes struct{}
+	CoreRoutes struct{}
 )
 
 // Create creates a new app
-func (a *AppRoutes) Create(ctx echo.Context) error {
+func (routes *CoreRoutes) Create(ctx echo.Context) error {
 	request := &AppCreateRequest{}
 	if err := ctx.Bind(request); err != nil {
 		return err
@@ -45,7 +45,7 @@ func (a *AppRoutes) Create(ctx echo.Context) error {
 }
 
 // Get gets an app by slug
-func (a *AppRoutes) Get(ctx echo.Context) error {
+func (routes *CoreRoutes) Get(ctx echo.Context) error {
 	app := &entities.App{}
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'"}
 
@@ -57,7 +57,7 @@ func (a *AppRoutes) Get(ctx echo.Context) error {
 }
 
 // List lists all apps associated with the team
-func (a *AppRoutes) List(ctx echo.Context) error {
+func (routes *CoreRoutes) List(ctx echo.Context) error {
 	result := make([]entities.App, 0)
 	params := db.QueryParams{"team_id": shared.GetTeamIDFromContext(ctx)}
 
@@ -69,7 +69,7 @@ func (a *AppRoutes) List(ctx echo.Context) error {
 }
 
 // GetAppRepos gets an app repos by slug
-func (a *AppRoutes) GetAppRepos(ctx echo.Context) error {
+func (routes *CoreRoutes) GetAppRepos(ctx echo.Context) error {
 	result := make([]entities.Repo, 0)
 	app := &entities.App{}
 
@@ -87,7 +87,7 @@ func (a *AppRoutes) GetAppRepos(ctx echo.Context) error {
 }
 
 // CreateAppRepo creates a new app repo
-func (a *AppRoutes) CreateAppRepo(ctx echo.Context) error {
+func (routes *CoreRoutes) CreateAppRepo(ctx echo.Context) error {
 	request := &AppRepoCreateRequest{}
 	if err := ctx.Bind(request); err != nil {
 		return err
@@ -101,13 +101,13 @@ func (a *AppRoutes) CreateAppRepo(ctx echo.Context) error {
 
 	switch request.Provider {
 	case "github":
-		return a.github(ctx, request, app)
+		return routes.github(ctx, request, app)
 	default:
 		return echo.NewHTTPError(http.StatusInternalServerError, "unsupported git provider")
 	}
 }
 
-func (a *AppRoutes) github(ctx echo.Context, request *AppRepoCreateRequest, app *entities.App) error {
+func (routes *CoreRoutes) github(ctx echo.Context, request *AppRepoCreateRequest, app *entities.App) error {
 	if err := db.Get(&entities.GithubRepo{}, db.QueryParams{"id": request.RepoID.String()}); err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "repo not found")
 	}

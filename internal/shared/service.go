@@ -1,10 +1,15 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.  
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package shared
 
 import (
+	"os"
+	"path"
 	"reflect"
+	"runtime/debug"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/ilyakaznacheev/cleanenv"
@@ -17,8 +22,15 @@ type (
 	service struct {
 		Name    string `env:"SERVICE_NAME" env-default:"service"`
 		Debug   bool   `env:"DEBUG" env-default:"false"`
-		Version string `env:"VERSION" env-default:"0.0.0-dev"`
 		Secret  string `env:"SECRET" env-default:""`
+		CLI     cli    `env-prefix:"CLI_" env-allow-empty:"true"`
+		version string `env:"VERSION" env-default:""`
+	}
+
+	cli struct {
+		BaseUrl      string `env:"BASE_URL" env-default:"http://localhost:8000"`
+		AccessToken  string `env:"ACCESS_TOKEN" env-default:""`
+		RefreshToken string `env:"REFRESH_TOKEN" env-default:""`
 	}
 )
 
@@ -28,11 +40,65 @@ var (
 	Validate *validator.Validate
 )
 
+func (s *service) Version() string {
+	if s.version == "" {
+		if info, ok := debug.ReadBuildInfo(); ok {
+			var revision string
+			var modified bool
+			var timestamp time.Time
+			for _, s := range info.Settings {
+				if s.Key == "vcs.revision" {
+					revision = s.Value
+				}
+
+				if s.Key == "vcs.modified" {
+					modified, _ = strconv.ParseBool(s.Value)
+				}
+
+				if s.Key == "vcs.time" {
+					timestamp, _ = time.Parse(time.RFC3339, s.Value)
+				}
+			}
+
+			version := timestamp.Format("060102") + "." + revision[:8]
+			if modified {
+				version += "-dirty"
+			}
+			s.version = version
+		}
+	}
+
+	return s.version
+}
+
 // ReadEnv reads the environment variables and initializes the service.
 func (s *service) ReadEnv() {
 	if err := cleanenv.ReadEnv(s); err != nil {
-		Logger.Error("Failed to read environment variables", "error", err)
+		panic("Failed to read environment variables")
 	}
+}
+
+func (s *service) GetConfigPath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+
+	return path.Join(home, ".ctrlplane", "config.json"), nil
+}
+
+func (s *service) ReadFile() error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
+	conf := path.Join(home, ".ctrlplane", "config.json")
+	if err := cleanenv.ReadConfig(conf, s); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // InitValidator sets up global validator.

@@ -15,8 +15,6 @@ import (
 	"go.breu.io/ctrlplane/cmd/cli/utils"
 )
 
-// //go:embed schema.cue
-// var schema string
 var ErrInvalidLength = errors.New("must be no more than 63 characters")
 
 const (
@@ -27,10 +25,14 @@ var initCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Create a new ctrlplane project",
 	Long: `
-  Creates a new ctrlplane project in the current directory. This will create .ctrlplane.yaml for
-  configuration management and .ctrlplane/ directory for state management
+Creates a new ctrlplane project in the current directory. This will create .ctrlplane file for
+configuration management and .ctrlplane/ directory for state management
   `,
 	Run: initRun,
+}
+
+func init() {
+	rootCmd.AddCommand(initCmd)
 }
 
 func initRun(cmd *cobra.Command, args []string) {
@@ -39,9 +41,6 @@ func initRun(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-
-	// context := cuecontext.New()
-	// r := context.CompileString(schema)
 
 	// fmt.Println(r)
 	name, err := promptName()
@@ -61,7 +60,7 @@ func initRun(cmd *cobra.Command, args []string) {
 }
 
 func promptName() (string, error) {
-	rx := regexp.MustCompile(dns1035LabelFmt)
+	rx := regexp.MustCompile(dns1035LabelFmt) // FIXME: not working!
 	prompt := promptui.Prompt{
 		Label: "Application Name",
 		Validate: func(input string) error {
@@ -86,8 +85,4 @@ func selectCloud() (string, error) {
 
 	_, result, err := prompt.Run()
 	return result, err
-}
-
-func init() {
-	rootCmd.AddCommand(initCmd)
 }

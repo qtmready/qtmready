@@ -24,6 +24,10 @@ var loginCmd = &cobra.Command{
 	Run:   loginRun,
 }
 
+func init() {
+	rootCmd.AddCommand(loginCmd)
+}
+
 func loginRun(cmd *cobra.Command, args []string) {
 PROMPT:
 	email, err := promptEmail()
@@ -97,8 +101,4 @@ func doLogin(email string, password string) (*auth.TokenResponse, error) {
 	}
 
 	return token, nil
-}
-
-func init() {
-	rootCmd.AddCommand(loginCmd)
 }
