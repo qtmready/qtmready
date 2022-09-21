@@ -10,8 +10,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	"go.breu.io/ctrlplane/cmd/api/auth"
-	"go.breu.io/ctrlplane/cmd/api/core"
+	"go.breu.io/ctrlplane/internal/api/auth"
+	"go.breu.io/ctrlplane/internal/api/core"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/providers"
 	"go.breu.io/ctrlplane/internal/providers/github"
