@@ -60,9 +60,11 @@ func (s *service) Version() string {
 			}
 
 			version := timestamp.Format("060102") + "." + revision[:8]
+
 			if modified == "true" {
 				version += "-dev"
 			}
+
 			s.version = version
 		}
 	}
@@ -87,12 +89,12 @@ func (s *service) GetConfigPath() (string, error) {
 }
 
 func (s *service) ReadFile() error {
-	home, err := os.UserHomeDir()
+	conf, err := s.GetConfigPath()
+
 	if err != nil {
 		return err
 	}
 
-	conf := path.Join(home, ".ctrlplane", "config.json")
 	if err := cleanenv.ReadConfig(conf, s); err != nil {
 		return err
 	}

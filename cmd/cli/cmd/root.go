@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -17,7 +18,9 @@ ctrlplane is a multi stage release rollout engine for cloud-native applications.
 conjunction with a CI/CD pipeline & near realtime application monitoring to provide a safe and reliable rollout 
 process with rollbacks for microservices.
 
-Currently, it only supports monorepo, but polyrepo support is on the roadmap. To learn more, visit https://breu.io/ctrlplane
+Currently, it only supports monorepo, but poly repo support is on the roadmap.
+
+To learn more, visit https://breu.io/ctrlplane
   `,
 }
 
@@ -31,5 +34,9 @@ func Execute() {
 }
 
 func init() {
+	if err := shared.Service.ReadFile(); err != nil {
+		println("ctrlplane not initialized, please do ctrlplane login", err.Error())
+		// shared.Logger.Error("Failed to read config file", "error", err)
+	}
 	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

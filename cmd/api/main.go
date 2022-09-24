@@ -100,7 +100,8 @@ func main() {
 
 	// Protected routes
 	protected := e.Group("")
-	protected.Use(middleware.JWTWithConfig(jwtconf))
+	protected.Use(auth.Middleware)
+	// protected.Use(middleware.JWTWithConfig(jwtconf))
 	core.CreateRoutes(protected)
 
 	if err := e.Start(":8000"); err != nil {

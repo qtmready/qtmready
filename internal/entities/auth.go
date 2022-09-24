@@ -1,8 +1,13 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.  
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package entities
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -149,3 +154,121 @@ type TeamUser struct {
 func (tu *TeamUser) GetTable() *table.Table { return teamUserTable }
 func (tu *TeamUser) PreCreate() error       { return nil }
 func (tu *TeamUser) PreUpdate() error       { return nil }
+
+/**
+ * Guards
+ **/
+
+var (
+	guardColumns = []string{
+		"id",
+		"name",
+		"value",
+		"lookup_id",
+		"lookup_type",
+		"created_at",
+		"udpdated_at",
+	}
+
+	guardMeta = table.Metadata{
+		Name:    "guards",
+		Columns: guardColumns,
+	}
+
+	guardTable = table.New(guardMeta)
+)
+
+// Guard is used to protect the API from unauthorized access.
+type Guard struct {
+	ID         gocql.UUID `json:"id" cql:"id"`
+	Name       string     `json:"name" validate:"required"`
+	Hashed     string     `json:"hashed" validate:"required"`
+	LookupID   gocql.UUID `json:"lookup_id" validate:"required"`
+	LookupType string     `json:"lookup_type" validate:"required"`
+	CreatedAt  time.Time  `json:"created_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
+}
+
+func (g *Guard) GetTable() *table.Table { return guardTable }
+func (g *Guard) PreCreate() error       { g.SetHashed(g.Hashed); return nil }
+func (g *Guard) PreUpdate() error       { return nil }
+
+func (g *Guard) CreatePrefix() string {
+	return base64.RawURLEncoding.EncodeToString(g.LookupID[:])
+}
+
+func (g *Guard) PrefixToID(prefix string) (gocql.UUID, error) {
+	id := gocql.UUID{}
+	b, err := base64.RawURLEncoding.DecodeString(prefix)
+	if err != nil {
+		return id, err
+	}
+
+	copy(id[:], b)
+	return id, nil
+}
+
+func (g *Guard) GenerateRandomValue() string {
+	bytes := make([]byte, 64) // 64 bytes = 512 bits
+	rand.Read(bytes)          // Secure random bytes
+	return base64.RawURLEncoding.EncodeToString(bytes)
+}
+
+func (g *Guard) SetHashed(token string) {
+	t, _ := bcrypt.GenerateFromPassword([]byte(token), bcrypt.DefaultCost)
+	g.Hashed = string(t)
+}
+
+func (g *Guard) VerifyHashed(token string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(g.Hashed), []byte(token)) == nil
+}
+
+func (g *Guard) ConstructAPIKey() (string, string) {
+	value := g.GenerateRandomValue()
+	key := fmt.Sprintf("%s.%s", g.CreatePrefix(), value)
+	return value, key
+}
+
+// VerifyAPIKey verifies the API key against the database.
+// TODO: returns the user / team id
+func (g *Guard) VerifyAPIKey(key string) (bool, error) {
+	parts := strings.Split(key, ".")
+	if len(parts) != 2 {
+		return false, errors.New("invalid api key")
+	}
+
+	prefix := parts[0]
+	hashed := parts[1]
+	id, err := g.PrefixToID(prefix)
+
+	if err != nil {
+		return false, err
+	}
+	if err := db.Get(g, db.QueryParams{"lookup_id": id.String()}); err != nil {
+		return false, err
+	}
+
+	return g.VerifyHashed(hashed), nil
+}
+
+// NewForUser creates a new API key for the given user.
+func (g *Guard) NewForUser(name string, user *User) (string, error) {
+	g.Name = name
+	g.LookupID = user.ID
+	g.LookupType = "user"
+	hashed, key := g.ConstructAPIKey()
+	g.Hashed = hashed
+	return key, db.Save(g)
+}
+
+// NewForTeam creates a new API key for the given team.
+// NOTE: One team can have only one API Key.
+// TODO: Implement unique constraint on lookup_id for team
+func (g *Guard) NewForTeam(team *Team) (string, error) {
+	g.Name = "default"
+	g.LookupID = team.ID
+	g.LookupType = "team"
+	hashed, key := g.ConstructAPIKey()
+	g.Hashed = hashed
+	return key, db.Save(g)
+}
