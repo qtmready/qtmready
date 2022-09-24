@@ -19,7 +19,6 @@ require (
 	go.temporal.io/sdk v1.16.0
 	go.uber.org/zap v1.22.0
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8
-	k8s.io/apimachinery v0.22.5
 )
 
 require (

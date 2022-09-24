@@ -1,4 +1,3 @@
-
 # Regexes which if matched by a file path will always be excluded from
 # getting a license header
 excludes:
@@ -16,11 +15,9 @@ excludes:
   - .*\.(zip|tar|gz|tgz|rar|7z|bz2|exe|msi)
   - .*\.(json|xml|csv|tsv|log|ini|conf|cfg|toml|env)
   - go.(mod|sum)
-
 authors:
   - name: Breu Inc.
     email: info@breu.io
-
 licenses:
   - files: any
     authors:
@@ -28,8 +25,7 @@ licenses:
       email: info@breu.io
     ident: Unlicense
     template: |
-      Copyright © [year], [name of author]. All rights reserved. 
-
+      Copyright © [year], [name of author]. All rights reserved.
 comments:
   - extensions:
       - ts
