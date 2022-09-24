@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package main
 
@@ -82,10 +82,6 @@ func main() {
 	}()
 
 	e := echo.New()
-	jwtconf := middleware.JWTConfig{
-		Claims:     &shared.JWTClaims{},
-		SigningKey: []byte(shared.Service.Secret),
-	}
 
 	e.Validator = &EchoValidator{validator: shared.Validate}
 
@@ -93,15 +89,14 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	// Unauthenticated routes
+	// A Mix of public & authenticated routes
 	e.GET("/healthcheck", healthcheck)
 	auth.CreateRoutes(e.Group("/auth"))
-	providers.CreateRoutes(e.Group("/providers"), middleware.JWTWithConfig(jwtconf))
+	providers.CreateRoutes(e.Group("/providers"), auth.Middleware)
 
-	// Protected routes
+	// Private routes
 	protected := e.Group("")
 	protected.Use(auth.Middleware)
-	// protected.Use(middleware.JWTWithConfig(jwtconf))
 	core.CreateRoutes(protected)
 
 	if err := e.Start(":8000"); err != nil {

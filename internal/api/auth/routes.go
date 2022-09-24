@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package auth
 
@@ -9,7 +9,6 @@ import (
 
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/entities"
-	"go.breu.io/ctrlplane/internal/shared"
 )
 
 func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
@@ -79,8 +78,8 @@ func (routes *AuthRoutes) login(ctx echo.Context) error {
 	}
 
 	if user.VerifyPassword(request.Password) {
-		access, _ := shared.GenerateAccessToken(user.ID.String(), user.TeamID.String())
-		refresh, _ := shared.GenerateRefreshToken(user.ID.String(), user.TeamID.String())
+		access, _ := GenerateAccessToken(user.ID.String(), user.TeamID.String())
+		refresh, _ := GenerateRefreshToken(user.ID.String(), user.TeamID.String())
 
 		return ctx.JSON(http.StatusOK, &TokenResponse{AccessToken: access, RefreshToken: refresh})
 	}

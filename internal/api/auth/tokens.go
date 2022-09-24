@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package auth
 
@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/labstack/echo/v4"
@@ -36,6 +37,41 @@ var (
 	ErrInvalidAuthHeader     = errors.New("invalid authorization header")
 	ErrInvalidAPIKey         = errors.New("invalid API key")
 )
+
+// GenerateAccessToken generates a short lived JWT token for the given user
+func GenerateAccessToken(userID, teamID string) (string, error) {
+	expires := time.Now().Add(time.Minute * 15).Unix()
+	if shared.Service.Debug {
+		expires = time.Now().Add(time.Hour * 24).Unix()
+	}
+
+	claims := &JWTClaims{
+		UserID:         userID,
+		TeamID:         teamID,
+		StandardClaims: jwt.StandardClaims{ExpiresAt: expires, Issuer: shared.Service.Name},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(shared.Service.Secret))
+}
+
+// GenerateRefreshToken generates a long lived JWT token for the given user
+// TODO: this is not used yet
+func GenerateRefreshToken(userID, teamID string) (string, error) {
+	expires := time.Now().Add(time.Minute * 60).Unix()
+	if shared.Service.Debug {
+		expires = time.Now().Add(time.Hour * 24 * 30).Unix()
+	}
+
+	claims := &JWTClaims{
+		UserID:         userID,
+		TeamID:         teamID,
+		StandardClaims: jwt.StandardClaims{ExpiresAt: expires, Issuer: shared.Service.Name},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(shared.Service.Secret))
+}
 
 // Middleware to provide JWT & API Key authentication
 func Middleware(next echo.HandlerFunc) echo.HandlerFunc {

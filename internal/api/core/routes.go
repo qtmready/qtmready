@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package core
 
@@ -10,7 +10,6 @@ import (
 
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/entities"
-	"go.breu.io/ctrlplane/internal/shared"
 )
 
 // CreateRoutes creates the routes for the app
@@ -35,7 +34,7 @@ func (routes *CoreRoutes) Create(ctx echo.Context) error {
 		return err
 	}
 
-	teamID, _ := gocql.ParseUUID(shared.GetTeamIDFromContext(ctx))
+	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
 	app := &entities.App{Name: request.Name, TeamID: teamID}
 	if err := db.Save(app); err != nil {
 		return err
@@ -59,7 +58,7 @@ func (routes *CoreRoutes) Get(ctx echo.Context) error {
 // List lists all apps associated with the team
 func (routes *CoreRoutes) List(ctx echo.Context) error {
 	result := make([]entities.App, 0)
-	params := db.QueryParams{"team_id": shared.GetTeamIDFromContext(ctx)}
+	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
 
 	if err := db.Filter(&entities.App{}, &result, params); err != nil {
 		return err
@@ -73,7 +72,7 @@ func (routes *CoreRoutes) GetAppRepos(ctx echo.Context) error {
 	result := make([]entities.Repo, 0)
 	app := &entities.App{}
 
-	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": shared.GetTeamIDFromContext(ctx)}
+	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
 	if err := db.Get(app, params); err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "app not found")
 	}
@@ -94,7 +93,7 @@ func (routes *CoreRoutes) CreateAppRepo(ctx echo.Context) error {
 	}
 
 	app := &entities.App{}
-	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": shared.GetTeamIDFromContext(ctx)}
+	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
 	if err := db.Get(app, params); err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "not found")
 	}

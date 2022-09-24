@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package github
 
@@ -65,7 +65,7 @@ func completeInstallation(ctx echo.Context) error {
 		return err
 	}
 
-	teamID, err := gocql.ParseUUID(shared.GetTeamIDFromContext(ctx))
+	teamID, err := gocql.ParseUUID(ctx.Get("team_id").(string))
 	if err != nil {
 		shared.Logger.Error("error parsing team id", "error", err)
 		return err
@@ -101,7 +101,7 @@ func repos(ctx echo.Context) error {
 	if err := db.Filter(
 		&entities.GithubRepo{},
 		&result,
-		db.QueryParams{"team_id": shared.GetTeamIDFromContext(ctx)},
+		db.QueryParams{"team_id": ctx.Get("team_id").(string)},
 	); err != nil {
 		return err
 	}
