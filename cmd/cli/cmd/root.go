@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package cmd
 
@@ -36,7 +36,5 @@ func Execute() {
 func init() {
 	if err := shared.Service.ReadFile(); err != nil {
 		println("ctrlplane not initialized, please do ctrlplane login", err.Error())
-		// shared.Logger.Error("Failed to read config file", "error", err)
 	}
-	// rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
 }

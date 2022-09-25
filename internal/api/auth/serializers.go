@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package auth
 
@@ -38,8 +38,17 @@ type (
 		RefreshToken string `json:"refresh_token"`
 	}
 
+	// TODO: This is generic request for all API's to include pagination and sorting
 	RequestBuilder[T any] struct {
 		Data  *T
 		Error *error
+	}
+
+	CreateAPIKeyRequest struct {
+		Name string `json:"name" validate:"required"`
+	}
+
+	CreateAPIKeyResponse struct {
+		Key string `json:"key"`
 	}
 )

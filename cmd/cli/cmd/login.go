@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package cmd
 
@@ -16,7 +16,7 @@ import (
 	"go.breu.io/ctrlplane/internal/api/auth"
 )
 
-const BaseUrl = "http://localhost:8000" // TODO: use a better way to do this
+const BaseURL = "http://localhost:8000" // TODO: use a better way to do this
 var ErrInvalidCredentials = errors.New("invalid credentials")
 
 var loginCmd = &cobra.Command{
@@ -33,6 +33,7 @@ func init() {
 func loginRun(cmd *cobra.Command, args []string) {
 PROMPT:
 	email, err := promptEmail()
+
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -64,6 +65,7 @@ func promptEmail() (string, error) {
 			return nil
 		},
 	}
+
 	return prompt.Run()
 }
 
@@ -72,6 +74,7 @@ func promptPassword() (string, error) {
 		Label: "Please enter your password",
 		Mask:  '*',
 	}
+
 	return prompt.Run()
 }
 
@@ -80,7 +83,7 @@ func doLogin(email string, password string) (*auth.TokenResponse, error) {
 	token := &auth.TokenResponse{}
 
 	marshalled, _ := json.Marshal(data)
-	request, _ := http.NewRequest("POST", BaseUrl+"/auth/login", bytes.NewBuffer(marshalled))
+	request, _ := http.NewRequest("POST", BaseURL+"/auth/login", bytes.NewBuffer(marshalled))
 	request.Header.Set("User-Agent", "ctrlplane-cli/0.0.1")
 	request.Header.Set("Content-Type", "application/json")
 
@@ -98,6 +101,7 @@ func doLogin(email string, password string) (*auth.TokenResponse, error) {
 	}
 
 	fmt.Println("Login successful")
+
 	if err := json.NewDecoder(response.Body).Decode(token); err != nil {
 		return token, err
 	}

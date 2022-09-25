@@ -1,9 +1,9 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package cmd
 
 import (
-	_ "embed"
+	_ "embed" // required to embed cue files into the binary
 	"errors"
 	"fmt"
 	"os"
@@ -84,5 +84,6 @@ func selectCloud() (string, error) {
 	}
 
 	_, result, err := prompt.Run()
+
 	return result, err
 }

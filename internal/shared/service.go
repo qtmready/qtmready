@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package shared
 
@@ -27,7 +27,7 @@ type (
 	}
 
 	cli struct {
-		BaseUrl      string `env:"BASE_URL" env-default:"http://localhost:8000"`
+		BaseURL      string `env:"BASE_URL" env-default:"http://localhost:8000"`
 		AccessToken  string `env:"ACCESS_TOKEN" env-default:""`
 		RefreshToken string `env:"REFRESH_TOKEN" env-default:""`
 	}
@@ -42,9 +42,12 @@ var (
 func (s *service) Version() string {
 	if s.version == "" {
 		if info, ok := debug.ReadBuildInfo(); ok {
-			var revision string
-			var modified string
-			var timestamp time.Time
+			var (
+				revision  string
+				modified  string
+				timestamp time.Time
+			)
+
 			for _, s := range info.Settings {
 				if s.Key == "vcs.revision" {
 					revision = s.Value

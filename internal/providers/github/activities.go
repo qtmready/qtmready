@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package github
 
@@ -22,13 +22,16 @@ func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *en
 	// if we get the installation, the error will be nil
 	if err == nil {
 		log.Info("installation found, updating status ...")
+
 		installation.Status = payload.Status
 	} else {
 		log.Info("installation not found, creating ...", "payload", payload)
+
 		installation = payload
 	}
 
 	log.Info("saving installation ...", "installation", installation)
+
 	if err := db.Save(installation); err != nil {
 		log.Error("error saving installation", "error", err)
 		return installation, err

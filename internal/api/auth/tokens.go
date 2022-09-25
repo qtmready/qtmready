@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	JWT_PREFIX             = "Token"
-	API_KEY_PREFIX         = "Key"
-	GUARD_LOOKUP_TYPE_TEAM = "team"
-	GUARD_LOOKUP_TYPE_USER = "user"
+	JwtPrefix       = "Token"
+	APIKeyPrefix    = "Key"
+	GuardLookupTeam = "team"
+	GuardLookupUser = "user"
 )
 
 type (
@@ -52,6 +52,7 @@ func GenerateAccessToken(userID, teamID string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
 	return token.SignedString([]byte(shared.Service.Secret))
 }
 
@@ -70,6 +71,7 @@ func GenerateRefreshToken(userID, teamID string) (string, error) {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
 	return token.SignedString([]byte(shared.Service.Secret))
 }
 
@@ -90,12 +92,14 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		// apply the correct validation function based on the scheme
 		switch fields[0] {
-		case JWT_PREFIX:
+		case JwtPrefix:
 			if err := validateToken(ctx, fields[1]); err != nil {
 				return echo.NewHTTPError(http.StatusUnauthorized, err)
 			}
-		case API_KEY_PREFIX:
-			validateKey(ctx, fields[1])
+		case APIKeyPrefix:
+			if err := validateKey(ctx, fields[1]); err != nil {
+				return echo.NewHTTPError(http.StatusUnauthorized, err)
+			}
 		default:
 			return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidAuthHeader)
 		}
@@ -129,21 +133,24 @@ func validateKey(ctx echo.Context, key string) error {
 	if err != nil {
 		return err
 	}
+
 	if !ok {
 		return ErrInvalidAPIKey
 	}
 
 	switch guard.LookupType {
-	case GUARD_LOOKUP_TYPE_TEAM:
+	case GuardLookupTeam:
 		ctx.Set("team_id", guard.LookupID.String())
-	case GUARD_LOOKUP_TYPE_USER: // FIXME: we have two db calls here, we should be able to do this in one
+	case GuardLookupUser: // FIXME: we have two db calls here, we should be able to do this in one
 		user := &entities.User{}
 		if err := db.Get(user, db.QueryParams{"id": guard.LookupID.String()}); err != nil {
 			return ErrInvalidAPIKey
 		}
+
 		ctx.Set("user_id", user.ID.String())
 		ctx.Set("team_id", user.TeamID.String())
 	}
+
 	return nil
 }
 

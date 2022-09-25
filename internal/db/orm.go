@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package db
 
@@ -110,9 +110,9 @@ func Save[T Entity](entity T) error {
 
 	if pk.String() == NullUUID {
 		return Create(entity)
-	} else {
-		return Update(entity)
 	}
+
+	return Update(entity)
 }
 
 // Create creates the entity. The entity value is a pointer to the struct.
@@ -130,6 +130,7 @@ func Create[T Entity](entity T) error {
 
 	query := DB.Session.Query(entity.GetTable().Insert()).BindStruct(entity)
 	shared.Logger.Debug("query", "query", query.String())
+
 	if err := query.ExecRelease(); err != nil {
 		return err
 	}

@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package client
 
@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"go.breu.io/ctrlplane/internal/shared"
@@ -26,6 +26,7 @@ func (c *Client) UserAgent() string {
 func (c *Client) Request(method, url string, data interface{}, reply interface{}) error {
 	body, _ := json.Marshal(data)
 	request, err := http.NewRequest(method, url, bytes.NewBuffer(body))
+
 	if err != nil {
 		return err
 	}
@@ -35,6 +36,7 @@ func (c *Client) Request(method, url string, data interface{}, reply interface{}
 
 	client := &http.Client{}
 	response, err := client.Do(request)
+
 	if err != nil {
 		return err
 	}
@@ -43,11 +45,13 @@ func (c *Client) Request(method, url string, data interface{}, reply interface{}
 
 	switch response.StatusCode {
 	case http.StatusOK, http.StatusCreated:
-		body, _ := ioutil.ReadAll(response.Body)
+		body, _ := io.ReadAll(response.Body)
 		err = json.Unmarshal(body, &reply)
+
 		if err != nil {
 			return err
 		}
+
 		return nil
 	default:
 		return errors.New("invalid credentials")

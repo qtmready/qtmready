@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package utils
 
@@ -28,6 +28,7 @@ func DetectGitRoot() (string, error) {
 			if !info.IsDir() {
 				return "", ErrNotGitRepo
 			}
+
 			return path.Join(workdir, ".git"), nil
 		}
 
@@ -41,14 +42,13 @@ func DetectGitRoot() (string, error) {
 		if err != nil {
 			return "", err
 		}
+
 		if ok {
 			return workdir, nil
 		}
 
 		if parent := filepath.Dir(workdir); parent == workdir {
 			return "", fmt.Errorf(".git not found")
-		} else {
-			workdir = parent
 		}
 	}
 }
@@ -61,12 +61,12 @@ func isGitDir(cwd string) (bool, error) {
 		if err == nil {
 			continue
 		}
+
 		if !os.IsNotExist(err) {
-			// unknown error
 			return false, ErrUnknown
-		} else {
-			return false, nil
 		}
+
+		return false, nil
 	}
 
 	return true, nil

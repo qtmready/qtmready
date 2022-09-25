@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package entities
 
@@ -30,6 +30,7 @@ func TestUser(t *testing.T) {
 		"SetPassword":    fn{user, nil, testUserSetPassword},
 		"VerifyPassword": fn{testVerifyPasswordArgs{user, "password"}, nil, testUserVerifyPassword},
 	}
+
 	t.Run("GetTable", testTableName("users", user))
 	t.Run("PreCreate", testPreCreate(user, createTests))
 }
@@ -60,6 +61,7 @@ func testPreCreate(entity db.Entity, tests testMap) func(*testing.T) {
 
 func testUserSetPassword(args interface{}, want interface{}) func(*testing.T) {
 	user := args.(*User)
+
 	return func(t *testing.T) {
 		if user.Password == "password" {
 			t.Errorf("expected password to be encrypted")
@@ -69,6 +71,7 @@ func testUserSetPassword(args interface{}, want interface{}) func(*testing.T) {
 
 func testUserVerifyPassword(args interface{}, want interface{}) func(*testing.T) {
 	v := args.(testVerifyPasswordArgs)
+
 	return func(t *testing.T) {
 		if !v.User.VerifyPassword(v.Password) {
 			t.Errorf("expected password to be verified")

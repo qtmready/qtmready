@@ -14,7 +14,7 @@ import (
 
 // CreateRoutes creates the routes for the app
 func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
-	apps := &CoreRoutes{}
+	apps := &Routes{}
 	g.POST("/apps", apps.Create)
 	g.GET("/apps", apps.List)
 	g.GET("/apps/:slug", apps.Get)
@@ -24,11 +24,11 @@ func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
 }
 
 type (
-	CoreRoutes struct{}
+	Routes struct{}
 )
 
 // Create creates a new app
-func (routes *CoreRoutes) Create(ctx echo.Context) error {
+func (routes *Routes) Create(ctx echo.Context) error {
 	request := &AppCreateRequest{}
 	if err := ctx.Bind(request); err != nil {
 		return err
@@ -36,6 +36,7 @@ func (routes *CoreRoutes) Create(ctx echo.Context) error {
 
 	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
 	app := &entities.App{Name: request.Name, TeamID: teamID}
+
 	if err := db.Save(app); err != nil {
 		return err
 	}
@@ -44,7 +45,7 @@ func (routes *CoreRoutes) Create(ctx echo.Context) error {
 }
 
 // Get gets an app by slug
-func (routes *CoreRoutes) Get(ctx echo.Context) error {
+func (routes *Routes) Get(ctx echo.Context) error {
 	app := &entities.App{}
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'"}
 
@@ -56,7 +57,7 @@ func (routes *CoreRoutes) Get(ctx echo.Context) error {
 }
 
 // List lists all apps associated with the team
-func (routes *CoreRoutes) List(ctx echo.Context) error {
+func (routes *Routes) List(ctx echo.Context) error {
 	result := make([]entities.App, 0)
 	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
 
@@ -68,7 +69,7 @@ func (routes *CoreRoutes) List(ctx echo.Context) error {
 }
 
 // GetAppRepos gets an app repos by slug
-func (routes *CoreRoutes) GetAppRepos(ctx echo.Context) error {
+func (routes *Routes) GetAppRepos(ctx echo.Context) error {
 	result := make([]entities.Repo, 0)
 	app := &entities.App{}
 
@@ -86,7 +87,7 @@ func (routes *CoreRoutes) GetAppRepos(ctx echo.Context) error {
 }
 
 // CreateAppRepo creates a new app repo
-func (routes *CoreRoutes) CreateAppRepo(ctx echo.Context) error {
+func (routes *Routes) CreateAppRepo(ctx echo.Context) error {
 	request := &AppRepoCreateRequest{}
 	if err := ctx.Bind(request); err != nil {
 		return err
@@ -94,6 +95,7 @@ func (routes *CoreRoutes) CreateAppRepo(ctx echo.Context) error {
 
 	app := &entities.App{}
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
+
 	if err := db.Get(app, params); err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "not found")
 	}
@@ -106,7 +108,7 @@ func (routes *CoreRoutes) CreateAppRepo(ctx echo.Context) error {
 	}
 }
 
-func (routes *CoreRoutes) github(ctx echo.Context, request *AppRepoCreateRequest, app *entities.App) error {
+func (routes *Routes) github(ctx echo.Context, request *AppRepoCreateRequest, app *entities.App) error {
 	if err := db.Get(&entities.GithubRepo{}, db.QueryParams{"id": request.RepoID.String()}); err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "repo not found")
 	}

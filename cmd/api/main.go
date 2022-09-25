@@ -32,6 +32,7 @@ func (ev *EchoValidator) Validate(i interface{}) error {
 	if err := ev.validator.Struct(i); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
+
 	return nil
 }
 
@@ -92,7 +93,7 @@ func main() {
 	// A Mix of public & authenticated routes
 	e.GET("/healthcheck", healthcheck)
 	auth.CreateRoutes(e.Group("/auth"))
-	providers.CreateRoutes(e.Group("/providers"), auth.Middleware)
+	providers.CreateRoutes(e.Group("/providers"))
 
 	// Private routes
 	protected := e.Group("")

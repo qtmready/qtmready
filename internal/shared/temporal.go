@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package shared
 
@@ -88,11 +88,8 @@ func (t *temporal) GetConnectionString() string {
 
 func (t *temporal) InitClient() {
 	Logger.Info("Initializing Temporal Client ...", "host", t.ServerHost, "port", t.ServerPort)
-	options := client.Options{
-		HostPort: t.GetConnectionString(),
-		Logger:   Logger,
-	}
 
+	options := client.Options{HostPort: t.GetConnectionString(), Logger: Logger}
 	retryTemporal := func() error {
 		clt, err := client.Dial(options)
 		if err != nil {
@@ -100,15 +97,13 @@ func (t *temporal) InitClient() {
 		}
 
 		t.Client = clt
+
 		Logger.Info("Initializing Temporal Client ... Done")
+
 		return nil
 	}
 
-	if err := retry.Do(
-		retryTemporal,
-		retry.Attempts(10),
-		retry.Delay(1*time.Second),
-	); err != nil {
+	if err := retry.Do(retryTemporal, retry.Attempts(10), retry.Delay(1*time.Second)); err != nil {
 		Logger.Error("Failed to initialize Temporal Client", "error", err)
 	}
 }

@@ -5,22 +5,36 @@ package auth
 import (
 	"net/http"
 
+	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/entities"
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
-	r := &AuthRoutes{}
+	r := &Routes{}
 	g.POST("/register", r.register)
 	g.POST("/login", r.login)
+
+	aks := g.Group("/api-keys", Middleware)
+
+	tr := &TeamAPIKeyRoutes{}
+	aks.POST("/team", tr.create)
+
+	ur := &UserAPIKeyRoutes{}
+	aks.POST("/user", ur.create)
 }
 
-type AuthRoutes struct{}
+type (
+	Routes           struct{}
+	TeamAPIKeyRoutes struct{}
+	UserAPIKeyRoutes struct{}
+)
 
 // register is a handler for /auth/register endpoint
-func (routes *AuthRoutes) register(ctx echo.Context) error {
+func (routes *Routes) register(ctx echo.Context) error {
 	request := &RegistrationRequest{}
 
 	// Translating request to json
@@ -57,7 +71,7 @@ func (routes *AuthRoutes) register(ctx echo.Context) error {
 }
 
 // login is a handler for /auth/login endpoint
-func (routes *AuthRoutes) login(ctx echo.Context) error {
+func (routes *Routes) login(ctx echo.Context) error {
 	request := &LoginRequest{}
 
 	// Translating request to json
@@ -85,4 +99,47 @@ func (routes *AuthRoutes) login(ctx echo.Context) error {
 	}
 
 	return echo.NewHTTPError(http.StatusUnauthorized, "invalid credentials")
+}
+
+func (routes *TeamAPIKeyRoutes) create(ctx echo.Context) error {
+	request := &CreateAPIKeyRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	if err := ctx.Validate(request); err != nil {
+		return err
+	}
+
+	id, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
+	shared.Logger.Debug("Team ID: ", "id", id)
+
+	guard := &entities.Guard{}
+	key, err := guard.NewForTeam(id)
+
+	if err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: key})
+}
+
+func (routes *UserAPIKeyRoutes) create(ctx echo.Context) error {
+	request := &CreateAPIKeyRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	if err := ctx.Validate(request); err != nil {
+		return err
+	}
+
+	guard := &entities.Guard{}
+	key, err := guard.NewForUser(request.Name, ctx.Get("user_id").(gocql.UUID))
+
+	if err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: key})
 }

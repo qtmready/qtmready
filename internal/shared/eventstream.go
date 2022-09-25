@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package shared
 
@@ -25,9 +25,12 @@ func (e *eventstream) ReadEnv() {
 func (e *eventstream) InitConnection() {
 	Logger.Info("Initializing Event Stream Client ...", "url", e.ServerURL)
 	conn, err := nats.Connect(e.ServerURL, nats.MaxReconnects(5), nats.ReconnectWait(2*time.Second))
+
 	if err != nil {
 		Logger.Error("Failed to initialize Event Stream Client", "error", err)
 	}
+
 	e.Conn = conn
+
 	Logger.Info("Initializing Event Stream Client ... Done")
 }

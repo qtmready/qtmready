@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package db
 
@@ -9,7 +9,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/cassandra"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/golang-migrate/migrate/v4/source/file" // required for file:// migrations
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/scylladb/gocqlx/v2"
 	"go.breu.io/ctrlplane/internal/shared"
@@ -45,6 +45,7 @@ func (d *db) InitSession() {
 	cluster.Keyspace = d.Keyspace
 	createSession := func() error {
 		shared.Logger.Info("db: connecting ...")
+
 		session, err := gocqlx.WrapSession(cluster.CreateSession())
 		if err != nil {
 			shared.Logger.Error("db: failed to connect", "error", err)
@@ -52,7 +53,9 @@ func (d *db) InitSession() {
 		}
 
 		d.Session = session
+
 		shared.Logger.Info("db: connected")
+
 		return nil
 	}
 
@@ -71,6 +74,7 @@ func (d *db) RunMigrations() {
 
 	config := &cassandra.Config{KeyspaceName: d.Keyspace, MultiStatementEnabled: true}
 	driver, err := cassandra.WithInstance(d.Session.Session, config)
+
 	if err != nil {
 		shared.Logger.Error("db: failed to initialize driver for migrations ...", "error", err)
 	}
@@ -89,6 +93,7 @@ func (d *db) RunMigrations() {
 	if err != nil && err != migrate.ErrNoChange {
 		shared.Logger.Error("db: failed to run migrations ...", "error", err)
 	}
+
 	shared.Logger.Info("db: migrations done")
 }
 

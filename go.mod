@@ -10,6 +10,7 @@ require (
 	github.com/google/go-github/v45 v45.2.0
 	github.com/gosimple/slug v1.12.0
 	github.com/ilyakaznacheev/cleanenv v1.3.0
+	github.com/jxskiss/base62 v1.1.0
 	github.com/labstack/echo/v4 v4.8.0
 	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/manifoldco/promptui v0.9.0

@@ -27,9 +27,10 @@ func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
 
 func webhook(ctx echo.Context) error {
 	shared.Logger.Debug("webhook received", "headers", ctx.Request().Header)
-	signature := ctx.Request().Header.Get("X-Hub-Signature")
+	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
+
 	if signature == "" {
-		return ctx.JSON(http.StatusUnauthorized, ErrorMissingHeaderGithubSignature)
+		return ctx.JSON(http.StatusUnauthorized, ErrMissingHeaderGithubSignature)
 	}
 
 	// NOTE: We are reading the request body twice. This is not ideal.
@@ -42,7 +43,7 @@ func webhook(ctx echo.Context) error {
 
 	headerEvent := ctx.Request().Header.Get("X-GitHub-Event")
 	if headerEvent == "" {
-		return ctx.JSON(http.StatusBadRequest, ErrorMissingHeaderGithubEvent)
+		return ctx.JSON(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
 	}
 
 	event := WebhookEvent(headerEvent)
@@ -54,9 +55,9 @@ func webhook(ctx echo.Context) error {
 
 	if handle, exists := handlers[event]; exists {
 		return handle(ctx)
-	} else {
-		return ctx.JSON(http.StatusBadRequest, ErrorInvalidEvent)
 	}
+
+	return ctx.JSON(http.StatusBadRequest, ErrInvalidEvent)
 }
 
 func completeInstallation(ctx echo.Context) error {

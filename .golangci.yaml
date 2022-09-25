@@ -1,0 +1,19 @@
+linters:
+  enable:
+    - bidichk
+    - decorder
+    - errname
+    - funlen
+    - gocognit
+    - goconst
+    - gosec
+    - grouper
+    - interfacebloat
+    - makezero
+    - revive
+    - unconvert
+    - wsl
+linters-settings:
+  funlen:
+    lines: -1
+    statements: 40

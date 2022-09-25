@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package github
 
@@ -25,6 +25,7 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	// prelude
 	log := workflow.GetLogger(ctx)
 	log.Info("received installation event ...")
+
 	selector := workflow.NewSelector(ctx)
 	webhook := &InstallationEventPayload{}
 	request := &CompleteInstallationSignalPayload{}
@@ -119,12 +120,14 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	}
 
 	log.Info("installation complete", "installation", installation)
+
 	return nil
 }
 
 func (w *Workflows) OnPush(ctx workflow.Context, payload PushEventPayload) error {
 	log := workflow.GetLogger(ctx)
 	log.Debug("received push event ...")
+
 	return nil
 }
 

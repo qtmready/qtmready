@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package shared
 
@@ -26,5 +26,6 @@ func GetPrefixAndToken(key string) (string, string) {
 	result := strings.Split(key, ".")
 	prefix := result[0]
 	token := result[1]
+
 	return prefix, token
 }

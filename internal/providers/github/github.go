@@ -1,10 +1,10 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package github
 
 import (
 	"crypto/hmac"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
 
@@ -39,16 +39,19 @@ func (g *github) GetClientForInstallation(installationID int64) (*gh.Client, err
 	}
 
 	client := gh.NewClient(&http.Client{Transport: transport})
+
 	return client, nil
 }
 
 func (g *github) VerifyWebhookSignature(payload []byte, signature string) error {
-	key := hmac.New(sha1.New, []byte(g.WebhookSecret))
+	key := hmac.New(sha256.New, []byte(g.WebhookSecret))
 	key.Write(payload)
-	result := "sha1=" + hex.EncodeToString(key.Sum(nil))
+	result := "sha256=" + hex.EncodeToString(key.Sum(nil))
+
 	if result != signature {
-		return ErrorVerifySignature
+		return ErrVerifySignature
 	}
+
 	return nil
 }
 

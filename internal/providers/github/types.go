@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package github
 
@@ -112,7 +112,7 @@ type (
 		Action            string         `json:"action"`
 		Number            int64          `json:"number"`
 		PullRequest       PullRequest    `json:"pull_request"`
-		Label             Label          `json:"changes"`
+		Label             Label          `json:"label"`
 		Assignee          *User          `json:"assignee"`
 		RequestedReviewer *User          `json:"requested_reviewer"`
 		RequestedTeam     RequestedTeam  `json:"requested_team"`
@@ -186,7 +186,7 @@ type (
 		FullName         string    `json:"full_name"`
 		Owner            User      `json:"owner"`
 		Private          bool      `json:"private"`
-		HtmlURL          string    `json:"html_url"`
+		HTMLUrl          string    `json:"html_url"`
 		Description      string    `json:"description"`
 		Fork             bool      `json:"fork"`
 		URL              string    `json:"url"`
@@ -229,7 +229,7 @@ type (
 		UpdatedAt        time.Time `json:"updated_at"`
 		PushedAt         int64     `json:"pushed_at"`
 		GitURL           string    `json:"git_url"`
-		SshURL           string    `json:"ssh_url"`
+		SSHUrl           string    `json:"ssh_url"`
 		CloneURL         string    `json:"clone_url"`
 		SvnURL           string    `json:"svn_url"`
 		Homepage         *string   `json:"homepage"`
@@ -259,7 +259,7 @@ type (
 		AvatarURL         string `json:"avatar_url"`
 		GravatarID        string `json:"gravatar_id"`
 		URL               string `json:"url"`
-		HtmlURL           string `json:"html_url"`
+		HTMLUrl           string `json:"html_url"`
 		FollowersURL      string `json:"followers_url"`
 		FollowingURL      string `json:"following_url"`
 		GistsURL          string `json:"gists_url"`
@@ -283,7 +283,7 @@ type (
 	// Milestone contains GitHub's milestone information
 	Milestone struct {
 		URL          string    `json:"url"`
-		HtmlURL      string    `json:"html_url"`
+		HTMLUrl      string    `json:"html_url"`
 		LabelsURL    string    `json:"labels_url"`
 		ID           int64     `json:"id"`
 		NodeID       string    `json:"node_id"`
@@ -307,7 +307,7 @@ type (
 		RepositorySelection string      `json:"repository_selection"`
 		AccessTokensURL     string      `json:"access_tokens_url"`
 		RepositoriesURL     string      `json:"repositories_url"`
-		HtmlURL             string      `json:"html_url"`
+		HTMLUrl             string      `json:"html_url"`
 		AppID               int         `json:"app_id"`
 		TargetID            int         `json:"target_id"`
 		TargetType          string      `json:"target_type"`
@@ -373,7 +373,7 @@ type (
 		URL                string           `json:"url"`
 		ID                 int64            `json:"id"`
 		NodeID             string           `json:"node_id"`
-		HtmlURL            string           `json:"html_url"`
+		HTMLUrl            string           `json:"html_url"`
 		DiffURL            string           `json:"diff_url"`
 		PatchURL           string           `json:"patch_url"`
 		IssueURL           string           `json:"issue_url"`
@@ -432,7 +432,7 @@ type (
 		Description     string `json:"description"`
 		Privacy         string `json:"privacy"`
 		URL             string `json:"url"`
-		HtmlURL         string `json:"html_url"`
+		HTMLUrl         string `json:"html_url"`
 		MembersURL      string `json:"members_url"`
 		RepositoriesURL string `json:"repositories_url"`
 		Permission      string `json:"permission"`
