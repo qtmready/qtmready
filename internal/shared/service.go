@@ -39,6 +39,16 @@ var (
 	Validate *validator.Validate
 )
 
+// Version creates the version string as per [calver].
+//
+// The scheme currently being followed is YYYY.0M.0D.<git commit hash>-<channel> where:
+//   - YYYY.0M.0D is the date of the commit
+//   - <git commit hash> is the first 8 characters of the git commit hash
+//   - <channel> is the channel of the build (e.g. dev, alpha, beta, rc, stable).
+//
+// For out purposes, -<channel> is optional and will be set to "dev" if the git is dirty.
+//
+// [calver]: https://calver.org/
 func (s *service) Version() string {
 	if s.version == "" {
 		if info, ok := debug.ReadBuildInfo(); ok {
@@ -62,7 +72,7 @@ func (s *service) Version() string {
 				}
 			}
 
-			version := timestamp.Format("060102") + "." + revision[:8]
+			version := timestamp.Format("2006.01.02") + "." + revision[:8]
 
 			if modified == "true" {
 				version += "-dev"
