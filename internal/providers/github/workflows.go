@@ -9,9 +9,13 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-type Workflows struct{}
+var (
+	activities *Activities
+)
 
-var activities *Activities
+type (
+	Workflows struct{}
+)
 
 // OnInstall workflow is executed when we initiate the installation of GitHub core.
 //

@@ -1,3 +1,5 @@
+# Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+
 linters:
   enable:
     - bidichk
@@ -17,3 +19,19 @@ linters-settings:
   funlen:
     lines: -1
     statements: 40
+  grouper:
+    # Require the use of grouped global 'const' declarations.
+    # Default: false
+    const-require-grouping: true
+    # Require the use of a single 'import' declaration only.
+    # Default: false
+    import-require-single-import: true
+    # Require the use of grouped 'import' declarations.
+    # Default: false
+    import-require-grouping: true
+    # Require the use of grouped global 'type' declarations.
+    # Default: false
+    type-require-grouping: true
+    # Require the use of grouped global 'var' declarations.
+    # Default: false
+    var-require-grouping: true

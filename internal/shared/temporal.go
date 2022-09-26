@@ -11,12 +11,14 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
-var Temporal = &temporal{
-	Queues: Queues{
-		MothershipQueue: &queue{MothershipQueue, "ai.ctrlplane.mothership"},
-		ProvidersQueue:  &queue{ProvidersQueue, "ai.ctrlplane.providers"},
-	},
-}
+var (
+	Temporal = &temporal{
+		Queues: Queues{
+			MothershipQueue: &queue{MothershipQueue, "ai.ctrlplane.mothership"},
+			ProvidersQueue:  &queue{ProvidersQueue, "ai.ctrlplane.providers"},
+		},
+	}
+)
 
 type (
 	QueueName string

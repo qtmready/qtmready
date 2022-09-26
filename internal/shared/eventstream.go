@@ -9,12 +9,16 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-var EventStream = &eventstream{}
+var (
+	EventStream = &eventstream{}
+)
 
-type eventstream struct {
-	*nats.Conn
-	ServerURL string `env:"EVENTS_SERVERS_URL" env-default:"nats://event-stream:4222"`
-}
+type (
+	eventstream struct {
+		*nats.Conn
+		ServerURL string `env:"EVENTS_SERVERS_URL" env-default:"nats://event-stream:4222"`
+	}
+)
 
 func (e *eventstream) ReadEnv() {
 	if err := cleanenv.ReadEnv(e); err != nil {

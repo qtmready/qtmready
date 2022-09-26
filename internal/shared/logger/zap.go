@@ -10,11 +10,14 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// ZapAdapter is a wrapper around zap.Logger. Makes it compatible with the logger.Logger interface.
-type ZapAdapter struct {
-	logger *zap.Logger
-	core   zapcore.Core
-}
+type (
+
+	// ZapAdapter is a wrapper around zap.Logger. Makes it compatible with the logger.Logger interface.
+	ZapAdapter struct {
+		logger *zap.Logger
+		core   zapcore.Core
+	}
+)
 
 func NewZapAdapter(logger *zap.Logger) *ZapAdapter {
 	return &ZapAdapter{

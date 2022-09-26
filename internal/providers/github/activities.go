@@ -12,7 +12,9 @@ import (
 	"go.breu.io/ctrlplane/internal/db"
 )
 
-type Activities struct{}
+type (
+	Activities struct{}
+)
 
 // CreateOrUpdateInstallation creates or update the entities.GithubInstallation
 func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *entities.GithubInstallation) (*entities.GithubInstallation, error) {

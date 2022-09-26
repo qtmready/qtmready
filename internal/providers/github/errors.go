@@ -2,7 +2,9 @@
 
 package github
 
-import "errors"
+import (
+	"errors"
+)
 
 var (
 	ErrNoEventToParse               = errors.New("no event specified to parse")

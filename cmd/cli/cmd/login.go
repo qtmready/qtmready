@@ -16,15 +16,20 @@ import (
 	"go.breu.io/ctrlplane/internal/api/auth"
 )
 
-const BaseURL = "http://localhost:8000" // TODO: use a better way to do this
-var ErrInvalidCredentials = errors.New("invalid credentials")
+const (
+	BaseURL = "http://localhost:8000" // TODO: use a better way to do this
+)
 
-var loginCmd = &cobra.Command{
-	Use:   "login",
-	Short: "Login to ctrlplane.ai",
-	Long:  "Login to ctrlplane.ai",
-	Run:   loginRun,
-}
+var (
+	ErrInvalidCredentials = errors.New("invalid credentials")
+
+	loginCmd = &cobra.Command{
+		Use:   "login",
+		Short: "Login to ctrlplane.ai",
+		Long:  "Login to ctrlplane.ai",
+		Run:   loginRun,
+	}
+)
 
 func init() {
 	rootCmd.AddCommand(loginCmd)

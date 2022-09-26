@@ -15,21 +15,23 @@ import (
 	"go.breu.io/ctrlplane/cmd/cli/utils"
 )
 
-var ErrInvalidLength = errors.New("must be no more than 63 characters")
-
 const (
 	dns1035LabelFmt = "[a-z]([-a-z0-9]*[a-z0-9])?"
 )
 
-var initCmd = &cobra.Command{
-	Use:   "init",
-	Short: "Create a new ctrlplane project",
-	Long: `
+var (
+	ErrInvalidLength = errors.New("must be no more than 63 characters")
+
+	initCmd = &cobra.Command{
+		Use:   "init",
+		Short: "Create a new ctrlplane project",
+		Long: `
 Creates a new ctrlplane project in the current directory. This will create .ctrlplane file for
 configuration management and .ctrlplane/ directory for state management
   `,
-	Run: initRun,
-}
+		Run: initRun,
+	}
+)
 
 func init() {
 	rootCmd.AddCommand(initCmd)

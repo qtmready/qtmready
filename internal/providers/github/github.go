@@ -19,12 +19,14 @@ var (
 	Github = &github{}
 )
 
-type github struct {
-	AppID         int64  `env:"GITHUB_APP_ID"`
-	ClientID      string `env:"GITHUB_CLIENT_ID"`
-	WebhookSecret string `env:"GITHUB_WEBHOOK_SECRET"`
-	PrivateKey    string `env:"GITHUB_PRIVATE_KEY"`
-}
+type (
+	github struct {
+		AppID         int64  `env:"GITHUB_APP_ID"`
+		ClientID      string `env:"GITHUB_CLIENT_ID"`
+		WebhookSecret string `env:"GITHUB_WEBHOOK_SECRET"`
+		PrivateKey    string `env:"GITHUB_PRIVATE_KEY"`
+	}
+)
 
 func (g *github) ReadEnv() {
 	if err := cleanenv.ReadEnv(g); err != nil {

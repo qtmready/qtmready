@@ -11,9 +11,12 @@ import (
 	"github.com/scylladb/gocqlx/v2/table"
 )
 
-type placeholder struct {
-	ID gocql.UUID `json:"id" cql:"id"`
-}
+type (
+	// placeholder is a struct that will be used as a destination for the "get" query during validations
+	placeholder struct {
+		ID gocql.UUID `json:"id" cql:"id"`
+	}
+)
 
 // UniqueField validates that the value of the field is unique in the database.
 //

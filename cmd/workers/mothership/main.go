@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package main
 
@@ -13,7 +13,9 @@ import (
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
-var wait sync.WaitGroup
+var (
+	wait sync.WaitGroup
+)
 
 func init() {
 	shared.Service.ReadEnv()
