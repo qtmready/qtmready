@@ -93,7 +93,7 @@ func main() {
 	// A Mix of public & authenticated routes
 	e.GET("/healthcheck", healthcheck)
 	auth.CreateRoutes(e.Group("/auth"))
-	providers.CreateRoutes(e.Group("/providers"))
+	providers.CreateRoutes(e.Group("/providers"), auth.Middleware)
 
 	// Private routes
 	protected := e.Group("")
@@ -105,5 +105,7 @@ func main() {
 	}
 }
 
-// TODO: ensure connectivity with external services
+// healthcheck checks if the system is working properly.
+//
+// TODO: make sure that connection to all services it needs to connect to is working properly.
 func healthcheck(ctx echo.Context) error { return ctx.String(http.StatusOK, "OK") }

@@ -10,9 +10,9 @@ import (
 
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/entities"
-	"go.breu.io/ctrlplane/internal/shared"
 )
 
+// CreateRoutes is for creating auth related routes.
 func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
 	r := &Routes{}
 	g.POST("/register", r.register)
@@ -33,7 +33,7 @@ type (
 	UserAPIKeyRoutes struct{}
 )
 
-// register is a handler for /auth/register endpoint
+// register is a handler for /auth/register endpoint.
 func (routes *Routes) register(ctx echo.Context) error {
 	request := &RegistrationRequest{}
 
@@ -53,7 +53,12 @@ func (routes *Routes) register(ctx echo.Context) error {
 		return err
 	}
 
-	user := &entities.User{FirstName: request.FirstName, LastName: request.LastName, Email: request.Email, Password: request.Password}
+	user := &entities.User{
+		FirstName: request.FirstName,
+		LastName:  request.LastName,
+		Email:     request.Email,
+		Password:  request.Password,
+	}
 	if err := ctx.Validate(user); err != nil {
 		return err
 	}
@@ -70,16 +75,14 @@ func (routes *Routes) register(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &RegistrationResponse{Team: team, User: user})
 }
 
-// login is a handler for /auth/login endpoint
+// login is a handler for /auth/login endpoint.
 func (routes *Routes) login(ctx echo.Context) error {
 	request := &LoginRequest{}
 
-	// Translating request to json
 	if err := ctx.Bind(request); err != nil {
 		return err
 	}
 
-	// Validating request
 	if err := ctx.Validate(request); err != nil {
 		return err
 	}
@@ -101,6 +104,7 @@ func (routes *Routes) login(ctx echo.Context) error {
 	return echo.NewHTTPError(http.StatusUnauthorized, "invalid credentials")
 }
 
+// create a new API Key for team.
 func (routes *TeamAPIKeyRoutes) create(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 	if err := ctx.Bind(request); err != nil {
@@ -112,8 +116,6 @@ func (routes *TeamAPIKeyRoutes) create(ctx echo.Context) error {
 	}
 
 	id, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
-	shared.Logger.Debug("Team ID: ", "id", id)
-
 	guard := &entities.Guard{}
 	key, err := guard.NewForTeam(id)
 
@@ -124,6 +126,7 @@ func (routes *TeamAPIKeyRoutes) create(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: key})
 }
 
+// create a new API Key for user.
 func (routes *UserAPIKeyRoutes) create(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 	if err := ctx.Bind(request); err != nil {
@@ -134,8 +137,9 @@ func (routes *UserAPIKeyRoutes) create(ctx echo.Context) error {
 		return err
 	}
 
+	id, _ := gocql.ParseUUID(ctx.Get("user_id").(string))
 	guard := &entities.Guard{}
-	key, err := guard.NewForUser(request.Name, ctx.Get("user_id").(gocql.UUID))
+	key, err := guard.NewForUser(request.Name, id)
 
 	if err != nil {
 		return err

@@ -6,6 +6,6 @@ import (
 	"go.breu.io/ctrlplane/internal/api/auth"
 )
 
-func (client *Client) Login(email, password string) (*auth.TokenResponse, error) {
+func (c *Client) Login(email, password string) (*auth.TokenResponse, error) {
 	return nil, nil
 }

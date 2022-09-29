@@ -32,6 +32,7 @@ comments:
       - js
       - rs
       - go
+      - cue
     commenter:
       type: line
       comment_char: "//"

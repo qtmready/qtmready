@@ -7,7 +7,7 @@ import (
 )
 
 type (
-	// RegistrationRequest is the http request for user registration
+	// RegistrationRequest is the http request for user registration.
 	RegistrationRequest struct {
 		Email           string `json:"email" validate:"required,email"`
 		Password        string `json:"password" validate:"required"`
@@ -17,13 +17,13 @@ type (
 		TeamName        string `json:"team_name" validate:"required"`
 	}
 
-	// RegistrationResponse is the http response after user registration is done
+	// RegistrationResponse is the http response after user registration is done.
 	RegistrationResponse struct {
 		User *entities.User `json:"user"`
 		Team *entities.Team `json:"team"`
 	}
 
-	// LoginRequest is the http request for login
+	// LoginRequest is the http request for login.
 	LoginRequest struct {
 		Email    string `json:"email" validate:"required,email"`
 		Password string `json:"password" validate:"required"`
@@ -38,7 +38,7 @@ type (
 		RefreshToken string `json:"refresh_token"`
 	}
 
-	// TODO: This is generic request for all API's to include pagination and sorting
+	// TODO: This is generic request for all API's to include pagination and sorting.
 	RequestBuilder[T any] struct {
 		Data  *T
 		Error *error

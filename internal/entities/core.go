@@ -133,6 +133,7 @@ type (
 		UpdatedAt time.Time  `json:"updated_at"`
 	}
 
+	// Repo represents the git repository of an app.
 	Repo struct {
 		ID            gocql.UUID `json:"id" cql:"id"`
 		AppID         gocql.UUID `json:"app_id" cql:"app_id"`
@@ -144,6 +145,7 @@ type (
 		UpdatedAt     time.Time  `json:"updated_at"`
 	}
 
+	// Workload defines a workload for the app. See Workload.Kind for type.
 	Workload struct {
 		ID        gocql.UUID `json:"id" cql:"id"`
 		AppID     gocql.UUID `json:"app_id" cql:"app_id"`
@@ -157,6 +159,7 @@ type (
 		UpdatedAt time.Time  `json:"updated_at"`
 	}
 
+	// Resource defines the cloud provider resources for the app e.g. s3, sqs, etc.
 	Resource struct {
 		ID          gocql.UUID `json:"id" cql:"id"`
 		AppID       gocql.UUID `json:"app_id" cql:"app_id"`
@@ -200,13 +203,10 @@ func (repo *Repo) GetTable() *table.Table { return repoTable }
 func (repo *Repo) PreCreate() error       { return nil }
 func (repo *Repo) PreUpdate() error       { return nil }
 
-// Workload defines a workload for the app. See Workload.Kind for type
-
 func (workload *Workload) GetTable() *table.Table { return workloadTable }
 func (workload *Workload) PreCreate() error       { return nil }
 func (workload *Workload) PreUpdate() error       { return nil }
 
-// Resource defines the cloud provider resources for the app e.g. s3, sqs, etc
 func (resource *Resource) GetTable() *table.Table { return resourceTable }
 func (resource *Resource) PreCreate() error       { return nil }
 func (resource *Resource) PreUpdate() error       { return nil }

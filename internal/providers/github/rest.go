@@ -67,6 +67,7 @@ func completeInstallation(ctx echo.Context) error {
 	}
 
 	teamID, err := gocql.ParseUUID(ctx.Get("team_id").(string))
+
 	if err != nil {
 		shared.Logger.Error("error parsing team id", "error", err)
 		return err

@@ -21,7 +21,7 @@ process with rollbacks for microservices.
 
 Currently, it only supports monorepo, but poly repo support is on the roadmap.
 
-To learn more, visit https://breu.io/ctrlplane
+To learn more, visit https://breu.io/ctrlplane.
   `,
 	}
 )

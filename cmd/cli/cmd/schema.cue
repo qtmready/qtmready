@@ -1,4 +1,5 @@
-# Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
+
 #Version: string | *"0.1"
 
 #ServicePort: {
@@ -7,7 +8,7 @@
 }
 
 #Resource: {
-  drvier: string | *"aws" | "gcp" | "azure",
+  provider: string | *"aws" | "gcp" | "azure" | "do",
   name: string,
   exports: {
     [string]: string,

@@ -2,12 +2,18 @@
 
 linters:
   enable:
+    - asasalint
+    - asciicheck
     - bidichk
+    - bodyclose
     - decorder
+    - dogsled
     - errname
     - funlen
     - gocognit
     - goconst
+    - gocritic
+    - godot
     - gosec
     - grouper
     - interfacebloat

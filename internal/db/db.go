@@ -25,7 +25,7 @@ var (
 )
 
 type (
-	// Holds the information about the database
+	// Holds the information about the database.
 	db struct {
 		gocqlx.Session
 		Hosts              []string `env:"CASSANDRA_HOSTS" env-default:"ctrlplane-database"`
@@ -34,12 +34,12 @@ type (
 	}
 )
 
-// ReadEnv reads the environment variables
+// ReadEnv reads the environment variables.
 func (d *db) ReadEnv() {
 	_ = cleanenv.ReadEnv(d)
 }
 
-// InitSession initializes the session with the configured hosts
+// InitSession initializes the session with the configured hosts.
 func (d *db) InitSession() {
 	cluster := gocql.NewCluster(d.Hosts...)
 	cluster.Keyspace = d.Keyspace
@@ -97,13 +97,13 @@ func (d *db) RunMigrations() {
 	shared.Logger.Info("db: migrations done")
 }
 
-// InitSessionWithMigrations is a shorthand for initializing the database along with running migrations
+// InitSessionWithMigrations is a shorthand for initializing the database along with running migrations.
 func (d *db) InitSessionWithMigrations() {
 	d.InitSession()
 	d.RunMigrations()
 }
 
-// RegisterValidations registers any field or entity related validators
+// RegisterValidations registers any field or entity related validators.
 func (d *db) RegisterValidations() {
 	_ = shared.Validate.RegisterValidation("db_unique", UniqueField)
 }

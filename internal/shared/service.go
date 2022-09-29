@@ -22,14 +22,13 @@ type (
 		Name    string `env:"SERVICE_NAME" env-default:"service"`
 		Debug   bool   `env:"DEBUG" env-default:"false"`
 		Secret  string `env:"SECRET" env-default:""`
-		CLI     cli    `env-prefix:"CLI_" env-allow-empty:"true"`
+		CLI     *cli   `env-prefix:"CTRLPLANE_" env-allow-empty:"true"`
 		version string `env:"VERSION" env-default:""`
 	}
 
 	cli struct {
-		BaseURL      string `env:"BASE_URL" env-default:"http://localhost:8000"`
-		AccessToken  string `env:"ACCESS_TOKEN" env-default:""`
-		RefreshToken string `env:"REFRESH_TOKEN" env-default:""`
+		BaseURL string `env:"BASE_URL" env-default:"http://api.ctrlplane.ai"`
+		APIKEY  string `env:"API_KEY" env-default:""`
 	}
 )
 
@@ -58,17 +57,17 @@ func (s *service) Version() string {
 				timestamp time.Time
 			)
 
-			for _, s := range info.Settings {
-				if s.Key == "vcs.revision" {
-					revision = s.Value
+			for _, setting := range info.Settings {
+				if setting.Key == "vcs.revision" {
+					revision = setting.Value
 				}
 
-				if s.Key == "vcs.modified" {
-					modified = s.Value
+				if setting.Key == "vcs.modified" {
+					modified = setting.Value
 				}
 
-				if s.Key == "vcs.time" {
-					timestamp, _ = time.Parse(time.RFC3339, s.Value)
+				if setting.Key == "vcs.time" {
+					timestamp, _ = time.Parse(time.RFC3339, setting.Value)
 				}
 			}
 
@@ -139,4 +138,13 @@ func (s *service) InitLogger() {
 	}
 
 	Logger = logger.NewZapAdapter(zl)
+}
+
+func (s *service) InitCLI() {
+	s.Name = "ctrlplane-cli"
+	s.Debug = false // FIXME: this should be set to true if the CLI is run in debug mode
+
+	if err := s.ReadFile(); err != nil {
+		panic(err)
+	}
 }

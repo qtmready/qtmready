@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package entities
 
@@ -52,6 +52,7 @@ func (u *User) PreCreate() error       { u.SetPassword(u.Password); return nil }
 func (u *User) PreUpdate() error       { return nil }
 
 // SetPassword hashes the clear text password using bcrypt.
+//
 // NOTE: This only updates the field. You will have to run the method to persist the change.
 //
 //	params := db.QueryParams{"email": "user@example.com"}
@@ -69,7 +70,8 @@ func (u *User) VerifyPassword(password string) bool {
 }
 
 // SetActiveTeam sets the active team for the given user.
-// TODO: verify that the team exists
+//
+// TODO: verify that the team exists.
 func (u *User) SetActiveTeam(id gocql.UUID) { u.TeamID = id }
 
 // SendVerificationEmail sends a verification email.

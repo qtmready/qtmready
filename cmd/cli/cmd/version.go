@@ -11,10 +11,8 @@ import (
 var (
 	versionCmd = &cobra.Command{
 		Use:   "version",
-		Short: "Show the current ctrlplane version",
-		Long: `
-Displays the build id and git short sha for the current binary. This is useful for debugging and reporting issues.
-`,
+		Short: "Show the current ctrlplane version.",
+		Long:  `Show the current ctrlplane version.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Println("TODO: integrate versioning ...") // TODO: integrate versioning
 		},

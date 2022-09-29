@@ -53,10 +53,14 @@ func (g *Guard) GetTable() *table.Table { return guardTable }
 func (g *Guard) PreCreate() error       { g.SetHashed(g.Hashed); return nil }
 func (g *Guard) PreUpdate() error       { return nil }
 
+// CreatePrefix converts the UUID to a base62 string and use it as the prefix.
 func (g *Guard) CreatePrefix() string {
 	return base62.EncodeToString(g.LookupID[:])
 }
 
+// PrefixToID converts the given prefix to a UUID.
+//
+// The UUID is used as the lookup_id for the Guard.
 func (g *Guard) PrefixToID(prefix string) (gocql.UUID, error) {
 	id := gocql.UUID{}
 	b, err := base62.DecodeString(prefix)
@@ -70,6 +74,7 @@ func (g *Guard) PrefixToID(prefix string) (gocql.UUID, error) {
 	return id, nil
 }
 
+// GenerateRandomValue generates a 512 bit random value for the API key.
 func (g *Guard) GenerateRandomValue() string {
 	bytes := make([]byte, 64) // 64 bytes = 512 bits
 	_, _ = rand.Read(bytes)   // Secure random bytes
@@ -87,6 +92,7 @@ func (g *Guard) VerifyHashed(token string) bool {
 }
 
 // ConstructAPIKey constructs a new API Key & return the key plain text and the constructed key.
+//
 // The plaintext is set in Guard.Hashed and the Guard.PreCreate() function hashes it one save.
 func (g *Guard) ConstructAPIKey() (string, string) {
 	plaintext := g.GenerateRandomValue()
@@ -96,7 +102,6 @@ func (g *Guard) ConstructAPIKey() (string, string) {
 }
 
 // VerifyAPIKey verifies the API key against the database.
-// TODO: returns the user / team id
 func (g *Guard) VerifyAPIKey(key string) (bool, error) {
 	parts := strings.Split(key, ".")
 	if len(parts) != 2 {
@@ -119,6 +124,7 @@ func (g *Guard) VerifyAPIKey(key string) (bool, error) {
 }
 
 // NewForUser creates a new API key for the given user.
+//
 // NOTE: The Guard.PreCreate() function hashes the plain text value.
 func (g *Guard) NewForUser(name string, id gocql.UUID) (string, error) {
 	g.Name = name
@@ -131,8 +137,10 @@ func (g *Guard) NewForUser(name string, id gocql.UUID) (string, error) {
 }
 
 // NewForTeam creates a new API key for the given team.
+//
 // NOTE: One team can have only one API Key.
-// TODO: Implement unique constraint on lookup_id for team
+//
+// TODO: Implement unique constraint on lookup_id for team.
 func (g *Guard) NewForTeam(id gocql.UUID) (string, error) {
 	g.Name = "default"
 	g.LookupID = id
