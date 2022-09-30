@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 var (
@@ -14,7 +15,7 @@ var (
 		Short: "Show the current ctrlplane version.",
 		Long:  `Show the current ctrlplane version.`,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("TODO: integrate versioning ...") // TODO: integrate versioning
+			fmt.Println(shared.Service.Version()) // TODO: integrate versioning
 		},
 	}
 )

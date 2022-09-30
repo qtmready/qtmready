@@ -26,6 +26,7 @@ licenses:
     ident: Unlicense
     template: |
       Copyright © [year], [name of author]. All rights reserved.
+
 comments:
   - extensions:
       - ts

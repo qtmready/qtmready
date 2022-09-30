@@ -36,7 +36,7 @@ func Execute() {
 }
 
 func init() {
-	if err := shared.Service.ReadFile(); err != nil {
-		println("ctrlplane not initialized, please do ctrlplane login", err.Error())
+	if err := shared.Service.InitCLI(); err != nil {
+		println("ctrlplane not initialized, please do ctrlplane init")
 	}
 }

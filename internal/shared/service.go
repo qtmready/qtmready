@@ -55,6 +55,7 @@ func (s *service) Version() string {
 				revision  string
 				modified  string
 				timestamp time.Time
+				version   string
 			)
 
 			for _, setting := range info.Settings {
@@ -71,7 +72,11 @@ func (s *service) Version() string {
 				}
 			}
 
-			version := timestamp.Format("2006.01.02") + "." + revision[:8]
+			if len(revision) > 0 && len(modified) > 0 && timestamp.Unix() > 0 {
+				version = timestamp.Format("2006.01.02") + "." + revision[:8]
+			} else {
+				version = "debug"
+			}
 
 			if modified == "true" {
 				version += "-dev"
@@ -100,7 +105,7 @@ func (s *service) GetConfigPath() (string, error) {
 	return path.Join(home, ".ctrlplane", "config.json"), nil
 }
 
-func (s *service) ReadFile() error {
+func (s *service) ReadConfig() error {
 	conf, err := s.GetConfigPath()
 
 	if err != nil {
@@ -140,11 +145,22 @@ func (s *service) InitLogger() {
 	Logger = logger.NewZapAdapter(zl)
 }
 
-func (s *service) InitCLI() {
+func (s *service) InitCLI() error {
 	s.Name = "ctrlplane-cli"
-	s.Debug = false // FIXME: this should be set to true if the CLI is run in debug mode
+	s.CLI = &cli{}
 
-	if err := s.ReadFile(); err != nil {
-		panic(err)
+	if err := cleanenv.ReadEnv(s); err != nil {
+		return err
 	}
+
+	if s.Version() == "debug" {
+		println("Warning: You are using a development version of the CLI. Please use the stable version.")
+
+		s.Debug = true
+		s.CLI.BaseURL = "http://localhost:8080"
+	}
+
+	s.InitLogger()
+
+	return nil
 }
