@@ -145,6 +145,7 @@ func (s *service) InitLogger() {
 	Logger = logger.NewZapAdapter(zl)
 }
 
+// InitCLI sets up ctrlplane-cli.
 func (s *service) InitCLI() error {
 	s.Name = "ctrlplane-cli"
 	s.CLI = &cli{}
