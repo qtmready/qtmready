@@ -1,3 +1,5 @@
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
+
 package db
 
 import (
@@ -11,10 +13,10 @@ import (
 )
 
 type (
-	// QueryParams defines the query params required for DB lookup queries
+	// QueryParams defines the query params required for DB lookup queries.
 	QueryParams map[string]string
 
-	// An Entity defines the interface for a database entity
+	// An Entity defines the interface for a database entity.
 	Entity interface {
 		GetTable() *table.Table
 		PreCreate() error
@@ -28,7 +30,9 @@ type (
 )
 
 // Get the entity by given query params.
+//
 // FIXME: sometimes you have to manually surround the value with "'" to make cql work
+//
 // A simple example:
 //
 //		type User struct {
@@ -61,7 +65,9 @@ func Get[T Entity](entity T, params QueryParams) error {
 }
 
 // Filter the entity by given query params.
+//
 // FIXME: sometimes you have to manually surround the value with "'" to make cql work
+//
 // A simple example:
 //
 //			type User struct {
@@ -108,9 +114,9 @@ func Save[T Entity](entity T) error {
 
 	if pk.String() == NullUUID {
 		return Create(entity)
-	} else {
-		return Update(entity)
 	}
+
+	return Update(entity)
 }
 
 // Create creates the entity. The entity value is a pointer to the struct.
@@ -128,6 +134,7 @@ func Create[T Entity](entity T) error {
 
 	query := DB.Session.Query(entity.GetTable().Insert()).BindStruct(entity)
 	shared.Logger.Debug("query", "query", query.String())
+
 	if err := query.ExecRelease(); err != nil {
 		return err
 	}

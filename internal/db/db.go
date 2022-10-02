@@ -1,3 +1,5 @@
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
+
 package db
 
 import (
@@ -7,7 +9,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/cassandra"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/golang-migrate/migrate/v4/source/file" // required for file:// migrations
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/scylladb/gocqlx/v2"
 	"go.breu.io/ctrlplane/internal/shared"
@@ -23,7 +25,7 @@ var (
 )
 
 type (
-	// Holds the information about the database
+	// Holds the information about the database.
 	db struct {
 		gocqlx.Session
 		Hosts              []string `env:"CASSANDRA_HOSTS" env-default:"ctrlplane-database"`
@@ -32,17 +34,18 @@ type (
 	}
 )
 
-// ReadEnv reads the environment variables
+// ReadEnv reads the environment variables.
 func (d *db) ReadEnv() {
 	_ = cleanenv.ReadEnv(d)
 }
 
-// InitSession initializes the session with the configured hosts
+// InitSession initializes the session with the configured hosts.
 func (d *db) InitSession() {
 	cluster := gocql.NewCluster(d.Hosts...)
 	cluster.Keyspace = d.Keyspace
 	createSession := func() error {
 		shared.Logger.Info("db: connecting ...")
+
 		session, err := gocqlx.WrapSession(cluster.CreateSession())
 		if err != nil {
 			shared.Logger.Error("db: failed to connect", "error", err)
@@ -50,7 +53,9 @@ func (d *db) InitSession() {
 		}
 
 		d.Session = session
+
 		shared.Logger.Info("db: connected")
+
 		return nil
 	}
 
@@ -69,6 +74,7 @@ func (d *db) RunMigrations() {
 
 	config := &cassandra.Config{KeyspaceName: d.Keyspace, MultiStatementEnabled: true}
 	driver, err := cassandra.WithInstance(d.Session.Session, config)
+
 	if err != nil {
 		shared.Logger.Error("db: failed to initialize driver for migrations ...", "error", err)
 	}
@@ -87,16 +93,17 @@ func (d *db) RunMigrations() {
 	if err != nil && err != migrate.ErrNoChange {
 		shared.Logger.Error("db: failed to run migrations ...", "error", err)
 	}
+
 	shared.Logger.Info("db: migrations done")
 }
 
-// InitSessionWithMigrations is a shorthand for initializing the database along with running migrations
+// InitSessionWithMigrations is a shorthand for initializing the database along with running migrations.
 func (d *db) InitSessionWithMigrations() {
 	d.InitSession()
 	d.RunMigrations()
 }
 
-// RegisterValidations registers any field or entity related validators
+// RegisterValidations registers any field or entity related validators.
 func (d *db) RegisterValidations() {
 	_ = shared.Validate.RegisterValidation("db_unique", UniqueField)
 }

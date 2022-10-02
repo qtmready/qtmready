@@ -1,0 +1,129 @@
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
+
+package core
+
+import (
+	"net/http"
+
+	"github.com/gocql/gocql"
+	"github.com/labstack/echo/v4"
+
+	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/ctrlplane/internal/entities"
+)
+
+// CreateRoutes creates the routes for the app
+func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
+	apps := &Routes{}
+	g.POST("/apps", apps.Create)
+	g.GET("/apps", apps.List)
+	g.GET("/apps/:slug", apps.Get)
+
+	g.POST("/apps/:slug/repos", apps.CreateAppRepo)
+	g.GET("/apps/:slug/repos", apps.GetAppRepos)
+}
+
+type (
+	Routes struct{}
+)
+
+// Create creates a new app
+func (routes *Routes) Create(ctx echo.Context) error {
+	request := &AppCreateRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
+	app := &entities.App{Name: request.Name, TeamID: teamID}
+
+	if err := db.Save(app); err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusCreated, app)
+}
+
+// Get gets an app by slug
+func (routes *Routes) Get(ctx echo.Context) error {
+	app := &entities.App{}
+	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'"}
+
+	if err := db.Get(app, params); err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "not found")
+	}
+
+	return ctx.JSON(http.StatusOK, app)
+}
+
+// List lists all apps associated with the team
+func (routes *Routes) List(ctx echo.Context) error {
+	result := make([]entities.App, 0)
+	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
+
+	if err := db.Filter(&entities.App{}, &result, params); err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusOK, result)
+}
+
+// GetAppRepos gets an app repos by slug
+func (routes *Routes) GetAppRepos(ctx echo.Context) error {
+	result := make([]entities.Repo, 0)
+	app := &entities.App{}
+
+	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
+	if err := db.Get(app, params); err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "app not found")
+	}
+
+	params = db.QueryParams{"app_id": app.ID.String()}
+	if err := db.Filter(&entities.Repo{}, &result, params); err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusOK, result)
+}
+
+// CreateAppRepo creates a new app repo
+func (routes *Routes) CreateAppRepo(ctx echo.Context) error {
+	request := &AppRepoCreateRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	app := &entities.App{}
+	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
+
+	if err := db.Get(app, params); err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "not found")
+	}
+
+	switch request.Provider {
+	case "github":
+		return routes.github(ctx, request, app)
+	default:
+		return echo.NewHTTPError(http.StatusInternalServerError, "unsupported git provider")
+	}
+}
+
+func (routes *Routes) github(ctx echo.Context, request *AppRepoCreateRequest, app *entities.App) error {
+	if err := db.Get(&entities.GithubRepo{}, db.QueryParams{"id": request.RepoID.String()}); err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "repo not found")
+	}
+
+	repo := &entities.Repo{
+		AppID:         app.ID,
+		RepoID:        request.RepoID,
+		DefaultBranch: request.DefaultBranch,
+		IsMonorepo:    request.IsMonorepo,
+		Provider:      request.Provider,
+	}
+
+	if err := db.Save(repo); err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusCreated, repo)
+}

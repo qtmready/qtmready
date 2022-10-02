@@ -1,3 +1,5 @@
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
+
 package db
 
 import (
@@ -9,9 +11,12 @@ import (
 	"github.com/scylladb/gocqlx/v2/table"
 )
 
-type placeholder struct {
-	ID gocql.UUID `json:"id" cql:"id"`
-}
+type (
+	// placeholder is a struct that will be used as a destination for the "get" query during validations.
+	placeholder struct {
+		ID gocql.UUID `json:"id" cql:"id"`
+	}
+)
 
 // UniqueField validates that the value of the field is unique in the database.
 //
@@ -24,8 +29,9 @@ type placeholder struct {
 //
 // The validator will check if the field is unique in the database.
 func UniqueField(fl validator.FieldLevel) bool {
-	var args []reflect.Value // Empty args for reflect.Call
-	dest := &placeholder{}   // Initializing the empty placeholder to act as a destination for Get call
+	var args []reflect.Value // Empty args for reflect.call
+
+	dest := &placeholder{} // Initializing the empty placeholder to act as a destination for Get call
 
 	tbl := fl.
 		Parent().Addr().            // Getting the pointer the parent struct
@@ -44,5 +50,6 @@ func UniqueField(fl validator.FieldLevel) bool {
 		Query(DB.Session)              // using the existing database connection
 
 	err := query.Iter().Unsafe().Get(dest) // Running the "get" query in unsafe mode.
+
 	return err != nil
 }

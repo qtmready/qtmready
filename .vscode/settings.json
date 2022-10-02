@@ -1,5 +1,6 @@
 {
   "gopls": {
     "ui.semanticTokens": true
-  }
+  },
+  "go.lintTool": "golangci-lint"
 }

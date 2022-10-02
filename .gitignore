@@ -219,3 +219,4 @@ $RECYCLE.BIN/
 # Project specific
 __debug_*
 /tmp
+.air.toml

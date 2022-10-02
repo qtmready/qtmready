@@ -1,3 +1,5 @@
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
+
 package shared
 
 import (
@@ -7,12 +9,16 @@ import (
 	"github.com/nats-io/nats.go"
 )
 
-var EventStream = &eventstream{}
+var (
+	EventStream = &eventstream{}
+)
 
-type eventstream struct {
-	*nats.Conn
-	ServerURL string `env:"EVENTS_SERVERS_URL" env-default:"nats://event-stream:4222"`
-}
+type (
+	eventstream struct {
+		*nats.Conn
+		ServerURL string `env:"EVENTS_SERVERS_URL" env-default:"nats://event-stream:4222"`
+	}
+)
 
 func (e *eventstream) ReadEnv() {
 	if err := cleanenv.ReadEnv(e); err != nil {
@@ -23,9 +29,12 @@ func (e *eventstream) ReadEnv() {
 func (e *eventstream) InitConnection() {
 	Logger.Info("Initializing Event Stream Client ...", "url", e.ServerURL)
 	conn, err := nats.Connect(e.ServerURL, nats.MaxReconnects(5), nats.ReconnectWait(2*time.Second))
+
 	if err != nil {
 		Logger.Error("Failed to initialize Event Stream Client", "error", err)
 	}
+
 	e.Conn = conn
+
 	Logger.Info("Initializing Event Stream Client ... Done")
 }

@@ -1,3 +1,5 @@
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
+
 package main
 
 import (
@@ -7,11 +9,13 @@ import (
 	"go.temporal.io/sdk/worker"
 
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/drivers/github"
+	"go.breu.io/ctrlplane/internal/providers/github"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
-var wait sync.WaitGroup
+var (
+	wait sync.WaitGroup
+)
 
 func init() {
 	shared.Service.ReadEnv()
@@ -40,14 +44,18 @@ func init() {
 
 	wait.Wait()
 
-	shared.Logger.Info("Initializing Service ... Done")
+	shared.Logger.Info("Initializing Service ... Done", "version", shared.Service.Version())
 }
 
 func main() {
-	defer shared.Logger.Sync()
 	defer shared.Temporal.Client.Close()
+	defer func() {
+		if err := shared.Logger.Sync(); err != nil {
+			panic(err)
+		}
+	}()
 
-	queue := shared.Temporal.Queues[shared.IntegrationsQueue].GetName()
+	queue := shared.Temporal.Queues[shared.ProvidersQueue].GetName()
 	options := worker.Options{}
 	wrkr := worker.New(shared.Temporal.Client, queue, options)
 

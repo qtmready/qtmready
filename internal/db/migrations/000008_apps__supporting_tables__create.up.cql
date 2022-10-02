@@ -1,3 +1,5 @@
+-- Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+
 create table if not exists workloads (
   	id            uuid,
 		app_id        uuid,
@@ -16,8 +18,8 @@ create table if not exists resources (
   	id            uuid,
 		app_id        uuid,
 		name          varchar,
+		provider      varchar,
 		driver        varchar,
-		kind          varchar,
 		is_immutable  boolean,
 		created_at    timestamp,
 		updated_at    timestamp,

@@ -1,3 +1,5 @@
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
+
 package main
 
 import (
@@ -8,11 +10,11 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	"go.breu.io/ctrlplane/cmd/api/auth"
-	"go.breu.io/ctrlplane/cmd/api/core"
+	"go.breu.io/ctrlplane/internal/api/auth"
+	"go.breu.io/ctrlplane/internal/api/core"
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/drivers"
-	"go.breu.io/ctrlplane/internal/drivers/github"
+	"go.breu.io/ctrlplane/internal/providers"
+	"go.breu.io/ctrlplane/internal/providers/github"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -30,6 +32,7 @@ func (ev *EchoValidator) Validate(i interface{}) error {
 	if err := ev.validator.Struct(i); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
+
 	return nil
 }
 
@@ -66,20 +69,20 @@ func init() {
 	waiter.Wait()
 	// Initializing singleton objects ... Done
 
-	shared.Logger.Info("Initializing Service ... Done")
+	shared.Logger.Info("Initializing Service ... Done", "version", shared.Service.Version())
 }
 
 func main() {
 	// handling closing of the server
 	defer db.DB.Session.Close()
 	defer shared.Temporal.Client.Close()
-	defer shared.Logger.Sync()
+	defer func() {
+		if err := shared.Logger.Sync(); err != nil {
+			panic(err)
+		}
+	}()
 
 	e := echo.New()
-	jwtconf := middleware.JWTConfig{
-		Claims:     &shared.JWTClaims{},
-		SigningKey: []byte(shared.Service.Secret),
-	}
 
 	e.Validator = &EchoValidator{validator: shared.Validate}
 
@@ -87,14 +90,14 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	// Unauthenticated routes
+	// A Mix of public & authenticated routes
 	e.GET("/healthcheck", healthcheck)
 	auth.CreateRoutes(e.Group("/auth"))
-	drivers.CreateRoutes(e.Group("/drivers"), middleware.JWTWithConfig(jwtconf))
+	providers.CreateRoutes(e.Group("/providers"), auth.Middleware)
 
-	// Protected routes
+	// Private routes
 	protected := e.Group("")
-	protected.Use(middleware.JWTWithConfig(jwtconf))
+	protected.Use(auth.Middleware)
 	core.CreateRoutes(protected)
 
 	if err := e.Start(":8000"); err != nil {
@@ -102,5 +105,7 @@ func main() {
 	}
 }
 
-// TODO: ensure connectivity with external services
+// healthcheck checks if the system is working properly.
+//
+// TODO: make sure that connection to all services it needs to connect to is working properly.
 func healthcheck(ctx echo.Context) error { return ctx.String(http.StatusOK, "OK") }

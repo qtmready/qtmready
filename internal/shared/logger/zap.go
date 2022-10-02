@@ -1,3 +1,5 @@
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
+
 package logger
 
 import (
@@ -8,11 +10,14 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-// ZapAdapter is a wrapper around zap.Logger. Makes it compatible with the logger.Logger interface.
-type ZapAdapter struct {
-	logger *zap.Logger
-	core   zapcore.Core
-}
+type (
+
+	// ZapAdapter is a wrapper around zap.Logger. Makes it compatible with the logger.Logger interface.
+	ZapAdapter struct {
+		logger *zap.Logger
+		core   zapcore.Core
+	}
+)
 
 func NewZapAdapter(logger *zap.Logger) *ZapAdapter {
 	return &ZapAdapter{
@@ -84,6 +89,7 @@ func (adapter *ZapAdapter) ErrorContext(_ context.Context, msg string, fields ..
 
 func (adapter *ZapAdapter) fields(kv []interface{}) []zap.Field {
 	var fields []zap.Field
+
 	if len(kv)%2 != 0 {
 		return []zap.Field{zap.Error(fmt.Errorf("odd number of kv pairs: %v", kv))}
 	}
@@ -93,6 +99,7 @@ func (adapter *ZapAdapter) fields(kv []interface{}) []zap.Field {
 		if !ok {
 			key = fmt.Sprintf("%v", kv[i])
 		}
+
 		fields = append(fields, zap.Any(key, kv[i+1]))
 	}
 

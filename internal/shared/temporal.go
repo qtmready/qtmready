@@ -1,3 +1,5 @@
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
+
 package shared
 
 import (
@@ -9,12 +11,14 @@ import (
 	"go.temporal.io/sdk/client"
 )
 
-var Temporal = &temporal{
-	Queues: Queues{
-		MothershipQueue:   &queue{MothershipQueue, "ai.ctrlplane.mothership"},
-		IntegrationsQueue: &queue{IntegrationsQueue, "ai.ctrlplane.drivers"},
-	},
-}
+var (
+	Temporal = &temporal{
+		Queues: Queues{
+			MothershipQueue: &queue{MothershipQueue, "ai.ctrlplane.mothership"},
+			ProvidersQueue:  &queue{ProvidersQueue, "ai.ctrlplane.providers"},
+		},
+	}
+)
 
 type (
 	QueueName string
@@ -30,11 +34,11 @@ type (
 
 // TODO: The greater plan is to move each tenant in its own namespace.
 const (
-	MothershipQueue   QueueName = "mothership"
-	IntegrationsQueue QueueName = "drivers"
-	BuilderQueue      QueueName = "builder"
-	ProvisionerQueue  QueueName = "provisioner"
-	DeployerQueue     QueueName = "deployer"
+	MothershipQueue  QueueName = "mothership"
+	ProvidersQueue   QueueName = "providers"
+	BuilderQueue     QueueName = "builder"
+	ProvisionerQueue QueueName = "provisioner"
+	DeployerQueue    QueueName = "deployer"
 )
 
 func (q QueueName) ToString() string {
@@ -55,12 +59,13 @@ type (
 	}
 )
 
-// GetName gets the name as string from QueueName
+// GetName gets the name as string from QueueName.
 func (q *queue) GetName() string {
 	return q.Name.ToString()
 }
 
 // CreateWorkflowID creates the unique workflow ID from the workflow sender and appropriate arguments.
+//
 // TODO: document the grand scheme of things.
 func (q *queue) CreateWorkflowID(sender string, args ...string) string {
 	return q.Prefix + "." + sender + "." + strings.Join(args, ".")
@@ -86,11 +91,8 @@ func (t *temporal) GetConnectionString() string {
 
 func (t *temporal) InitClient() {
 	Logger.Info("Initializing Temporal Client ...", "host", t.ServerHost, "port", t.ServerPort)
-	options := client.Options{
-		HostPort: t.GetConnectionString(),
-		Logger:   Logger,
-	}
 
+	options := client.Options{HostPort: t.GetConnectionString(), Logger: Logger}
 	retryTemporal := func() error {
 		clt, err := client.Dial(options)
 		if err != nil {
@@ -98,15 +100,13 @@ func (t *temporal) InitClient() {
 		}
 
 		t.Client = clt
+
 		Logger.Info("Initializing Temporal Client ... Done")
+
 		return nil
 	}
 
-	if err := retry.Do(
-		retryTemporal,
-		retry.Attempts(10),
-		retry.Delay(1*time.Second),
-	); err != nil {
+	if err := retry.Do(retryTemporal, retry.Attempts(10), retry.Delay(1*time.Second)); err != nil {
 		Logger.Error("Failed to initialize Temporal Client", "error", err)
 	}
 }
