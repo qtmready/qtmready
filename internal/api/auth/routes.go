@@ -18,19 +18,16 @@ func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
 	g.POST("/register", r.register)
 	g.POST("/login", r.login)
 
-	aks := g.Group("/api-keys", Middleware)
-
-	tr := &TeamAPIKeyRoutes{}
-	aks.POST("/team", tr.create)
-
-	ur := &UserAPIKeyRoutes{}
-	aks.POST("/user", ur.create)
+	akg := g.Group("/api-keys", Middleware)
+	akr := &APIKeyRoutes{}
+	akg.POST("/team", akr.team)
+	akg.POST("/user", akr.user)
+	akg.GET("/validate", akr.validate)
 }
 
 type (
-	Routes           struct{}
-	TeamAPIKeyRoutes struct{}
-	UserAPIKeyRoutes struct{}
+	Routes       struct{}
+	APIKeyRoutes struct{}
 )
 
 // register is a handler for /auth/register endpoint.
@@ -105,7 +102,7 @@ func (routes *Routes) login(ctx echo.Context) error {
 }
 
 // create a new API Key for team.
-func (routes *TeamAPIKeyRoutes) create(ctx echo.Context) error {
+func (routes *APIKeyRoutes) team(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 	if err := ctx.Bind(request); err != nil {
 		return err
@@ -127,7 +124,7 @@ func (routes *TeamAPIKeyRoutes) create(ctx echo.Context) error {
 }
 
 // create a new API Key for user.
-func (routes *UserAPIKeyRoutes) create(ctx echo.Context) error {
+func (routes *APIKeyRoutes) user(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 	if err := ctx.Bind(request); err != nil {
 		return err
@@ -146,4 +143,9 @@ func (routes *UserAPIKeyRoutes) create(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: key})
+}
+
+// validate an API Key.
+func (routes *APIKeyRoutes) validate(ctx echo.Context) error {
+	return ctx.JSON(http.StatusOK, &struct{ verfied bool }{verfied: true})
 }

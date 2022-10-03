@@ -4,6 +4,7 @@ package main
 
 import (
 	"net/http"
+	"os"
 	"sync"
 
 	"github.com/go-playground/validator/v10"
@@ -73,14 +74,13 @@ func init() {
 }
 
 func main() {
-	// handling closing of the server
+	// graceful shutdown. see https://stackoverflow.com/a/46255965/228697.
+	exitcode := 0
+	defer func() { os.Exit(exitcode) }()
+	defer func() { _ = shared.Logger.Sync() }()       // flush log buffer
+	defer func() { _ = shared.EventStream.Drain() }() // process events in the buffer before closing connection
 	defer db.DB.Session.Close()
 	defer shared.Temporal.Client.Close()
-	defer func() {
-		if err := shared.Logger.Sync(); err != nil {
-			panic(err)
-		}
-	}()
 
 	e := echo.New()
 
@@ -101,7 +101,8 @@ func main() {
 	core.CreateRoutes(protected)
 
 	if err := e.Start(":8000"); err != nil {
-		shared.Logger.Error("Error starting web server", "error", err)
+		exitcode = 1
+		return
 	}
 }
 

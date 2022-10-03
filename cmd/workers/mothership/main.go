@@ -3,7 +3,7 @@
 package main
 
 import (
-	"log"
+	"os"
 	"sync"
 
 	"go.temporal.io/sdk/worker"
@@ -48,12 +48,12 @@ func init() {
 }
 
 func main() {
+	// graceful shutdown. see https://stackoverflow.com/a/46255965/228697.
+	exitcode := 0
+	defer func() { os.Exit(exitcode) }()
+	defer func() { _ = shared.Logger.Sync() }()
+	defer func() { _ = shared.EventStream.Drain() }()
 	defer shared.Temporal.Client.Close()
-	defer func() {
-		if err := shared.Logger.Sync(); err != nil {
-			panic(err)
-		}
-	}()
 
 	queue := shared.Temporal.Queues[shared.ProvidersQueue].GetName()
 	options := worker.Options{}
@@ -68,6 +68,7 @@ func main() {
 	err := wrkr.Run(worker.InterruptCh())
 
 	if err != nil {
-		log.Fatal(err)
+		exitcode = 1
+		return
 	}
 }

@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	// rootCmd represents the base command when called without any subcommands
+	// rootCmd represents the base command when called without any subcommands.
 	rootCmd = &cobra.Command{
 		Use:   "ctrlplane",
 		Short: "ctrlplane is a multi stage release rollout engine with pre-emptive rollbacks.",

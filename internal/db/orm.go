@@ -35,14 +35,14 @@ type (
 //
 // A simple example:
 //
-//		type User struct {
-//		  ID     string `json:"getID" cql:"getID"`
-//		  Email  string `json:"email" cql:"email"`
-//		}
+//	type User struct {
+//	  ID     string `json:"getID" cql:"getID"`
+//	  Email  string `json:"email" cql:"email"`
+//	}
 //
-//		params := db.QueryParams{"email": "email@example.com"}
-//	  user := &User{}
-//		err := db.Get(user, params)
+//	params := db.QueryParams{"email": "email@example.com"}
+//	user := &User{}
+//	err := db.Get(user, params)
 func Get[T Entity](entity T, params QueryParams) error {
 	clause := make([]qb.Cmp, 0)
 
@@ -70,14 +70,14 @@ func Get[T Entity](entity T, params QueryParams) error {
 //
 // A simple example:
 //
-//			type User struct {
-//			  ID     string `json:"getID" cql:"getID"`
-//			  Email  string `json:"name" cql:"name"`
-//			}
+//		 type User struct {
+//		   ID     string `json:"getID" cql:"getID"`
+//		   Email  string `json:"name" cql:"name"`
+//		 }
 //
-//			params := db.QueryParams{"email": "email@example.com"}
-//		  users := make([]User, 0)
-//	    err := db.Filter(&User{}, &users, params)
+//		 params := db.QueryParams{"email": "email@example.com"}
+//	   users := make([]User, 0)
+//		 err := db.Filter(&User{}, &users, params)
 func Filter(entity Entity, dest interface{}, params QueryParams) error {
 	clause := make([]qb.Cmp, 0)
 
@@ -143,6 +143,7 @@ func Create[T Entity](entity T) error {
 }
 
 // Update updates the entity.
+//
 // NOTE: The assumption is that ID is the primary key and the first one defined in the struct.
 // NOTE: you must pass the complete struct.
 func Update[T Entity](entity T) error {
