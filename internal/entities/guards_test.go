@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package entities
 
@@ -13,18 +13,18 @@ var (
 )
 
 func TestGuard(t *testing.T) {
-	guard := &Guard{}
-	testKey = guard.GenerateRandomValue()
-	guard.Hashed = testKey
-	_ = guard.PreCreate()
+	args := &Guard{}
+	testKey = args.GenerateRandomValue()
+	args.Hashed = testKey
+	_ = args.PreCreate()
 
 	preCreateTests := shared.TestFnMap{
-		"SetHashed":    shared.TestFn{Args: guard, Want: nil, Fn: testGuardSetHashed},
-		"VerifyHashed": shared.TestFn{Args: guard, Want: nil, Fn: testGuardVerifyHashed},
+		"SetHashed":    shared.TestFn{Args: args, Want: nil, Run: testGuardSetHashed},
+		"VerifyHashed": shared.TestFn{Args: args, Want: nil, Run: testGuardVerifyHashed},
 	}
 
-	t.Run("GetTable", testTableName("guards", guard))
-	t.Run("PreCreate", testPreCreate(guard, preCreateTests))
+	t.Run("GetTable", testEntityGetTable("guards", args))
+	t.Run("PreCreate", testEntityPreCreate(args, preCreateTests))
 }
 
 func testGuardSetHashed(args interface{}, want interface{}) func(*testing.T) {

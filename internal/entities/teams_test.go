@@ -8,5 +8,5 @@ import (
 
 func TestTeam(t *testing.T) {
 	team := &Team{}
-	t.Run("GetTable", testTableName("teams", team))
+	t.Run("GetTable", testEntityGetTable("teams", team))
 }
