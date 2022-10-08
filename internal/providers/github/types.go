@@ -10,13 +10,13 @@ import (
 )
 
 type (
-	WebhookEventHandler  func(ctx echo.Context) error         // EventHandler is the signature of the event handler function
-	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers
+	WebhookEventHandler  func(ctx echo.Context) error         // EventHandler is the signature of the event handler function.
+	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers.
 	WebhookEvent         string                               // WebhookEvent defines the event type.
 	WorkflowSignal       string                               // WorkflowSignal is the name of a workflow signal.
 )
 
-// Supporting functions for WebhookEvent and WorkflowSignal
+// Supporting functions for WebhookEvent and WorkflowSignal.
 
 func (e WebhookEvent) String() string   { return string(e) }
 func (s WorkflowSignal) String() string { return string(s) }
@@ -77,7 +77,15 @@ const (
 	CompleteInstallationSignal WorkflowSignal = "complete_installation"
 )
 
-// Payloads for Webhooks Events
+// Workflow Response Types.
+type (
+	WorkflowRunResponse struct {
+		ID    string `json:"id"`
+		RunID string `json:"run_id"`
+	}
+)
+
+// Payloads for Webhooks Events.
 type (
 	AppAuthorizationEventPayload struct {
 		Action string `json:"action"`
@@ -131,7 +139,7 @@ type (
 	}
 )
 
-// embedded types
+// Github embedded types.
 type (
 	Pusher struct {
 		Name  string `json:"name"`
@@ -280,7 +288,7 @@ type (
 		RepositoryProjects string `json:"repository_projects"`
 	}
 
-	// Milestone contains GitHub's milestone information
+	// Milestone contains GitHub's milestone information.
 	Milestone struct {
 		URL          string    `json:"url"`
 		HTMLUrl      string    `json:"html_url"`

@@ -42,7 +42,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, exe.GetRunID())
 }
 
-// handles GitHub push event
+// handles GitHub push event.
 func handlePushEvent(ctx echo.Context) error {
 	payload := PushEventPayload{}
 	if err := ctx.Bind(&payload); err != nil {

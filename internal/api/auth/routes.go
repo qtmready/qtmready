@@ -30,6 +30,16 @@ type (
 	APIKeyRoutes struct{}
 )
 
+// @Summary     Registers a new user.
+// @Description Registers a new user.
+// @Tags        auth
+// @Accept      json
+// @Produce     json
+// @Param       body body     RegistrationRequest true "RegistrationRequest"
+// @Success     201  {object} RegistrationResponse
+// @Failure     400  {object} echo.HTTPError
+// @Router      /auth/register [post]
+//
 // register is a handler for /auth/register endpoint.
 func (routes *Routes) register(ctx echo.Context) error {
 	request := &RegistrationRequest{}
@@ -72,7 +82,18 @@ func (routes *Routes) register(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &RegistrationResponse{Team: team, User: user})
 }
 
-// login is a handler for /auth/login endpoint.
+// @Summary     Get short lived JWT token along with a refresh token.
+// @Description Get short lived JWT token along with a refresh token.
+// @Tags        auth
+// @Accept      json
+// @Produce     json
+// @Param       body body     LoginRequest true "LoginRequest"
+// @Success     200  {object} TokenResponse
+// @Failure     400  {object} echo.HTTPError
+// @Failure     401  {object} echo.HTTPError
+// @Router      /auth/login [post]
+//
+// login gets a short lived JWT token along with a refresh token.
 func (routes *Routes) login(ctx echo.Context) error {
 	request := &LoginRequest{}
 
@@ -101,7 +122,18 @@ func (routes *Routes) login(ctx echo.Context) error {
 	return echo.NewHTTPError(http.StatusUnauthorized, "invalid credentials")
 }
 
-// create a new API Key for team.
+// @Summary     Create a new API Key for team.
+// @Description Create a new API Key for team.
+// @Tags        auth
+// @Accept      json
+// @Produce     json
+// @Param       body body     CreateAPIKeyRequest true "CreateAPIKeyRequest"
+// @Success     201  {object} CreateAPIKeyResponse
+// @Failure     400  {object} echo.HTTPError
+// @Failure     401  {object} echo.HTTPError
+// @Router      /auth/api-keys/team [post]
+//
+// team creates a new API Key for team.
 func (routes *APIKeyRoutes) team(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 	if err := ctx.Bind(request); err != nil {
@@ -123,7 +155,18 @@ func (routes *APIKeyRoutes) team(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: key})
 }
 
-// create a new API Key for user.
+// @Summary     Create a new API Key for user.
+// @Description Create a new API Key for user.
+// @Tags        auth
+// @Accept      json
+// @Produce     json
+// @Param       body body     CreateAPIKeyRequest true "CreateAPIKeyRequest"
+// @Success     201  {object} CreateAPIKeyResponse
+// @Failure     400  {object} echo.HTTPError
+// @Failure     401  {object} echo.HTTPError
+// @Router      /auth/api-keys/user [post]
+//
+// user creates a new API Key for user.
 func (routes *APIKeyRoutes) user(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 	if err := ctx.Bind(request); err != nil {
@@ -145,7 +188,16 @@ func (routes *APIKeyRoutes) user(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: key})
 }
 
+// @Summary     Parses the header and validates the API Key.
+// @Description Parses the header and validates the API Key.
+// @Tags        auth
+// @Accept      json
+// @Produce     json
+// @Failure     400 {object} echo.HTTPError
+// @Failure     401 {object} echo.HTTPError
+// @Router      /auth/api-keys/validate [get]
+//
 // validate an API Key.
 func (routes *APIKeyRoutes) validate(ctx echo.Context) error {
-	return ctx.JSON(http.StatusOK, &struct{ verfied bool }{verfied: true})
+	return ctx.JSON(http.StatusOK, &ValidateAPIKeyResponse{IsValid: true})
 }

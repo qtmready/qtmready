@@ -10,7 +10,9 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	es "github.com/swaggo/echo-swagger"
 
+	"go.breu.io/ctrlplane/cmd/api/docs"
 	"go.breu.io/ctrlplane/internal/api/auth"
 	"go.breu.io/ctrlplane/internal/api/core"
 	"go.breu.io/ctrlplane/internal/db"
@@ -76,28 +78,34 @@ func init() {
 func main() {
 	// graceful shutdown. see https://stackoverflow.com/a/46255965/228697.
 	exitcode := 0
-	defer func() { os.Exit(exitcode) }()
+	defer func() { os.Exit(exitcode) }()              // all connections are closed, exit with the right code
 	defer func() { _ = shared.Logger.Sync() }()       // flush log buffer
 	defer func() { _ = shared.EventStream.Drain() }() // process events in the buffer before closing connection
 	defer db.DB.Session.Close()
 	defer shared.Temporal.Client.Close()
 
+	// docs
+	docs.SwaggerInfo.Title = shared.Service.Name
+	docs.SwaggerInfo.Version = shared.Service.Version()
+
+	// web server based on echo
 	e := echo.New()
-
-	e.Validator = &EchoValidator{validator: shared.Validate}
-
 	e.Use(middleware.CORS())
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Validator = &EchoValidator{validator: shared.Validate}
 
-	// A Mix of public & authenticated routes
+	// Public endpoints
+	e.GET("/docs/*", es.WrapHandler)
 	e.GET("/healthcheck", healthcheck)
+	// Auth endpoints
 	auth.CreateRoutes(e.Group("/auth"))
+
+	// endpoints for 3rd party providers
 	providers.CreateRoutes(e.Group("/providers"), auth.Middleware)
 
-	// Private routes
-	protected := e.Group("")
-	protected.Use(auth.Middleware)
+	// core api endpoints
+	protected := e.Group("", auth.Middleware)
 	core.CreateRoutes(protected)
 
 	if err := e.Start(":8000"); err != nil {
@@ -106,7 +114,23 @@ func main() {
 	}
 }
 
-// healthcheck checks if the system is working properly.
+type (
+	HealthCheckResponse struct {
+		Msg string `json:"msg"`
+	}
+)
+
+// healthcheck is the health check endpoint.
+// @Summary     Checks if the API working properly and all external connections are fine
+// @Description Quick health check
+// @Tags        healthcheck
+// @Accept      json
+// @Produce     json
+// @Success     201 {object} HealthCheckResponse
+// @Failure     400 {object} echo.HTTPError
+// @Router      /healthcheck [get]
 //
 // TODO: make sure that connection to all services it needs to connect to is working properly.
-func healthcheck(ctx echo.Context) error { return ctx.String(http.StatusOK, "OK") }
+func healthcheck(ctx echo.Context) error {
+	return ctx.Bind(&HealthCheckResponse{Msg: "OK"})
+}

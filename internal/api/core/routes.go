@@ -12,23 +12,57 @@ import (
 	"go.breu.io/ctrlplane/internal/entities"
 )
 
-// CreateRoutes creates the routes for the app
+// CreateRoutes creates the routes for the app.
 func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
-	apps := &Routes{}
-	g.POST("/apps", apps.Create)
-	g.GET("/apps", apps.List)
-	g.GET("/apps/:slug", apps.Get)
+	apps := &AppRoutes{}
+	g.POST("/apps", apps.create)
+	g.GET("/apps", apps.list)
+	g.GET("/apps/:slug", apps.get)
 
-	g.POST("/apps/:slug/repos", apps.CreateAppRepo)
-	g.GET("/apps/:slug/repos", apps.GetAppRepos)
+	repos := &AppRepoRoutes{}
+
+	g.POST("/apps/:slug/repos", repos.create)
+	g.GET("/apps/:slug/repos", repos.list)
 }
 
 type (
-	Routes struct{}
+	AppRoutes     struct{}
+	AppRepoRoutes struct{}
 )
 
-// Create creates a new app
-func (routes *Routes) Create(ctx echo.Context) error {
+// @Summary     List all apps for a team.
+// @Description List all apps for a team.
+// @Tags        core
+// @Accept      json
+// @Produce     json
+// @Success     200 {array}  entities.App
+// @Failure     400 {object} echo.HTTPError
+// @Router      /apps [get]
+//
+// list all apps associated with the team.
+func (routes *AppRoutes) list(ctx echo.Context) error {
+	result := make([]entities.App, 0)
+	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
+
+	if err := db.Filter(&entities.App{}, &result, params); err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusOK, result)
+}
+
+// @Summary     Create a new app.
+// @Description Create a new app.
+// @Tags        core
+// @Accept      json
+// @Produce     json
+// @Param       body body     AppCreateRequest true "AppCreateRequest"
+// @Success     201  {object} entities.App
+// @Failure     400  {object} echo.HTTPError
+// @Router      /apps [post]
+//
+// create a new app.
+func (routes *AppRoutes) create(ctx echo.Context) error {
 	request := &AppCreateRequest{}
 	if err := ctx.Bind(request); err != nil {
 		return err
@@ -44,8 +78,18 @@ func (routes *Routes) Create(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, app)
 }
 
-// Get gets an app by slug
-func (routes *Routes) Get(ctx echo.Context) error {
+// @Summary     Get an app by slug.
+// @Description Get an app by slug.
+// @Tags        core
+// @Accept      json
+// @Produce     json
+// @Param       slug path     string true "App slug"
+// @Success     200  {object} entities.App
+// @Failure     400  {object} echo.HTTPError
+// @Router      /apps/{slug} [get]
+//
+// get an app by slug.
+func (routes *AppRoutes) get(ctx echo.Context) error {
 	app := &entities.App{}
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'"}
 
@@ -56,20 +100,18 @@ func (routes *Routes) Get(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, app)
 }
 
-// List lists all apps associated with the team
-func (routes *Routes) List(ctx echo.Context) error {
-	result := make([]entities.App, 0)
-	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
-
-	if err := db.Filter(&entities.App{}, &result, params); err != nil {
-		return err
-	}
-
-	return ctx.JSON(http.StatusOK, result)
-}
-
-// GetAppRepos gets an app repos by slug
-func (routes *Routes) GetAppRepos(ctx echo.Context) error {
+// @Summary     List all repos given an app.
+// @Description List all repos given an app.
+// @Tags        core
+// @Accept      json
+// @Produce     json
+// @Param       slug path     string true "App slug"
+// @Success     200  {array}  entities.Repo
+// @Failure     400  {object} echo.HTTPError
+// @Router      /apps/{slug}/repos [get]
+//
+// list all repos associated with an app.
+func (routes *AppRepoRoutes) list(ctx echo.Context) error {
 	result := make([]entities.Repo, 0)
 	app := &entities.App{}
 
@@ -86,8 +128,19 @@ func (routes *Routes) GetAppRepos(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, result)
 }
 
-// CreateAppRepo creates a new app repo
-func (routes *Routes) CreateAppRepo(ctx echo.Context) error {
+// @Summary     Create a new repo for an app.
+// @Description Create a new repo for an app.
+// @Tags        core
+// @Accept      json
+// @Produce     json
+// @Param       slug path     string               true "App slug"
+// @Param       body body     AppRepoCreateRequest true "AppRepoCreateRequest"
+// @Success     201  {object} entities.Repo
+// @Failure     400  {object} echo.HTTPError
+// @Router      /apps/{slug}/repos [post]
+//
+// create a new repo for an app.
+func (routes *AppRepoRoutes) create(ctx echo.Context) error {
 	request := &AppRepoCreateRequest{}
 	if err := ctx.Bind(request); err != nil {
 		return err
@@ -108,7 +161,8 @@ func (routes *Routes) CreateAppRepo(ctx echo.Context) error {
 	}
 }
 
-func (routes *Routes) github(ctx echo.Context, request *AppRepoCreateRequest, app *entities.App) error {
+// github creates associates an app with a github repo.
+func (routes *AppRepoRoutes) github(ctx echo.Context, request *AppRepoCreateRequest, app *entities.App) error {
 	if err := db.Get(&entities.GithubRepo{}, db.QueryParams{"id": request.RepoID.String()}); err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "repo not found")
 	}
