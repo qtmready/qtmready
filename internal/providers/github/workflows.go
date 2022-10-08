@@ -24,7 +24,7 @@ type (
 // request before the push event. To handle this, we use temporal.io signal API to provide two possible entry points
 // for the system. See the README.md for a detailed explanation on how this workflow works.
 //
-// NOTE: This workflow is only meant to be started with `SignalWithStartWorkflow`
+// NOTE: This workflow is only meant to be started with `SignalWithStartWorkflow`.
 func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	// prelude
 	log := workflow.GetLogger(ctx)

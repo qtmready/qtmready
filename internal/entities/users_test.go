@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package entities
 
@@ -18,12 +18,12 @@ func TestUser(t *testing.T) {
 	_ = user.PreCreate()
 
 	preCreateTests := shared.TestFnMap{
-		"SetPassword":    shared.TestFn{Args: user, Want: nil, Fn: testUserSetPassword},
-		"VerifyPassword": shared.TestFn{Args: user, Want: nil, Fn: testUserVerifyPassword},
+		"SetPassword":    shared.TestFn{Args: user, Want: nil, Run: testUserSetPassword},
+		"VerifyPassword": shared.TestFn{Args: user, Want: nil, Run: testUserVerifyPassword},
 	}
 
-	t.Run("GetTable", testTableName("users", user))
-	t.Run("PreCreate", testPreCreate(user, preCreateTests))
+	t.Run("GetTable", testEntityGetTable("users", user))
+	t.Run("PreCreate", testEntityPreCreate(user, preCreateTests))
 }
 
 func testUserSetPassword(args interface{}, want interface{}) func(*testing.T) {

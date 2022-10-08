@@ -16,7 +16,7 @@ type (
 	Activities struct{}
 )
 
-// CreateOrUpdateInstallation creates or update the entities.GithubInstallation
+// CreateOrUpdateInstallation creates or update the entities.GithubInstallation.
 func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *entities.GithubInstallation) (*entities.GithubInstallation, error) {
 	log := activity.GetLogger(ctx)
 	installation, err := a.GetInstallation(ctx, payload.InstallationID)
@@ -42,7 +42,7 @@ func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *en
 	return installation, nil
 }
 
-// CreateOrUpdateRepo creates a single row for entities.GithubRepo
+// CreateOrUpdateRepo creates a single row for entities.GithubRepo.
 func (a *Activities) CreateOrUpdateRepo(ctx context.Context, payload *entities.GithubRepo) error {
 	log := activity.GetLogger(ctx)
 	repo, err := a.GetRepo(ctx, payload)
@@ -62,7 +62,7 @@ func (a *Activities) CreateOrUpdateRepo(ctx context.Context, payload *entities.G
 	return nil
 }
 
-// GetRepo gets entities.GithubRepo against given entities.GithubRepo
+// GetRepo gets entities.GithubRepo against given entities.GithubRepo.
 func (a *Activities) GetRepo(ctx context.Context, payload *entities.GithubRepo) (*entities.GithubRepo, error) {
 	repo := &entities.GithubRepo{}
 	params := db.QueryParams{
@@ -79,7 +79,7 @@ func (a *Activities) GetRepo(ctx context.Context, payload *entities.GithubRepo) 
 	return repo, nil
 }
 
-// GetInstallation gets entities.GithubInstallation against given installation_id
+// GetInstallation gets entities.GithubInstallation against given installation_id.
 func (a *Activities) GetInstallation(ctx context.Context, id int64) (*entities.GithubInstallation, error) {
 	installation := &entities.GithubInstallation{}
 

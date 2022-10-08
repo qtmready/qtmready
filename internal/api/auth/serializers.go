@@ -51,4 +51,8 @@ type (
 	CreateAPIKeyResponse struct {
 		Key string `json:"key"`
 	}
+
+	ValidateAPIKeyResponse struct {
+		IsValid bool `json:"is_valid"`
+	}
 )

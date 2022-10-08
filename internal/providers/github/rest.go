@@ -60,6 +60,17 @@ func webhook(ctx echo.Context) error {
 	return ctx.JSON(http.StatusBadRequest, ErrInvalidEvent)
 }
 
+// @Summary     Completes the installation of a GitHub app.
+// @Description Completes the installation of a GitHub app.
+// @Tags        providers, github
+// @Accept      json
+// @Produce     json
+// @Param       body body     CompleteInstallationRequest true "CompleteInstallationRequest"
+// @Success     200  {object} WorkflowRunResponse
+// @Failure     400  {object} echo.HTTPError
+// @Router      /provders/github/complete-installation [post]
+//
+// completeInstallation completes the installation of a GitHub app.
 func completeInstallation(ctx echo.Context) error {
 	request := &CompleteInstallationRequest{}
 	if err := ctx.Bind(request); err != nil {
@@ -69,7 +80,6 @@ func completeInstallation(ctx echo.Context) error {
 	teamID, err := gocql.ParseUUID(ctx.Get("team_id").(string))
 
 	if err != nil {
-		shared.Logger.Error("error parsing team id", "error", err)
 		return err
 	}
 
@@ -95,9 +105,19 @@ func completeInstallation(ctx echo.Context) error {
 		return err
 	}
 
-	return ctx.JSON(http.StatusOK, run.GetRunID())
+	return ctx.JSON(http.StatusOK, &WorkflowRunResponse{ID: run.GetID(), RunID: run.GetRunID()})
 }
 
+// @Summary     Get GitHub repositories.
+// @Description Get GitHub repositories.
+// @Tags        providers, github
+// @Accept      json
+// @Produce     json
+// @Success     200 {array}  entities.GithubRepo
+// @Failure     400 {object} echo.HTTPError
+// @Router      /provders/github/repos [get]
+//
+// repos get all the github repos for a team.
 func repos(ctx echo.Context) error {
 	result := make([]entities.GithubRepo, 0)
 	if err := db.Filter(
