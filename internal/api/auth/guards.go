@@ -58,7 +58,7 @@ func GenerateAccessToken(userID, teamID string) (string, error) {
 
 // GenerateRefreshToken generates a long lived JWT token for the given user.
 //
-// TODO: this is not implemented yet.
+// TODO: Implement the logic for refreshing tokens using the refresh token.
 func GenerateRefreshToken(userID, teamID string) (string, error) {
 	expires := time.Now().Add(time.Minute * 60).Unix()
 	if shared.Service.Debug {
@@ -82,27 +82,29 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 		// get the authorization header
 		header := ctx.Request().Header.Get("Authorization")
 		if header == "" {
-			return echo.NewHTTPError(http.StatusUnauthorized, ErrMissingAuthHeader.Error())
+			return echo.NewHTTPError(http.StatusUnauthorized, ErrMissingAuthHeader)
 		}
 
 		// split the header at the space to get the scheme and token
 		fields := strings.Split(header, " ")
 		if len(fields) != 2 {
-			return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidAuthHeader.Error())
+			return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidAuthHeader)
 		}
 
 		// apply the correct validation function based on the scheme
-		switch fields[0] {
+		schema, secret := fields[0], fields[1]
+
+		switch schema {
 		case JwtPrefix:
-			if err := validateToken(ctx, fields[1]); err != nil {
-				return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
+			if err := validateToken(ctx, secret); err != nil {
+				return echo.NewHTTPError(http.StatusUnauthorized, err)
 			}
 		case APIKeyPrefix:
-			if err := validateKey(ctx, fields[1]); err != nil {
-				return echo.NewHTTPError(http.StatusUnauthorized, err.Error())
+			if err := validateKey(ctx, secret); err != nil {
+				return echo.NewHTTPError(http.StatusUnauthorized, err)
 			}
 		default:
-			return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidAuthHeader.Error())
+			return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidAuthHeader)
 		}
 
 		return next(ctx)

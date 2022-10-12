@@ -13,8 +13,6 @@ import (
 	"github.com/jxskiss/base62"
 	"github.com/scylladb/gocqlx/v2/table"
 	"golang.org/x/crypto/bcrypt"
-
-	"go.breu.io/ctrlplane/internal/db"
 )
 
 var (
@@ -87,7 +85,10 @@ func (g *Guard) SetHashed(token string) {
 	g.Hashed = string(t)
 }
 
-func (g *Guard) VerifyHashed(token string) bool {
+// VerifyToken verifies the given api key against the hashed value.
+//
+// TODO: lookup the relevant parent entity (user or team) first to check if it exists.
+func (g *Guard) VerifyToken(token string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(g.Hashed), []byte(token)) == nil
 }
 
@@ -102,51 +103,61 @@ func (g *Guard) ConstructAPIKey() (string, string) {
 }
 
 // VerifyAPIKey verifies the API key against the database.
+//
+// FIXME: fix the lookup, this requires mocking gocqlx.
 func (g *Guard) VerifyAPIKey(key string) (bool, error) {
-	parts := strings.Split(key, ".")
-	if len(parts) != 2 {
-		return false, errors.New("invalid api key")
-	}
-
-	prefix := parts[0]
-	hashed := parts[1]
-	id, err := g.PrefixToID(prefix)
-
+	_, token, err := g.SplitAPIKey(key)
 	if err != nil {
 		return false, err
 	}
 
-	if err := db.Get(g, db.QueryParams{"lookup_id": id.String()}); err != nil {
-		return false, err
+	// id, err := g.PrefixToID(prefix)
+	// if err != nil {
+	// 	return false, err
+	// }
+
+	// if err := db.Get(g, db.QueryParams{"lookup_id": id.String()}); err != nil {
+	// 	return false, err
+	// }
+
+	return g.VerifyToken(token), nil
+}
+
+func (g *Guard) SplitAPIKey(key string) (string, string, error) {
+	parts := strings.Split(key, ".")
+	if len(parts) != 2 {
+		return "", "", errors.New("invalid api key")
 	}
 
-	return g.VerifyHashed(hashed), nil
+	prefix := parts[0]
+	token := parts[1]
+
+	return prefix, token, nil
 }
 
 // NewForUser creates a new API key for the given user.
 //
 // NOTE: The Guard.PreCreate() function hashes the plain text value.
-func (g *Guard) NewForUser(name string, id gocql.UUID) (string, error) {
+func (g *Guard) NewForUser(name string, id gocql.UUID) string {
 	g.Name = name
 	g.LookupID = id
 	g.LookupType = "user"
 	plaintext, key := g.ConstructAPIKey()
 	g.Hashed = plaintext
 
-	return key, db.Save(g)
+	return key
 }
 
 // NewForTeam creates a new API key for the given team.
 //
 // NOTE: One team can have only one API Key.
-//
 // TODO: Implement unique constraint on lookup_id for team.
-func (g *Guard) NewForTeam(id gocql.UUID) (string, error) {
+func (g *Guard) NewForTeam(id gocql.UUID) string {
 	g.Name = "default"
 	g.LookupID = id
 	g.LookupType = "team"
 	hashed, key := g.ConstructAPIKey()
 	g.Hashed = hashed
 
-	return key, db.Save(g)
+	return key
 }

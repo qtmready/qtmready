@@ -76,7 +76,8 @@ func init() {
 }
 
 func main() {
-	// graceful shutdown. see https://stackoverflow.com/a/46255965/228697.
+	// graceful shutdown.
+	// LINK: https://stackoverflow.com/a/46255965/228697.
 	exitcode := 0
 	defer func() { os.Exit(exitcode) }()              // all connections are closed, exit with the right code
 	defer func() { _ = shared.Logger.Sync() }()       // flush log buffer
@@ -121,7 +122,8 @@ type (
 )
 
 // healthcheck is the health check endpoint.
-// @Summary     Checks if the API working properly and all external connections are fine
+//
+// @Summary     Checks if connection to all external services are working fine.
 // @Description Quick health check
 // @Tags        healthcheck
 // @Accept      json

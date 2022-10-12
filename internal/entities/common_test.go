@@ -1,6 +1,6 @@
 // Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
-package entities
+package entities_test
 
 import (
 	"testing"
@@ -17,7 +17,7 @@ func testEntityGetTable(expect string, entity db.Entity) func(*testing.T) {
 	}
 }
 
-func testEntityPreCreate(entity db.Entity, tests shared.TestFnMap) func(*testing.T) {
+func testEntityOps(entity db.Entity, tests shared.TestFnMap) func(*testing.T) {
 	return func(t *testing.T) {
 		for name, test := range tests {
 			t.Run(name, test.Run(test.Args, test.Want))

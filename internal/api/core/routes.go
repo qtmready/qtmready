@@ -3,6 +3,7 @@
 package core
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/gocql/gocql"
@@ -10,6 +11,11 @@ import (
 
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/entities"
+)
+
+var (
+	ErrNotFound            = errors.New("not found")
+	ErrUnsupportedProvider = errors.New("unsupported provider")
 )
 
 // CreateRoutes creates the routes for the app.
@@ -72,7 +78,7 @@ func (routes *AppRoutes) create(ctx echo.Context) error {
 	app := &entities.App{Name: request.Name, TeamID: teamID}
 
 	if err := db.Save(app); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
 	return ctx.JSON(http.StatusCreated, app)
@@ -94,7 +100,7 @@ func (routes *AppRoutes) get(ctx echo.Context) error {
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'"}
 
 	if err := db.Get(app, params); err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, "not found")
+		return echo.NewHTTPError(http.StatusNotFound, ErrNotFound)
 	}
 
 	return ctx.JSON(http.StatusOK, app)
@@ -117,7 +123,7 @@ func (routes *AppRepoRoutes) list(ctx echo.Context) error {
 
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
 	if err := db.Get(app, params); err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, "app not found")
+		return echo.NewHTTPError(http.StatusNotFound, ErrNotFound)
 	}
 
 	params = db.QueryParams{"app_id": app.ID.String()}
@@ -150,21 +156,21 @@ func (routes *AppRepoRoutes) create(ctx echo.Context) error {
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
 
 	if err := db.Get(app, params); err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, "not found")
+		return echo.NewHTTPError(http.StatusNotFound, ErrNotFound)
 	}
 
 	switch request.Provider {
 	case "github":
 		return routes.github(ctx, request, app)
 	default:
-		return echo.NewHTTPError(http.StatusInternalServerError, "unsupported git provider")
+		return echo.NewHTTPError(http.StatusInternalServerError, ErrUnsupportedProvider)
 	}
 }
 
 // github creates associates an app with a github repo.
 func (routes *AppRepoRoutes) github(ctx echo.Context, request *AppRepoCreateRequest, app *entities.App) error {
 	if err := db.Get(&entities.GithubRepo{}, db.QueryParams{"id": request.RepoID.String()}); err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, "repo not found")
+		return echo.NewHTTPError(http.StatusNotFound, ErrNotFound)
 	}
 
 	repo := &entities.Repo{
@@ -176,7 +182,7 @@ func (routes *AppRepoRoutes) github(ctx echo.Context, request *AppRepoCreateRequ
 	}
 
 	if err := db.Save(repo); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
 	return ctx.JSON(http.StatusCreated, repo)

@@ -1,33 +1,34 @@
 // Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
-package entities
+package entities_test
 
 import (
 	"testing"
 
+	"go.breu.io/ctrlplane/internal/entities"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
 var (
-	testPassword string
+	password string
 )
 
 func TestUser(t *testing.T) {
-	testPassword = "password"
-	user := &User{Password: testPassword}
+	password = "password"
+	user := &entities.User{Password: password}
 	_ = user.PreCreate()
 
-	preCreateTests := shared.TestFnMap{
+	opsTests := shared.TestFnMap{
 		"SetPassword":    shared.TestFn{Args: user, Want: nil, Run: testUserSetPassword},
 		"VerifyPassword": shared.TestFn{Args: user, Want: nil, Run: testUserVerifyPassword},
 	}
 
 	t.Run("GetTable", testEntityGetTable("users", user))
-	t.Run("PreCreate", testEntityPreCreate(user, preCreateTests))
+	t.Run("EntityOps", testEntityOps(user, opsTests))
 }
 
 func testUserSetPassword(args interface{}, want interface{}) func(*testing.T) {
-	user := args.(*User)
+	user := args.(*entities.User)
 
 	return func(t *testing.T) {
 		if user.Password == "password" {
@@ -37,10 +38,10 @@ func testUserSetPassword(args interface{}, want interface{}) func(*testing.T) {
 }
 
 func testUserVerifyPassword(args interface{}, want interface{}) func(*testing.T) {
-	v := args.(*User)
+	v := args.(*entities.User)
 
 	return func(t *testing.T) {
-		if !v.VerifyPassword(testPassword) {
+		if !v.VerifyPassword(password) {
 			t.Errorf("expected password to be verified")
 		}
 	}

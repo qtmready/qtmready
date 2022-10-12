@@ -146,9 +146,9 @@ func (routes *APIKeyRoutes) team(ctx echo.Context) error {
 
 	id, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
 	guard := &entities.Guard{}
-	key, err := guard.NewForTeam(id)
+	key := guard.NewForTeam(id)
 
-	if err != nil {
+	if err := db.Save(guard); err != nil {
 		return err
 	}
 
@@ -179,9 +179,9 @@ func (routes *APIKeyRoutes) user(ctx echo.Context) error {
 
 	id, _ := gocql.ParseUUID(ctx.Get("user_id").(string))
 	guard := &entities.Guard{}
-	key, err := guard.NewForUser(request.Name, id)
+	key := guard.NewForUser(request.Name, id)
 
-	if err != nil {
+	if err := db.Save(guard); err != nil {
 		return err
 	}
 
