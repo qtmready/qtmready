@@ -21,7 +21,7 @@ type (
 //
 // In an ideal world, the complete installation request would hit the API after the installation event has hit the
 // webhook, however, there can be number of things that can go wrong, and we can receive the complete installation
-// request before the push event. To handle this, we use temporal.io signal API to provide two possible entry points
+// request before the push event. To handle this, we use temporal's signal API to provide two possible entry points
 // for the system. See the README.md for a detailed explanation on how this workflow works.
 //
 // NOTE: This workflow is only meant to be started with `SignalWithStartWorkflow`.

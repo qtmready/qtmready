@@ -105,20 +105,27 @@ func (g *Guard) ConstructAPIKey() (string, string) {
 // VerifyAPIKey verifies the API key against the database.
 //
 // FIXME: fix the lookup, this requires mocking gocqlx.
+//
+// TODO: implement the database loookup against lookup_id.
+//
+// TODO: implement the cache so that we don't have to hit the database every time. Possible implementation of good
+// key value implementation of LevelDB are:
+//   - https://github.com/etcd-io/bbolt
+//   - https://github.com/dgraph-io/badger
 func (g *Guard) VerifyAPIKey(key string) (bool, error) {
-	_, token, err := g.SplitAPIKey(key)
+	prefix, token, err := g.SplitAPIKey(key)
 	if err != nil {
 		return false, err
 	}
 
-	// id, err := g.PrefixToID(prefix)
-	// if err != nil {
-	// 	return false, err
-	// }
+	id, err := g.PrefixToID(prefix)
+	if err != nil {
+		return false, err
+	}
 
-	// if err := db.Get(g, db.QueryParams{"lookup_id": id.String()}); err != nil {
-	// 	return false, err
-	// }
+	if id != g.LookupID {
+		return false, nil
+	}
 
 	return g.VerifyToken(token), nil
 }

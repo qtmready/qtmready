@@ -57,7 +57,7 @@ func initRun(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Println("Selecting Sensible default for ...", cloud, name)
+	fmt.Println("Selecting sensible defaults for ...", cloud, name)
 	fmt.Println("Initializing ...", cwd)
 }
 
