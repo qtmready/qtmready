@@ -10,7 +10,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	es "github.com/swaggo/echo-swagger"
+	swagger "github.com/swaggo/echo-swagger"
 
 	"go.breu.io/ctrlplane/cmd/api/docs"
 	"go.breu.io/ctrlplane/internal/api/auth"
@@ -97,7 +97,7 @@ func main() {
 	e.Validator = &EchoValidator{validator: shared.Validate}
 
 	// Public endpoints
-	e.GET("/docs/*", es.WrapHandler)
+	e.GET("/docs/*", swagger.WrapHandler)
 	e.GET("/healthcheck", healthcheck)
 	// Auth endpoints
 	auth.CreateRoutes(e.Group("/auth"))

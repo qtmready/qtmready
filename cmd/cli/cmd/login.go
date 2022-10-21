@@ -14,10 +14,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"go.breu.io/ctrlplane/internal/api/auth"
-)
-
-const (
-	BaseURL = "http://localhost:8000" // TODO: use a better way to do this
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 var (
@@ -88,7 +85,7 @@ func doLogin(email string, password string) (*auth.TokenResponse, error) {
 	token := &auth.TokenResponse{}
 
 	marshalled, _ := json.Marshal(data)
-	request, _ := http.NewRequest("POST", BaseURL+"/auth/login", bytes.NewBuffer(marshalled))
+	request, _ := http.NewRequest("POST", shared.Service.CLI.BaseURL+"/auth/login", bytes.NewBuffer(marshalled))
 	request.Header.Set("User-Agent", "ctrlplane-cli/0.0.1")
 	request.Header.Set("Content-Type", "application/json")
 

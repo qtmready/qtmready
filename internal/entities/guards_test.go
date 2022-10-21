@@ -25,14 +25,18 @@ func TestTeamGuard(t *testing.T) {
 	guard := &entities.Guard{}
 	key := guard.NewForTeam(id)
 	_ = guard.PreCreate()
-	prefix, token, _ := guard.SplitAPIKey(key)
+	prefix, token, err := guard.SplitAPIKey(key)
+
+	if err != nil {
+		t.Errorf("unable to split api key")
+	}
+
 	args := &GuardWithKey{Key: key, Prefix: prefix, Token: token, Guard: guard}
 
 	opsTest := shared.TestFnMap{
 		"TokenEncryption": shared.TestFn{Args: args, Want: nil, Run: testTokenEncryption},
 		"PrefixToID":      shared.TestFn{Args: args, Want: nil, Run: testPrefixToID},
 		"VerifyToken":     shared.TestFn{Args: args, Want: nil, Run: testVerifyToken},
-		"VerifyAPIKey":    shared.TestFn{Args: args, Want: nil, Run: testVerifyAPIKey},
 		"TestGuardName":   shared.TestFn{Args: args, Want: nil, Run: testTeamGuardName},
 	}
 
@@ -46,14 +50,18 @@ func TestUserGuard(t *testing.T) {
 	guard := &entities.Guard{}
 	key := guard.NewForUser("test", id)
 	_ = guard.PreCreate()
-	prefix, token, _ := guard.SplitAPIKey(key)
+	prefix, token, err := guard.SplitAPIKey(key)
+
+	if err != nil {
+		t.Errorf("unable to split api key")
+	}
+
 	args := &GuardWithKey{Key: key, Prefix: prefix, Token: token, Guard: guard}
 
 	opsTest := shared.TestFnMap{
 		"TokenEncryption": shared.TestFn{Args: args, Want: nil, Run: testTokenEncryption},
 		"PrefixToID":      shared.TestFn{Args: args, Want: nil, Run: testPrefixToID},
 		"VerifyToken":     shared.TestFn{Args: args, Want: nil, Run: testVerifyToken},
-		"VerifyAPIKey":    shared.TestFn{Args: args, Want: nil, Run: testVerifyAPIKey},
 		"TestGuardName":   shared.TestFn{Args: args, Want: nil, Run: testUserGuardName},
 	}
 
@@ -73,9 +81,13 @@ func testTokenEncryption(args interface{}, want interface{}) func(*testing.T) {
 
 func testPrefixToID(args interface{}, want interface{}) func(*testing.T) {
 	guard := args.(*GuardWithKey)
-	id, _ := guard.Guard.PrefixToID(guard.Prefix)
+	id, err := guard.Guard.DecodeUUID(guard.Prefix)
 
 	return func(t *testing.T) {
+		if err != nil {
+			t.Errorf("unable to decode prefix to uuid")
+		}
+
 		if id.String() != guard.Guard.LookupID.String() {
 			t.Errorf("prefix mismatch when verifying")
 		}
@@ -88,17 +100,6 @@ func testVerifyToken(args interface{}, want interface{}) func(*testing.T) {
 	return func(t *testing.T) {
 		if !guard.Guard.VerifyToken(guard.Token) {
 			t.Errorf("unable to verify token")
-		}
-	}
-}
-
-func testVerifyAPIKey(args interface{}, want interface{}) func(*testing.T) {
-	guard := args.(*GuardWithKey)
-
-	return func(t *testing.T) {
-		v, _ := guard.Guard.VerifyAPIKey(guard.Key)
-		if !v {
-			t.Errorf("unable to verify APIKey")
 		}
 	}
 }

@@ -51,15 +51,13 @@ func (g *Guard) GetTable() *table.Table { return guardTable }
 func (g *Guard) PreCreate() error       { g.SetHashed(g.Hashed); return nil }
 func (g *Guard) PreUpdate() error       { return nil }
 
-// CreatePrefix converts the UUID to a base62 string and use it as the prefix.
-func (g *Guard) CreatePrefix() string {
-	return base62.EncodeToString(g.LookupID[:])
+// EncodeUUID converts the UUID to a base62 string and use it as the prefix.
+func (g *Guard) EncodeUUID(id gocql.UUID) string {
+	return base62.EncodeToString(id[:])
 }
 
-// PrefixToID converts the given prefix to a UUID.
-//
-// The UUID is used as the lookup_id for the Guard.
-func (g *Guard) PrefixToID(prefix string) (gocql.UUID, error) {
+// DecodeUUID converts the given prefix to a UUID.
+func (g *Guard) DecodeUUID(prefix string) (gocql.UUID, error) {
 	id := gocql.UUID{}
 	b, err := base62.DecodeString(prefix)
 
@@ -97,7 +95,7 @@ func (g *Guard) VerifyToken(token string) bool {
 // The plaintext is set in Guard.Hashed and the Guard.PreCreate() function hashes it one save.
 func (g *Guard) ConstructAPIKey() (string, string) {
 	plaintext := g.GenerateRandomValue()
-	key := fmt.Sprintf("%s.%s", g.CreatePrefix(), plaintext)
+	key := fmt.Sprintf("%s.%s", g.EncodeUUID(g.LookupID), plaintext)
 
 	return plaintext, key
 }
@@ -110,20 +108,21 @@ func (g *Guard) ConstructAPIKey() (string, string) {
 //
 // TODO: implement the cache so that we don't have to hit the database every time. Possible implementation of good
 // key value implementation of LevelDB are:
+//
 //   - https://github.com/etcd-io/bbolt
 //   - https://github.com/dgraph-io/badger
 func (g *Guard) VerifyAPIKey(key string) (bool, error) {
-	prefix, token, err := g.SplitAPIKey(key)
+	encodedLookupID, token, err := g.SplitAPIKey(key)
 	if err != nil {
 		return false, err
 	}
 
-	id, err := g.PrefixToID(prefix)
+	lookupID, err := g.DecodeUUID(encodedLookupID)
 	if err != nil {
 		return false, err
 	}
 
-	if id != g.LookupID {
+	if lookupID != g.LookupID {
 		return false, nil
 	}
 
