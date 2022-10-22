@@ -12,10 +12,11 @@ import (
 
 type (
 	GuardWithKey struct {
-		Key    string
-		Token  string
-		Prefix string
-		Guard  *entities.Guard
+		Key             string
+		Token           string
+		EncodedID       string
+		EncodedLookupID string
+		Guard           *entities.Guard
 	}
 )
 
@@ -25,19 +26,20 @@ func TestTeamGuard(t *testing.T) {
 	guard := &entities.Guard{}
 	key := guard.NewForTeam(id)
 	_ = guard.PreCreate()
-	prefix, token, err := guard.SplitAPIKey(key)
+	encodedID, encodedLookupID, token, err := guard.SplitAPIKey(key)
 
 	if err != nil {
 		t.Errorf("unable to split api key")
 	}
 
-	args := &GuardWithKey{Key: key, Prefix: prefix, Token: token, Guard: guard}
+	args := &GuardWithKey{Key: key, EncodedID: encodedID, EncodedLookupID: encodedLookupID, Token: token, Guard: guard}
 
 	opsTest := shared.TestFnMap{
 		"TokenEncryption": shared.TestFn{Args: args, Want: nil, Run: testTokenEncryption},
-		"PrefixToID":      shared.TestFn{Args: args, Want: nil, Run: testPrefixToID},
+		"DecodeUUID":      shared.TestFn{Args: args, Want: nil, Run: testDecodeUUID},
 		"VerifyToken":     shared.TestFn{Args: args, Want: nil, Run: testVerifyToken},
 		"TestGuardName":   shared.TestFn{Args: args, Want: nil, Run: testTeamGuardName},
+		"VerifyAPIKey":    shared.TestFn{Args: args, Want: nil, Run: testVerifyAPIKey},
 	}
 
 	t.Run("GetTable", testEntityGetTable("guards", guard))
@@ -50,18 +52,19 @@ func TestUserGuard(t *testing.T) {
 	guard := &entities.Guard{}
 	key := guard.NewForUser("test", id)
 	_ = guard.PreCreate()
-	prefix, token, err := guard.SplitAPIKey(key)
+	encodedID, encodedLookupID, token, err := guard.SplitAPIKey(key)
 
 	if err != nil {
 		t.Errorf("unable to split api key")
 	}
 
-	args := &GuardWithKey{Key: key, Prefix: prefix, Token: token, Guard: guard}
+	args := &GuardWithKey{Key: key, EncodedID: encodedID, EncodedLookupID: encodedLookupID, Token: token, Guard: guard}
 
 	opsTest := shared.TestFnMap{
 		"TokenEncryption": shared.TestFn{Args: args, Want: nil, Run: testTokenEncryption},
-		"PrefixToID":      shared.TestFn{Args: args, Want: nil, Run: testPrefixToID},
+		"DecodeUUID":      shared.TestFn{Args: args, Want: nil, Run: testDecodeUUID},
 		"VerifyToken":     shared.TestFn{Args: args, Want: nil, Run: testVerifyToken},
+		"VerifyAPIKey":    shared.TestFn{Args: args, Want: nil, Run: testVerifyAPIKey},
 		"TestGuardName":   shared.TestFn{Args: args, Want: nil, Run: testUserGuardName},
 	}
 
@@ -79,9 +82,9 @@ func testTokenEncryption(args interface{}, want interface{}) func(*testing.T) {
 	}
 }
 
-func testPrefixToID(args interface{}, want interface{}) func(*testing.T) {
+func testDecodeUUID(args interface{}, want interface{}) func(*testing.T) {
 	guard := args.(*GuardWithKey)
-	id, err := guard.Guard.DecodeUUID(guard.Prefix)
+	id, err := guard.Guard.DecodeUUID(guard.EncodedLookupID)
 
 	return func(t *testing.T) {
 		if err != nil {
@@ -120,6 +123,21 @@ func testUserGuardName(args interface{}, want interface{}) func(*testing.T) {
 	return func(t *testing.T) {
 		if guard.Guard.Name != "test" {
 			t.Errorf("user guard name not setting correctly")
+		}
+	}
+}
+
+func testVerifyAPIKey(args interface{}, want interface{}) func(*testing.T) {
+	guard := args.(*GuardWithKey)
+	valid, err := guard.Guard.VerifyAPIKey(guard.Key)
+
+	return func(t *testing.T) {
+		if err != nil {
+			t.Errorf("unable to verify api key")
+		}
+
+		if !valid {
+			t.Errorf("api key is not valid")
 		}
 	}
 }

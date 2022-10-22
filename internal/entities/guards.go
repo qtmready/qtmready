@@ -12,6 +12,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/jxskiss/base62"
 	"github.com/scylladb/gocqlx/v2/table"
+	"go.breu.io/ctrlplane/internal/db"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -95,7 +96,7 @@ func (g *Guard) VerifyToken(token string) bool {
 // The plaintext is set in Guard.Hashed and the Guard.PreCreate() function hashes it one save.
 func (g *Guard) ConstructAPIKey() (string, string) {
 	plaintext := g.GenerateRandomValue()
-	key := fmt.Sprintf("%s.%s", g.EncodeUUID(g.LookupID), plaintext)
+	key := fmt.Sprintf("%s.%s.%s", g.EncodeUUID(g.ID), g.EncodeUUID(g.LookupID), plaintext)
 
 	return plaintext, key
 }
@@ -112,9 +113,18 @@ func (g *Guard) ConstructAPIKey() (string, string) {
 //   - https://github.com/etcd-io/bbolt
 //   - https://github.com/dgraph-io/badger
 func (g *Guard) VerifyAPIKey(key string) (bool, error) {
-	encodedLookupID, token, err := g.SplitAPIKey(key)
+	encodedID, encodedLookupID, token, err := g.SplitAPIKey(key)
 	if err != nil {
 		return false, err
+	}
+
+	id, err := g.DecodeUUID(encodedID)
+	if err != nil {
+		return false, err
+	}
+
+	if id != g.ID {
+		return false, nil
 	}
 
 	lookupID, err := g.DecodeUUID(encodedLookupID)
@@ -129,16 +139,17 @@ func (g *Guard) VerifyAPIKey(key string) (bool, error) {
 	return g.VerifyToken(token), nil
 }
 
-func (g *Guard) SplitAPIKey(key string) (string, string, error) {
+func (g *Guard) SplitAPIKey(key string) (string, string, string, error) {
 	parts := strings.Split(key, ".")
-	if len(parts) != 2 {
-		return "", "", errors.New("invalid api key")
+	if len(parts) != 3 {
+		return "", "", "", errors.New("invalid api key")
 	}
 
-	prefix := parts[0]
-	token := parts[1]
+	id := parts[0]
+	lookup := parts[1]
+	token := parts[2]
 
-	return prefix, token, nil
+	return id, lookup, token, nil
 }
 
 // NewForUser creates a new API key for the given user.
@@ -166,4 +177,14 @@ func (g *Guard) NewForTeam(id gocql.UUID) string {
 	g.Hashed = hashed
 
 	return key
+}
+
+// GetByEncodedID returns the guard by the given encoded ID.
+func (g *Guard) GetByEncodedID(encodedID string) error {
+	id, err := g.DecodeUUID(encodedID)
+	if err != nil {
+		return err
+	}
+
+	return db.Get(g, db.QueryParams{"id": id.String()})
 }
