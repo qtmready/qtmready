@@ -137,7 +137,7 @@ func validateKey(ctx echo.Context, key string) error {
 		return err
 	}
 
-	if err := guard.GetByEncodedID(id); err != nil {
+	if err := guard.DBLookup(id); err != nil {
 		return ErrInvalidAPIKey
 	}
 

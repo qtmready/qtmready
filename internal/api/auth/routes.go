@@ -10,6 +10,7 @@ import (
 
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/entities"
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 // CreateRoutes is for creating auth related routes.
@@ -148,7 +149,8 @@ func (routes *APIKeyRoutes) team(ctx echo.Context) error {
 	guard := &entities.Guard{}
 	key := guard.NewForTeam(id)
 
-	if err := db.Save(guard); err != nil {
+	if err := guard.Save(); err != nil {
+		shared.Logger.Error("error saving guard", "error", err)
 		return err
 	}
 
@@ -181,7 +183,8 @@ func (routes *APIKeyRoutes) user(ctx echo.Context) error {
 	guard := &entities.Guard{}
 	key := guard.NewForUser(request.Name, id)
 
-	if err := db.Save(guard); err != nil {
+	if err := guard.Save(); err != nil {
+		shared.Logger.Error("error saving guard", "error", err)
 		return err
 	}
 

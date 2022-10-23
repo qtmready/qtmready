@@ -156,6 +156,7 @@ func (g *Guard) SplitAPIKey(key string) (string, string, string, error) {
 //
 // NOTE: The Guard.PreCreate() function hashes the plain text value.
 func (g *Guard) NewForUser(name string, id gocql.UUID) string {
+	g.ID, _ = gocql.RandomUUID()
 	g.Name = name
 	g.LookupID = id
 	g.LookupType = "user"
@@ -170,6 +171,7 @@ func (g *Guard) NewForUser(name string, id gocql.UUID) string {
 // NOTE: One team can have only one API Key.
 // TODO: Implement unique constraint on lookup_id for team.
 func (g *Guard) NewForTeam(id gocql.UUID) string {
+	g.ID, _ = gocql.RandomUUID()
 	g.Name = "default"
 	g.LookupID = id
 	g.LookupType = "team"
@@ -179,8 +181,15 @@ func (g *Guard) NewForTeam(id gocql.UUID) string {
 	return key
 }
 
-// GetByEncodedID returns the guard by the given encoded ID.
-func (g *Guard) GetByEncodedID(encodedID string) error {
+func (g *Guard) Save() error {
+	_ = g.PreCreate()
+	query := db.DB.Session.Query(guardTable.Insert()).BindStruct(g)
+
+	return query.ExecRelease()
+}
+
+// DBLookup returns the guard by the given encoded ID.
+func (g *Guard) DBLookup(encodedID string) error {
 	id, err := g.DecodeUUID(encodedID)
 	if err != nil {
 		return err
