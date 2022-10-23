@@ -4,7 +4,7 @@ create table if not exists guards
 (
   id            uuid,
   name          varchar,
-  hash          varchar,
+  hashed        varchar,
   lookup_id     uuid,
   lookup_type   varchar,
   created_at    timestamp,
