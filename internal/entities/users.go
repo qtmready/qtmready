@@ -5,6 +5,7 @@ package entities
 import (
 	"time"
 
+	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/table"
 	"golang.org/x/crypto/bcrypt"
@@ -24,12 +25,14 @@ var (
 		"updated_at",
 	}
 
-	userMeta = table.Metadata{
-		Name:    "users",
-		Columns: userColumns,
+	userMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "users",
+			Columns: userColumns,
+		},
 	}
 
-	userTable = table.New(userMeta)
+	userTable = itable.New(*userMeta.M)
 )
 
 type (
@@ -47,9 +50,9 @@ type (
 	}
 )
 
-func (u *User) GetTable() *table.Table { return userTable }
-func (u *User) PreCreate() error       { u.SetPassword(u.Password); return nil }
-func (u *User) PreUpdate() error       { return nil }
+func (u *User) GetTable() itable.ITable { return userTable }
+func (u *User) PreCreate() error        { u.SetPassword(u.Password); return nil }
+func (u *User) PreUpdate() error        { return nil }
 
 // SetPassword hashes the clear text password using bcrypt.
 //

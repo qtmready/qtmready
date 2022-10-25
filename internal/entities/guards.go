@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
 	"github.com/jxskiss/base62"
 	"github.com/scylladb/gocqlx/v2/table"
@@ -27,12 +28,13 @@ var (
 		"updated_at",
 	}
 
-	guardMeta = table.Metadata{
-		Name:    "guards",
-		Columns: guardColumns,
-	}
+	guardMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "guards",
+			Columns: guardColumns,
+		}}
 
-	guardTable = table.New(guardMeta)
+	guardTable = itable.New(*guardMeta.M)
 )
 
 // Team is the primary owner of the App & primary driver of system-wide RBAC.
@@ -48,9 +50,9 @@ type (
 	}
 )
 
-func (g *Guard) GetTable() *table.Table { return guardTable }
-func (g *Guard) PreCreate() error       { g.SetHashed(g.Hashed); return nil }
-func (g *Guard) PreUpdate() error       { return nil }
+func (g *Guard) GetTable() itable.ITable { return guardTable }
+func (g *Guard) PreCreate() error        { g.SetHashed(g.Hashed); return nil }
+func (g *Guard) PreUpdate() error        { return nil }
 
 // EncodeUUID converts the UUID to a base62 string and use it as the prefix.
 func (g *Guard) EncodeUUID(id gocql.UUID) string {
@@ -181,11 +183,10 @@ func (g *Guard) NewForTeam(id gocql.UUID) string {
 	return key
 }
 
+// Save saves the Guard to the database.
 func (g *Guard) Save() error {
 	_ = g.PreCreate()
-	query := db.DB.Session.Query(guardTable.Insert()).BindStruct(g)
-
-	return query.ExecRelease()
+	return db.DB.Session.Query(guardTable.Insert()).BindStruct(g).ExecRelease()
 }
 
 // DBLookup returns the guard by the given encoded ID.

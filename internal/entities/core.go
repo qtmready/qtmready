@@ -5,6 +5,7 @@ package entities
 import (
 	"time"
 
+	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/table"
 	"go.breu.io/ctrlplane/internal/db"
@@ -21,12 +22,13 @@ var (
 		"updated_at",
 	}
 
-	appMeta = table.Metadata{
-		Name:    "apps",
-		Columns: appColumns,
-	}
+	appMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "apps",
+			Columns: appColumns,
+		}}
 
-	appTable = table.New(appMeta)
+	appTable = itable.New(*appMeta.M)
 
 	repoColumns = []string{
 		"id",
@@ -39,12 +41,14 @@ var (
 		"updated_at",
 	}
 
-	repoMeta = table.Metadata{
-		Name:    "repos",
-		Columns: repoColumns,
+	repoMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "repos",
+			Columns: repoColumns,
+		},
 	}
 
-	repoTable = table.New(repoMeta)
+	repoTable = itable.New(*repoMeta.M)
 
 	workloadColumns = []string{
 		"id",
@@ -59,12 +63,14 @@ var (
 		"updated_at",
 	}
 
-	workloadMeta = table.Metadata{
-		Name:    "workloads",
-		Columns: workloadColumns,
+	workloadMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "workloads",
+			Columns: workloadColumns,
+		},
 	}
 
-	workloadTable = table.New(workloadMeta)
+	workloadTable = itable.New(*workloadMeta.M)
 
 	resourceColumns = []string{
 		"id",
@@ -78,12 +84,14 @@ var (
 		"updated_at",
 	}
 
-	resourceMeta = table.Metadata{
-		Name:    "resources",
-		Columns: resourceColumns,
+	resourceMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "resources",
+			Columns: resourceColumns,
+		},
 	}
 
-	resourceTable = table.New(resourceMeta)
+	resourceTable = itable.New(*resourceMeta.M)
 
 	blueprintColumns = []string{
 		"id",
@@ -97,12 +105,14 @@ var (
 		"updated_at",
 	}
 
-	blueprintMeta = table.Metadata{
-		Name:    "blueprints",
-		Columns: blueprintColumns,
+	blueprintMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "blueprints",
+			Columns: blueprintColumns,
+		},
 	}
 
-	blueprintTable = table.New(blueprintMeta)
+	blueprintTable = itable.New(*blueprintMeta.M)
 
 	rolloutColumns = []string{
 		"id",
@@ -114,12 +124,14 @@ var (
 		"updated_at",
 	}
 
-	rolloutMeta = table.Metadata{
-		Name:    "rollouts",
-		Columns: rolloutColumns,
+	rolloutMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "rollouts",
+			Columns: rolloutColumns,
+		},
 	}
 
-	rolloutTable = table.New(rolloutMeta)
+	rolloutTable = itable.New(*rolloutMeta.M)
 )
 
 type (
@@ -195,26 +207,26 @@ type (
 	}
 )
 
-func (app *App) GetTable() *table.Table { return appTable }
-func (app *App) PreCreate() error       { app.Slug = db.CreateSlug(app.Name); return nil }
-func (app *App) PreUpdate() error       { return nil }
+func (app *App) GetTable() itable.ITable { return appTable }
+func (app *App) PreCreate() error        { app.Slug = db.CreateSlug(app.Name); return nil }
+func (app *App) PreUpdate() error        { return nil }
 
-func (repo *Repo) GetTable() *table.Table { return repoTable }
-func (repo *Repo) PreCreate() error       { return nil }
-func (repo *Repo) PreUpdate() error       { return nil }
+func (repo *Repo) GetTable() itable.ITable { return repoTable }
+func (repo *Repo) PreCreate() error        { return nil }
+func (repo *Repo) PreUpdate() error        { return nil }
 
-func (workload *Workload) GetTable() *table.Table { return workloadTable }
-func (workload *Workload) PreCreate() error       { return nil }
-func (workload *Workload) PreUpdate() error       { return nil }
+func (workload *Workload) GetTable() itable.ITable { return workloadTable }
+func (workload *Workload) PreCreate() error        { return nil }
+func (workload *Workload) PreUpdate() error        { return nil }
 
-func (resource *Resource) GetTable() *table.Table { return resourceTable }
-func (resource *Resource) PreCreate() error       { return nil }
-func (resource *Resource) PreUpdate() error       { return nil }
+func (resource *Resource) GetTable() itable.ITable { return resourceTable }
+func (resource *Resource) PreCreate() error        { return nil }
+func (resource *Resource) PreUpdate() error        { return nil }
 
-func (blueprint *Blueprint) GetTable() *table.Table { return blueprintTable }
-func (blueprint *Blueprint) PreCreate() error       { return nil }
-func (blueprint *Blueprint) PreUpdate() error       { return nil }
+func (blueprint *Blueprint) GetTable() itable.ITable { return blueprintTable }
+func (blueprint *Blueprint) PreCreate() error        { return nil }
+func (blueprint *Blueprint) PreUpdate() error        { return nil }
 
-func (rollout *Rollout) GetTable() *table.Table { return rolloutTable }
-func (rollout *Rollout) PreCreate() error       { return nil }
-func (rollout *Rollout) PreUpdate() error       { return nil }
+func (rollout *Rollout) GetTable() itable.ITable { return rolloutTable }
+func (rollout *Rollout) PreCreate() error        { return nil }
+func (rollout *Rollout) PreUpdate() error        { return nil }

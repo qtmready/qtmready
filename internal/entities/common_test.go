@@ -11,8 +11,8 @@ import (
 
 func testEntityGetTable(expect string, entity db.Entity) func(*testing.T) {
 	return func(t *testing.T) {
-		if expect != entity.GetTable().Metadata().Name {
-			t.Errorf("expected %s, got %s", expect, entity.GetTable().Metadata().Name)
+		if expect != entity.GetTable().Metadata().M.Name {
+			t.Errorf("expected %s, got %s", expect, entity.GetTable().Metadata().M.Name)
 		}
 	}
 }

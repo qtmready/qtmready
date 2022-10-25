@@ -51,7 +51,7 @@ func TestUserGuard(t *testing.T) {
 
 	guard := &entities.Guard{}
 	key := guard.NewForUser("test", id)
-	_ = guard.PreCreate()
+	_ = guard.Save()
 	encodedID, encodedLookupID, token, err := guard.SplitAPIKey(key)
 
 	if err != nil {

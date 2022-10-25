@@ -6,9 +6,10 @@ import (
 	"reflect"
 	"time"
 
+	iqb "github.com/Guilospanck/igocqlx/qb"
+	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/qb"
-	"github.com/scylladb/gocqlx/v2/table"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -18,7 +19,7 @@ type (
 
 	// An Entity defines the interface for a database entity.
 	Entity interface {
-		GetTable() *table.Table
+		GetTable() itable.ITable
 		PreCreate() error
 		PreUpdate() error
 	}
@@ -28,6 +29,10 @@ type (
 		Created bool
 	}
 )
+
+func SelectBuilder(name string) iqb.ISelectBuilder {
+	return &iqb.SelectBuilder{SB: qb.Select(name)}
+}
 
 // Get the entity by given query params.
 //
@@ -50,10 +55,9 @@ func Get[T Entity](entity T, params QueryParams) error {
 		clause = append(clause, qb.EqLit(key, value))
 	}
 
-	query := qb.
-		Select(entity.GetTable().Name()).
+	query := SelectBuilder(entity.GetTable().Name()).
 		AllowFiltering().
-		Columns(entity.GetTable().Metadata().Columns...).
+		Columns(entity.GetTable().Metadata().M.Columns...).
 		Where(clause...)
 
 	if err := DB.Session.Query(query.ToCql()).GetRelease(entity); err != nil {
@@ -85,10 +89,9 @@ func Filter(entity Entity, dest interface{}, params QueryParams) error {
 		clause = append(clause, qb.EqLit(key, value))
 	}
 
-	query := qb.
-		Select(entity.GetTable().Name()).
+	query := SelectBuilder(entity.GetTable().Name()).
 		AllowFiltering().
-		Columns(entity.GetTable().Metadata().Columns...).
+		Columns(entity.GetTable().Metadata().M.Columns...).
 		Where(clause...)
 
 	if err := DB.Session.Query(query.ToCql()).SelectRelease(dest); err != nil {
@@ -133,7 +136,6 @@ func Create[T Entity](entity T) error {
 	}
 
 	query := DB.Session.Query(entity.GetTable().Insert()).BindStruct(entity)
-	shared.Logger.Debug("query", "query", query.String())
 
 	if err := query.ExecRelease(); err != nil {
 		return err
@@ -151,7 +153,7 @@ func Update[T Entity](entity T) error {
 	setval(entity, "UpdatedAt", now)
 
 	tbl := entity.GetTable()
-	columns := tbl.Metadata().Columns[1:] // Remove the first element. We are assuming it is the primary key.
+	columns := tbl.Metadata().M.Columns[1:] // Remove the first element. We are assuming it is the primary key.
 
 	if err := DB.Session.Query(tbl.Update(columns...)).BindStruct(entity).ExecRelease(); err != nil {
 		return err
