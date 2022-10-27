@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
 	"github.com/jxskiss/base62"
 	"github.com/scylladb/gocqlx/v2/table"
@@ -27,12 +28,13 @@ var (
 		"updated_at",
 	}
 
-	guardMeta = table.Metadata{
-		Name:    "guards",
-		Columns: guardColumns,
-	}
+	guardMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "guards",
+			Columns: guardColumns,
+		}}
 
-	guardTable = table.New(guardMeta)
+	guardTable = itable.New(*guardMeta.M)
 )
 
 // Team is the primary owner of the App & primary driver of system-wide RBAC.
@@ -48,9 +50,9 @@ type (
 	}
 )
 
-func (g *Guard) GetTable() *table.Table { return guardTable }
-func (g *Guard) PreCreate() error       { g.SetHashed(g.Hashed); return nil }
-func (g *Guard) PreUpdate() error       { return nil }
+func (g *Guard) GetTable() itable.ITable { return guardTable }
+func (g *Guard) PreCreate() error        { g.SetHashed(g.Hashed); return nil }
+func (g *Guard) PreUpdate() error        { return nil }
 
 // EncodeUUID converts the UUID to a base62 string and use it as the prefix.
 func (g *Guard) EncodeUUID(id gocql.UUID) string {
@@ -104,11 +106,9 @@ func (g *Guard) ConstructAPIKey() (string, string) {
 // VerifyAPIKey verifies the API key against the database.
 //
 // FIXME: fix the lookup, this requires mocking gocqlx.
-//
 // TODO: implement the database loookup against lookup_id.
-//
-// TODO: implement the cache so that we don't have to hit the database every time. Possible implementation of good
-// key value implementation of LevelDB are:
+// TODO: implement the cache so that we don't have to hit the database every time. Possible implementation of good key
+// value implementation of LevelDB are:
 //
 //   - https://github.com/etcd-io/bbolt
 //   - https://github.com/dgraph-io/badger
@@ -181,11 +181,10 @@ func (g *Guard) NewForTeam(id gocql.UUID) string {
 	return key
 }
 
+// Save saves the Guard to the database.
 func (g *Guard) Save() error {
 	_ = g.PreCreate()
-	query := db.DB.Session.Query(guardTable.Insert()).BindStruct(g)
-
-	return query.ExecRelease()
+	return db.DB.Session.Query(guardTable.Insert()).BindStruct(g).ExecRelease()
 }
 
 // DBLookup returns the guard by the given encoded ID.

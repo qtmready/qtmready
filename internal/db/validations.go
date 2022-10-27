@@ -5,10 +5,10 @@ package db
 import (
 	"reflect"
 
+	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/go-playground/validator/v10"
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/qb"
-	"github.com/scylladb/gocqlx/v2/table"
 )
 
 type (
@@ -34,20 +34,19 @@ func UniqueField(fl validator.FieldLevel) bool {
 	dest := &placeholder{} // Initializing the empty placeholder to act as a destination for Get call
 
 	tbl := fl.
-		Parent().Addr().            // Getting the pointer the parent struct
-		MethodByName("GetTable").   // Getting the "GetTable" function by name
-		Call(args)[0].              // Calling the function and getting the return value
-		Interface().(*table.Table). // Casting the value to *tbl.Table
-		Metadata().Name             // Getting the tbl name
+		Parent().Addr().             // Getting the pointer the parent struct
+		MethodByName("GetTable").    // Getting the "GetTable" function by name
+		Call(args)[0].               // Calling the function and getting the return value
+		Interface().(itable.ITable). // Casting the value to *tbl.Table
+		Metadata().M.Name            // Getting the tbl name
 
 	clause := qb.
 		EqLit(fl.FieldName(), "'"+fl.Field().Interface().(string)+"'") // forcing args inside '' to provide escaping
 
-	query := qb.
-		Select(tbl).                   // Using the qb to compose select query
-		Columns("id", fl.FieldName()). // Selecting the return columns
-		Where(clause).                 // composing the where clause
-		Query(DB.Session)              // using the existing database connection
+	query := SelectBuilder(tbl).
+		Columns("id", fl.FieldName()).
+		Where(clause).
+		Query(DB.Session.Session())
 
 	err := query.Iter().Unsafe().Get(dest) // Running the "get" query in unsafe mode.
 

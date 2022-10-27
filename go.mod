@@ -3,10 +3,12 @@ module go.breu.io/ctrlplane
 go 1.19
 
 require (
+	github.com/Guilospanck/gocqlxmock v1.0.1
+	github.com/Guilospanck/igocqlx v1.0.0
 	github.com/avast/retry-go/v4 v4.1.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.0
 	github.com/go-playground/validator/v10 v10.11.0
-	github.com/gocql/gocql v1.2.0
+	github.com/gocql/gocql v1.2.1
 	github.com/google/go-github/v45 v45.2.0
 	github.com/gosimple/slug v1.12.0
 	github.com/ilyakaznacheev/cleanenv v1.3.0
@@ -23,6 +25,8 @@ require (
 	go.uber.org/zap v1.22.0
 	golang.org/x/crypto v0.0.0-20220817201139-bc19a97f63c8
 )
+
+replace github.com/Guilospanck/igocqlx v1.0.0 => github.com/debuggerpk/igocqlx v1.0.3
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
@@ -72,8 +76,8 @@ require (
 	github.com/rogpeppe/go-internal v1.8.1 // indirect
 	github.com/scylladb/go-reflectx v1.0.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/objx v0.4.0 // indirect
-	github.com/stretchr/testify v1.8.0 // indirect
+	github.com/stretchr/objx v0.5.0 // indirect
+	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/swaggo/files v0.0.0-20220728132757-551d4a08d97a // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.1 // indirect

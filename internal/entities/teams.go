@@ -1,10 +1,11 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package entities
 
 import (
 	"time"
 
+	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/table"
 	"go.breu.io/ctrlplane/internal/db"
@@ -19,12 +20,14 @@ var (
 		"updated_at",
 	}
 
-	teamMeta = table.Metadata{
-		Name:    "teams",
-		Columns: teamColumns,
+	teamMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "teams",
+			Columns: teamColumns,
+		},
 	}
 
-	teamTable = table.New(teamMeta)
+	teamTable = itable.New(*teamMeta.M)
 )
 
 type (
@@ -37,6 +40,6 @@ type (
 	}
 )
 
-func (t *Team) GetTable() *table.Table { return teamTable }
-func (t *Team) PreCreate() error       { t.Slug = db.CreateSlug(t.Name); return nil }
-func (t *Team) PreUpdate() error       { return nil }
+func (t *Team) GetTable() itable.ITable { return teamTable }
+func (t *Team) PreCreate() error        { t.Slug = db.CreateSlug(t.Name); return nil }
+func (t *Team) PreUpdate() error        { return nil }

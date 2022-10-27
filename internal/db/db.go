@@ -5,13 +5,14 @@ package db
 import (
 	"time"
 
+	"github.com/Guilospanck/gocqlxmock"
+	"github.com/Guilospanck/igocqlx"
 	"github.com/avast/retry-go/v4"
 	"github.com/gocql/gocql"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/cassandra"
 	_ "github.com/golang-migrate/migrate/v4/source/file" // required for file:// migrations
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/scylladb/gocqlx/v2"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -27,12 +28,20 @@ var (
 type (
 	// Holds the information about the database.
 	db struct {
-		gocqlx.Session
+		Session            igocqlx.ISessionx
 		Hosts              []string `env:"CASSANDRA_HOSTS" env-default:"ctrlplane-database"`
 		Keyspace           string   `env:"CASSANDRA_KEYSPACE" env-default:"ctrlplane"`
 		MigrationSourceURL string   `env:"CASSANDRA_MIGRATION_SOURCE_URL"`
 	}
+
+	ms struct {
+		*gocqlxmock.SessionxMock
+	}
 )
+
+func (m *ms) Session() *igocqlx.Session {
+	return nil
+}
 
 // ReadEnv reads the environment variables.
 func (d *db) ReadEnv() {
@@ -46,7 +55,7 @@ func (d *db) InitSession() {
 	createSession := func() error {
 		shared.Logger.Info("db: connecting ...")
 
-		session, err := gocqlx.WrapSession(cluster.CreateSession())
+		session, err := igocqlx.WrapSession(cluster.CreateSession())
 		if err != nil {
 			shared.Logger.Error("db: failed to connect", "error", err)
 			return err
@@ -73,7 +82,7 @@ func (d *db) RunMigrations() {
 	shared.Logger.Info("db: running migrations ...", "source", d.MigrationSourceURL)
 
 	config := &cassandra.Config{KeyspaceName: d.Keyspace, MultiStatementEnabled: true}
-	driver, err := cassandra.WithInstance(d.Session.Session, config)
+	driver, err := cassandra.WithInstance(d.Session.Session().S.Session, config)
 
 	if err != nil {
 		shared.Logger.Error("db: failed to initialize driver for migrations ...", "error", err)
@@ -106,4 +115,10 @@ func (d *db) InitSessionWithMigrations() {
 // RegisterValidations registers any field or entity related validators.
 func (d *db) RegisterValidations() {
 	_ = shared.Validate.RegisterValidation("db_unique", UniqueField)
+}
+
+func (d *db) InitMockSession(session *gocqlxmock.SessionxMock) {
+	d.Session = &ms{
+		session,
+	}
 }

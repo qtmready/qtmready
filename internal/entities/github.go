@@ -5,6 +5,7 @@ package entities
 import (
 	"time"
 
+	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/table"
 )
@@ -23,13 +24,13 @@ var (
 		"updated_at",
 	}
 
-	githubInstallationMeta = table.Metadata{
+	githubInstallationMeta = itable.Metadata{M: &table.Metadata{
 		Name:    "github_installations",
 		Columns: githubInstallationColumns,
 		PartKey: []string{"id"},
-	}
+	}}
 
-	githubInstallationTable = table.New(githubInstallationMeta)
+	githubInstallationTable = itable.New(*githubInstallationMeta.M)
 
 	githubRepoColumns = []string{
 		"id",
@@ -41,13 +42,15 @@ var (
 		"updated_at",
 	}
 
-	githubRepoMeta = table.Metadata{
-		Name:    "github_repos",
-		Columns: githubRepoColumns,
-		PartKey: []string{"id"},
+	githubRepoMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "github_repos",
+			Columns: githubRepoColumns,
+			PartKey: []string{"id"},
+		},
 	}
 
-	githubRepoTable = table.New(githubRepoMeta)
+	githubRepoTable = itable.New(*githubRepoMeta.M)
 )
 
 type (
@@ -75,10 +78,10 @@ type (
 	}
 )
 
-func (g GithubInstallation) GetTable() *table.Table { return githubInstallationTable }
-func (g GithubInstallation) PreCreate() error       { return nil }
-func (g GithubInstallation) PreUpdate() error       { return nil }
+func (g GithubInstallation) GetTable() itable.ITable { return githubInstallationTable }
+func (g GithubInstallation) PreCreate() error        { return nil }
+func (g GithubInstallation) PreUpdate() error        { return nil }
 
-func (g GithubRepo) GetTable() *table.Table { return githubRepoTable }
-func (g GithubRepo) PreCreate() error       { return nil }
-func (g GithubRepo) PreUpdate() error       { return nil }
+func (g GithubRepo) GetTable() itable.ITable { return githubRepoTable }
+func (g GithubRepo) PreCreate() error        { return nil }
+func (g GithubRepo) PreUpdate() error        { return nil }
