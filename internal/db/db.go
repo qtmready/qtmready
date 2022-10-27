@@ -117,8 +117,8 @@ func (d *db) RegisterValidations() {
 	_ = shared.Validate.RegisterValidation("db_unique", UniqueField)
 }
 
-func (d *db) InitMockSession() {
+func (d *db) InitMockSession(session *gocqlxmock.SessionxMock) {
 	d.Session = &ms{
-		&gocqlxmock.SessionxMock{},
+		session,
 	}
 }

@@ -106,11 +106,9 @@ func (g *Guard) ConstructAPIKey() (string, string) {
 // VerifyAPIKey verifies the API key against the database.
 //
 // FIXME: fix the lookup, this requires mocking gocqlx.
-//
 // TODO: implement the database loookup against lookup_id.
-//
-// TODO: implement the cache so that we don't have to hit the database every time. Possible implementation of good
-// key value implementation of LevelDB are:
+// TODO: implement the cache so that we don't have to hit the database every time. Possible implementation of good key
+// value implementation of LevelDB are:
 //
 //   - https://github.com/etcd-io/bbolt
 //   - https://github.com/dgraph-io/badger

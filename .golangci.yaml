@@ -8,7 +8,9 @@ linters:
     - bodyclose
     - decorder
     - dogsled
+    - errcheck
     - errname
+    - exhaustive
     - funlen
     - gocognit
     - goconst

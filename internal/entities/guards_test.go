@@ -3,9 +3,13 @@
 package entities_test
 
 import (
+	"context"
 	"testing"
 
+	"github.com/Guilospanck/gocqlxmock"
 	"github.com/gocql/gocql"
+
+	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/entities"
 	"go.breu.io/ctrlplane/internal/shared"
 )
@@ -22,10 +26,20 @@ type (
 
 func TestTeamGuard(t *testing.T) {
 	id, _ := gocql.RandomUUID()
-
 	guard := &entities.Guard{}
 	key := guard.NewForTeam(id)
-	_ = guard.PreCreate()
+
+	smock := &gocqlxmock.SessionxMock{}
+	stmt := "INSERT INTO guards (id,name,hashed,lookup_id,lookup_type,created_at,updated_at) VALUES (?,?,?,?,?,?,?) "
+	names := []string{"id", "name", "hashed", "lookup_id", "lookup_type", "created_at", "updated_at"}
+	qmock := &gocqlxmock.QueryxMock{Ctx: context.Background(), Stmt: stmt, Names: names}
+
+	db.DB.InitMockSession(smock)
+	smock.On("Query", stmt, names).Return(qmock)
+	qmock.On("BindStruct", guard).Return(qmock)
+	qmock.On("ExecRelease").Return(nil)
+
+	_ = guard.Save()
 	encodedID, encodedLookupID, token, err := guard.SplitAPIKey(key)
 
 	if err != nil {
@@ -48,9 +62,19 @@ func TestTeamGuard(t *testing.T) {
 
 func TestUserGuard(t *testing.T) {
 	id, _ := gocql.RandomUUID()
-
 	guard := &entities.Guard{}
 	key := guard.NewForUser("test", id)
+
+	smock := &gocqlxmock.SessionxMock{}
+	stmt := "INSERT INTO guards (id,name,hashed,lookup_id,lookup_type,created_at,updated_at) VALUES (?,?,?,?,?,?,?) "
+	names := []string{"id", "name", "hashed", "lookup_id", "lookup_type", "created_at", "updated_at"}
+	qmock := &gocqlxmock.QueryxMock{Ctx: context.Background(), Stmt: stmt, Names: names}
+
+	db.DB.InitMockSession(smock)
+	smock.On("Query", stmt, names).Return(qmock)
+	qmock.On("BindStruct", guard).Return(qmock)
+	qmock.On("ExecRelease").Return(nil)
+
 	_ = guard.Save()
 	encodedID, encodedLookupID, token, err := guard.SplitAPIKey(key)
 
