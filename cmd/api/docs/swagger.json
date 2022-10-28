@@ -417,7 +417,7 @@
                 "tags": [
                     "healthcheck"
                 ],
-                "summary": "Checks if the API working properly and all external connections are fine",
+                "summary": "Checks if connection to all external services are working fine.",
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -425,8 +425,8 @@
                             "$ref": "#/definitions/main.HealthCheckResponse"
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "500": {
+                        "description": "Internal Server Error",
                         "schema": {
                             "$ref": "#/definitions/echo.HTTPError"
                         }

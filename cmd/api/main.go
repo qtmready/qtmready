@@ -129,7 +129,7 @@ type (
 // @Accept      json
 // @Produce     json
 // @Success     201 {object} HealthCheckResponse
-// @Failure     400 {object} echo.HTTPError
+// @Failure     500 {object} echo.HTTPError
 // @Router      /healthcheck [get]
 //
 // TODO: make sure that connection to all services it needs to connect to is working properly.
