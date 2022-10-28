@@ -8,11 +8,11 @@ import (
 	"encoding/hex"
 	"net/http"
 
-	"github.com/ilyakaznacheev/cleanenv"
-	"go.breu.io/ctrlplane/internal/shared"
-
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	gh "github.com/google/go-github/v45/github"
+	"github.com/ilyakaznacheev/cleanenv"
+
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 var (

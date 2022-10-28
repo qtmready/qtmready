@@ -11,9 +11,11 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/cassandra"
-	_ "github.com/golang-migrate/migrate/v4/source/file" // required for file:// migrations
 	"github.com/ilyakaznacheev/cleanenv"
+
 	"go.breu.io/ctrlplane/internal/shared"
+
+	_ "github.com/golang-migrate/migrate/v4/source/file" // required for file:// migrations
 )
 
 const (

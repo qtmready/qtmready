@@ -13,8 +13,9 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/jxskiss/base62"
 	"github.com/scylladb/gocqlx/v2/table"
-	"go.breu.io/ctrlplane/internal/db"
 	"golang.org/x/crypto/bcrypt"
+
+	"go.breu.io/ctrlplane/internal/db"
 )
 
 var (

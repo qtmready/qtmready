@@ -6,10 +6,10 @@ import (
 	"context"
 	"strconv"
 
-	"go.breu.io/ctrlplane/internal/entities"
 	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/ctrlplane/internal/entities"
 )
 
 type (

@@ -3,7 +3,6 @@
 package cmd
 
 import (
-	_ "embed" // required to embed cue files into the binary
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"go.breu.io/ctrlplane/cmd/cli/utils"
+
+	_ "embed" // required to embed cue files into the binary
 )
 
 const (
