@@ -1,16 +1,31 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package entities_test
 
 import (
 	"testing"
 
+	"github.com/gocql/gocql"
+	"github.com/gosimple/slug"
 	"go.breu.io/ctrlplane/internal/entities"
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 func TestApp(t *testing.T) {
-	app := &entities.App{}
+	app := &entities.App{
+		ID:     gocql.MustRandomUUID(),
+		Name:   "Test App",
+		Config: entities.AppConfig{},
+		TeamID: gocql.MustRandomUUID(),
+	}
+	_ = app.PreCreate()
+
+	opsTests := shared.TestFnMap{
+		"Slug": shared.TestFn{Args: app, Want: nil, Run: testAppSlug},
+	}
+
 	t.Run("GetTable", testEntityGetTable("apps", app))
+	t.Run("EntityOps", testEntityOps(app, opsTests))
 }
 
 func TestRepo(t *testing.T) {
@@ -36,4 +51,15 @@ func TestBlueprint(t *testing.T) {
 func TestRollout(t *testing.T) {
 	rollout := &entities.Rollout{}
 	t.Run("GetTable", testEntityGetTable("rollouts", rollout))
+}
+
+func testAppSlug(args interface{}, want interface{}) func(*testing.T) {
+	app := args.(*entities.App)
+	sluglen := len(slug.Make(app.Name)) + 1 + 22
+
+	return func(t *testing.T) {
+		if len(app.Slug) != sluglen {
+			t.Errorf("slug length is not correct, got: %d, want: %d", len(app.Slug), sluglen)
+		}
+	}
 }
