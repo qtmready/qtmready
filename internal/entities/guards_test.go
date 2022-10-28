@@ -15,45 +15,22 @@ import (
 )
 
 type (
-	GuardWithKey struct {
-		Key             string
-		Token           string
-		EncodedID       string
-		EncodedLookupID string
-		Guard           *entities.Guard
+	guardnkey struct {
+		Key   string
+		Guard *entities.Guard
 	}
 )
 
 func TestTeamGuard(t *testing.T) {
-	id, _ := gocql.RandomUUID()
+	teamID, _ := gocql.RandomUUID()
 	guard := &entities.Guard{}
-	key := guard.NewForTeam(id)
-
-	smock := &gocqlxmock.SessionxMock{}
-	stmt := "INSERT INTO guards (id,name,hashed,lookup_id,lookup_type,created_at,updated_at) VALUES (?,?,?,?,?,?,?) "
-	names := []string{"id", "name", "hashed", "lookup_id", "lookup_type", "created_at", "updated_at"}
-	qmock := &gocqlxmock.QueryxMock{Ctx: context.Background(), Stmt: stmt, Names: names}
-
-	db.DB.InitMockSession(smock)
-	smock.On("Query", stmt, names).Return(qmock)
-	qmock.On("BindStruct", guard).Return(qmock)
-	qmock.On("ExecRelease").Return(nil)
-
-	_ = guard.Save()
-	encodedID, encodedLookupID, token, err := guard.SplitAPIKey(key)
-
-	if err != nil {
-		t.Errorf("unable to split api key")
-	}
-
-	args := &GuardWithKey{Key: key, EncodedID: encodedID, EncodedLookupID: encodedLookupID, Token: token, Guard: guard}
+	key := guard.NewForTeam(teamID)
+	args := &guardnkey{Key: key, Guard: guard}
 
 	opsTest := shared.TestFnMap{
-		"TokenEncryption": shared.TestFn{Args: args, Want: nil, Run: testTokenEncryption},
-		"DecodeUUID":      shared.TestFn{Args: args, Want: nil, Run: testDecodeUUID},
-		"VerifyToken":     shared.TestFn{Args: args, Want: nil, Run: testVerifyToken},
-		"TestGuardName":   shared.TestFn{Args: args, Want: nil, Run: testTeamGuardName},
-		"VerifyAPIKey":    shared.TestFn{Args: args, Want: nil, Run: testVerifyAPIKey},
+		"TestGuardName":    shared.TestFn{Args: args, Want: nil, Run: testTeamGuardName},
+		"TestSave":         shared.TestFn{Args: args, Want: nil, Run: testSave},
+		"TestVerifyAPIKey": shared.TestFn{Args: args, Want: nil, Run: testVerifyAPIKey},
 	}
 
 	t.Run("GetTable", testEntityGetTable("guards", guard))
@@ -61,107 +38,91 @@ func TestTeamGuard(t *testing.T) {
 }
 
 func TestUserGuard(t *testing.T) {
-	id, _ := gocql.RandomUUID()
+	userID, _ := gocql.RandomUUID()
 	guard := &entities.Guard{}
-	key := guard.NewForUser("test", id)
-
-	smock := &gocqlxmock.SessionxMock{}
-	stmt := "INSERT INTO guards (id,name,hashed,lookup_id,lookup_type,created_at,updated_at) VALUES (?,?,?,?,?,?,?) "
-	names := []string{"id", "name", "hashed", "lookup_id", "lookup_type", "created_at", "updated_at"}
-	qmock := &gocqlxmock.QueryxMock{Ctx: context.Background(), Stmt: stmt, Names: names}
-
-	db.DB.InitMockSession(smock)
-	smock.On("Query", stmt, names).Return(qmock)
-	qmock.On("BindStruct", guard).Return(qmock)
-	qmock.On("ExecRelease").Return(nil)
-
-	_ = guard.Save()
-	encodedID, encodedLookupID, token, err := guard.SplitAPIKey(key)
-
-	if err != nil {
-		t.Errorf("unable to split api key")
-	}
-
-	args := &GuardWithKey{Key: key, EncodedID: encodedID, EncodedLookupID: encodedLookupID, Token: token, Guard: guard}
+	key := guard.NewForUser("test", userID)
+	args := &guardnkey{Key: key, Guard: guard}
 
 	opsTest := shared.TestFnMap{
-		"TokenEncryption": shared.TestFn{Args: args, Want: nil, Run: testTokenEncryption},
-		"DecodeUUID":      shared.TestFn{Args: args, Want: nil, Run: testDecodeUUID},
-		"VerifyToken":     shared.TestFn{Args: args, Want: nil, Run: testVerifyToken},
-		"VerifyAPIKey":    shared.TestFn{Args: args, Want: nil, Run: testVerifyAPIKey},
-		"TestGuardName":   shared.TestFn{Args: args, Want: nil, Run: testUserGuardName},
+		"TestGuardName":    shared.TestFn{Args: args, Want: nil, Run: testUserGuardName},
+		"TestSave":         shared.TestFn{Args: args, Want: nil, Run: testSave},
+		"TestVerifyAPIKey": shared.TestFn{Args: args, Want: nil, Run: testVerifyAPIKey},
 	}
 
 	t.Run("GetTable", testEntityGetTable("guards", guard))
 	t.Run("EntityOps", testEntityOps(guard, opsTest))
 }
 
-func testTokenEncryption(args interface{}, want interface{}) func(*testing.T) {
-	guard := args.(*GuardWithKey)
-
-	return func(t *testing.T) {
-		if guard.Token == guard.Guard.Hashed {
-			t.Errorf("Expected token to be hashed")
-		}
-	}
-}
-
-func testDecodeUUID(args interface{}, want interface{}) func(*testing.T) {
-	guard := args.(*GuardWithKey)
-	id, err := guard.Guard.DecodeUUID(guard.EncodedLookupID)
-
-	return func(t *testing.T) {
-		if err != nil {
-			t.Errorf("unable to decode prefix to uuid")
-		}
-
-		if id.String() != guard.Guard.LookupID.String() {
-			t.Errorf("prefix mismatch when verifying")
-		}
-	}
-}
-
-func testVerifyToken(args interface{}, want interface{}) func(*testing.T) {
-	guard := args.(*GuardWithKey)
-
-	return func(t *testing.T) {
-		if !guard.Guard.VerifyToken(guard.Token) {
-			t.Errorf("unable to verify token")
-		}
-	}
-}
-
 func testTeamGuardName(args interface{}, want interface{}) func(*testing.T) {
-	guard := args.(*GuardWithKey)
+	arg := args.(*guardnkey)
 
 	return func(t *testing.T) {
-		if guard.Guard.Name != "default" {
-			t.Errorf("team guard should always be named default")
+		if arg.Guard.Name != "default" || arg.Guard.LookupType != "team" {
+			t.Errorf("expected name to be 'default', got %s", arg.Guard.Name)
 		}
 	}
 }
 
 func testUserGuardName(args interface{}, want interface{}) func(*testing.T) {
-	guard := args.(*GuardWithKey)
+	arg := args.(*guardnkey)
 
 	return func(t *testing.T) {
-		if guard.Guard.Name != "test" {
-			t.Errorf("user guard name not setting correctly")
+		if arg.Guard.Name != "test" || arg.Guard.LookupType != "user" {
+			t.Errorf("expected name to be 'test', got %s", arg.Guard.Name)
 		}
 	}
 }
 
-func testVerifyAPIKey(args interface{}, want interface{}) func(*testing.T) {
-	guard := args.(*GuardWithKey)
-	valid, err := guard.Guard.VerifyAPIKey(guard.Key)
+func testSave(args interface{}, want interface{}) func(*testing.T) {
+	arg := args.(*guardnkey)
 
 	return func(t *testing.T) {
+		smock := &gocqlxmock.SessionxMock{}
+		stmt := "INSERT INTO guards (id,name,hashed,lookup_id,lookup_type,created_at,updated_at) VALUES (?,?,?,?,?,?,?) "
+		names := []string{"id", "name", "hashed", "lookup_id", "lookup_type", "created_at", "updated_at"}
+		qmock := &gocqlxmock.QueryxMock{Ctx: context.Background(), Stmt: stmt, Names: names}
+
+		db.DB.InitMockSession(smock)
+		smock.On("Query", stmt, names).Return(qmock)
+		qmock.On("BindStruct", arg.Guard).Return(qmock)
+		smock.On("Close").Return()
+		qmock.On("ExecRelease").Return(nil)
+
+		if err := arg.Guard.Save(); err != nil {
+			t.Errorf("unable to save guard: %v", err)
+		}
+
+		if arg.Key == arg.Guard.Hashed {
+			t.Errorf("expected hashed to be different, got %s", arg.Guard.Hashed)
+		}
+
+		t.Cleanup(func() {
+			db.DB.Session.Close()
+		})
+	}
+}
+
+func testVerifyAPIKey(args interface{}, want interface{}) func(*testing.T) {
+	arg := args.(*guardnkey)
+
+	return func(t *testing.T) {
+		smock := &gocqlxmock.SessionxMock{}
+		stmt := "SELECT id,name,hashed,lookup_id,lookup_type,created_at,updated_at FROM guards WHERE id=" + arg.Guard.ID.String() + " ALLOW FILTERING "
+		names := []string(nil)
+		qmock := &gocqlxmock.QueryxMock{Ctx: context.Background(), Stmt: stmt, Names: names}
+
+		db.DB.InitMockSession(smock)
+		smock.On("Query", stmt, names).Return(qmock)
+		qmock.On("GetRelease", arg.Guard).Return(nil)
+
+		valid, err := arg.Guard.VerifyAPIKey(arg.Key)
+
 		if err != nil {
-			t.Errorf("unable to verify api key")
+			t.Errorf("unable to verify api key: %v", err)
 		}
 
 		if !valid {
-			t.Errorf("api key is not valid")
+			t.Errorf("Unable to Verify API Key")
 		}
 	}
 }

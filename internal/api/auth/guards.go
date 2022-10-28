@@ -132,17 +132,8 @@ func validateToken(ctx echo.Context, token string) error {
 // validateKey validates the API key.
 func validateKey(ctx echo.Context, key string) error {
 	guard := &entities.Guard{}
-	id, _, _, err := guard.SplitAPIKey(key)
-
-	if err != nil {
-		return err
-	}
-
-	if err := guard.DBLookup(id); err != nil {
-		return ErrInvalidAPIKey
-	}
-
 	ok, err := guard.VerifyAPIKey(key)
+
 	if err != nil {
 		return err
 	}

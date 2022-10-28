@@ -120,7 +120,6 @@ func (d *db) RegisterValidations() {
 }
 
 func (d *db) InitMockSession(session *gocqlxmock.SessionxMock) {
-	d.Session = &ms{
-		session,
-	}
+	ms := &ms{session}
+	d.Session = ms
 }
