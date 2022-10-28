@@ -1,5 +1,3 @@
-# Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
-
 definitions:
   auth.CreateAPIKeyRequest:
     properties:
@@ -480,12 +478,11 @@ paths:
           description: Created
           schema:
             $ref: '#/definitions/main.HealthCheckResponse'
-        "400":
-          description: Bad Request
+        "500":
+          description: Internal Server Error
           schema:
             $ref: '#/definitions/echo.HTTPError'
-      summary: Checks if the API working properly and all external connections are
-        fine
+      summary: Checks if connection to all external services are working fine.
       tags:
       - healthcheck
   /provders/github/complete-installation:
