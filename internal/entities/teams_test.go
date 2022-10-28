@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/gosimple/slug"
+
 	"go.breu.io/ctrlplane/internal/entities"
 	"go.breu.io/ctrlplane/internal/shared"
 )

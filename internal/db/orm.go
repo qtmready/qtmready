@@ -10,6 +10,7 @@ import (
 	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/qb"
+
 	"go.breu.io/ctrlplane/internal/shared"
 )
 

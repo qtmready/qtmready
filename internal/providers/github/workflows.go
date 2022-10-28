@@ -5,8 +5,9 @@ package github
 import (
 	"time"
 
-	"go.breu.io/ctrlplane/internal/entities"
 	"go.temporal.io/sdk/workflow"
+
+	"go.breu.io/ctrlplane/internal/entities"
 )
 
 var (
