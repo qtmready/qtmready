@@ -105,8 +105,6 @@ func (g *Guard) ConstructAPIKey() (string, string) {
 }
 
 // VerifyAPIKey verifies the API key against the database.
-//
-// FIXME: fix the lookup, this requires mocking gocqlx.
 // TODO: implement the database loookup against lookup_id.
 // TODO: implement the cache so that we don't have to hit the database every time. Possible implementation of good key
 // value implementation of LevelDB are:
@@ -121,6 +119,10 @@ func (g *Guard) VerifyAPIKey(key string) (bool, error) {
 
 	id, err := g.DecodeUUID(encodedID)
 	if err != nil {
+		return false, err
+	}
+
+	if err := db.Get(g, db.QueryParams{"id": id.String()}); err != nil {
 		return false, err
 	}
 
@@ -176,8 +178,8 @@ func (g *Guard) NewForTeam(id gocql.UUID) string {
 	g.Name = "default"
 	g.LookupID = id
 	g.LookupType = "team"
-	hashed, key := g.ConstructAPIKey()
-	g.Hashed = hashed
+	plaintext, key := g.ConstructAPIKey()
+	g.Hashed = plaintext
 
 	return key
 }
@@ -186,14 +188,4 @@ func (g *Guard) NewForTeam(id gocql.UUID) string {
 func (g *Guard) Save() error {
 	_ = g.PreCreate()
 	return db.DB.Session.Query(guardTable.Insert()).BindStruct(g).ExecRelease()
-}
-
-// DBLookup returns the guard by the given encoded ID.
-func (g *Guard) DBLookup(encodedID string) error {
-	id, err := g.DecodeUUID(encodedID)
-	if err != nil {
-		return err
-	}
-
-	return db.Get(g, db.QueryParams{"id": id.String()})
 }
