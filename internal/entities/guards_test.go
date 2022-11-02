@@ -1,3 +1,6 @@
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+// This software is made available by Breu, Inc., under the terms of the Breu  Community License Agreement, Version 1.0 located at  http://www.breu.io/breu-community-license/v1. BY INSTALLING, DOWNLOADING,  ACCESSING, USING OR DISTRIBUTING ANY OF THE SOFTWARE, YOU AGREE TO THE TERMS  OF SUCH LICENSE AGREEMENT. 
+
 // Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
 
 package entities_test
@@ -8,6 +11,7 @@ import (
 
 	"github.com/Guilospanck/gocqlxmock"
 	"github.com/gocql/gocql"
+	"github.com/scylladb/gocqlx/v2/qb"
 
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/entities"
@@ -78,8 +82,7 @@ func testSave(args interface{}, want interface{}) func(*testing.T) {
 
 	return func(t *testing.T) {
 		smock := &gocqlxmock.SessionxMock{}
-		stmt := "INSERT INTO guards (id,name,hashed,lookup_id,lookup_type,created_at,updated_at) VALUES (?,?,?,?,?,?,?) "
-		names := []string{"id", "name", "hashed", "lookup_id", "lookup_type", "created_at", "updated_at"}
+		stmt, names := arg.Guard.GetTable().Insert()
 		qmock := &gocqlxmock.QueryxMock{Ctx: context.Background(), Stmt: stmt, Names: names}
 
 		db.DB.InitMockSession(smock)
@@ -107,11 +110,15 @@ func testVerifyAPIKey(args interface{}, want interface{}) func(*testing.T) {
 
 	return func(t *testing.T) {
 		smock := &gocqlxmock.SessionxMock{}
-		stmt := "SELECT id,name,hashed,lookup_id,lookup_type,created_at,updated_at FROM guards WHERE id=" + arg.Guard.ID.String() + " ALLOW FILTERING "
-		names := []string(nil)
+		stmt, names := db.SelectBuilder(arg.Guard.GetTable().Name()).
+			Columns(arg.Guard.GetTable().Metadata().M.Columns...).
+			AllowFiltering().
+			Where(qb.EqLit("id", arg.Guard.ID.String())).
+			ToCql()
 		qmock := &gocqlxmock.QueryxMock{Ctx: context.Background(), Stmt: stmt, Names: names}
 
 		db.DB.InitMockSession(smock)
+		smock.On("Close").Return()
 		smock.On("Query", stmt, names).Return(qmock)
 		qmock.On("GetRelease", arg.Guard).Return(nil)
 
@@ -124,5 +131,9 @@ func testVerifyAPIKey(args interface{}, want interface{}) func(*testing.T) {
 		if !valid {
 			t.Errorf("Unable to Verify API Key")
 		}
+
+		t.Cleanup(func() {
+			db.DB.Session.Close()
+		})
 	}
 }
