@@ -4,8 +4,6 @@
 -- Community License Agreement, Version 1.0 located at  
 -- http://www.breu.io/breu-community-license/v1. BY INSTALLING, DOWNLOADING,  
 -- ACCESSING, USING OR DISTRIBUTING ANY OF THE SOFTWARE, YOU AGREE TO THE TERMS  
--- OF SUCH LICENSE AGREEMENT. 
-
- 
+-- OF SUCH LICENSE AGREEMENT.
 
 alter table apps add config blob;
