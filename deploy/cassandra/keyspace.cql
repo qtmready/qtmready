@@ -6,7 +6,5 @@
 -- ACCESSING, USING OR DISTRIBUTING ANY OF THE SOFTWARE, YOU AGREE TO THE TERMS  
 -- OF SUCH LICENSE AGREEMENT. 
 
- 
-
 create keyspace if not exists ctrlplane 
   with replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
