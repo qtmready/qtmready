@@ -28,15 +28,33 @@ licenses:
       Copyright © [year], [name of author]. All rights reserved.
 
 
-      This software is made available by Breu, Inc., under the terms of the Breu 
+      This software is made available by Breu, Inc., under the terms of the
+
+      Breu Community License Agreement, version 1.0, located at https://www.breu.io/license/community. 
+
+      By installating, download, accessing, using or distrubting any of the software
       
-      Community License Agreement, Version 1.0 located at 
-      
-      http://www.breu.io/breu-community-license/v1. BY INSTALLING, DOWNLOADING, 
-      
-      ACCESSING, USING OR DISTRIBUTING ANY OF THE SOFTWARE, YOU AGREE TO THE TERMS 
-      
-      OF SUCH LICENSE AGREEMENT.
+      you agree to the terms of the license agreement.
+
+
+      The above copyright notice and this permission notice shall be included in
+
+      all copies or substantial portions of the Software.
+
+
+      THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+
+      IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+
+      FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+
+      AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+
+      LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+
+      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+
+      THE SOFTWARE.
 
 comments:
   - extensions:
