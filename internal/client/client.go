@@ -1,4 +1,10 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
+// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved. 
+//
+// This software is made available by Breu, Inc., under the terms of the Breu  
+// Community License Agreement, Version 1.0 located at  
+// http://www.breu.io/breu-community-license/v1. BY INSTALLING, DOWNLOADING,  
+// ACCESSING, USING OR DISTRIBUTING ANY OF THE SOFTWARE, YOU AGREE TO THE TERMS  
+// OF SUCH LICENSE AGREEMENT. 
 
 // client provides methods to interact with the ctrlplane API.
 // the long term goal is to make this available as an SDK.
