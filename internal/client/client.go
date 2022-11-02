@@ -1,5 +1,3 @@
-// Copyright © 2022, Breu Inc. <info@breu.io>. All rights reserved.
-
 // client provides methods to interact with the ctrlplane API.
 // the long term goal is to make this available as an SDK.
 //
