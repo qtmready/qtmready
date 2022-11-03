@@ -1,0 +1,24 @@
+default_stages: [commit]
+repos:
+  # cleanup
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.0.1
+    hooks:
+      - id: check-added-large-files
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: https://github.com/golangci/golangci-lint
+    rev: v1.50.1
+    hooks:
+      - id: golangci-lint
+        args: [--config=.golangci.yaml]
+
+  - repo: https://github.com/TekWizely/pre-commit-golang
+    rev: v1.0.0-rc.1
+    hooks:
+      - id: go-mod-tidy
+      - id: go-test-mod
