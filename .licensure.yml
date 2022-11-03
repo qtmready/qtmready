@@ -1,12 +1,9 @@
-# Regexes which if matched by a file path will always be excluded from
-# getting a license header
 excludes:
   - \.editorconfig
   - \.env
   - \.gitignore
   - .*lock
   - \.git/.*
-  - \.licensure\.yml
   - README.*
   - LICENSE.*
   - .*\.(md|rst|txt)
@@ -17,12 +14,12 @@ excludes:
   - go.(mod|sum)
   - coverage.out
 authors:
-  - name: Breu Inc.
+  - name: Breu, Inc.
     email: info@breu.io
 licenses:
   - files: any
     authors:
-    - name: Breu Inc.
+    - name: Breu, Inc.
       email: info@breu.io
     ident: Unlicense
     template: |
@@ -56,6 +53,7 @@ comments:
       - rs
       - go
       - cue
+    columns: 120
     commenter:
       type: line
       comment_char: "//"
@@ -65,6 +63,7 @@ comments:
       - css
       - cpp
       - c
+    columns: 120
     commenter:
       type: block
       start_block_char: "/*\n"
@@ -73,6 +72,7 @@ comments:
       trailing_lines: 1
 
   - extension: html
+    columns: 120
     commenter:
       type: block
       start_block_char: "<!--\n"
@@ -81,6 +81,7 @@ comments:
   - extensions:
       - el
       - lisp
+    columns: 120
     commenter:
       type: line
       comment_char: ";;;"
@@ -90,6 +91,8 @@ comments:
       - py
       - yaml
       - yml
+      - toml
+    columns: 120
     commenter:
       type: line
       comment_char: "#"
