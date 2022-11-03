@@ -1,6 +1,13 @@
 {
+  "editor.formatOnPaste": true,
+  "editor.formatOnSave": true,
   "gopls": {
     "ui.semanticTokens": true
   },
-  "go.lintTool": "golangci-lint"
+  "go.lintTool": "golangci-lint",
+  "go.toolsManagement.autoUpdate": true,
+  "go.useLanguageServer": true,
+  "go.editorContextMenuCommands": {
+    "generateTestForPackage": true
+  }
 }
