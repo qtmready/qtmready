@@ -25,6 +25,7 @@ licenses:
     template: |
       Copyright © [year], [name of author]. All rights reserved.
 
+
       This software is made available by Breu, Inc., under the terms of the
       BREU COMMUNITY LICENSE AGREEMENT, Version 1.0, found at https://www.breu.io/license/community.
       BY INSTALLATING, DOWNLOADING, ACCESSING, USING OR DISTRUBTING ANY OF THE
@@ -101,6 +102,7 @@ comments:
   - extension:
       - cql
       - sql
+    columns: 120
     commenter:
       type: line
       comment_char: "--"
