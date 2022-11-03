@@ -45,7 +45,7 @@ licenses:
       Breu, Inc. SHALL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND, INCLUDING BUT NOT
       LIMITED TO, LOST PROFITS OR ANY CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT,
       OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, ARISING
-      OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY 
+      OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY
       APPLICABLE LAW.
 comments:
   - extensions:
@@ -59,7 +59,7 @@ comments:
       type: line
       comment_char: "//"
       trailing_lines: 1
- 
+
   - extensions:
       - css
       - cpp
@@ -107,4 +107,3 @@ comments:
       type: line
       comment_char: "--"
       trailing_lines: 1
-    

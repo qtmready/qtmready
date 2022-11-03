@@ -26,7 +26,7 @@ services:
       - CASSNDRA_CLUSTER_NAME=ctrlplane
     volumes:
       - db-data:/var/lib/cassandra
-  
+
   ctrlplane-database-init:
     container_name: ctrlplane-db-init
     image: cassandra:4
@@ -85,7 +85,7 @@ services:
     image: nats:2.8.4
     ports:
       - '4222:4222'
-    command: --cluster_name ctrlplane 
+    command: --cluster_name ctrlplane
 
   # Temporal - https://temporal.io
   temporal-db:
