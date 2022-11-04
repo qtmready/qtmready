@@ -46,7 +46,7 @@ type (
 	// Holds the information about the database.
 	db struct {
 		Session            igocqlx.ISessionx
-		Hosts              []string `env:"CASSANDRA_HOSTS" env-default:"ctrlplane-database"`
+		Hosts              []string `env:"CASSANDRA_HOSTS" env-default:"database"`
 		Keyspace           string   `env:"CASSANDRA_KEYSPACE" env-default:"ctrlplane"`
 		MigrationSourceURL string   `env:"CASSANDRA_MIGRATION_SOURCE_URL"`
 	}
