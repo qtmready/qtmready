@@ -13,7 +13,7 @@
 //
 // Breu, Inc. SHALL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND, INCLUDING BUT NOT LIMITED TO, LOST PROFITS OR ANY
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY  APPLICABLE LAW.
+// ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
 package db
 
@@ -46,7 +46,7 @@ type (
 	// Holds the information about the database.
 	db struct {
 		Session            igocqlx.ISessionx
-		Hosts              []string `env:"CASSANDRA_HOSTS" env-default:"ctrlplane-database"`
+		Hosts              []string `env:"CASSANDRA_HOSTS" env-default:"database"`
 		Keyspace           string   `env:"CASSANDRA_KEYSPACE" env-default:"ctrlplane"`
 		MigrationSourceURL string   `env:"CASSANDRA_MIGRATION_SOURCE_URL"`
 	}
