@@ -96,7 +96,7 @@ func (q *queue) GetWorkflowOptions(sender string, args ...string) client.StartWo
 
 func (t *temporal) ReadEnv() {
 	if err := cleanenv.ReadEnv(t); err != nil {
-		Logger.Error("Failed to read environment variables", "error", err)
+		Logger.Error("temporal: error", "error", err)
 	}
 }
 
@@ -105,7 +105,7 @@ func (t *temporal) GetConnectionString() string {
 }
 
 func (t *temporal) InitClient() {
-	Logger.Info("Initializing Temporal Client ...", "host", t.ServerHost, "port", t.ServerPort)
+	Logger.Info("temporal: connecting ...", "host", t.ServerHost, "port", t.ServerPort)
 
 	options := client.Options{HostPort: t.GetConnectionString(), Logger: Logger}
 	retryTemporal := func() error {
@@ -116,12 +116,12 @@ func (t *temporal) InitClient() {
 
 		t.Client = clt
 
-		Logger.Info("Initializing Temporal Client ... Done")
+		Logger.Info("temporal: connected")
 
 		return nil
 	}
 
 	if err := retry.Do(retryTemporal, retry.Attempts(10), retry.Delay(1*time.Second)); err != nil {
-		Logger.Error("Failed to initialize Temporal Client", "error", err)
+		Logger.Error("temporal: connection error", "error", err)
 	}
 }

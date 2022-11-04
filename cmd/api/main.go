@@ -67,6 +67,7 @@ func init() {
 	// Reading the configuration from the environment ... Done
 
 	// Initializing reference to adapters
+	shared.Logger.Info("api: launching ...")
 	waiter.Add(3)
 
 	go func() {
@@ -87,7 +88,7 @@ func init() {
 	waiter.Wait()
 	// Initializing singleton objects ... Done
 
-	shared.Logger.Info("Initializing Service ... Done", "version", shared.Service.Version())
+	shared.Logger.Info("api: launched", "version", shared.Service.Version())
 }
 
 func main() {

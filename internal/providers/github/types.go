@@ -29,12 +29,18 @@ type (
 	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers.
 	WebhookEvent         string                               // WebhookEvent defines the event type.
 	WorkflowSignal       string                               // WorkflowSignal is the name of a workflow signal.
+	WebhookStatus        string                               // WebhookResponseStatus is the status of a webhook response.
+	WebhookResponse      struct {
+		ID     string        `json:"id"`
+		Status WebhookStatus `json:"status"`
+	}
 )
 
-// Supporting functions for WebhookEvent and WorkflowSignal.
+// Supporting functions for string types
 
 func (e WebhookEvent) String() string   { return string(e) }
 func (s WorkflowSignal) String() string { return string(s) }
+func (w WebhookStatus) String() string  { return string(w) }
 
 // Webhook event types. We get this from the header `X-Github-Event`.
 // For payload information, see https://developer.github.com/webhooks/event-payloads/
@@ -90,6 +96,18 @@ const (
 const (
 	InstallationEventSignal    WorkflowSignal = "installation_event"
 	CompleteInstallationSignal WorkflowSignal = "complete_installation"
+)
+
+// Webhook response status types.
+const (
+	WebhookStatusSuccess WebhookStatus = "success"
+	WebhookStatusFailure WebhookStatus = "failure"
+	WebhookStatusQueued  WebhookStatus = "queued"
+	WebhookStatusIgnored WebhookStatus = "ignored"
+)
+
+const (
+	NullSHA = "0000000000000000000000000000000000000000"
 )
 
 // Workflow Response Types.
@@ -166,7 +184,7 @@ type (
 	}
 
 	Commit struct {
-		Sha       string      `json:"sha"`
+		SHA       string      `json:"sha"`
 		ID        string      `json:"id"`
 		NodeID    string      `json:"node_id"`
 		TreeID    string      `json:"tree_id"`
@@ -352,7 +370,7 @@ type (
 	PullRequestHead struct {
 		Label string     `json:"label"`
 		Ref   string     `json:"ref"`
-		Sha   string     `json:"sha"`
+		SHA   string     `json:"sha"`
 		User  User       `json:"user"`
 		Repo  Repository `json:"repo"`
 	}
@@ -360,7 +378,7 @@ type (
 	PullRequestBase struct {
 		Label string     `json:"label"`
 		Ref   string     `json:"ref"`
-		Sha   string     `json:"sha"`
+		SHA   string     `json:"sha"`
 		User  User       `json:"user"`
 		Repo  Repository `json:"repo"`
 	}
