@@ -25,8 +25,6 @@ import (
 	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/qb"
-
-	"go.breu.io/ctrlplane/internal/shared"
 )
 
 type (
@@ -77,7 +75,6 @@ func Get[T Entity](entity T, params QueryParams) error {
 		Where(clause...)
 
 	if err := DB.Session.Query(query.ToCql()).GetRelease(entity); err != nil {
-		shared.Logger.Error("unable to get", "error", err)
 		return err
 	}
 
@@ -111,7 +108,6 @@ func Filter(entity Entity, dest interface{}, params QueryParams) error {
 		Where(clause...)
 
 	if err := DB.Session.Query(query.ToCql()).SelectRelease(dest); err != nil {
-		shared.Logger.Error("unable to get", "error", err)
 		return err
 	}
 

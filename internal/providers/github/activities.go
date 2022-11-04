@@ -42,12 +42,13 @@ func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *en
 
 		installation.Status = payload.Status
 	} else {
-		log.Info("installation not found, creating ...", "payload", payload)
+		log.Info("installation not found, creating ...")
+		log.Debug("payload", "payload", payload)
 
 		installation = payload
 	}
 
-	log.Info("saving installation ...", "installation", installation)
+	log.Info("saving installation ...")
 
 	if err := db.Save(installation); err != nil {
 		log.Error("error saving installation", "error", err)
@@ -66,11 +67,12 @@ func (a *Activities) CreateOrUpdateRepo(ctx context.Context, payload *entities.G
 	if err == nil {
 		log.Info("repository found, updating ...")
 	} else {
-		log.Info("repository not found, creating ...", "payload", payload)
+		log.Info("repository not found, creating ...")
+		log.Debug("payload", "payload", payload)
 	}
 
 	if err := db.Save(repo); err != nil {
-		log.Error("error saving repository", "error", err)
+		log.Error("error saving repository ...", "error", err)
 		return err
 	}
 

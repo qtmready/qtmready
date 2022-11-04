@@ -120,7 +120,8 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 
 		// asynchronously save the repos
 		for _, repository := range webhook.Repositories {
-			log.Info("saving repository ...", "repository", repository.ID)
+			log.Info("saving repository ...")
+			log.Debug("repository", "repository", repository)
 
 			repo := &entities.GithubRepo{
 				GithubID: repository.ID,
@@ -139,7 +140,8 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 		}
 	}
 
-	log.Info("installation complete", "installation", installation)
+	log.Info("installation complete")
+	log.Debug("installation", "installation", installation)
 
 	return nil
 }

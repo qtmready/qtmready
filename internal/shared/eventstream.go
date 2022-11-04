@@ -42,14 +42,14 @@ func (e *eventstream) ReadEnv() {
 }
 
 func (e *eventstream) InitConnection() {
-	Logger.Info("Initializing Event Stream Client ...", "url", e.ServerURL)
+	Logger.Info("events: connecting ...", "url", e.ServerURL)
 	conn, err := nats.Connect(e.ServerURL, nats.MaxReconnects(5), nats.ReconnectWait(2*time.Second))
 
 	if err != nil {
-		Logger.Error("Failed to initialize Event Stream Client", "error", err)
+		Logger.Error("events: connection failed", "error", err)
 	}
 
 	e.Conn = conn
 
-	Logger.Info("Initializing Event Stream Client ... Done")
+	Logger.Info("events: connected")
 }

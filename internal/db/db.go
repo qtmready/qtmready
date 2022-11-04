@@ -70,7 +70,7 @@ func (d *db) InitSession() {
 	cluster := gocql.NewCluster(d.Hosts...)
 	cluster.Keyspace = d.Keyspace
 	createSession := func() error {
-		shared.Logger.Info("db: connecting ...")
+		shared.Logger.Info("db: connecting ...", "hosts", d.Hosts, "keyspace", d.Keyspace)
 
 		session, err := igocqlx.WrapSession(cluster.CreateSession())
 		if err != nil {

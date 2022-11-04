@@ -24,6 +24,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
+	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -65,6 +66,11 @@ func handlePushEvent(ctx echo.Context) error {
 		return err
 	}
 
+	// we can have `NullSHA` for squashed commits or rebases
+	if payload.After == NullSHA {
+		return ctx.JSON(http.StatusOK, &WebhookResponse{ID: db.NullUUID, Status: WebhookStatusIgnored})
+	}
+
 	w := &Workflows{}
 	opts := shared.Temporal.
 		Queues[shared.ProvidersQueue].
@@ -75,5 +81,5 @@ func handlePushEvent(ctx echo.Context) error {
 		return err
 	}
 
-	return ctx.JSON(http.StatusCreated, exe.GetRunID())
+	return ctx.JSON(http.StatusCreated, &WebhookResponse{ID: exe.GetRunID(), Status: WebhookStatusQueued})
 }

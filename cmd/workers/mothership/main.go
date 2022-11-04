@@ -41,6 +41,7 @@ func init() {
 	db.DB.ReadEnv()
 
 	wait.Add(3)
+	shared.Logger.Info("mothership: launching ...")
 
 	go func() {
 		defer wait.Done()
@@ -59,7 +60,7 @@ func init() {
 
 	wait.Wait()
 
-	shared.Logger.Info("Initializing Service ... Done", "version", shared.Service.Version())
+	shared.Logger.Info("mothership: launched", "version", shared.Service.Version())
 }
 
 func main() {

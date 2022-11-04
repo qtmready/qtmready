@@ -28,6 +28,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"go.breu.io/ctrlplane/internal/shared/logger"
 )
@@ -152,7 +153,9 @@ func (s *service) InitLogger() {
 	var zl *zap.Logger
 
 	if s.Debug {
-		zl, _ = zap.NewDevelopment()
+		config := zap.NewDevelopmentConfig()
+		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		zl, _ = config.Build()
 	} else {
 		zl, _ = zap.NewProduction()
 	}
