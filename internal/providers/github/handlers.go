@@ -57,7 +57,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 
 	shared.Logger.Debug("installation event handled ...", "options", opts, "execution", exe.GetRunID())
 
-	return ctx.JSON(http.StatusCreated, &WebhookResponse{ID: exe.GetRunID(), Status: WebhookStatusQueued})
+	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowQueued})
 }
 
 // handlePushEvent handles GitHub push event.
@@ -69,7 +69,7 @@ func handlePushEvent(ctx echo.Context) error {
 
 	// the value will be `NoCommit` if we have a tag push, or squash merge.
 	if payload.After == NoCommit {
-		return ctx.JSON(http.StatusOK, &WebhookResponse{ID: db.NullUUID, Status: WebhookStatusIgnored})
+		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: db.NullUUID, Status: WorkflowSkipped})
 	}
 
 	w := &Workflows{}
@@ -82,7 +82,7 @@ func handlePushEvent(ctx echo.Context) error {
 		return err
 	}
 
-	return ctx.JSON(http.StatusCreated, &WebhookResponse{ID: exe.GetRunID(), Status: WebhookStatusQueued})
+	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowQueued})
 }
 
 // handlePullRequestEvent handles GitHub pull request event.
@@ -109,5 +109,5 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		return err
 	}
 
-	return ctx.JSON(http.StatusCreated, &WebhookResponse{ID: exe.GetRunID(), Status: WebhookStatusQueued})
+	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowQueued})
 }

@@ -40,6 +40,7 @@ func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
 	g.GET("/repos", repos)
 }
 
+// webhook handles the webhook from GitHub.
 func webhook(ctx echo.Context) error {
 	shared.Logger.Debug("webhook received", "headers", ctx.Request().Header)
 	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
@@ -105,22 +106,20 @@ func completeInstallation(ctx echo.Context) error {
 		Queues[shared.ProvidersQueue].
 		GetWorkflowOptions("github", strconv.Itoa(int(payload.InstallationID)), string(InstallationEvent))
 
-	run, err := shared.Temporal.Client.
-		SignalWithStartWorkflow(
-			ctx.Request().Context(),
-			opts.ID,
-			CompleteInstallationSignal.String(),
-			payload,
-			opts,
-			workflows.OnInstall,
-		)
-
+	exe, err := shared.Temporal.Client.SignalWithStartWorkflow(
+		ctx.Request().Context(),
+		opts.ID,
+		CompleteInstallationSignal.String(),
+		payload,
+		opts,
+		workflows.OnInstall,
+	)
 	if err != nil {
 		shared.Logger.Error("error", "error", err)
 		return err
 	}
 
-	return ctx.JSON(http.StatusOK, &WorkflowRunResponse{ID: run.GetID(), RunID: run.GetRunID()})
+	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: exe.GetID(), Status: WorkflowQueued})
 }
 
 // @Summary     Get GitHub repositories.
