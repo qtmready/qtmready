@@ -154,5 +154,8 @@ func (w *Workflows) OnPush(ctx workflow.Context, payload PushEventPayload) error
 }
 
 func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEventPayload) error {
+	log := workflow.GetLogger(ctx)
+	log.Debug("received pull request event ...")
+
 	return nil
 }

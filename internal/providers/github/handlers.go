@@ -28,6 +28,7 @@ import (
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
+// handleInstallationEvent handles GitHub App installation event.
 func handleInstallationEvent(ctx echo.Context) error {
 	payload := &InstallationEventPayload{}
 	if err := ctx.Bind(payload); err != nil {
@@ -39,7 +40,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 	workflows := &Workflows{}
 	opts := shared.Temporal.
 		Queues[shared.ProvidersQueue].
-		GetWorkflowOptions("github", strconv.FormatInt(payload.Installation.ID, 10), string(InstallationEvent))
+		GetWorkflowOptions("github", strconv.FormatInt(payload.Installation.ID, 10), InstallationEvent.String())
 
 	exe, err := shared.Temporal.Client.SignalWithStartWorkflow(
 		ctx.Request().Context(),
@@ -54,20 +55,20 @@ func handleInstallationEvent(ctx echo.Context) error {
 		return nil
 	}
 
-	shared.Logger.Info("installation event handled ...", "options", opts, "execution", exe.GetRunID())
+	shared.Logger.Debug("installation event handled ...", "options", opts, "execution", exe.GetRunID())
 
-	return ctx.JSON(http.StatusCreated, exe.GetRunID())
+	return ctx.JSON(http.StatusCreated, &WebhookResponse{ID: exe.GetRunID(), Status: WebhookStatusQueued})
 }
 
-// handles GitHub push event.
+// handlePushEvent handles GitHub push event.
 func handlePushEvent(ctx echo.Context) error {
 	payload := PushEventPayload{}
 	if err := ctx.Bind(&payload); err != nil {
 		return err
 	}
 
-	// we can have `NullSHA` for squashed commits or rebases
-	if payload.After == NullSHA {
+	// the value will be `NoCommit` if we have a tag push, or squash merge.
+	if payload.After == NoCommit {
 		return ctx.JSON(http.StatusOK, &WebhookResponse{ID: db.NullUUID, Status: WebhookStatusIgnored})
 	}
 
@@ -77,6 +78,33 @@ func handlePushEvent(ctx echo.Context) error {
 		GetWorkflowOptions("github", strconv.FormatInt(payload.Installation.ID, 10), PushEvent.String(), "ref", payload.After)
 
 	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPush, payload)
+	if err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusCreated, &WebhookResponse{ID: exe.GetRunID(), Status: WebhookStatusQueued})
+}
+
+// handlePullRequestEvent handles GitHub pull request event.
+func handlePullRequestEvent(ctx echo.Context) error {
+	payload := PullRequestEventPayload{}
+	if err := ctx.Bind(&payload); err != nil {
+		shared.Logger.Error("unable to bind payload ...", "error", err)
+		return err
+	}
+
+	w := &Workflows{}
+	opts := shared.Temporal.
+		Queues[shared.ProvidersQueue].
+		GetWorkflowOptions(
+			"github",
+			strconv.FormatInt(payload.Installation.ID, 10),
+			PullRequestEvent.String(),
+			"id",
+			strconv.FormatInt(payload.PullRequest.ID, 10),
+		)
+
+	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPullRequest, payload)
 	if err != nil {
 		return err
 	}

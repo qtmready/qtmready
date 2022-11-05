@@ -62,10 +62,10 @@ func webhook(ctx echo.Context) error {
 	}
 
 	event := WebhookEvent(headerEvent)
-	// A Map of event types to their respective handlers
 	handlers := WebhookEventHandlers{
 		InstallationEvent: handleInstallationEvent,
 		PushEvent:         handlePushEvent,
+		PullRequestEvent:  handlePullRequestEvent,
 	}
 
 	if handle, exists := handlers[event]; exists {
