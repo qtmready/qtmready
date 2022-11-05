@@ -24,15 +24,16 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// WebhookEvent & various handlers.
 type (
 	WebhookEventHandler  func(ctx echo.Context) error         // EventHandler is the signature of the event handler function.
 	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers.
 	WebhookEvent         string                               // WebhookEvent defines the event type.
 	WorkflowSignal       string                               // WorkflowSignal is the name of a workflow signal.
-	WebhookStatus        string                               // WebhookResponseStatus is the status of a webhook response.
-	WebhookResponse      struct {
-		ID     string        `json:"id"`
-		Status WebhookStatus `json:"status"`
+	WorkflowStatus       string                               // WebhookResponseStatus is the status of a webhook response.
+	WorkflowResponse     struct {
+		RunID  string         `json:"run_id"`
+		Status WorkflowStatus `json:"status"`
 	}
 )
 
@@ -40,7 +41,7 @@ type (
 
 func (e WebhookEvent) String() string   { return string(e) }
 func (s WorkflowSignal) String() string { return string(s) }
-func (w WebhookStatus) String() string  { return string(w) }
+func (w WorkflowStatus) String() string { return string(w) }
 
 // Webhook event types. We get this from the header `X-Github-Event`.
 // For payload information, see https://developer.github.com/webhooks/event-payloads/
@@ -100,22 +101,14 @@ const (
 
 // Webhook response status types.
 const (
-	WebhookStatusSuccess WebhookStatus = "success"
-	WebhookStatusFailure WebhookStatus = "failure"
-	WebhookStatusQueued  WebhookStatus = "queued"
-	WebhookStatusIgnored WebhookStatus = "ignored"
+	WorkflowSuccess WorkflowStatus = "success"
+	WorkflowFailed  WorkflowStatus = "failure"
+	WorkflowQueued  WorkflowStatus = "queued"
+	WorkflowSkipped WorkflowStatus = "skipped"
 )
 
 const (
-	NullSHA = "0000000000000000000000000000000000000000"
-)
-
-// Workflow Response Types.
-type (
-	WorkflowRunResponse struct {
-		ID    string `json:"id"`
-		RunID string `json:"run_id"`
-	}
+	NoCommit = "0000000000000000000000000000000000000000"
 )
 
 // Payloads for Webhooks Events.
@@ -266,9 +259,9 @@ type (
 		NotificationsURL string    `json:"notifications_url"`
 		LabelsURL        string    `json:"labels_url"`
 		ReleasesURL      string    `json:"releases_url"`
-		CreatedAt        int64     `json:"created_at"`
+		CreatedAt        time.Time `json:"created_at"`
 		UpdatedAt        time.Time `json:"updated_at"`
-		PushedAt         int64     `json:"pushed_at"`
+		PushedAt         time.Time `json:"pushed_at"`
 		GitURL           string    `json:"git_url"`
 		SSHUrl           string    `json:"ssh_url"`
 		CloneURL         string    `json:"clone_url"`
