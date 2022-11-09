@@ -64,6 +64,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 func handlePushEvent(ctx echo.Context) error {
 	payload := PushEventPayload{}
 	if err := ctx.Bind(&payload); err != nil {
+		shared.Logger.Error("unable to bind payload ...", "error", err)
 		return err
 	}
 
