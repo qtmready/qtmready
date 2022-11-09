@@ -109,7 +109,7 @@ func completeInstallation(ctx echo.Context) error {
 	exe, err := shared.Temporal.Client.SignalWithStartWorkflow(
 		ctx.Request().Context(),
 		opts.ID,
-		CompleteInstallationSignal.String(),
+		RequestCompleteInstallationSignal.String(),
 		payload,
 		opts,
 		workflows.OnInstall,

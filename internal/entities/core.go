@@ -151,6 +151,7 @@ var (
 )
 
 type (
+	// App defines an application.
 	App struct {
 		ID        gocql.UUID `json:"id" cql:"id"`
 		TeamID    gocql.UUID `json:"team_id" cql:"team_id"`
@@ -200,6 +201,7 @@ type (
 		UpdatedAt   time.Time  `json:"updated_at"`
 	}
 
+	// Blueprint contains a collection of Workload & Resource to define one single release.
 	Blueprint struct {
 		ID            gocql.UUID       `json:"id" cql:"id"`
 		AppID         gocql.UUID       `json:"app_id" cql:"app_id"`
@@ -212,14 +214,21 @@ type (
 		UpdatedAt     time.Time        `json:"updated_at"`
 	}
 
+	// ChangeSet is the record for git commit id
+	// For a polyrepo BluePrint, a PR on one repo can trigger a release for the BluePrint.
+	ChangeSet struct {
+		ID          gocql.UUID           `json:"id" cql:"id"`
+		RepoMarkers ChangeSetRepoMarkers `json:"repo_markers" cql:"repo_markers"`
+	}
+
 	Rollout struct {
-		ID          gocql.UUID `json:"id" cql:"id"`
-		AppID       gocql.UUID `json:"app_id" cql:"app_id"`
-		BlueprintID string     `json:"blueprint_id" cql:"blueprint_id"`
-		Trigger     string     `json:"trigger" cql:"trigger"`
-		State       string     `json:"state" cql:"state"` // "in_progress" | "live" | "rejected"
-		CreatedAt   time.Time  `json:"created_at"`
-		UpdatedAt   time.Time  `json:"updated_at"`
+		ID          gocql.UUID   `json:"id" cql:"id"`
+		AppID       gocql.UUID   `json:"app_id" cql:"app_id"`
+		BlueprintID string       `json:"blueprint_id" cql:"blueprint_id"`
+		Trigger     string       `json:"trigger" cql:"trigger"`
+		State       RolloutState `json:"state" cql:"state"` // "in_progress" | "live" | "rejected"
+		CreatedAt   time.Time    `json:"created_at"`
+		UpdatedAt   time.Time    `json:"updated_at"`
 	}
 )
 

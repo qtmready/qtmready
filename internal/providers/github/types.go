@@ -24,27 +24,34 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// WebhookEvent & various handlers.
+// HTTP Requests & Responses.
+type (
+	CompleteInstallationRequest struct {
+		InstallationID int64  `json:"installation_id"`
+		SetupAction    string `json:"setup_action"`
+	}
+	WorkflowResponse struct {
+		RunID  string         `json:"run_id"`
+		Status WorkflowStatus `json:"status"`
+	}
+)
+
+// Webhook events & Workflow singals.
 type (
 	WebhookEventHandler  func(ctx echo.Context) error         // EventHandler is the signature of the event handler function.
 	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers.
 	WebhookEvent         string                               // WebhookEvent defines the event type.
 	WorkflowSignal       string                               // WorkflowSignal is the name of a workflow signal.
 	WorkflowStatus       string                               // WebhookResponseStatus is the status of a webhook response.
-	WorkflowResponse     struct {
-		RunID  string         `json:"run_id"`
-		Status WorkflowStatus `json:"status"`
-	}
 )
 
-// Supporting functions for string types
-
+// Supporting functions for string types.
 func (e WebhookEvent) String() string   { return string(e) }
 func (s WorkflowSignal) String() string { return string(s) }
 func (w WorkflowStatus) String() string { return string(w) }
 
 // Webhook event types. We get this from the header `X-Github-Event`.
-// For payload information, see https://developer.github.com/webhooks/event-payloads/
+// For payload information, see https://developer.github.com/webhooks/event-payloads/.
 const (
 	AppAuthorizationEvent                    WebhookEvent = "github_app_authorization"
 	CheckRunEvent                            WebhookEvent = "check_run"
@@ -95,23 +102,24 @@ const (
 
 // Workflow signal types.
 const (
-	InstallationEventSignal    WorkflowSignal = "installation_event"
-	CompleteInstallationSignal WorkflowSignal = "complete_installation"
+	WebhookInstallationEventSignal    WorkflowSignal = "installation_event"
+	RequestCompleteInstallationSignal WorkflowSignal = "complete_installation"
 )
 
-// Webhook response status types.
+// Webhook status types.
 const (
-	WorkflowSuccess WorkflowStatus = "success"
-	WorkflowFailed  WorkflowStatus = "failure"
-	WorkflowQueued  WorkflowStatus = "queued"
-	WorkflowSkipped WorkflowStatus = "skipped"
+	WorkflowSuccess  WorkflowStatus = "success"
+	WorkflowFailed   WorkflowStatus = "failure"
+	WorkflowQueued   WorkflowStatus = "queued"
+	WorkflowSignaled WorkflowStatus = "signaled"
+	WorkflowSkipped  WorkflowStatus = "skipped"
 )
 
 const (
 	NoCommit = "0000000000000000000000000000000000000000"
 )
 
-// Payloads for Webhooks Events.
+// Payloads for Events & Signals.
 type (
 	AppAuthorizationEventPayload struct {
 		Action string `json:"action"`
@@ -143,25 +151,19 @@ type (
 	}
 
 	PullRequestEventPayload struct {
-		Action            string         `json:"action"`
-		Number            int64          `json:"number"`
-		PullRequest       PullRequest    `json:"pull_request"`
-		Label             Label          `json:"label"`
-		Assignee          *User          `json:"assignee"`
-		RequestedReviewer *User          `json:"requested_reviewer"`
-		RequestedTeam     RequestedTeam  `json:"requested_team"`
-		Installation      InstallationID `json:"installation"`
+		Action       string         `json:"action"`
+		Number       int64          `json:"number"`
+		PullRequest  PullRequest    `json:"pull_request"`
+		Repository   Repository     `json:"repository"`
+		Organization *Organization  `json:"organization"`
+		Installation InstallationID `json:"installation"`
+		Sender       User           `json:"sender"`
 	}
 
 	CompleteInstallationSignalPayload struct {
 		InstallationID int64      `json:"installation_id"`
 		SetupAction    string     `json:"setup_action"`
 		TeamID         gocql.UUID `json:"team_id"`
-	}
-
-	CompleteInstallationRequest struct {
-		InstallationID int64  `json:"installation_id"`
-		SetupAction    string `json:"setup_action"`
 	}
 )
 
@@ -376,31 +378,19 @@ type (
 		Repo  Repository `json:"repo"`
 	}
 
+	Href struct {
+		Href string `json:"href"`
+	}
+
 	PullRequestLinks struct {
-		Self struct {
-			Href string `json:"href"`
-		} `json:"self"`
-		HTML struct {
-			Href string `json:"href"`
-		} `json:"html"`
-		Issue struct {
-			Href string `json:"href"`
-		} `json:"issue"`
-		Comments struct {
-			Href string `json:"href"`
-		} `json:"comments"`
-		ReviewComments struct {
-			Href string `json:"href"`
-		} `json:"review_comments"`
-		ReviewComment struct {
-			Href string `json:"href"`
-		} `json:"review_comment"`
-		Commits struct {
-			Href string `json:"href"`
-		} `json:"commits"`
-		Statuses struct {
-			Href string `json:"href"`
-		} `json:"statuses"`
+		Self           Href `json:"self"`
+		HTML           Href `json:"html"`
+		Issue          Href `json:"issue"`
+		Comments       Href `json:"comments"`
+		ReviewComments Href `json:"review_comments"`
+		ReviewComment  Href `json:"review_comment"`
+		Commits        Href `json:"commits"`
+		Statuses       Href `json:"statuses"`
 	}
 
 	PullRequest struct {
@@ -470,5 +460,20 @@ type (
 		MembersURL      string `json:"members_url"`
 		RepositoriesURL string `json:"repositories_url"`
 		Permission      string `json:"permission"`
+	}
+
+	Organization struct {
+		Login            string `json:"login"`
+		ID               int    `json:"id"`
+		NodeID           string `json:"node_id"`
+		URL              string `json:"url"`
+		ReposURL         string `json:"repos_url"`
+		EventsURL        string `json:"events_url"`
+		HooksURL         string `json:"hooks_url"`
+		IssuesURL        string `json:"issues_url"`
+		MembersURL       string `json:"members_url"`
+		PublicMembersURL string `json:"public_members_url"`
+		AvatarURL        string `json:"avatar_url"`
+		Description      string `json:"description"`
 	}
 )
