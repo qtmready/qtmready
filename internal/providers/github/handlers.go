@@ -62,8 +62,8 @@ func handleInstallationEvent(ctx echo.Context) error {
 
 // handlePushEvent handles GitHub push event.
 func handlePushEvent(ctx echo.Context) error {
-	payload := PushEventPayload{}
-	if err := ctx.Bind(&payload); err != nil {
+	payload := &PushEventPayload{}
+	if err := ctx.Bind(payload); err != nil {
 		shared.Logger.Error("unable to bind payload ...", "error", err)
 		return err
 	}
@@ -122,6 +122,11 @@ func handlePullRequestEvent(ctx echo.Context) error {
 
 		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowQueued})
 	default:
+		err := shared.Temporal.Client.SignalWorkflow(context.Background(), opts.ID, "", PullRequestEvent.String(), payload)
+		if err != nil {
+			return err
+		}
+
 		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: db.NullUUID, Status: WorkflowSkipped})
 	}
 }

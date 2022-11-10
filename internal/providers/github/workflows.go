@@ -54,32 +54,28 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	webhookChannel := workflow.GetSignalChannel(ctx, WebhookInstallationEventSignal.String())
 	requestChannel := workflow.GetSignalChannel(ctx, RequestCompleteInstallationSignal.String())
 
-	// webhook entry point
-	selector.AddReceive(
-		webhookChannel,
-		func(channel workflow.ReceiveChannel, more bool) {
-			log.Info("received webhook installation event ...")
-			channel.Receive(ctx, webhook)
-			webhookDone = true
+	// webhook signal processor
+	selector.AddReceive(webhookChannel, func(rx workflow.ReceiveChannel, more bool) {
+		log.Info("received webhook installation event ...")
+		rx.Receive(ctx, webhook)
+		webhookDone = true
 
-			switch webhook.Action {
-			case "deleted", "suspend", "unsuspend":
-				log.Info("installation removed, skipping complete installation request ...")
-				requestDone = true
-			default:
-				log.Info("installation created, waiting for complete installation request ...")
-			}
-		},
+		switch webhook.Action {
+		case "deleted", "suspend", "unsuspend":
+			log.Info("installation removed, skipping complete installation request ...")
+			requestDone = true
+		default:
+			log.Info("installation created, waiting for complete installation request ...")
+		}
+	},
 	)
 
-	// complete installation entry point
-	selector.AddReceive(
-		requestChannel,
-		func(channel workflow.ReceiveChannel, more bool) {
-			log.Info("received complete installation request ...")
-			channel.Receive(ctx, request)
-			requestDone = true
-		},
+	// complete installation signal processor
+	selector.AddReceive(requestChannel, func(rx workflow.ReceiveChannel, more bool) {
+		log.Info("received complete installation request ...")
+		rx.Receive(ctx, request)
+		requestDone = true
+	},
 	)
 
 	// keep listening for signals until we have received both the installation id and the team id
@@ -147,20 +143,30 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 // OnPush checks if the push event is associated with an open pull request.If so, it will get the idempotent key for
 // the immutable rollout. Depending upon the target branch, it will either queue the rollout or update the existing
 // rollout.
-func (w *Workflows) OnPush(ctx workflow.Context, payload PushEventPayload) error {
+func (w *Workflows) OnPush(ctx workflow.Context, payload *PushEventPayload) error {
 	log := workflow.GetLogger(ctx)
-	log.Debug("received push event ...")
+	log.Debug("received push event ...", "payload", payload)
 
 	return nil
 }
 
 // OnPullRequest is the core workflow responsible to create an idempotency key for the immutable infrastructre.
-// After creating the idempotency key, it will create a new worklfow to create a rollout.
+// After creating the idempotency key, it will create a new child workflow to handle the rollout.
 //
 // The spawned workflow will contain the mutex lock to ensure that only one rollout is created at a time.
 func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEventPayload) error {
 	log := workflow.GetLogger(ctx)
-	log.Debug("pull request opened, creating new changeset ...")
+	signal := &PullRequestEventPayload{}
+	selector := workflow.NewSelector(ctx)
+
+	// setting up signals
+	prChannel := workflow.GetSignalChannel(ctx, PullRequestSignal.String())
+
+	// signal processor
+	selector.AddReceive(prChannel, func(rx workflow.ReceiveChannel, more bool) {
+		log.Info("more information to PR added, updating changeset ...")
+		rx.Receive(ctx, signal)
+	})
 
 	return nil
 }
