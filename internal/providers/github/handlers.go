@@ -124,6 +124,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 	default:
 		err := shared.Temporal.Client.SignalWorkflow(context.Background(), opts.ID, "", PullRequestEvent.String(), payload)
 		if err != nil {
+			shared.Logger.Error("unable to signal ...", "options", opts, "error", err)
 			return err
 		}
 

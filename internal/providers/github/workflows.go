@@ -30,6 +30,7 @@ var (
 )
 
 type (
+	// Github Webhook Workflows.
 	Workflows struct{}
 )
 
@@ -154,8 +155,10 @@ func (w *Workflows) OnPush(ctx workflow.Context, payload *PushEventPayload) erro
 // After creating the idempotency key, it will create a new child workflow to handle the rollout.
 //
 // The spawned workflow will contain the mutex lock to ensure that only one rollout is created at a time.
+// TODO: Handle all the possible github related events.
 func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEventPayload) error {
 	log := workflow.GetLogger(ctx)
+	complete := false
 	signal := &PullRequestEventPayload{}
 	selector := workflow.NewSelector(ctx)
 
@@ -164,9 +167,29 @@ func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEvent
 
 	// signal processor
 	selector.AddReceive(prChannel, func(rx workflow.ReceiveChannel, more bool) {
-		log.Info("more information to PR added, updating changeset ...")
+		log.Info("received pull request signal ...")
 		rx.Receive(ctx, signal)
+
+		switch signal.Action {
+		case "closed":
+			if signal.PullRequest.Merged {
+				log.Info("pull request merged, ramping rollout to 100% ...")
+				complete = true
+			} else {
+				log.Info("pull request closed, skipping rollout ...")
+				complete = true
+			}
+		default:
+			log.Info("skipping ...")
+		}
 	})
+
+	log.Info("creating idempotency key for rollouts ...")
+
+	// keep listening to signals until complete = true
+	for !complete {
+		selector.Select(ctx)
+	}
 
 	return nil
 }
