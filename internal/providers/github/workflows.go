@@ -146,7 +146,7 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 // rollout.
 func (w *Workflows) OnPush(ctx workflow.Context, payload *PushEventPayload) error {
 	log := workflow.GetLogger(ctx)
-	log.Debug("received push event ...", "payload", payload)
+	log.Info("received push event ...")
 
 	return nil
 }
