@@ -42,7 +42,6 @@ func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
 
 // webhook handles the webhook from GitHub.
 func webhook(ctx echo.Context) error {
-	shared.Logger.Debug("webhook received", "headers", ctx.Request().Header)
 	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
 
 	if signature == "" {

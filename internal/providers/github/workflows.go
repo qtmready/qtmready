@@ -163,28 +163,27 @@ func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEvent
 
 	// signal processor
 	selector.AddReceive(prChannel, func(rx workflow.ReceiveChannel, more bool) {
-		log.Info("PR updated ...")
 		rx.Receive(ctx, signal)
 
 		switch signal.Action {
 		case "closed":
 			if signal.PullRequest.Merged {
-				log.Info("PR merged, ramping rollout to 100% ...")
+				log.Info("PR merged: ramping rollout to 100% ...")
 				complete = true
 			} else {
-				log.Info("PR closed, skipping rollout ...")
+				log.Info("PR closed: skipping rollout ...")
 				complete = true
 			}
 		case "synchronize":
-			log.Info("PR updated, checking the status of the environment ...")
+			log.Info("PR updated: checking the status of the environment ...")
 			// TODO: here we need to check the app associated with repo & get the `release` branch. If the PR branch is not
 			// the default branch, then we update in place, otherwise, we queue a new rollout.
 		default:
-			log.Info("no action required, skipping ...")
+			log.Info("PR: no action required, skipping ...")
 		}
 	})
 
-	log.Info("PR created, creating new rollout ...")
+	log.Info("PR created: creating new rollout ...")
 
 	// keep listening to signals until complete = true
 	for !complete {
