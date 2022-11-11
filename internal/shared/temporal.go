@@ -29,8 +29,8 @@ import (
 var (
 	Temporal = &temporal{
 		Queues: Queues{
-			MothershipQueue: &queue{MothershipQueue, "ai.ctrlplane.mothership"},
-			ProvidersQueue:  &queue{ProvidersQueue, "ai.ctrlplane.providers"},
+			CoreQueue:      &queue{CoreQueue, "ai.ctrlplane.core"},
+			ProvidersQueue: &queue{ProvidersQueue, "ai.ctrlplane.providers"},
 		},
 	}
 )
@@ -49,11 +49,8 @@ type (
 
 // TODO: The greater plan is to move each tenant in its own namespace.
 const (
-	MothershipQueue  QueueName = "mothership"
-	ProvidersQueue   QueueName = "providers"
-	BuilderQueue     QueueName = "builder"
-	ProvisionerQueue QueueName = "provisioner"
-	DeployerQueue    QueueName = "deployer"
+	CoreQueue      QueueName = "core"      // core queue.
+	ProvidersQueue QueueName = "providers" // messaging related to providers
 )
 
 func (q QueueName) ToString() string {
@@ -61,11 +58,18 @@ func (q QueueName) ToString() string {
 }
 
 type (
+	// queue holds the queue name and prefix for workflow id.
 	queue struct {
 		Name   QueueName // The name of the queue.
 		Prefix string    // The prefix to create the workflow ID.
 	}
 
+	// temporal holds the temporal client and client.
+	//
+	// FIXME: The current design is not ideal for a central multi-tenannt solution. Temporal provides strong isolation via
+	// namespaces. Ideally, each tenant should have its own namespace. That would require a change in the struct to have a
+	// map. The map would be keyed by tenant ID and the value would be the temporal client. A Client(id string)
+	// should either get the client from the map or create a new one (singleton) if it does not exist.
 	temporal struct {
 		ServerHost string `env:"TEMPORAL_HOST" env-default:"temporal"`
 		ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
