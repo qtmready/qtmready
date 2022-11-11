@@ -15,15 +15,5 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-// providers sets up integrations with external services.
-package providers
-
-import (
-	"github.com/labstack/echo/v4"
-
-	"go.breu.io/ctrlplane/internal/providers/github"
-)
-
-func CreateRoutes(g *echo.Group, middlewares ...echo.MiddlewareFunc) {
-	github.CreateRoutes(g.Group("/github"), middlewares...)
-}
+// core contains ctrlplane's core functionality.
+package core

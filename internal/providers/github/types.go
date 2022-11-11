@@ -24,27 +24,34 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-// WebhookEvent & various handlers.
+// HTTP Requests & Responses.
+type (
+	CompleteInstallationRequest struct {
+		InstallationID int64  `json:"installation_id"`
+		SetupAction    string `json:"setup_action"`
+	}
+	WorkflowResponse struct {
+		RunID  string         `json:"run_id"`
+		Status WorkflowStatus `json:"status"`
+	}
+)
+
+// Webhook events & Workflow singals.
 type (
 	WebhookEventHandler  func(ctx echo.Context) error         // EventHandler is the signature of the event handler function.
 	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers.
 	WebhookEvent         string                               // WebhookEvent defines the event type.
 	WorkflowSignal       string                               // WorkflowSignal is the name of a workflow signal.
 	WorkflowStatus       string                               // WebhookResponseStatus is the status of a webhook response.
-	WorkflowResponse     struct {
-		RunID  string         `json:"run_id"`
-		Status WorkflowStatus `json:"status"`
-	}
 )
 
-// Supporting functions for string types
-
+// Supporting functions for string types.
 func (e WebhookEvent) String() string   { return string(e) }
 func (s WorkflowSignal) String() string { return string(s) }
 func (w WorkflowStatus) String() string { return string(w) }
 
 // Webhook event types. We get this from the header `X-Github-Event`.
-// For payload information, see https://developer.github.com/webhooks/event-payloads/
+// For payload information, see https://developer.github.com/webhooks/event-payloads/.
 const (
 	AppAuthorizationEvent                    WebhookEvent = "github_app_authorization"
 	CheckRunEvent                            WebhookEvent = "check_run"
@@ -95,23 +102,25 @@ const (
 
 // Workflow signal types.
 const (
-	InstallationEventSignal    WorkflowSignal = "installation_event"
-	CompleteInstallationSignal WorkflowSignal = "complete_installation"
+	WebhookInstallationEventSignal    WorkflowSignal = "installation_event"
+	RequestCompleteInstallationSignal WorkflowSignal = "complete_installation"
+	PullRequestSignal                 WorkflowSignal = "pull_request"
 )
 
-// Webhook response status types.
+// Webhook status types.
 const (
-	WorkflowSuccess WorkflowStatus = "success"
-	WorkflowFailed  WorkflowStatus = "failure"
-	WorkflowQueued  WorkflowStatus = "queued"
-	WorkflowSkipped WorkflowStatus = "skipped"
+	WorkflowSuccess  WorkflowStatus = "success"
+	WorkflowFailed   WorkflowStatus = "failure"
+	WorkflowQueued   WorkflowStatus = "queued"
+	WorkflowSignaled WorkflowStatus = "signaled"
+	WorkflowSkipped  WorkflowStatus = "skipped"
 )
 
 const (
 	NoCommit = "0000000000000000000000000000000000000000"
 )
 
-// Payloads for Webhooks Events.
+// Payloads for Events & Signals.
 type (
 	AppAuthorizationEventPayload struct {
 		Action string `json:"action"`
@@ -143,25 +152,19 @@ type (
 	}
 
 	PullRequestEventPayload struct {
-		Action            string         `json:"action"`
-		Number            int64          `json:"number"`
-		PullRequest       PullRequest    `json:"pull_request"`
-		Label             Label          `json:"label"`
-		Assignee          *User          `json:"assignee"`
-		RequestedReviewer *User          `json:"requested_reviewer"`
-		RequestedTeam     RequestedTeam  `json:"requested_team"`
-		Installation      InstallationID `json:"installation"`
+		Action       string                `json:"action"`
+		Number       int64                 `json:"number"`
+		PullRequest  PullRequest           `json:"pull_request"`
+		Repository   PullRequestRepository `json:"repository"`
+		Organization *Organization         `json:"organization"`
+		Installation InstallationID        `json:"installation"`
+		Sender       User                  `json:"sender"`
 	}
 
 	CompleteInstallationSignalPayload struct {
 		InstallationID int64      `json:"installation_id"`
 		SetupAction    string     `json:"setup_action"`
 		TeamID         gocql.UUID `json:"team_id"`
-	}
-
-	CompleteInstallationRequest struct {
-		InstallationID int64  `json:"installation_id"`
-		SetupAction    string `json:"setup_action"`
 	}
 )
 
@@ -214,6 +217,79 @@ type (
 	}
 
 	Repository struct {
+		ID               int64     `json:"id"`
+		NodeID           string    `json:"node_id"`
+		Name             string    `json:"name"`
+		FullName         string    `json:"full_name"`
+		Owner            User      `json:"owner"`
+		Private          bool      `json:"private"`
+		HTMLUrl          string    `json:"html_url"`
+		Description      string    `json:"description"`
+		Fork             bool      `json:"fork"`
+		URL              string    `json:"url"`
+		ForksURL         string    `json:"forks_url"`
+		KeysURL          string    `json:"keys_url"`
+		CollaboratorsURL string    `json:"collaborators_url"`
+		TeamsURL         string    `json:"teams_url"`
+		HooksURL         string    `json:"hooks_url"`
+		IssueEventsURL   string    `json:"issue_events_url"`
+		EventsURL        string    `json:"events_url"`
+		AssigneesURL     string    `json:"assignees_url"`
+		BranchesURL      string    `json:"branches_url"`
+		TagsURL          string    `json:"tags_url"`
+		BlobsURL         string    `json:"blobs_url"`
+		GitTagsURL       string    `json:"git_tags_url"`
+		GitRefsURL       string    `json:"git_refs_url"`
+		TreesURL         string    `json:"trees_url"`
+		StatusesURL      string    `json:"statuses_url"`
+		LanguagesURL     string    `json:"languages_url"`
+		StargazersURL    string    `json:"stargazers_url"`
+		ContributorsURL  string    `json:"contributors_url"`
+		SubscribersURL   string    `json:"subscribers_url"`
+		SubscriptionURL  string    `json:"subscription_url"`
+		CommitsURL       string    `json:"commits_url"`
+		GitCommitsURL    string    `json:"git_commits_url"`
+		CommentsURL      string    `json:"comments_url"`
+		IssueCommentURL  string    `json:"issue_comment_url"`
+		ContentsURL      string    `json:"contents_url"`
+		CompareURL       string    `json:"compare_url"`
+		MergesURL        string    `json:"merges_url"`
+		ArchiveURL       string    `json:"archive_url"`
+		DownloadsURL     string    `json:"downloads_url"`
+		IssuesURL        string    `json:"issues_url"`
+		PullsURL         string    `json:"pulls_url"`
+		MilestonesURL    string    `json:"milestones_url"`
+		NotificationsURL string    `json:"notifications_url"`
+		LabelsURL        string    `json:"labels_url"`
+		ReleasesURL      string    `json:"releases_url"`
+		CreatedAt        int64     `json:"created_at"`
+		UpdatedAt        time.Time `json:"updated_at"`
+		PushedAt         int64     `json:"pushed_at"`
+		GitURL           string    `json:"git_url"`
+		SSHUrl           string    `json:"ssh_url"`
+		CloneURL         string    `json:"clone_url"`
+		SvnURL           string    `json:"svn_url"`
+		Homepage         *string   `json:"homepage"`
+		Size             int64     `json:"size"`
+		StargazersCount  int64     `json:"stargazers_count"`
+		WatchersCount    int64     `json:"watchers_count"`
+		Language         *string   `json:"language"`
+		HasIssues        bool      `json:"has_issues"`
+		HasDownloads     bool      `json:"has_downloads"`
+		HasWiki          bool      `json:"has_wiki"`
+		HasPages         bool      `json:"has_pages"`
+		ForksCount       int64     `json:"forks_count"`
+		MirrorURL        *string   `json:"mirror_url"`
+		OpenIssuesCount  int64     `json:"open_issues_count"`
+		Forks            int64     `json:"forks"`
+		OpenIssues       int64     `json:"open_issues"`
+		Watchers         int64     `json:"watchers"`
+		DefaultBranch    string    `json:"default_branch"`
+		Stargazers       int64     `json:"stargazers"`
+		MasterBranch     string    `json:"master_branch"`
+	}
+
+	PullRequestRepository struct {
 		ID               int64     `json:"id"`
 		NodeID           string    `json:"node_id"`
 		Name             string    `json:"name"`
@@ -361,46 +437,34 @@ type (
 	}
 
 	PullRequestHead struct {
-		Label string     `json:"label"`
-		Ref   string     `json:"ref"`
-		SHA   string     `json:"sha"`
-		User  User       `json:"user"`
-		Repo  Repository `json:"repo"`
+		Label string                `json:"label"`
+		Ref   string                `json:"ref"`
+		SHA   string                `json:"sha"`
+		User  User                  `json:"user"`
+		Repo  PullRequestRepository `json:"repo"`
 	}
 
 	PullRequestBase struct {
-		Label string     `json:"label"`
-		Ref   string     `json:"ref"`
-		SHA   string     `json:"sha"`
-		User  User       `json:"user"`
-		Repo  Repository `json:"repo"`
+		Label string                `json:"label"`
+		Ref   string                `json:"ref"`
+		SHA   string                `json:"sha"`
+		User  User                  `json:"user"`
+		Repo  PullRequestRepository `json:"repo"`
+	}
+
+	Href struct {
+		Href string `json:"href"`
 	}
 
 	PullRequestLinks struct {
-		Self struct {
-			Href string `json:"href"`
-		} `json:"self"`
-		HTML struct {
-			Href string `json:"href"`
-		} `json:"html"`
-		Issue struct {
-			Href string `json:"href"`
-		} `json:"issue"`
-		Comments struct {
-			Href string `json:"href"`
-		} `json:"comments"`
-		ReviewComments struct {
-			Href string `json:"href"`
-		} `json:"review_comments"`
-		ReviewComment struct {
-			Href string `json:"href"`
-		} `json:"review_comment"`
-		Commits struct {
-			Href string `json:"href"`
-		} `json:"commits"`
-		Statuses struct {
-			Href string `json:"href"`
-		} `json:"statuses"`
+		Self           Href `json:"self"`
+		HTML           Href `json:"html"`
+		Issue          Href `json:"issue"`
+		Comments       Href `json:"comments"`
+		ReviewComments Href `json:"review_comments"`
+		ReviewComment  Href `json:"review_comment"`
+		Commits        Href `json:"commits"`
+		Statuses       Href `json:"statuses"`
 	}
 
 	PullRequest struct {
@@ -470,5 +534,20 @@ type (
 		MembersURL      string `json:"members_url"`
 		RepositoriesURL string `json:"repositories_url"`
 		Permission      string `json:"permission"`
+	}
+
+	Organization struct {
+		Login            string `json:"login"`
+		ID               int    `json:"id"`
+		NodeID           string `json:"node_id"`
+		URL              string `json:"url"`
+		ReposURL         string `json:"repos_url"`
+		EventsURL        string `json:"events_url"`
+		HooksURL         string `json:"hooks_url"`
+		IssuesURL        string `json:"issues_url"`
+		MembersURL       string `json:"members_url"`
+		PublicMembersURL string `json:"public_members_url"`
+		AvatarURL        string `json:"avatar_url"`
+		Description      string `json:"description"`
 	}
 )

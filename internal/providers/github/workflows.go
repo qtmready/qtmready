@@ -30,6 +30,7 @@ var (
 )
 
 type (
+	// Github Webhook Workflows.
 	Workflows struct{}
 )
 
@@ -44,8 +45,6 @@ type (
 func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	// prelude
 	log := workflow.GetLogger(ctx)
-	log.Info("received installation event ...")
-
 	selector := workflow.NewSelector(ctx)
 	webhook := &InstallationEventPayload{}
 	request := &CompleteInstallationSignalPayload{}
@@ -53,35 +52,31 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	requestDone := false
 
 	// setting up channels to receive signals
-	webhookChannel := workflow.GetSignalChannel(ctx, InstallationEventSignal.String())
-	requestChannel := workflow.GetSignalChannel(ctx, CompleteInstallationSignal.String())
+	webhookChannel := workflow.GetSignalChannel(ctx, WebhookInstallationEventSignal.String())
+	requestChannel := workflow.GetSignalChannel(ctx, RequestCompleteInstallationSignal.String())
 
-	// webhook entry point
-	selector.AddReceive(
-		webhookChannel,
-		func(channel workflow.ReceiveChannel, more bool) {
-			log.Info("received installation webhook ...")
-			channel.Receive(ctx, webhook)
-			webhookDone = true
+	// webhook signal processor
+	selector.AddReceive(webhookChannel, func(rx workflow.ReceiveChannel, more bool) {
+		log.Info("received webhook installation event ...")
+		rx.Receive(ctx, webhook)
+		webhookDone = true
 
-			switch webhook.Action {
-			case "deleted", "suspend", "unsuspend":
-				log.Info("installation removed, skipping complete installation request ...")
-				requestDone = true
-			default:
-				log.Info("installation created, waiting for complete installation request ...")
-			}
-		},
+		switch webhook.Action {
+		case "deleted", "suspend", "unsuspend":
+			log.Info("installation removed, skipping complete installation request ...")
+			requestDone = true
+		default:
+			log.Info("installation created, waiting for complete installation request ...")
+		}
+	},
 	)
 
-	// complete installation entry point
-	selector.AddReceive(
-		requestChannel,
-		func(channel workflow.ReceiveChannel, more bool) {
-			log.Info("received complete installation request ...")
-			channel.Receive(ctx, request)
-			requestDone = true
-		},
+	// complete installation signal processor
+	selector.AddReceive(requestChannel, func(rx workflow.ReceiveChannel, more bool) {
+		log.Info("received complete installation request ...")
+		rx.Receive(ctx, request)
+		requestDone = true
+	},
 	)
 
 	// keep listening for signals until we have received both the installation id and the team id
@@ -146,16 +141,54 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	return nil
 }
 
-func (w *Workflows) OnPush(ctx workflow.Context, payload PushEventPayload) error {
+// OnPush checks if the push event is associated with an open pull request.If so, it will get the idempotent key for
+// the immutable rollout. Depending upon the target branch, it will either queue the rollout or update the existing
+// rollout.
+func (w *Workflows) OnPush(ctx workflow.Context, payload *PushEventPayload) error {
 	log := workflow.GetLogger(ctx)
-	log.Debug("received push event ...")
+	log.Info("received push event ...")
 
 	return nil
 }
 
+// OnPullRequest workflow responsible to create an idempotency key for the immutable infrastructre.
 func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEventPayload) error {
 	log := workflow.GetLogger(ctx)
-	log.Debug("received pull request event ...")
+	complete := false
+	signal := &PullRequestEventPayload{}
+	selector := workflow.NewSelector(ctx)
+
+	// setting up signals
+	prChannel := workflow.GetSignalChannel(ctx, PullRequestSignal.String())
+
+	// signal processor
+	selector.AddReceive(prChannel, func(rx workflow.ReceiveChannel, more bool) {
+		rx.Receive(ctx, signal)
+
+		switch signal.Action {
+		case "closed":
+			if signal.PullRequest.Merged {
+				log.Info("PR merged: ramping rollout to 100% ...")
+				complete = true
+			} else {
+				log.Info("PR closed: skipping rollout ...")
+				complete = true
+			}
+		case "synchronize":
+			log.Info("PR updated: checking the status of the environment ...")
+			// TODO: here we need to check the app associated with repo & get the `release` branch. If the PR branch is not
+			// the default branch, then we update in place, otherwise, we queue a new rollout.
+		default:
+			log.Info("PR: no action required, skipping ...")
+		}
+	})
+
+	log.Info("PR created: creating new rollout ...")
+
+	// keep listening to signals until complete = true
+	for !complete {
+		selector.Select(ctx)
+	}
 
 	return nil
 }

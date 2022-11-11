@@ -28,6 +28,7 @@ import (
 )
 
 type (
+	// Activities groups webhook related activites.
 	Activities struct{}
 )
 
