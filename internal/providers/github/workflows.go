@@ -151,11 +151,7 @@ func (w *Workflows) OnPush(ctx workflow.Context, payload *PushEventPayload) erro
 	return nil
 }
 
-// OnPullRequest is the core workflow responsible to create an idempotency key for the immutable infrastructre.
-// After creating the idempotency key, it will create a new child workflow to handle the rollout.
-//
-// The spawned workflow will contain the mutex lock to ensure that only one rollout is created at a time.
-// TODO: Handle all the possible github related events.
+// OnPullRequest workflow responsible to create an idempotency key for the immutable infrastructre.
 func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEventPayload) error {
 	log := workflow.GetLogger(ctx)
 	complete := false
@@ -167,24 +163,28 @@ func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEvent
 
 	// signal processor
 	selector.AddReceive(prChannel, func(rx workflow.ReceiveChannel, more bool) {
-		log.Info("received pull request signal ...")
+		log.Info("PR updated ...")
 		rx.Receive(ctx, signal)
 
 		switch signal.Action {
 		case "closed":
 			if signal.PullRequest.Merged {
-				log.Info("pull request merged, ramping rollout to 100% ...")
+				log.Info("PR merged, ramping rollout to 100% ...")
 				complete = true
 			} else {
-				log.Info("pull request closed, skipping rollout ...")
+				log.Info("PR closed, skipping rollout ...")
 				complete = true
 			}
+		case "synchronize":
+			log.Info("PR updated, checking the status of the environment ...")
+			// TODO: here we need to check the app associated with repo & get the `release` branch. If the PR branch is not
+			// the default branch, then we update in place, otherwise, we queue a new rollout.
 		default:
-			log.Info("skipping ...")
+			log.Info("no action required, skipping ...")
 		}
 	})
 
-	log.Info("creating idempotency key for rollouts ...")
+	log.Info("PR created, creating new rollout ...")
 
 	// keep listening to signals until complete = true
 	for !complete {
