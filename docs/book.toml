@@ -1,0 +1,9 @@
+[book]
+authors = [
+  "Yousuf Jawwad <yousuf@breu.io>",
+  "Taimoor Mirza <taimoor@breu.io>",
+]
+language = "en"
+multilingual = false
+src = "src"
+title = "ctrlplane.ai"
