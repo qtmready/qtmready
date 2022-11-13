@@ -34,6 +34,11 @@ import (
 )
 
 var (
+	ErrMalformedAPIKey = errors.New("malformed API key")
+	ErrInvalidAPIKey   = errors.New("invalid api key")
+)
+
+var (
 	guardColumns = []string{
 		"id",
 		"name",
@@ -134,7 +139,7 @@ func (g *Guard) VerifyAPIKey(key string) (bool, error) {
 
 	id, err := g.DecodeUUID(encodedID)
 	if err != nil {
-		return false, err
+		return false, ErrInvalidAPIKey
 	}
 
 	if err := db.Get(g, db.QueryParams{"id": id.String()}); err != nil {
@@ -147,20 +152,24 @@ func (g *Guard) VerifyAPIKey(key string) (bool, error) {
 
 	lookupID, err := g.DecodeUUID(encodedLookupID)
 	if err != nil {
-		return false, err
+		return false, ErrInvalidAPIKey
 	}
 
 	if lookupID != g.LookupID {
 		return false, nil
 	}
 
-	return g.VerifyToken(token), nil
+	if g.VerifyToken(token) {
+		return true, nil
+	}
+
+	return false, ErrInvalidAPIKey
 }
 
 func (g *Guard) SplitAPIKey(key string) (string, string, string, error) {
 	parts := strings.Split(key, ".")
 	if len(parts) != 3 {
-		return "", "", "", errors.New("invalid api key")
+		return "", "", "", ErrMalformedAPIKey
 	}
 
 	id := parts[0]

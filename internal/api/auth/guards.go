@@ -51,7 +51,6 @@ var (
 	ErrInvalidOrExpiredToken = errors.New("invalid or expired token")
 	ErrMissingAuthHeader     = errors.New("no authorization header provided")
 	ErrInvalidAuthHeader     = errors.New("invalid authorization header")
-	ErrInvalidAPIKey         = errors.New("invalid API key")
 )
 
 // GenerateAccessToken generates a short lived JWT token for the given user.
@@ -147,14 +146,10 @@ func validateToken(ctx echo.Context, token string) error {
 // validateKey validates the API key.
 func validateKey(ctx echo.Context, key string) error {
 	guard := &entities.Guard{}
-	ok, err := guard.VerifyAPIKey(key)
+	_, err := guard.VerifyAPIKey(key) // This will always return true if err is nil
 
 	if err != nil {
 		return err
-	}
-
-	if !ok {
-		return ErrInvalidAPIKey
 	}
 
 	switch guard.LookupType {
@@ -163,7 +158,7 @@ func validateKey(ctx echo.Context, key string) error {
 	case GuardLookupUser: // NOTE: this uses two db queries. we should optimize this. use k/v ?
 		user := &entities.User{}
 		if err := db.Get(user, db.QueryParams{"id": guard.LookupID.String()}); err != nil {
-			return ErrInvalidAPIKey
+			return err
 		}
 
 		ctx.Set("user_id", user.ID.String()) // NOTE: IMHO, we shouldn't be converting to string here
