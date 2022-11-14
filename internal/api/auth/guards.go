@@ -146,7 +146,7 @@ func validateToken(ctx echo.Context, token string) error {
 // validateKey validates the API key.
 func validateKey(ctx echo.Context, key string) error {
 	guard := &entities.Guard{}
-	_, err := guard.VerifyAPIKey(key) // This will always return true if err is nil
+	err := guard.VerifyAPIKey(key) // This will always return true if err is nil
 
 	if err != nil {
 		return err

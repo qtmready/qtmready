@@ -131,39 +131,39 @@ func (g *Guard) ConstructAPIKey() (string, string) {
 //
 //   - https://github.com/etcd-io/bbolt
 //   - https://github.com/dgraph-io/badger
-func (g *Guard) VerifyAPIKey(key string) (bool, error) {
+func (g *Guard) VerifyAPIKey(key string) error {
 	encodedID, encodedLookupID, token, err := g.SplitAPIKey(key)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	id, err := g.DecodeUUID(encodedID)
 	if err != nil {
-		return false, ErrInvalidAPIKey
+		return ErrMalformedAPIKey
 	}
 
 	if err := db.Get(g, db.QueryParams{"id": id.String()}); err != nil {
-		return false, err
+		return ErrInvalidAPIKey
 	}
 
 	if id != g.ID {
-		return false, nil
+		return ErrMalformedAPIKey
 	}
 
 	lookupID, err := g.DecodeUUID(encodedLookupID)
 	if err != nil {
-		return false, ErrInvalidAPIKey
+		return ErrInvalidAPIKey
 	}
 
 	if lookupID != g.LookupID {
-		return false, nil
+		return ErrInvalidAPIKey
 	}
 
 	if g.VerifyToken(token) {
-		return true, nil
+		return nil
 	}
 
-	return false, ErrInvalidAPIKey
+	return ErrInvalidAPIKey
 }
 
 func (g *Guard) SplitAPIKey(key string) (string, string, string, error) {
