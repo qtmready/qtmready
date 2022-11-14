@@ -9,7 +9,6 @@
 # Contributing
 
 - [Code of Conduct](./contributing/guidelines.md)
-  - [Team Work](./contributing/team-work.md)
   - [Commit Message](./contributing/commit-msg.md)
   - [Pull Requests](./contributing/pull-requests.md)
     - [Contributor Guidelines](./contributing/contributor.md)
