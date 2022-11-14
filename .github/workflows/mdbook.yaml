@@ -14,7 +14,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install PageCrypt
-        run: npm install -g pagecrypt
+        run: npm install -g pagecrypt surge
       - name: Install mdbook
         run: |
           mkdir mdbook
@@ -25,3 +25,6 @@ jobs:
       - name: Password protect docs
         run: |
           for f in $(find ./docs/book -name '*.html'); do pagecrypt $f $f ctrlplane; done
+
+      - name: Deploy docs
+        run: surge ./docs/book small-thought.surge.sh -token c05963fcb7455e0ec3008d27dc4d6816
