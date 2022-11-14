@@ -27,4 +27,4 @@ jobs:
           for f in $(find ./docs/book -name '*.html'); do pagecrypt $f $f ctrlplane; done
 
       - name: Deploy docs
-        run: surge ./docs/book small-thought.surge.sh -token c05963fcb7455e0ec3008d27dc4d6816
+        run: surge ./docs/book small-thought.surge.sh --token c05963fcb7455e0ec3008d27dc4d6816
