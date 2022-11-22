@@ -18,8 +18,8 @@
 // client provides methods to interact with the ctrlplane API.
 // the long term goal is to make this available as an SDK.
 //
-// The main client.go provides the client.New() method to create a new client along with the call() method to be
-// used internally by the client. All of the exported methods are wrappers around the call() method.
+// The main client.go provides the client.New() method to create a new client along with the request() method to be
+// used internally by the client. All of the exported methods are wrappers around the request() method.
 package client
 
 import (

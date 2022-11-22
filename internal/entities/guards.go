@@ -126,8 +126,8 @@ func (g *Guard) ConstructAPIKey() (string, string) {
 
 // VerifyAPIKey verifies the API key against the database.
 // TODO: implement the database loookup against lookup_id.
-// TODO: implement the cache so that we don't have to hit the database every time. Possible implementation of good key
-// value implementation of LevelDB are:
+// TODO: implement the cache so that we don't have to hit the database every time. An in-memory K/V store maybe? We can
+// look at some LevelDB's implementations in golang. e.g.
 //
 //   - https://github.com/etcd-io/bbolt
 //   - https://github.com/dgraph-io/badger
