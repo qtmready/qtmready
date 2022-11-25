@@ -136,14 +136,10 @@ func testVerifyAPIKey(args interface{}, want interface{}) func(*testing.T) {
 		smock.On("Query", stmt, names).Return(qmock)
 		qmock.On("GetRelease", arg.Guard).Return(nil)
 
-		valid, err := arg.Guard.VerifyAPIKey(arg.Key)
+		err := arg.Guard.VerifyAPIKey(arg.Key)
 
 		if err != nil {
 			t.Errorf("unable to verify api key: %v", err)
-		}
-
-		if !valid {
-			t.Errorf("Unable to Verify API Key")
 		}
 
 		t.Cleanup(func() {

@@ -34,6 +34,11 @@ import (
 )
 
 var (
+	ErrMalformedAPIKey = errors.New("malformed API key")
+	ErrInvalidAPIKey   = errors.New("invalid api key")
+)
+
+var (
 	guardColumns = []string{
 		"id",
 		"name",
@@ -121,46 +126,50 @@ func (g *Guard) ConstructAPIKey() (string, string) {
 
 // VerifyAPIKey verifies the API key against the database.
 // TODO: implement the database loookup against lookup_id.
-// TODO: implement the cache so that we don't have to hit the database every time. Possible implementation of good key
-// value implementation of LevelDB are:
+// TODO: implement the cache so that we don't have to hit the database every time. An in-memory K/V store maybe? We can
+// look at some LevelDB's implementations in golang. e.g.
 //
 //   - https://github.com/etcd-io/bbolt
 //   - https://github.com/dgraph-io/badger
-func (g *Guard) VerifyAPIKey(key string) (bool, error) {
+func (g *Guard) VerifyAPIKey(key string) error {
 	encodedID, encodedLookupID, token, err := g.SplitAPIKey(key)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	id, err := g.DecodeUUID(encodedID)
 	if err != nil {
-		return false, err
+		return ErrMalformedAPIKey
 	}
 
 	if err := db.Get(g, db.QueryParams{"id": id.String()}); err != nil {
-		return false, err
+		return ErrInvalidAPIKey
 	}
 
 	if id != g.ID {
-		return false, nil
+		return ErrMalformedAPIKey
 	}
 
 	lookupID, err := g.DecodeUUID(encodedLookupID)
 	if err != nil {
-		return false, err
+		return ErrInvalidAPIKey
 	}
 
 	if lookupID != g.LookupID {
-		return false, nil
+		return ErrInvalidAPIKey
 	}
 
-	return g.VerifyToken(token), nil
+	if g.VerifyToken(token) {
+		return nil
+	}
+
+	return ErrInvalidAPIKey
 }
 
 func (g *Guard) SplitAPIKey(key string) (string, string, string, error) {
 	parts := strings.Split(key, ".")
 	if len(parts) != 3 {
-		return "", "", "", errors.New("invalid api key")
+		return "", "", "", ErrMalformedAPIKey
 	}
 
 	id := parts[0]
