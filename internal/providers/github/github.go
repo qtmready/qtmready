@@ -61,15 +61,21 @@ func (g *github) GetClientForInstallation(installationID int64) (*gh.Client, err
 }
 
 func (g *github) VerifyWebhookSignature(payload []byte, signature string) error {
-	key := hmac.New(sha256.New, []byte(g.WebhookSecret))
-	key.Write(payload)
-	result := "sha256=" + hex.EncodeToString(key.Sum(nil))
+	result := g.SignPayload(payload)
 
 	if result != signature {
 		return ErrVerifySignature
 	}
 
 	return nil
+}
+
+func (g *github) SignPayload(payload []byte) string {
+	key := hmac.New(sha256.New, []byte(g.WebhookSecret))
+	key.Write(payload)
+	result := "sha256=" + hex.EncodeToString(key.Sum(nil))
+
+	return result
 }
 
 func (g *github) CloneRepo(repo string, branch string, ref string) {}
