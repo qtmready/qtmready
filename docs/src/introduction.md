@@ -27,13 +27,17 @@ To standarize a controlled software delivery mechanism, we have to identify the 
 
 ### Continous Delivery
 
-Continous delivery has the most mature ecosystem of the above three. From container specific tools e.g. [argo](https://argo-cd.readthedocs.io/en/stable/), [dynatrace's keptn](https://keptn.sh), [tekton](https://tekton.dev), to generic platforms like [AWS Code Pipeline](https://aws.amazon.com/codepipeline/), [Google Cloud Build](https://cloud.google.com/build), [CicleCI](https://circleci.com), [Github Actions](https://github.com/features/actions) etc. You get the idea! I can go on forever. The bottom line is, it is a vast problem space and still being attacked with some novel approaches e.g. [Dagger](https://dagger.io).
+Continous delivery has the most mature ecosystem of the above three. From container specific tools e.g. [argo](https://argo-cd.readthedocs.io/en/stable/), [dynatrace's keptn](https://keptn.sh), [tekton](https://tekton.dev), to generic platforms like [AWS Code Pipeline](https://aws.amazon.com/codepipeline/), [Google Cloud Build](https://cloud.google.com/build), [CicleCI](https://circleci.com), [Github Actions](https://github.com/features/actions) etc. You get the idea! I can go on forever.
+
+> The bottom line is, it is a vast problem space and still being attacked with some novel approaches e.g. [Dagger](https://dagger.io) or [Acorn](https://acorn.dev).
 
 As far as ctrlplane.ai is concerned, we are not concerned with the _building_ part. We leverage GitOps and we start after a new artifact is built to an artifact registry. **_We version it_**, and take control of the rest of the delivery process. Our version acts as control flow for the entire rollout process. In our case, the artifact for time being is OCI compatible image. In future, we might look at WASI or MicroVMs/UniKernels but for now, we are narrowing our scope to OCI.
 
 ### Versioned Infrastructure
 
-With rapid adoption of cloud, critical infrastructure is what you can call "software defined infra". The success of tools like [terraform](https://terraform.io), [pulumi](https://pulumi.com) or [crossplane](https://crossplane.io) have attacked the problem of "versioned infra" and are somehwat successful. But these tools need stitching and deployment pipelines & feedback controls need to be built on top of it. Of the market data we have collected, the most forward looking shops are using pulumi, but terraform.io has the most mind share. crossplane, although a novel idea to use kubernetes CRDs are cloud resources, hasn't really taken off so far. As far as the terraform is concerned, most shops haven't really plugged the infra into CI/CD pipelines as yet.
+With rapid adoption of cloud, critical infrastructure is what you can call "software defined infra". The success of tools like [terraform](https://terraform.io), [pulumi](https://pulumi.com) or [crossplane](https://crossplane.io) or [Amazon CDK](https://aws.amazon.com/cdk) have attacked the problem of automating the infrastructure and have provided a solid foundation for versioned infra. But these tools need stitching with deployment pipelines & feedback controls need to be built on top of it. Of the market data we have collected, the most forward looking shops are using pulumi or amazon CDK but terraform has the most mind share. _crossplane_, although a novel idea to use kubernetes CRDs are cloud resources, hasn't really taken off so far.
+
+> One of the most revolutionary approach IMHO is by [Wing](https://winglang.io) i.e take the ifrastructure problem and turn it on its head and by making it a compiler problem. But it is still in its design phase, and the market will will decide the ultimate vote.
 
 Our bet however is immutable versioned infra for each artifact from the continous delivery pipeline. For the time being, we are only handling stateless applications. Versioning a database migration is a seperate problem and needs more bandwidth.
 
