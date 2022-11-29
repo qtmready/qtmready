@@ -98,8 +98,7 @@ services:
     container_name: ctrlplane-api
     image: cosmtrek/air
     environment:
-      SERVICE_NAME: web::api
-      CASSANDRA_MIGRATION_SOURCE_URL: file:///api/internal/db/migrations
+      SERVICE_NAME: web.api
     env_file:
       - ./.env
     ports:
@@ -115,7 +114,7 @@ services:
     container_name: ctrlplane-worker--mothership
     image: cosmtrek/air
     environment:
-      SERVICE_NAME: worker::mothership
+      SERVICE_NAME: worker.mothership
     env_file:
       - ./.env
     volumes:
@@ -125,6 +124,21 @@ services:
       - worker-mothership-build-cache:/root/.cache/go-build
     working_dir: /mothership
 
+  ctrlplane-job-migrate:
+    container_name: ctrlplane-job-migrate
+    image: cosmtrek/air
+    environment:
+      SERVICE_NAME: job.migrate
+      CASSANDRA_MIGRATION_SOURCE_URL: file:///migrate/internal/db/migrations
+    env_file:
+      - ./.env
+    volumes:
+      - ./deploy/air/migrate.toml:/migrate/.air.toml
+      - ./:/migrate/
+      - job-migrate-go-pkg-mod:/go/pkg/mod
+      - job-migrate-build-cache:/root/.cache/go-build
+    working_dir: /migrate
+
 
 volumes:
   temporal-pg-data: {}
@@ -133,3 +147,5 @@ volumes:
   api-build-cache: {}
   worker-mothership-go-pkg-mod: {}
   worker-mothership-build-cache: {}
+  job-migrate-go-pkg-mod: {}
+  job-migrate-build-cache: {}

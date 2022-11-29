@@ -36,10 +36,6 @@ import (
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
-var (
-	waiter sync.WaitGroup
-)
-
 type (
 	EchoValidator struct {
 		validator *validator.Validate
@@ -55,6 +51,7 @@ func (ev *EchoValidator) Validate(i interface{}) error {
 }
 
 func init() {
+	waigroup := sync.WaitGroup{}
 	// Reading the configuration from the environment
 	shared.Service.ReadEnv()
 	shared.Service.InitLogger()
@@ -67,28 +64,28 @@ func init() {
 	// Reading the configuration from the environment ... Done
 
 	// Initializing reference to adapters
-	shared.Logger.Info("api: launching ...")
-	waiter.Add(3)
+	shared.Logger.Info("initializing ...")
+	waigroup.Add(3)
 
 	go func() {
-		defer waiter.Done()
-		db.DB.InitSessionWithMigrations()
+		defer waigroup.Done()
+		db.DB.InitSession()
 	}()
 
 	go func() {
-		defer waiter.Done()
+		defer waigroup.Done()
 		shared.EventStream.InitConnection()
 	}()
 
 	go func() {
-		defer waiter.Done()
+		defer waigroup.Done()
 		shared.Temporal.InitClient()
 	}()
 
-	waiter.Wait()
+	waigroup.Wait()
 	// Initializing singleton objects ... Done
 
-	shared.Logger.Info("api: launched", "version", shared.Service.Version())
+	shared.Logger.Info("initialized", "version", shared.Service.Version())
 }
 
 func main() {
