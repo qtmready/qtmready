@@ -28,11 +28,9 @@ import (
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
-var (
-	wait sync.WaitGroup
-)
-
 func init() {
+	waitgroup := sync.WaitGroup{}
+
 	shared.Service.ReadEnv()
 	shared.Service.InitLogger()
 	shared.EventStream.ReadEnv()
@@ -40,27 +38,27 @@ func init() {
 	github.Github.ReadEnv()
 	db.DB.ReadEnv()
 
-	wait.Add(3)
-	shared.Logger.Info("mothership: launching ...")
+	waitgroup.Add(3)
+	shared.Logger.Info("initializing ...")
 
 	go func() {
-		defer wait.Done()
+		defer waitgroup.Done()
 		db.DB.InitSession()
 	}()
 
 	go func() {
-		defer wait.Done()
+		defer waitgroup.Done()
 		shared.EventStream.InitConnection()
 	}()
 
 	go func() {
-		defer wait.Done()
+		defer waitgroup.Done()
 		shared.Temporal.InitClient()
 	}()
 
-	wait.Wait()
+	waitgroup.Wait()
 
-	shared.Logger.Info("mothership: launched", "version", shared.Service.Version())
+	shared.Logger.Info("initialized", "version", shared.Service.Version())
 }
 
 func main() {
