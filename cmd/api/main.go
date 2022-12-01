@@ -1,7 +1,7 @@
 // Copyright © 2022, Breu, Inc. <info@breu.io>. All rights reserved.
 //
 // This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
-// found at https://www.breu.io/license/community. BY INSTALLATING, DOWNLOADING, ACCESSING, USING OR DISTRUBTING ANY OF
+// found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
 // THE SOFTWARE, YOU AGREE TO THE TERMS OF THE LICENSE AGREEMENT.
 //
 // The above copyright notice and the subsequent license agreement shall be included in all copies or substantial
@@ -28,8 +28,8 @@ import (
 	swagger "github.com/swaggo/echo-swagger"
 
 	"go.breu.io/ctrlplane/cmd/api/docs"
-	"go.breu.io/ctrlplane/internal/api/auth"
-	"go.breu.io/ctrlplane/internal/api/core"
+	"go.breu.io/ctrlplane/internal/auth"
+	"go.breu.io/ctrlplane/internal/core"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/providers"
 	"go.breu.io/ctrlplane/internal/providers/github"
