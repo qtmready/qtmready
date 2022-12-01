@@ -1,0 +1,270 @@
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      description: Register a new user
+      operationId: register
+      tags:
+        - auth
+      requestBody:
+        description: User to register
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterationRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterationResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+  /auth/login:
+    post:
+      summary: Login
+      description: Login
+      operationId: login
+      tags:
+        - auth
+      requestBody:
+        description: Login request
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            required:
+              - email
+              - password
+              - confirm_password
+      responses:
+        '200':
+          description: Login response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+  /auth/api-keys/user:
+    post:
+      summary: Create a new API key for the user
+      description: Create a new API key for the user
+      operationId: createUserAPIKey
+      tags:
+        - auth
+      requestBody:
+        description: API key to create
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAPIKeyRequest'
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateAPIKeyResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+  /auth/api-keys/team:
+    post:
+      summary: Create a new API key for the team
+      description: Create a new API key for the team
+      operationId: createTeamAPIKey
+      tags:
+        - auth
+      requestBody:
+        description: API key to create
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateAPIKeyRequest'
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: API key created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateAPIKeyResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+  /auth/api-keys/validate:
+    get:
+      summary: Validate an API key
+      description: Validate an API key
+      operationId: validateAPIKey
+      tags:
+        - auth
+      security:
+        - APIKeyAuth: []
+      responses:
+        '200':
+          description: API key validated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidateAPIKeyResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: '../shared/openapi.spec.yaml#/components/securitySchemes/BearerAuth'
+    APIKeyAuth:
+      $ref: '../shared/openapi.spec.yaml#/components/securitySchemes/APIKeyAuth'
+
+  schemas:
+    RegisterationRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        confirm_password:
+          type: string
+          format: password
+        first_name:
+          type: string
+        last_name:
+          type: string
+        team_name:
+          type: string
+      required:
+        - email
+        - password
+        - confirm_password
+        - first_name
+        - last_name
+        - team_name
+
+    RegisterationResponse:
+      type: object
+      properties:
+        user:
+          $ref: '../entities/openapi.spec.yaml#/components/schemas/User'
+        team:
+          $ref: '../entities/openapi.spec.yaml#/components/schemas/Team'
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+      required:
+        - email
+        - password
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+
+    CreateAPIKeyRequest:
+      type: object
+      properties:
+        name:
+          type: string
+
+    CreateAPIKeyResponse:
+      type: object
+      properties:
+        key:
+          type: string
+
+    ValidateAPIKeyResponse:
+      type: object
+      properties:
+        message:
+          type: string

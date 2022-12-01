@@ -7,7 +7,7 @@ require (
 	github.com/Guilospanck/igocqlx v1.0.0
 	github.com/avast/retry-go/v4 v4.3.1
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.0
-	github.com/deepmap/oapi-codegen v1.12.3
+	github.com/deepmap/oapi-codegen v1.12.4
 	github.com/go-playground/validator/v10 v10.11.1
 	github.com/gocql/gocql v1.2.1
 	github.com/google/go-github/v45 v45.2.0
@@ -24,6 +24,13 @@ require (
 	go.temporal.io/sdk v1.18.1
 	go.uber.org/zap v1.23.0
 	golang.org/x/crypto v0.3.0
+)
+
+require (
+	github.com/getkin/kin-openapi v0.107.0 // indirect
+	github.com/invopop/yaml v0.1.0 // indirect
+	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
+	golang.org/x/mod v0.7.0 // indirect
 )
 
 replace github.com/Guilospanck/igocqlx v1.0.0 => github.com/debuggerpk/igocqlx v1.0.3
@@ -87,7 +94,7 @@ require (
 	golang.org/x/sys v0.2.0 // indirect
 	golang.org/x/text v0.4.0 // indirect
 	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
-	golang.org/x/tools v0.2.0 // indirect
+	golang.org/x/tools v0.3.0 // indirect
 	google.golang.org/genproto v0.0.0-20221027153422-115e99e71e1c // indirect
 	google.golang.org/grpc v1.50.1 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect

@@ -183,3 +183,7 @@ func (s *service) InitCLI() error {
 
 	return nil
 }
+
+func (e APIErrorResponse) Error() string {
+	return *e.Message
+}
