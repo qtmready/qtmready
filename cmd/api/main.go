@@ -25,13 +25,9 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	swagger "github.com/swaggo/echo-swagger"
 
 	"go.breu.io/ctrlplane/cmd/api/docs"
-	"go.breu.io/ctrlplane/internal/auth"
-	"go.breu.io/ctrlplane/internal/core"
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/providers"
 	"go.breu.io/ctrlplane/internal/providers/github"
 	"go.breu.io/ctrlplane/internal/shared"
 )
@@ -109,18 +105,7 @@ func main() {
 	e.Use(middleware.Recover())
 	e.Validator = &EchoValidator{validator: shared.Validate}
 
-	// Public endpoints
-	e.GET("/docs/*", swagger.WrapHandler)
 	e.GET("/healthcheck", healthcheck)
-	// Auth endpoints
-	auth.CreateRoutes(e.Group("/auth"))
-
-	// endpoints for 3rd party providers
-	providers.CreateRoutes(e.Group("/providers"), auth.Middleware)
-
-	// core api endpoints
-	protected := e.Group("", auth.Middleware)
-	core.CreateRoutes(protected)
 
 	if err := e.Start(":8000"); err != nil {
 		exitcode = 1

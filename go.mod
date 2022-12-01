@@ -20,7 +20,6 @@ require (
 	github.com/nats-io/nats.go v1.20.0
 	github.com/scylladb/gocqlx/v2 v2.7.0
 	github.com/spf13/cobra v1.6.1
-	github.com/swaggo/echo-swagger v1.3.5
 	github.com/swaggo/swag v1.8.8
 	go.temporal.io/sdk v1.18.1
 	go.uber.org/zap v1.23.0
@@ -79,7 +78,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/stretchr/testify v1.8.1 // indirect
-	github.com/swaggo/files v0.0.0-20220728132757-551d4a08d97a // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	go.temporal.io/api v1.13.0 // indirect

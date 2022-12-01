@@ -111,7 +111,9 @@ func doLogin(email string, password string) (*auth.TokenResponse, error) {
 		return token, err
 	}
 
-	defer response.Body.Close()
+	defer func() {
+		_ = response.Body.Close()
+	}()
 
 	if response.StatusCode != http.StatusOK {
 		return token, ErrInvalidCredentials
