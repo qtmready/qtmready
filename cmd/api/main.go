@@ -27,6 +27,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 
 	"go.breu.io/ctrlplane/cmd/api/docs"
+	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/providers/github"
 	"go.breu.io/ctrlplane/internal/shared"
@@ -103,9 +104,12 @@ func main() {
 	e.Use(middleware.CORS())
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(auth.Middleware)
 	e.Validator = &EchoValidator{validator: shared.Validate}
 
-	e.GET("/healthcheck", healthcheck)
+	auth.RegisterHandlers(e, &auth.ServerHandler{})
+
+	e.GET("/healthz", healthz)
 
 	if err := e.Start(":8000"); err != nil {
 		exitcode = 1
@@ -114,23 +118,14 @@ func main() {
 }
 
 type (
-	HealthCheckResponse struct {
-		Msg string `json:"msg"`
+	HealthzResponse struct {
+		Status string `json:"status"`
 	}
 )
 
-// healthcheck is the health check endpoint.
-//
-// @Summary     Checks if connection to all external services are working fine.
-// @Description Quick health check
-// @Tags        healthcheck
-// @Accept      json
-// @Produce     json
-// @Success     201 {object} HealthCheckResponse
-// @Failure     500 {object} echo.HTTPError
-// @Router      /healthcheck [get]
+// healthz is the health check endpoint.
 //
 // TODO: make sure that connection to all services it needs to connect to is working properly.
-func healthcheck(ctx echo.Context) error {
-	return ctx.Bind(&HealthCheckResponse{Msg: "OK"})
+func healthz(ctx echo.Context) error {
+	return ctx.JSON(http.StatusOK, &HealthzResponse{Status: "OK"})
 }

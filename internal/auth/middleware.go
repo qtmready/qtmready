@@ -32,10 +32,11 @@ import (
 )
 
 const (
-	JwtPrefix       = "Token"
-	APIKeyPrefix    = "API-KEY"
-	GuardLookupTeam = "team"
-	GuardLookupUser = "user"
+	BearerHeaderName = "Authorization"
+	BearerPrefix     = "Token"
+	APIKeyHeaderName = "X-API-KEY"
+	GuardLookupTeam  = "team"
+	GuardLookupUser  = "user"
 )
 
 type (
@@ -47,10 +48,11 @@ type (
 )
 
 var (
-	ErrMalformedToken        = errors.New("malformed token")
-	ErrInvalidOrExpiredToken = errors.New("invalid or expired token")
-	ErrMissingAuthHeader     = errors.New("no authorization header provided")
 	ErrInvalidAuthHeader     = errors.New("invalid authorization header")
+	ErrInvalidOrExpiredToken = errors.New("invalid or expired token")
+	ErrMalformedAPIKey       = errors.New("malformed api key")
+	ErrMalformedToken        = errors.New("malformed token")
+	ErrMissingAuthHeader     = errors.New("no authorization header provided")
 )
 
 // GenerateAccessToken generates a short lived JWT token for the given user.
@@ -94,43 +96,61 @@ func GenerateRefreshToken(userID, teamID string) (string, error) {
 // Middleware to provide JWT & API Key authentication.
 func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
-		// get the authorization header
-		header := ctx.Request().Header.Get("Authorization")
-		if header == "" {
-			return echo.NewHTTPError(http.StatusUnauthorized, ErrMissingAuthHeader)
+		keyscopes, requiresKey := ctx.Get(APIKeyAuthScopes).([]string)
+		bearerscopes, requiresBearer := ctx.Get(BearerAuthScopes).([]string)
+
+		// if keyok & bearerok are both false, then we don't need to do any auth
+		if !requiresKey && !requiresBearer {
+			shared.Logger.Debug("no auth required")
+			return next(ctx)
 		}
 
-		// split the header at the space to get the scheme and token
-		fields := strings.Split(header, " ")
-		if len(fields) != 2 {
-			return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidAuthHeader)
-		}
+		// do bearer authentication
+		if requiresBearer && len(bearerscopes) > -1 {
+			shared.Logger.Debug("Authenticate with Bearer Token")
 
-		// apply the correct validation function based on the scheme
-		schema, secret := fields[0], fields[1]
-
-		switch schema {
-		case JwtPrefix:
-			if err := validateToken(ctx, secret); err != nil {
-				return echo.NewHTTPError(http.StatusUnauthorized, err)
+			header := ctx.Request().Header.Get(BearerHeaderName)
+			if header == "" {
+				if !requiresKey {
+					return ErrMissingAuthHeader
+				}
+				// at this point, although the bearer is invalid, we know that endpoint can also be accessed with an API key
+				// so we continue with the API key auth
+				goto APIKEY
 			}
-		case APIKeyPrefix:
-			if err := validateKey(ctx, secret); err != nil {
-				return echo.NewHTTPError(http.StatusUnauthorized, err)
+
+			parts := strings.Split(header, " ")
+
+			if len(parts) != 2 || parts[0] != BearerPrefix {
+				return ErrInvalidAuthHeader
 			}
-		default:
-			return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidAuthHeader)
+
+			return bearerFn(next, ctx, parts[1])
 		}
 
-		return next(ctx)
+	APIKEY:
+
+		// do api key authentication
+		if requiresKey && len(keyscopes) > -1 {
+			shared.Logger.Debug("Authenticate with API Key")
+
+			key := ctx.Request().Header.Get(APIKeyHeaderName)
+			if key == "" {
+				return ErrMissingAuthHeader
+			}
+
+			return keyFn(next, ctx, key)
+		}
+
+		return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidAuthHeader)
 	}
 }
 
-// validateToken validates the JWT token.
-func validateToken(ctx echo.Context, token string) error {
-	parsed, err := jwt.ParseWithClaims(token, &JWTClaims{}, getSecret)
+// bearerFn is the function that handles the JWT token authentication.
+func bearerFn(next echo.HandlerFunc, ctx echo.Context, token string) error {
+	parsed, err := jwt.ParseWithClaims(token, &JWTClaims{}, secretFn)
 	if err != nil {
-		return ErrMalformedToken
+		return echo.NewHTTPError(http.StatusUnauthorized, err)
 	}
 
 	if claims, ok := parsed.Claims.(*JWTClaims); ok && parsed.Valid {
@@ -140,11 +160,11 @@ func validateToken(ctx echo.Context, token string) error {
 		return ErrInvalidOrExpiredToken
 	}
 
-	return nil
+	return next(ctx)
 }
 
-// validateKey validates the API key.
-func validateKey(ctx echo.Context, key string) error {
+// keyFn validates the API key.
+func keyFn(next echo.HandlerFunc, ctx echo.Context, key string) error {
 	guard := &entities.Guard{}
 	err := guard.VerifyAPIKey(key) // This will always return true if err is nil
 
@@ -155,6 +175,7 @@ func validateKey(ctx echo.Context, key string) error {
 	switch guard.LookupType {
 	case GuardLookupTeam:
 		ctx.Set("team_id", guard.LookupID.String())
+
 	case GuardLookupUser: // NOTE: this uses two db queries. we should optimize this. use k/v ?
 		user := &entities.User{}
 		if err := db.Get(user, db.QueryParams{"id": guard.LookupID.String()}); err != nil {
@@ -163,12 +184,15 @@ func validateKey(ctx echo.Context, key string) error {
 
 		ctx.Set("user_id", user.ID.String()) // NOTE: IMHO, we shouldn't be converting to string here
 		ctx.Set("team_id", user.TeamID.String())
+
+	default:
+		return echo.NewHTTPError(http.StatusUnauthorized, ErrMalformedAPIKey)
 	}
 
-	return nil
+	return next(ctx)
 }
 
-// getSecret provides the secret for the JWT token.
-func getSecret(t *jwt.Token) (interface{}, error) {
+// secretFn provides the secret for the JWT token.
+func secretFn(t *jwt.Token) (interface{}, error) {
 	return []byte(shared.Service.Secret), nil
 }

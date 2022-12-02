@@ -107,7 +107,7 @@ func (c *Client) request(method, url string, reply, data interface{}) error {
 func (c *Client) headers(request *http.Request) {
 	request.Header.Set("User-Agent", shared.Service.Name+"/"+shared.Service.Version())
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", auth.APIKeyPrefix+" "+c.APIKEY)
+	request.Header.Set("Authorization", auth.APIKeyHeaderName+" "+c.APIKEY)
 }
 
 // url returns the full URL for the request.
