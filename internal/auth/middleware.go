@@ -96,17 +96,17 @@ func GenerateRefreshToken(userID, teamID string) (string, error) {
 // Middleware to provide JWT & API Key authentication.
 func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
-		keyscopes, requiresKey := ctx.Get(APIKeyAuthScopes).([]string)
-		bearerscopes, requiresBearer := ctx.Get(BearerAuthScopes).([]string)
+		keyScopes, requiresKey := ctx.Get(APIKeyAuthScopes).([]string)
+		bearerScopes, requiresBearer := ctx.Get(BearerAuthScopes).([]string)
 
-		// if keyok & bearerok are both false, then we don't need to do any auth
+		// if requiredKey and requiresBearer are both false, then we don't need to do any auth
 		if !requiresKey && !requiresBearer {
 			shared.Logger.Debug("no auth required")
 			return next(ctx)
 		}
 
 		// do bearer authentication
-		if requiresBearer && len(bearerscopes) > -1 {
+		if requiresBearer && len(bearerScopes) > -1 {
 			shared.Logger.Debug("Authenticate with Bearer Token")
 
 			header := ctx.Request().Header.Get(BearerHeaderName)
@@ -131,7 +131,7 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 	APIKEY:
 
 		// do api key authentication
-		if requiresKey && len(keyscopes) > -1 {
+		if requiresKey && len(keyScopes) > -1 {
 			shared.Logger.Debug("Authenticate with API Key")
 
 			key := ctx.Request().Header.Get(APIKeyHeaderName)

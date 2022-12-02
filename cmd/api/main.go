@@ -26,7 +26,6 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	"go.breu.io/ctrlplane/cmd/api/docs"
 	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/providers/github"
@@ -48,7 +47,7 @@ func (ev *EchoValidator) Validate(i interface{}) error {
 }
 
 func init() {
-	waigroup := sync.WaitGroup{}
+	waitgroup := sync.WaitGroup{}
 	// Reading the configuration from the environment
 	shared.Service.ReadEnv()
 	shared.Service.InitLogger()
@@ -62,24 +61,24 @@ func init() {
 
 	// Initializing reference to adapters
 	shared.Logger.Info("initializing ...")
-	waigroup.Add(3)
+	waitgroup.Add(3)
 
 	go func() {
-		defer waigroup.Done()
+		defer waitgroup.Done()
 		db.DB.InitSession()
 	}()
 
 	go func() {
-		defer waigroup.Done()
+		defer waitgroup.Done()
 		shared.EventStream.InitConnection()
 	}()
 
 	go func() {
-		defer waigroup.Done()
+		defer waitgroup.Done()
 		shared.Temporal.InitClient()
 	}()
 
-	waigroup.Wait()
+	waitgroup.Wait()
 	// Initializing singleton objects ... Done
 
 	shared.Logger.Info("initialized", "version", shared.Service.Version())
@@ -94,10 +93,6 @@ func main() {
 	defer func() { _ = shared.EventStream.Drain() }() // process events in the buffer before closing connection
 	defer db.DB.Session.Close()
 	defer shared.Temporal.Client.Close()
-
-	// docs
-	docs.SwaggerInfo.Title = shared.Service.Name
-	docs.SwaggerInfo.Version = shared.Service.Version()
 
 	// web server based on echo
 	e := echo.New()

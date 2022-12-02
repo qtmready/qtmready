@@ -9,7 +9,7 @@ require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.0
 	github.com/deepmap/oapi-codegen v1.12.4
 	github.com/go-playground/validator/v10 v10.11.1
-	github.com/gocql/gocql v1.2.1
+	github.com/gocql/gocql v1.3.0
 	github.com/google/go-github/v45 v45.2.0
 	github.com/gosimple/slug v1.13.1
 	github.com/ilyakaznacheev/cleanenv v1.4.1
@@ -20,9 +20,8 @@ require (
 	github.com/nats-io/nats.go v1.20.0
 	github.com/scylladb/gocqlx/v2 v2.7.0
 	github.com/spf13/cobra v1.6.1
-	github.com/swaggo/swag v1.8.8
 	go.temporal.io/sdk v1.18.1
-	go.uber.org/zap v1.23.0
+	go.uber.org/zap v1.24.0
 	golang.org/x/crypto v0.3.0
 )
 
@@ -30,16 +29,11 @@ replace github.com/Guilospanck/igocqlx v1.0.0 => github.com/debuggerpk/igocqlx v
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
-	github.com/KyleBanks/depth v1.2.1 // indirect
-	github.com/PuerkitoBio/purell v1.1.1 // indirect
-	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/getkin/kin-openapi v0.107.0 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
-	github.com/go-openapi/jsonreference v0.19.6 // indirect
-	github.com/go-openapi/spec v0.20.4 // indirect
 	github.com/go-openapi/swag v0.21.1 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
 	github.com/go-playground/universal-translator v0.18.0 // indirect
