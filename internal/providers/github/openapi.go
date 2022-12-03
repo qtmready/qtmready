@@ -15,13 +15,11 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-//go:build exclude
-
-package auth
+package github
 
 import (
 	_ "github.com/deepmap/oapi-codegen/pkg/codegen" // Required for code generation
 )
 
-//go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen -config openapi.codegen.yaml -package auth -generate types -o types.gen.go openapi.spec.yaml
-//go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen -config openapi.codegen.yaml -package auth -generate server -o server.gen.go openapi.spec.yaml
+//go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen -config openapi.codegen.yaml -package github -generate types -o types.gen.go openapi.spec.yaml
+//go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen -config openapi.codegen.yaml -package github -generate server -o server.gen.go openapi.spec.yaml

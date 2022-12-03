@@ -1,0 +1,109 @@
+paths:
+  /providers/github/complete-installation:
+    post:
+      summary: Complete GitHub App installation
+      description: Complete GitHub App installation
+      operationId: complete-installation
+      tags:
+        - providers
+        - github
+      requestBody:
+        description: GitHub App installation
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteInstallationRequest'
+      responses:
+        '200':
+          description: GitHub App installation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '201':
+          description: GitHub App installation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+
+  /providers/github/repos:
+    get:
+      summary: Get GitHub repositories
+      description: List all the github repositories registered with ctrlplane
+      operationId: get-repos
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - providers
+        - github
+      responses:
+        '200':
+          description: GitHub repositories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../../entities/openapi.spec.yaml#/components/schemas/GithubRepo'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: '../../shared/openapi.spec.yaml#/components/securitySchemes/BearerAuth'
+    APIKeyAuth:
+      $ref: '../../shared/openapi.spec.yaml#/components/securitySchemes/APIKeyAuth'
+
+  schemas:
+    CompleteInstallationRequest:
+      type: object
+      properties:
+        installation_id:
+          type: integer
+          format: int64
+        setup_action:
+          type: string
+          enum:
+            - created
+            - updated
+            - deleted
+
+    WorkflowResponse:
+      type: object
+      properties:
+        run_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - success
+            - failure
+            - queued
+            - signaled
+            - skipped
