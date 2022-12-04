@@ -52,8 +52,8 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	requestDone := false
 
 	// setting up channels to receive signals
-	webhookChannel := workflow.GetSignalChannel(ctx, WebhookInstallationEventSignal.String())
-	requestChannel := workflow.GetSignalChannel(ctx, RequestCompleteInstallationSignal.String())
+	webhookChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInstallationEvent.String())
+	requestChannel := workflow.GetSignalChannel(ctx, WorkflowSignalCompleteInstallation.String())
 
 	// webhook signal processor
 	selector.AddReceive(webhookChannel, func(rx workflow.ReceiveChannel, more bool) {
@@ -159,7 +159,7 @@ func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEvent
 	selector := workflow.NewSelector(ctx)
 
 	// setting up signals
-	prChannel := workflow.GetSignalChannel(ctx, PullRequestSignal.String())
+	prChannel := workflow.GetSignalChannel(ctx, WorkflowSignalPullRequest.String())
 
 	// signal processor
 	selector.AddReceive(prChannel, func(rx workflow.ReceiveChannel, more bool) {

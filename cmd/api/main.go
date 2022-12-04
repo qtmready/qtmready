@@ -103,6 +103,7 @@ func main() {
 	e.Validator = &EchoValidator{validator: shared.Validate}
 
 	auth.RegisterHandlers(e, &auth.ServerHandler{})
+	github.RegisterHandlers(e, &github.ServerHandler{})
 
 	e.GET("/healthz", healthz)
 

@@ -40,12 +40,12 @@ func handleInstallationEvent(ctx echo.Context) error {
 	workflows := &Workflows{}
 	opts := shared.Temporal.
 		Queues[shared.ProvidersQueue].
-		GetWorkflowOptions("github", strconv.FormatInt(payload.Installation.ID, 10), InstallationEvent.String())
+		GetWorkflowOptions("github", strconv.FormatInt(payload.Installation.ID, 10), WebhookEventInstallation.String())
 
 	exe, err := shared.Temporal.Client.SignalWithStartWorkflow(
 		ctx.Request().Context(),
 		opts.ID,
-		WebhookInstallationEventSignal.String(),
+		WorkflowSignalInstallationEvent.String(),
 		payload,
 		opts,
 		workflows.OnInstall,
@@ -57,7 +57,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 
 	shared.Logger.Debug("installation event handled ...", "options", opts, "execution", exe.GetRunID())
 
-	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowQueued})
+	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunId: exe.GetRunID(), Status: WorkflowStatusQueued})
 }
 
 // handlePushEvent handles GitHub push event.
@@ -70,7 +70,7 @@ func handlePushEvent(ctx echo.Context) error {
 
 	// the value will be `NoCommit` if we have a tag push, or squash merge.
 	if payload.After == NoCommit {
-		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: db.NullUUID, Status: WorkflowSkipped})
+		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunId: db.NullUUID, Status: WorkflowStatusSkipped})
 	}
 
 	w := &Workflows{}
@@ -81,7 +81,7 @@ func handlePushEvent(ctx echo.Context) error {
 			strconv.FormatInt(payload.Installation.ID, 10),
 			"repo",
 			strconv.FormatInt(payload.Repository.ID, 10),
-			PushEvent.String(),
+			WebhookEventPush.String(),
 			"ref",
 			payload.After)
 
@@ -90,7 +90,7 @@ func handlePushEvent(ctx echo.Context) error {
 		return err
 	}
 
-	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowQueued})
+	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunId: exe.GetRunID(), Status: WorkflowStatusQueued})
 }
 
 // handlePullRequestEvent handles GitHub pull request event.
@@ -109,7 +109,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 			strconv.FormatInt(payload.Installation.ID, 10),
 			"repo",
 			strconv.FormatInt(payload.Repository.ID, 10),
-			PullRequestEvent.String(),
+			WebhookEventPullRequest.String(),
 			strconv.FormatInt(payload.PullRequest.ID, 10),
 		)
 
@@ -120,14 +120,14 @@ func handlePullRequestEvent(ctx echo.Context) error {
 			return err
 		}
 
-		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowQueued})
+		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunId: exe.GetRunID(), Status: WorkflowStatusQueued})
 	default:
-		err := shared.Temporal.Client.SignalWorkflow(context.Background(), opts.ID, "", PullRequestEvent.String(), payload)
+		err := shared.Temporal.Client.SignalWorkflow(context.Background(), opts.ID, "", WebhookEventPullRequest.String(), payload)
 		if err != nil {
 			shared.Logger.Error("unable to signal ...", "options", opts, "error", err)
 			return err
 		}
 
-		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: db.NullUUID, Status: WorkflowSkipped})
+		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunId: db.NullUUID, Status: WorkflowStatusSkipped})
 	}
 }

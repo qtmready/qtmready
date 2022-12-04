@@ -1,3 +1,5 @@
 import-mapping:
   '../../shared/openapi.spec.yaml': go.breu.io/ctrlplane/internal/shared
   '../../entities/openapi.spec.yaml': go.breu.io/ctrlplane/internal/entities
+compatibility:
+  always-prefix-enum-values: true

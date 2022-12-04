@@ -1,4 +1,37 @@
 paths:
+  /providers/github/webhook:
+    post:
+      summary: Webhook reciever for github
+      description: |
+        Webhook reciever for github.
+        TODO: implement openapi generator.
+      operationId: github-webhook
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+
   /providers/github/complete-installation:
     post:
       summary: Complete GitHub App installation
@@ -82,28 +115,42 @@ components:
   schemas:
     CompleteInstallationRequest:
       type: object
+      description: complete the installation given the installation_id & setup_action
       properties:
         installation_id:
           type: integer
           format: int64
         setup_action:
-          type: string
-          enum:
-            - created
-            - updated
-            - deleted
+          $ref: '#/components/schemas/SetupAction'
+      required:
+        - installation_id
+        - setup_action
+
+    SetupAction:
+      type: string
+      enum:
+        - created
+        - updated
+        - deleted
 
     WorkflowResponse:
       type: object
+      description: workflow status & run id
       properties:
         run_id:
           type: string
-          format: uuid
         status:
-          type: string
-          enum:
-            - success
-            - failure
-            - queued
-            - signaled
-            - skipped
+          $ref: '#/components/schemas/WorkflowStatus'
+      required:
+        - run_id
+        - status
+
+    WorkflowStatus:
+      type: string
+      description: the workflow status
+      enum:
+        - success
+        - failure
+        - queued
+        - signaled
+        - skipped
