@@ -1,0 +1,21 @@
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    APIKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+  schemas:
+    APIErrorResponse:
+      description: defines the structure of an API error response
+      type: object
+      properties:
+        message:
+          type: string
+          description: defines the error to display to the user
+        code:
+          type: integer
+          description: defines the code, helpful for debugging

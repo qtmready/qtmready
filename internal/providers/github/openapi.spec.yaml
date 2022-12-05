@@ -1,0 +1,156 @@
+paths:
+  /providers/github/webhook:
+    post:
+      summary: Webhook reciever for github
+      description: |
+        Webhook reciever for github.
+        TODO: implement openapi generator.
+      operationId: github-webhook
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+
+  /providers/github/complete-installation:
+    post:
+      summary: Complete GitHub App installation
+      description: Complete GitHub App installation
+      operationId: complete-installation
+      tags:
+        - providers
+        - github
+      requestBody:
+        description: GitHub App installation
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteInstallationRequest'
+      responses:
+        '200':
+          description: GitHub App installation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '201':
+          description: GitHub App installation completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkflowResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+
+  /providers/github/repos:
+    get:
+      summary: Get GitHub repositories
+      description: List all the github repositories registered with ctrlplane
+      operationId: get-repos
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - providers
+        - github
+      responses:
+        '200':
+          description: GitHub repositories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '../../entities/openapi.spec.yaml#/components/schemas/GithubRepo'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      $ref: '../../shared/openapi.spec.yaml#/components/securitySchemes/BearerAuth'
+    APIKeyAuth:
+      $ref: '../../shared/openapi.spec.yaml#/components/securitySchemes/APIKeyAuth'
+
+  schemas:
+    CompleteInstallationRequest:
+      type: object
+      description: complete the installation given the installation_id & setup_action
+      properties:
+        installation_id:
+          type: integer
+          format: int64
+        setup_action:
+          $ref: '#/components/schemas/SetupAction'
+      required:
+        - installation_id
+        - setup_action
+
+    SetupAction:
+      type: string
+      enum:
+        - created
+        - updated
+        - deleted
+
+    WorkflowResponse:
+      type: object
+      description: workflow status & run id
+      properties:
+        run_id:
+          type: string
+        status:
+          $ref: '#/components/schemas/WorkflowStatus'
+      required:
+        - run_id
+        - status
+
+    WorkflowStatus:
+      type: string
+      description: the workflow status
+      enum:
+        - success
+        - failure
+        - queued
+        - signaled
+        - skipped

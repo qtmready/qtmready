@@ -1,7 +1,7 @@
 // Copyright © 2022, Breu, Inc. <info@breu.io>. All rights reserved.
 //
 // This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
-// found at https://www.breu.io/license/community. BY INSTALLATING, DOWNLOADING, ACCESSING, USING OR DISTRUBTING ANY OF
+// found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
 // THE SOFTWARE, YOU AGREE TO THE TERMS OF THE LICENSE AGREEMENT.
 //
 // The above copyright notice and the subsequent license agreement shall be included in all copies or substantial
@@ -28,7 +28,7 @@ import (
 	"io"
 	"net/http"
 
-	"go.breu.io/ctrlplane/internal/api/auth"
+	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -107,7 +107,7 @@ func (c *Client) request(method, url string, reply, data interface{}) error {
 func (c *Client) headers(request *http.Request) {
 	request.Header.Set("User-Agent", shared.Service.Name+"/"+shared.Service.Version())
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Authorization", auth.APIKeyPrefix+" "+c.APIKEY)
+	request.Header.Set("Authorization", auth.APIKeyHeaderName+" "+c.APIKEY)
 }
 
 // url returns the full URL for the request.

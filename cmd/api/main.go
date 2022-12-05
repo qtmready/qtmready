@@ -1,7 +1,7 @@
 // Copyright © 2022, Breu, Inc. <info@breu.io>. All rights reserved.
 //
 // This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
-// found at https://www.breu.io/license/community. BY INSTALLATING, DOWNLOADING, ACCESSING, USING OR DISTRUBTING ANY OF
+// found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
 // THE SOFTWARE, YOU AGREE TO THE TERMS OF THE LICENSE AGREEMENT.
 //
 // The above copyright notice and the subsequent license agreement shall be included in all copies or substantial
@@ -25,13 +25,9 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	swagger "github.com/swaggo/echo-swagger"
 
-	"go.breu.io/ctrlplane/cmd/api/docs"
-	"go.breu.io/ctrlplane/internal/api/auth"
-	"go.breu.io/ctrlplane/internal/api/core"
+	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/providers"
 	"go.breu.io/ctrlplane/internal/providers/github"
 	"go.breu.io/ctrlplane/internal/shared"
 )
@@ -51,7 +47,7 @@ func (ev *EchoValidator) Validate(i interface{}) error {
 }
 
 func init() {
-	waigroup := sync.WaitGroup{}
+	waitgroup := sync.WaitGroup{}
 	// Reading the configuration from the environment
 	shared.Service.ReadEnv()
 	shared.Service.InitLogger()
@@ -65,24 +61,24 @@ func init() {
 
 	// Initializing reference to adapters
 	shared.Logger.Info("initializing ...")
-	waigroup.Add(3)
+	waitgroup.Add(3)
 
 	go func() {
-		defer waigroup.Done()
+		defer waitgroup.Done()
 		db.DB.InitSession()
 	}()
 
 	go func() {
-		defer waigroup.Done()
+		defer waitgroup.Done()
 		shared.EventStream.InitConnection()
 	}()
 
 	go func() {
-		defer waigroup.Done()
+		defer waitgroup.Done()
 		shared.Temporal.InitClient()
 	}()
 
-	waigroup.Wait()
+	waitgroup.Wait()
 	// Initializing singleton objects ... Done
 
 	shared.Logger.Info("initialized", "version", shared.Service.Version())
@@ -98,29 +94,18 @@ func main() {
 	defer db.DB.Session.Close()
 	defer shared.Temporal.Client.Close()
 
-	// docs
-	docs.SwaggerInfo.Title = shared.Service.Name
-	docs.SwaggerInfo.Version = shared.Service.Version()
-
 	// web server based on echo
 	e := echo.New()
 	e.Use(middleware.CORS())
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(auth.Middleware)
 	e.Validator = &EchoValidator{validator: shared.Validate}
 
-	// Public endpoints
-	e.GET("/docs/*", swagger.WrapHandler)
-	e.GET("/healthcheck", healthcheck)
-	// Auth endpoints
-	auth.CreateRoutes(e.Group("/auth"))
+	auth.RegisterHandlers(e, &auth.ServerHandler{})
+	github.RegisterHandlers(e, &github.ServerHandler{})
 
-	// endpoints for 3rd party providers
-	providers.CreateRoutes(e.Group("/providers"), auth.Middleware)
-
-	// core api endpoints
-	protected := e.Group("", auth.Middleware)
-	core.CreateRoutes(protected)
+	e.GET("/healthz", healthz)
 
 	if err := e.Start(":8000"); err != nil {
 		exitcode = 1
@@ -129,23 +114,14 @@ func main() {
 }
 
 type (
-	HealthCheckResponse struct {
-		Msg string `json:"msg"`
+	HealthzResponse struct {
+		Status string `json:"status"`
 	}
 )
 
-// healthcheck is the health check endpoint.
-//
-// @Summary     Checks if connection to all external services are working fine.
-// @Description Quick health check
-// @Tags        healthcheck
-// @Accept      json
-// @Produce     json
-// @Success     201 {object} HealthCheckResponse
-// @Failure     500 {object} echo.HTTPError
-// @Router      /healthcheck [get]
+// healthz is the health check endpoint.
 //
 // TODO: make sure that connection to all services it needs to connect to is working properly.
-func healthcheck(ctx echo.Context) error {
-	return ctx.Bind(&HealthCheckResponse{Msg: "OK"})
+func healthz(ctx echo.Context) error {
+	return ctx.JSON(http.StatusOK, &HealthzResponse{Status: "OK"})
 }
