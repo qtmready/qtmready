@@ -27,17 +27,11 @@ import (
 
 // Webhook events & Workflow singals.
 type (
-	WebhookEvent         string                               // WebhookEvent defines the event type.
-	WebhookEventHandler  func(ctx echo.Context) error         // EventHandler is the signature of the event handler function.
-	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers.
-	WorkflowSignal       string                               // WorkflowSignal is the name of a workflow signal.
-	WorkflowSignalMap    map[string]WorkflowSignal            // WorkflowSignalMap maps strings to their respective signal.
-)
-
-// maps for openapi generated enums.
-type (
-	SetupActionMap    map[string]SetupAction    // SetupActionMap maps strings to their respective SetupAction.
-	WorkflowStatusMap map[string]WorkflowStatus // WorkflowStatusMap maps strings to their respective WorkflowStatus.
+	WebhookEvent          string                               // WebhookEvent defines the event type.
+	WebhookEventHandler   func(ctx echo.Context) error         // EventHandler is the signature of the event handler function.
+	WebhookEventHandlers  map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers.
+	WorkflowSignal        string                               // WorkflowSignal is the name of a workflow signal.
+	WorkflowSignalMapType map[string]WorkflowSignal            // WorkflowSignalMap maps strings to their respective signal.
 )
 
 // Payloads for internal events & signals.
@@ -85,28 +79,6 @@ type (
 		InstallationID int64       `json:"installation_id"`
 		SetupAction    SetupAction `json:"setup_action"`
 		TeamID         gocql.UUID  `json:"team_id"`
-	}
-)
-
-var (
-	SetupActions = SetupActionMap{
-		SetupActionCreated.String(): SetupActionCreated,
-		SetupActionDeleted.String(): SetupActionDeleted,
-		SetupActionUpdated.String(): SetupActionUpdated,
-	}
-
-	WorkflowSignals = WorkflowSignalMap{
-		WorkflowSignalInstallationEvent.String():    WorkflowSignalInstallationEvent,
-		WorkflowSignalCompleteInstallation.String(): WorkflowSignalCompleteInstallation,
-		WorkflowSignalPullRequest.String():          WorkflowSignalPullRequest,
-	}
-
-	WorkflowStatuses = WorkflowStatusMap{
-		WorkflowStatusFailure.String():  WorkflowStatusFailure,
-		WorkflowStatusQueued.String():   WorkflowStatusQueued,
-		WorkflowStatusSuccess.String():  WorkflowStatusSuccess,
-		WorkflowStatusSignaled.String(): WorkflowStatusSignaled,
-		WorkflowStatusSkipped.String():  WorkflowStatusSkipped,
 	}
 )
 
@@ -171,41 +143,22 @@ const (
 	NoCommit = "0000000000000000000000000000000000000000"
 )
 
+var (
+	WorkflowSignalMap = WorkflowSignalMapType{
+		WorkflowSignalInstallationEvent.String():    WorkflowSignalInstallationEvent,
+		WorkflowSignalCompleteInstallation.String(): WorkflowSignalCompleteInstallation,
+		WorkflowSignalPullRequest.String():          WorkflowSignalPullRequest,
+	}
+)
+
 func (e WebhookEvent) String() string { return string(e) }
-
-// Methods for SetupAction.
-
-func (a SetupAction) String() string { return string(a) }
-
-func (a SetupAction) MarshalJSON() ([]byte, error) {
-	return json.Marshal(a.String())
-}
-
-func (a *SetupAction) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
-
-	val, ok := SetupActions[s]
-	if !ok {
-		return errors.New("invalid setup action")
-	}
-
-	*a = val
-
-	return nil
-}
 
 /*
  * Methods for WorkflowSignal.
  */
 
-func (w WorkflowSignal) String() string { return string(w) }
-
-func (w WorkflowSignal) MarshalJSON() ([]byte, error) {
-	return json.Marshal(w.String())
-}
+func (w WorkflowSignal) String() string               { return string(w) }
+func (w WorkflowSignal) MarshalJSON() ([]byte, error) { return json.Marshal(w.String()) }
 
 func (w *WorkflowSignal) UnmarshalJSON(b []byte) error {
 	var s string
@@ -213,35 +166,9 @@ func (w *WorkflowSignal) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	val, ok := WorkflowSignals[s]
+	val, ok := WorkflowSignalMap[s]
 	if !ok {
 		return errors.New("invalid workflow signal")
-	}
-
-	*w = val
-
-	return nil
-}
-
-/*
- * Methods for WorkflowStatus.
- */
-
-func (w WorkflowStatus) String() string { return string(w) }
-
-func (w WorkflowStatus) MarshalJSON() ([]byte, error) {
-	return json.Marshal(w.String())
-}
-
-func (w *WorkflowStatus) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
-
-	val, ok := WorkflowStatuses[s]
-	if !ok {
-		return errors.New("invalid workflow status")
 	}
 
 	*w = val
