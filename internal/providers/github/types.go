@@ -197,7 +197,9 @@ func (a *SetupAction) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Methods for WorkflowSignal.
+/*
+ * Methods for WorkflowSignal.
+ */
 
 func (w WorkflowSignal) String() string { return string(w) }
 
@@ -221,7 +223,9 @@ func (w *WorkflowSignal) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Methods for WorkflowStatus.
+/*
+ * Methods for WorkflowStatus.
+ */
 
 func (w WorkflowStatus) String() string { return string(w) }
 
