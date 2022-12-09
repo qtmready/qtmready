@@ -25,8 +25,8 @@ import (
 
 type (
 	AppCreateRequest struct {
-		Name   string             `json:"name"`
-		Config entities.AppConfig `json:"config"`
+		Name   string               `json:"name"`
+		Config entities.StackConfig `json:"config"`
 	}
 
 	AppRepoCreateRequest struct {

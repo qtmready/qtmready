@@ -45,10 +45,10 @@ import (
 )
 
 func TestApp(t *testing.T) {
-	app := &entities.App{
+	app := &entities.Stack{
 		ID:     gocql.MustRandomUUID(),
-		Name:   "Test App",
-		Config: entities.AppConfig{},
+		Name:   "Test Stack",
+		Config: entities.StackConfig{},
 		TeamID: gocql.MustRandomUUID(),
 	}
 	_ = app.PreCreate()
@@ -87,7 +87,7 @@ func TestRollout(t *testing.T) {
 }
 
 func testAppSlug(args interface{}, want interface{}) func(*testing.T) {
-	app := args.(*entities.App)
+	app := args.(*entities.Stack)
 	sluglen := len(slug.Make(app.Name)) + 1 + 22
 
 	return func(t *testing.T) {

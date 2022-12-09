@@ -58,7 +58,7 @@ var (
 	guardTable = itable.New(*guardMeta.M)
 )
 
-// Team is the primary owner of the App & primary driver of system-wide RBAC.
+// Team is the primary owner of the Stack & primary driver of system-wide RBAC.
 type (
 	Guard struct {
 		ID         gocql.UUID `json:"id" cql:"id"`

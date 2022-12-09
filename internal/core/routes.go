@@ -56,16 +56,16 @@ type (
 // @Tags        core
 // @Accept      json
 // @Produce     json
-// @Success     200 {array}  entities.App
+// @Success     200 {array}  entities.Stack
 // @Failure     400 {object} echo.HTTPError
 // @Router      /apps [get]
 //
 // list all apps associated with the team.
 func (routes *AppRoutes) list(ctx echo.Context) error {
-	result := make([]entities.App, 0)
+	result := make([]entities.Stack, 0)
 	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
 
-	if err := db.Filter(&entities.App{}, &result, params); err != nil {
+	if err := db.Filter(&entities.Stack{}, &result, params); err != nil {
 		return err
 	}
 
@@ -78,7 +78,7 @@ func (routes *AppRoutes) list(ctx echo.Context) error {
 // @Accept      json
 // @Produce     json
 // @Param       body body     AppCreateRequest true "AppCreateRequest"
-// @Success     201  {object} entities.App
+// @Success     201  {object} entities.Stack
 // @Failure     400  {object} echo.HTTPError
 // @Router      /apps [post]
 //
@@ -90,7 +90,7 @@ func (routes *AppRoutes) create(ctx echo.Context) error {
 	}
 
 	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
-	app := &entities.App{Name: request.Name, TeamID: teamID}
+	app := &entities.Stack{Name: request.Name, TeamID: teamID}
 
 	if err := db.Save(app); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err)
@@ -104,14 +104,14 @@ func (routes *AppRoutes) create(ctx echo.Context) error {
 // @Tags        core
 // @Accept      json
 // @Produce     json
-// @Param       slug path     string true "App slug"
-// @Success     200  {object} entities.App
+// @Param       slug path     string true "Stack slug"
+// @Success     200  {object} entities.Stack
 // @Failure     400  {object} echo.HTTPError
 // @Router      /apps/{slug} [get]
 //
 // get an app by slug.
 func (routes *AppRoutes) get(ctx echo.Context) error {
-	app := &entities.App{}
+	app := &entities.Stack{}
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'"}
 
 	if err := db.Get(app, params); err != nil {
@@ -126,7 +126,7 @@ func (routes *AppRoutes) get(ctx echo.Context) error {
 // @Tags        core
 // @Accept      json
 // @Produce     json
-// @Param       slug path     string true "App slug"
+// @Param       slug path     string true "Stack slug"
 // @Success     200  {array}  entities.Repo
 // @Failure     400  {object} echo.HTTPError
 // @Router      /apps/{slug}/repos [get]
@@ -134,7 +134,7 @@ func (routes *AppRoutes) get(ctx echo.Context) error {
 // list all repos associated with an app.
 func (routes *AppRepoRoutes) list(ctx echo.Context) error {
 	result := make([]entities.Repo, 0)
-	app := &entities.App{}
+	app := &entities.Stack{}
 
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
 	if err := db.Get(app, params); err != nil {
@@ -154,7 +154,7 @@ func (routes *AppRepoRoutes) list(ctx echo.Context) error {
 // @Tags        core
 // @Accept      json
 // @Produce     json
-// @Param       slug path     string               true "App slug"
+// @Param       slug path     string               true "Stack slug"
 // @Param       body body     AppRepoCreateRequest true "AppRepoCreateRequest"
 // @Success     201  {object} entities.Repo
 // @Failure     400  {object} echo.HTTPError
@@ -167,7 +167,7 @@ func (routes *AppRepoRoutes) create(ctx echo.Context) error {
 		return err
 	}
 
-	app := &entities.App{}
+	app := &entities.Stack{}
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
 
 	if err := db.Get(app, params); err != nil {
@@ -183,7 +183,7 @@ func (routes *AppRepoRoutes) create(ctx echo.Context) error {
 }
 
 // github creates associates an app with a github repo.
-func (routes *AppRepoRoutes) github(ctx echo.Context, request *AppRepoCreateRequest, app *entities.App) error {
+func (routes *AppRepoRoutes) github(ctx echo.Context, request *AppRepoCreateRequest, app *entities.Stack) error {
 	if err := db.Get(&entities.GithubRepo{}, db.QueryParams{"id": request.RepoID.String()}); err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, ErrNotFound)
 	}
