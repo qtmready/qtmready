@@ -1,9 +1,19 @@
 name: releaseCtrlplaneApi
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - feature/sc-2539/artifact-registry-action
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+        type: choice
+        options:
+        - info
+        - warning
+        - debug
+  # push:
+  #   branches:
+  #     - feature/sc-2539/artifact-registry-action
 
 env:
   GCP_SA_NAME: github-gar-sa
@@ -47,4 +57,4 @@ jobs:
         with:
           push: true
           tags: |
-             asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/ctrlplane-api:latest
+            asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/ctrlplane-api:latest
