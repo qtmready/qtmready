@@ -1,16 +1,5 @@
 name: releaseCtrlplaneApi
-on:
-  workflow_dispatch:
-    inputs:
-      logLevel:
-        description: 'Log level'
-        required: true
-        default: 'warning'
-        type: choice
-        options:
-        - info
-        - warning
-        - debug
+on: workflow_dispatch
   # push:
   #   branches:
   #     - feature/sc-2539/artifact-registry-action
