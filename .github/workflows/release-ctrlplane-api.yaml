@@ -8,7 +8,7 @@ on:
 env:
   GCP_SA_NAME: github-gar-sa
   GCP_PROJECT_ID: breu-dev
-  GCP_WORLDLOAD_IDENTITY_PROVIDER: "projects/1084025555/locations/global/workloadIdentityPools/github-action-pool/providers/gh-action-id-provider"
+  GCP_WORLDLOAD_IDENTITY_PROVIDER: "projects/1084025555/locations/global/workloadIdentityPools/gh-action-pool/providers/gh-action-provider"
 
 # TODO: add semantic-release for version management
 jobs:
