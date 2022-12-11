@@ -1,0 +1,46 @@
+name: releaseCtrlplaneApi
+on:
+  push:
+    branches:
+      - feature/sc-2539/artifact-registry-action
+
+env:
+  GCP_SA_NAME: github-gar-sa
+  GCP_PROJECT_ID: breu-dev
+  GCP_WORLDLOAD_IDENTITY_PROVIDER: "projects/1084025555/locations/global/workloadIdentityPools/github-action-pool"
+
+# TODO: add semantic-release for version management
+jobs:
+  release-artifact:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Golang
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.18
+      - name: Build Docker image
+        run: |
+          docker build -t ctrlplane-api:latest .
+          docker tag asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/ctrlplane-api:latest 
+      - name: Authenticate with GCP
+        id: auth
+        uses: "google-github-actions/auth@v0"
+        with:
+          token_format: access_token
+          workload_identity_provider: "${{ env.GCP_WORLDLOAD_IDENTITY_PROVIDER }}"
+          service_account: "${{ env.GCP_SA_NAME }}@${{ env.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
+          access_token_lifetime: 300s
+      - name: Login into Google Artifact Registry
+        uses: docker/login-action@v1
+        with:
+          registry: asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+      - id: docker-push-tagged
+        name: Tag Docker image and push to Google Artifact Registry
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: |
+             asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/ctrlplane-api:latest
