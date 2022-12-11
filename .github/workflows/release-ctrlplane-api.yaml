@@ -1,5 +1,6 @@
 name: releaseCtrlplaneApi
 on:
+  workflow_dispatch:
   push:
     branches:
       - feature/sc-2539/artifact-registry-action
