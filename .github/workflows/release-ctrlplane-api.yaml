@@ -22,7 +22,7 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t ctrlplane-api:latest .
-          docker tag asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/ctrlplane-api:latest 
+          docker tag ctrlplane-api:latest asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/ctrlplane-api:latest 
       - name: Authenticate with GCP
         id: auth
         uses: "google-github-actions/auth@v0"
