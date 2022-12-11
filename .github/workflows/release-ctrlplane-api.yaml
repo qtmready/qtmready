@@ -1,8 +1,8 @@
 name: releaseCtrlplaneApi
-on: workflow_dispatch
-  # push:
-  #   branches:
-  #     - feature/sc-2539/artifact-registry-action
+on:
+  push:
+    branches:
+      - feature/sc-2539/artifact-registry-action
 
 env:
   GCP_SA_NAME: github-gar-sa
