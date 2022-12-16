@@ -5,9 +5,9 @@ on:
       - feature/sc-2539/artifact-registry-action
 
 env:
-  GCP_SA_NAME: github-gar-sa
+  GCP_SA_NAME: github-actions-sa
   GCP_PROJECT_ID: breu-dev
-  GCP_WORLDLOAD_IDENTITY_PROVIDER: "projects/1084025555/locations/global/workloadIdentityPools/gh-action-pool/providers/gh-action-provider"
+  GCP_WORLDLOAD_IDENTITY_PROVIDER: "projects/1084025555/locations/global/workloadIdentityPools/github-actions-pool/providers/github-action-workload-provider"
 
 # TODO: add semantic-release for version management
 jobs:
