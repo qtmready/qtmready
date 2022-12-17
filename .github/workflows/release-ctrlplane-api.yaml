@@ -33,7 +33,7 @@ jobs:
           access_token_lifetime: 300s
 
       - name: Login into Google Artifact Registry
-        uses: docker/login-action@v1.
+        uses: docker/login-action@v1
         with:
           registry: asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane
           username: oauth2accesstoken
