@@ -2,7 +2,8 @@ name: releaseCtrlplaneApi
 on:
   push:
     branches:
-      - feature/sc-2539/artifact-registry-action
+      - dev
+      - main
 
 jobs:
   release-artifact:
