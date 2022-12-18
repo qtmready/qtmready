@@ -18,7 +18,7 @@ type (
 	ServerHandler struct{}
 )
 
-func (s *ServerHandler) CompleteInstallation(ctx echo.Context) error {
+func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 	request := &CompleteInstallationRequest{}
 	if err := ctx.Bind(request); err != nil {
 		return err
@@ -53,7 +53,7 @@ func (s *ServerHandler) CompleteInstallation(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunId: exe.GetID(), Status: WorkflowStatusQueued})
 }
 
-func (s *ServerHandler) GetRepos(ctx echo.Context) error {
+func (s *ServerHandler) GithubGetRepos(ctx echo.Context) error {
 	result := make([]entities.GithubRepo, 0)
 	if err := db.Filter(
 		&entities.GithubRepo{},
