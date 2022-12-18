@@ -13,11 +13,14 @@ RUN go build -o /app/main /app/cmd/api/main.go
 
 FROM alpine:3.16
 
-COPY --from=base /app/main main
+WORKDIR /app
+
+COPY --from=base /app/main /app/main
+
 RUN mkdir migrations
 
 COPY ./internal/db/migrations/ ./migrations
 
 EXPOSE 8000
 
-CMD ["/main"]
+CMD ["/app/main"]
