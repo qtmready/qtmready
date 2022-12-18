@@ -4,6 +4,7 @@ on:
     branches:
       - dev
       - main
+      - feature/sc-2539/artifact-registry-action # TODO: Remove this after PR gets approved.
 
 jobs:
   release-artifact:
