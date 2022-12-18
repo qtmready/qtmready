@@ -15,10 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Set variables
+        id: vars
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
       - name: Build Docker image
         run: |
-          docker build -t ctrlplane-api:latest .
-          docker tag ctrlplane-api:latest asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/ctrlplane-api:latest 
+          docker build -t ctrlplane-api:${{ steps.vars.outputs.short_sha }} .
+          docker tag ctrlplane-api:latest asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/ctrlplane-api:${{ steps.vars.outputs.short_sha }} 
 
       - name: Authenticate with GCP
         id: auth
@@ -42,4 +46,4 @@ jobs:
         with:
           push: true
           tags: |
-            asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/ctrlplane-api:latest
+            asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/ctrlplane-api:${{ steps.vars.outputs.short_sha }}
