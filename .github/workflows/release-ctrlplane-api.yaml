@@ -21,7 +21,8 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ctrlplane-api:${{ steps.vars.outputs.short_sha }} .
+          docker build -t ctrlplane-api:latest .
+          docker tag ctrlplane-api:latest asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/ctrlplane-api:latest
           docker tag ctrlplane-api:latest asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/ctrlplane-api:${{ steps.vars.outputs.short_sha }} 
 
       - name: Authenticate with GCP
@@ -47,3 +48,4 @@ jobs:
           push: true
           tags: |
             asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/ctrlplane-api:${{ steps.vars.outputs.short_sha }}
+            asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/ctrlplane-api:latest
