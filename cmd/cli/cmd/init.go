@@ -60,8 +60,7 @@ func initRun(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	// fmt.Println(r)
-	name, err := promptName()
+	name, err := stackName()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
@@ -77,7 +76,7 @@ func initRun(cmd *cobra.Command, args []string) {
 	fmt.Println("Initializing ...", cwd)
 }
 
-func promptName() (string, error) {
+func stackName() (string, error) {
 	rx := regexp.MustCompile(dns1035LabelFmt) // FIXME: not working!
 	prompt := promptui.Prompt{
 		Label: "Application Name",
