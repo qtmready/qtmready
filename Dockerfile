@@ -17,10 +17,6 @@ WORKDIR /app
 
 COPY --from=base /app/main /app/main
 
-RUN mkdir migrations
-
-COPY ./internal/db/migrations/ ./migrations
-
 EXPOSE 8000
 
 CMD ["/app/main"]
