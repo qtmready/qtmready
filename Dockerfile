@@ -4,10 +4,7 @@ WORKDIR /app
 
 ENV GO111MODULE=on CGO_ENABLED=0
 
-COPY go.mod go.sum /app/
-
-COPY ./cmd/api/ /app/cmd/api/
-COPY ./internal/ /app/internal/
+ADD . .
 
 RUN go build -o /app/main /app/cmd/api/main.go
 
