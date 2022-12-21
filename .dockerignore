@@ -1,0 +1,13 @@
+.github/*
+.vscode/*
+bin/*
+deploy/*
+tmp/*
+docs/*
+
+*.yaml
+*.yml
+*.md
+*.toml
+.editorconfig
+LICENSE
