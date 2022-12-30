@@ -18,6 +18,10 @@ type (
 	ServerHandler struct{}
 )
 
+func NewServerHandler() *ServerHandler {
+	return &ServerHandler{}
+}
+
 func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 	request := &CompleteInstallationRequest{}
 	if err := ctx.Bind(request); err != nil {

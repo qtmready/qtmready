@@ -7,22 +7,33 @@ require (
 	github.com/Guilospanck/igocqlx v1.0.0
 	github.com/avast/retry-go/v4 v4.3.1
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.0
-	github.com/deepmap/oapi-codegen v1.12.4
+	github.com/deepmap/oapi-codegen v1.11.0
 	github.com/go-playground/validator/v10 v10.11.1
-	github.com/gocql/gocql v1.3.0
+	github.com/gocql/gocql v1.3.1
 	github.com/google/go-github/v45 v45.2.0
 	github.com/gosimple/slug v1.13.1
-	github.com/ilyakaznacheev/cleanenv v1.4.1
+	github.com/ilyakaznacheev/cleanenv v1.4.2
 	github.com/jxskiss/base62 v1.1.0
-	github.com/labstack/echo/v4 v4.9.1
+	github.com/labstack/echo-contrib v0.13.0
+	github.com/labstack/echo/v4 v4.9.0
 	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/manifoldco/promptui v0.9.0
-	github.com/nats-io/nats.go v1.20.0
+	github.com/nats-io/nats.go v1.22.1
 	github.com/scylladb/gocqlx/v2 v2.7.0
 	github.com/spf13/cobra v1.6.1
-	go.temporal.io/sdk v1.18.1
+	go.temporal.io/sdk v1.19.0
 	go.uber.org/zap v1.24.0
-	golang.org/x/crypto v0.3.0
+	golang.org/x/crypto v0.4.0
+)
+
+require (
+	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/cespare/xxhash/v2 v2.1.2 // indirect
+	github.com/matttproud/golang_protobuf_extensions v1.0.2-0.20181231171920-c182affec369 // indirect
+	github.com/prometheus/client_golang v1.12.2 // indirect
+	github.com/prometheus/client_model v0.2.0 // indirect
+	github.com/prometheus/common v0.37.0 // indirect
+	github.com/prometheus/procfs v0.8.0 // indirect
 )
 
 replace github.com/Guilospanck/igocqlx v1.0.0 => github.com/debuggerpk/igocqlx v1.0.3
@@ -74,17 +85,17 @@ require (
 	github.com/scylladb/go-reflectx v1.0.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
-	github.com/stretchr/testify v1.8.1 // indirect
+	github.com/stretchr/testify v1.8.1
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	go.temporal.io/api v1.13.0 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/mod v0.7.0 // indirect
-	golang.org/x/net v0.2.0 // indirect
-	golang.org/x/sys v0.2.0 // indirect
-	golang.org/x/text v0.4.0 // indirect
-	golang.org/x/time v0.0.0-20220411224347-583f2d630306 // indirect
+	golang.org/x/net v0.4.0 // indirect
+	golang.org/x/sys v0.3.0 // indirect
+	golang.org/x/text v0.5.0 // indirect
+	golang.org/x/time v0.2.0 // indirect
 	golang.org/x/tools v0.3.0 // indirect
 	google.golang.org/genproto v0.0.0-20221027153422-115e99e71e1c // indirect
 	google.golang.org/grpc v1.50.1 // indirect

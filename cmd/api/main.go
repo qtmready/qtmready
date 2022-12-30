@@ -22,7 +22,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/go-playground/validator/v10"
+	"github.com/labstack/echo-contrib/prometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
@@ -31,20 +31,6 @@ import (
 	"go.breu.io/ctrlplane/internal/providers/github"
 	"go.breu.io/ctrlplane/internal/shared"
 )
-
-type (
-	EchoValidator struct {
-		validator *validator.Validate
-	}
-)
-
-func (ev *EchoValidator) Validate(i interface{}) error {
-	if err := ev.validator.Struct(i); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-
-	return nil
-}
 
 func init() {
 	waitgroup := sync.WaitGroup{}
@@ -88,24 +74,30 @@ func main() {
 	// graceful shutdown.
 	// LINK: https://stackoverflow.com/a/46255965/228697.
 	exitcode := 0
-	defer func() { os.Exit(exitcode) }()              // all connections are closed, exit with the right code
-	defer func() { _ = shared.Logger.Sync() }()       // flush log buffer
-	defer func() { _ = shared.EventStream.Drain() }() // process events in the buffer before closing connection
+	defer func() { os.Exit(exitcode) }()              // all connections are closed, exit with the right code.
+	defer func() { _ = shared.Logger.Sync() }()       // flush log buffer.
+	defer func() { _ = shared.EventStream.Drain() }() // process events in the buffer before closing connection.
 	defer db.DB.Session.Close()
 	defer shared.Temporal.Client.Close()
 
 	// web server based on echo
+	prom := prometheus.NewPrometheus("echo", nil)
 	e := echo.New()
+
+	// configure middleware
+	prom.Use(e)
 	e.Use(middleware.CORS())
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 	e.Use(auth.Middleware)
-	e.Validator = &EchoValidator{validator: shared.Validate}
 
-	auth.RegisterHandlers(e, &auth.ServerHandler{})
-	github.RegisterHandlers(e, &github.ServerHandler{})
-
+	// register handlers
+	auth.RegisterHandlers(e, auth.NewServerHandler())
+	github.RegisterHandlers(e, github.NewServerHandler())
 	e.GET("/healthz", healthz)
+
+	// configuring validator
+	e.Validator = &shared.EchoValidator{Validator: shared.Validator}
 
 	if err := e.Start(":8000"); err != nil {
 		exitcode = 1

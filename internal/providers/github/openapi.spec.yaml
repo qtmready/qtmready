@@ -37,6 +37,9 @@ paths:
       summary: Complete GitHub App installation
       description: Complete GitHub App installation
       operationId: github-complete-installation
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
       tags:
         - providers
         - github

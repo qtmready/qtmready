@@ -32,23 +32,27 @@ type (
 	ServerHandler struct{}
 )
 
+func NewServerHandler() *ServerHandler {
+	return &ServerHandler{}
+}
+
 func (s *ServerHandler) Register(ctx echo.Context) error {
 	request := &RegisterationRequest{}
 
 	// Translating request to json
 	if err := ctx.Bind(request); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	// Validating request
 	if err := ctx.Validate(request); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	// Validating team
 	team := &entities.Team{Name: request.TeamName}
 	if err := ctx.Validate(team); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	user := &entities.User{
@@ -58,16 +62,16 @@ func (s *ServerHandler) Register(ctx echo.Context) error {
 		Password:  request.Password,
 	}
 	if err := ctx.Validate(user); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	if err := db.Save(team); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	user.TeamID = team.ID
 	if err := db.Save(user); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	return ctx.JSON(http.StatusCreated, &RegisterationResponse{Team: team, User: user})
@@ -77,11 +81,11 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 	request := &LoginRequest{}
 
 	if err := ctx.Bind(request); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	if err := ctx.Validate(request); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	params := db.QueryParams{"email": "'" + string(request.Email) + "'"}
@@ -105,11 +109,11 @@ func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 
 	if err := ctx.Bind(request); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	if err := ctx.Validate(request); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	id, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
@@ -118,7 +122,7 @@ func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
 
 	if err := guard.Save(); err != nil {
 		shared.Logger.Error("error saving guard", "error", err)
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: &key})
@@ -128,11 +132,11 @@ func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 
 	if err := ctx.Bind(request); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	if err := ctx.Validate(request); err != nil {
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	id, _ := gocql.ParseUUID(ctx.Get("user_id").(string))
@@ -141,7 +145,7 @@ func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 
 	if err := guard.Save(); err != nil {
 		shared.Logger.Error("error saving guard", "error", err)
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: &key})

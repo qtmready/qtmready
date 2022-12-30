@@ -148,6 +148,10 @@ type ServerInterfaceWrapper struct {
 func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) error {
 	var err error
 
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	ctx.Set(APIKeyAuthScopes, []string{""})
+
 	// Invoke the callback with all the unmarshalled arguments
 	err = w.Handler.GithubCompleteInstallation(ctx)
 	return err
