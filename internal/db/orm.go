@@ -44,8 +44,8 @@ type (
 	}
 )
 
-func SelectBuilder(name string) iqb.ISelectBuilder {
-	return &iqb.SelectBuilder{SB: qb.Select(name)}
+func SelectBuilder(table string) iqb.ISelectBuilder {
+	return &iqb.SelectBuilder{SB: qb.Select(table)}
 }
 
 // Get the entity by given query params.

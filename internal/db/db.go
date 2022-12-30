@@ -131,7 +131,7 @@ func (d *db) InitSessionWithMigrations() {
 
 // RegisterValidations registers any field or entity related validators.
 func (d *db) RegisterValidations() {
-	_ = shared.Validate.RegisterValidation("db_unique", UniqueField)
+	_ = shared.Validator.RegisterValidation("db_unique", UniqueField)
 }
 
 func (d *db) InitMockSession(session *gocqlxmock.SessionxMock) {

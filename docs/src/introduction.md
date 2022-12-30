@@ -37,7 +37,7 @@ As far as ctrlplane.ai is concerned, we are not concerned with the _building_ pa
 
 With rapid adoption of cloud, critical infrastructure is what you can call "software defined infra". Tools like [terraform](https://terraform.io), [pulumi](https://pulumi.com) or [crossplane](https://crossplane.io) or [Amazon CDK](https://aws.amazon.com/cdk) have attacked the problem of automating the infrastructure and have provided a solid foundation for versioned infra. But these tools need stitching with deployment pipelines & feedback controls need to be built on top of it. Of the market data we have collected, the most forward looking shops are using pulumi or amazon CDK but terraform has the most mind share. _crossplane_, although a novel idea i.e. to use kubernetes CRDs are cloud resources, hasn't really taken off so far.
 
-> One of the most revolutionary approach IMHO is by [Wing](https://winglang.io) i.e take the ifrastructure problem, turn it on its head by making it a compiler problem! But it is still in its design phase, and the market will will decide the ultimate vote.
+> One of the most revolutionary approach IMHO is by [Wing](https://winglang.io) i.e take the ifrastructure problem, turn it on its head by making it a compiler problem! But it is still in its design phase, and the market will decide the ultimate vote.
 
 Our bet however is immutable versioned infra for each artifact from the continous delivery pipeline. For the time being, we are only handling stateless applications. Versioning a database migration is a seperate problem and needs more bandwidth.
 

@@ -25,8 +25,8 @@ import (
 )
 
 type (
-	// AppConfig holds the configuration for an application.
-	AppConfig struct{}
+	// StackConfig holds the configuration for an application.
+	StackConfig struct{}
 
 	// BluePrintRegions sets the cloud regions where a blueprint can be deployed.
 	BluePrintRegions struct {
@@ -65,11 +65,11 @@ var (
 	}
 )
 
-func (config AppConfig) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
+func (config StackConfig) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
 	return json.Marshal(config)
 }
 
-func (config *AppConfig) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
+func (config *StackConfig) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
 	return json.Unmarshal(data, config)
 }
 
@@ -113,10 +113,10 @@ func (rs *RolloutState) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
 	return json.Unmarshal(data, rs)
 }
 
-func (csrm ChangeSetRepoMarkers) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
-	return json.Marshal(csrm)
+func (marker ChangeSetRepoMarkers) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
+	return json.Marshal(marker)
 }
 
-func (csrm *ChangeSetRepoMarkers) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
-	return json.Unmarshal(data, csrm)
+func (marker *ChangeSetRepoMarkers) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
+	return json.Unmarshal(data, marker)
 }

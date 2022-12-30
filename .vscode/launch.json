@@ -5,12 +5,22 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "ctrlplane-worker--mothership",
+      "name": "worker/mothership",
       "type": "go",
       "request": "launch",
       "mode": "debug",
       "program": "${workspaceFolder}/cmd/workers/mothership",
-      "args": []
+      "args": [],
+      "envFile": "${workspaceFolder}/.env.debug"
+    },
+    {
+      "name": "api",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/api",
+      "args": [],
+      "envFile": "${workspaceFolder}/.env.debug"
     }
   ]
 }

@@ -16,6 +16,7 @@
 # ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
 version: '3.9'
+
 services:
   # common
   database:
@@ -66,7 +67,7 @@ services:
     environment:
       - CASSANDRA_SEEDS=database
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-cass.yaml
-    image: temporalio/auto-setup:1.18.4
+    image: temporalio/auto-setup:1.19.0
     ports:
       - '7233:7233'
     volumes:
@@ -78,7 +79,7 @@ services:
       - temporal
     environment:
       - TEMPORAL_CLI_ADDRESS=temporal:7233
-    image: temporalio/admin-tools:1.18.4
+    image: temporalio/admin-tools:1.19.0
     stdin_open: true
     tty: true
 
@@ -89,12 +90,35 @@ services:
     environment:
       TEMPORAL_ADDRESS: temporal:7233
       TEMPORAL_CORS_ORIGINS: http://localhost:3000
-    image: temporalio/ui:2.8.1
+    image: temporalio/ui:2.9.0
     ports:
       - 8080:8080
 
   # ctrlplane.ai
+  ctrlplane-job-migrate:
+    profiles:
+      - full
+      - api
+      - mothership
+      - migrate
+    container_name: ctrlplane-job-migrate
+    image: cosmtrek/air
+    environment:
+      SERVICE_NAME: job.migrate
+      CASSANDRA_MIGRATION_SOURCE_URL: file:///migrate/internal/db/migrations
+    env_file:
+      - ./.env
+    volumes:
+      - ./deploy/air/migrate.toml:/migrate/.air.toml
+      - ./:/migrate/
+      - job-migrate-go-pkg-mod:/go/pkg/mod
+      - job-migrate-build-cache:/root/.cache/go-build
+    working_dir: /migrate
+
   ctrlplane-api:
+    profiles:
+      - full
+      - api
     container_name: ctrlplane-api
     image: cosmtrek/air
     environment:
@@ -112,6 +136,9 @@ services:
 
   ctrlplane-worker--mothership:
     container_name: ctrlplane-worker--mothership
+    profiles:
+      - full
+      - mothership
     image: cosmtrek/air
     environment:
       SERVICE_NAME: worker.mothership
@@ -123,21 +150,6 @@ services:
       - worker-mothership-go-pkg-mod:/go/pkg/mod
       - worker-mothership-build-cache:/root/.cache/go-build
     working_dir: /mothership
-
-  ctrlplane-job-migrate:
-    container_name: ctrlplane-job-migrate
-    image: cosmtrek/air
-    environment:
-      SERVICE_NAME: job.migrate
-      CASSANDRA_MIGRATION_SOURCE_URL: file:///migrate/internal/db/migrations
-    env_file:
-      - ./.env
-    volumes:
-      - ./deploy/air/migrate.toml:/migrate/.air.toml
-      - ./:/migrate/
-      - job-migrate-go-pkg-mod:/go/pkg/mod
-      - job-migrate-build-cache:/root/.cache/go-build
-    working_dir: /migrate
 
 
 volumes:

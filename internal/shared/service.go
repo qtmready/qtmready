@@ -18,6 +18,7 @@
 package shared
 
 import (
+	"net/http"
 	"os"
 	"path"
 	"reflect"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -46,12 +48,16 @@ type (
 		BaseURL string `env:"BASE_URL" env-default:"http://api.ctrlplane.ai"`
 		APIKEY  string `env:"API_KEY" env-default:""`
 	}
+
+	EchoValidator struct {
+		Validator *validator.Validate
+	}
 )
 
 var (
-	Logger   *logger.ZapAdapter
-	Service  = &service{}
-	Validate *validator.Validate
+	Logger    *logger.ZapAdapter
+	Service   = &service{}
+	Validator *validator.Validate
 )
 
 // Version creates the version string as per [calver].
@@ -136,17 +142,7 @@ func (s *service) ReadConfig() error {
 }
 
 // InitValidator sets up global validator.
-func (s *service) InitValidator() {
-	Validate = validator.New()
-	// by default, the validator will try to get json tag.
-	Validate.RegisterTagNameFunc(func(fld reflect.StructField) string {
-		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
-		if name == "-" {
-			return ""
-		}
-		return name
-	})
-}
+func (s *service) InitValidator() { InitValidator() }
 
 // InitLogger sets up global logger.
 func (s *service) InitLogger() {
@@ -186,4 +182,24 @@ func (s *service) InitCLI() error {
 
 func (e APIErrorResponse) Error() string {
 	return *e.Message
+}
+
+func (ev *EchoValidator) Validate(i interface{}) error {
+	if err := ev.Validator.Struct(i); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	return nil
+}
+
+func InitValidator() {
+	Validator = validator.New()
+	// by default, the validator will try to get json tag.
+	Validator.RegisterTagNameFunc(func(fld reflect.StructField) string {
+		name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+		if name == "-" {
+			return ""
+		}
+		return name
+	})
 }

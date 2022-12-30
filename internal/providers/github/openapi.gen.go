@@ -123,17 +123,17 @@ type WorkflowResponse struct {
 // WorkflowStatus the workflow status
 type WorkflowStatus string
 
-// CompleteInstallationJSONRequestBody defines body for CompleteInstallation for application/json ContentType.
-type CompleteInstallationJSONRequestBody = CompleteInstallationRequest
+// GithubCompleteInstallationJSONRequestBody defines body for GithubCompleteInstallation for application/json ContentType.
+type GithubCompleteInstallationJSONRequestBody = CompleteInstallationRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Complete GitHub App installation
 	// (POST /providers/github/complete-installation)
-	CompleteInstallation(ctx echo.Context) error
+	GithubCompleteInstallation(ctx echo.Context) error
 	// Get GitHub repositories
 	// (GET /providers/github/repos)
-	GetRepos(ctx echo.Context) error
+	GithubGetRepos(ctx echo.Context) error
 	// Webhook reciever for github
 	// (POST /providers/github/webhook)
 	GithubWebhook(ctx echo.Context) error
@@ -144,17 +144,8 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// CompleteInstallation converts echo context to params.
-func (w *ServerInterfaceWrapper) CompleteInstallation(ctx echo.Context) error {
-	var err error
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.CompleteInstallation(ctx)
-	return err
-}
-
-// GetRepos converts echo context to params.
-func (w *ServerInterfaceWrapper) GetRepos(ctx echo.Context) error {
+// GithubCompleteInstallation converts echo context to params.
+func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) error {
 	var err error
 
 	ctx.Set(BearerAuthScopes, []string{""})
@@ -162,7 +153,20 @@ func (w *ServerInterfaceWrapper) GetRepos(ctx echo.Context) error {
 	ctx.Set(APIKeyAuthScopes, []string{""})
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.GetRepos(ctx)
+	err = w.Handler.GithubCompleteInstallation(ctx)
+	return err
+}
+
+// GithubGetRepos converts echo context to params.
+func (w *ServerInterfaceWrapper) GithubGetRepos(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	ctx.Set(APIKeyAuthScopes, []string{""})
+
+	// Invoke the callback with all the unmarshalled arguments
+	err = w.Handler.GithubGetRepos(ctx)
 	return err
 }
 
@@ -203,8 +207,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.POST(baseURL+"/providers/github/complete-installation", wrapper.CompleteInstallation)
-	router.GET(baseURL+"/providers/github/repos", wrapper.GetRepos)
+	router.POST(baseURL+"/providers/github/complete-installation", wrapper.GithubCompleteInstallation)
+	router.GET(baseURL+"/providers/github/repos", wrapper.GithubGetRepos)
 	router.POST(baseURL+"/providers/github/webhook", wrapper.GithubWebhook)
 
 }

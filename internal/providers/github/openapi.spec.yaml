@@ -36,7 +36,10 @@ paths:
     post:
       summary: Complete GitHub App installation
       description: Complete GitHub App installation
-      operationId: complete-installation
+      operationId: github-complete-installation
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
       tags:
         - providers
         - github
@@ -76,7 +79,7 @@ paths:
     get:
       summary: Get GitHub repositories
       description: List all the github repositories registered with ctrlplane
-      operationId: get-repos
+      operationId: github-get-repos
       security:
         - BearerAuth: []
         - APIKeyAuth: []

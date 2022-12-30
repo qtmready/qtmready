@@ -28,7 +28,7 @@ import (
 )
 
 var (
-	appColumns = []string{
+	stackColumns = []string{
 		"id",
 		"team_id",
 		"name",
@@ -38,13 +38,13 @@ var (
 		"updated_at",
 	}
 
-	appMeta = itable.Metadata{
+	stackMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "apps",
-			Columns: appColumns,
+			Columns: stackColumns,
 		}}
 
-	appTable = itable.New(*appMeta.M)
+	stackTable = itable.New(*stackMeta.M)
 
 	repoColumns = []string{
 		"id",
@@ -151,15 +151,15 @@ var (
 )
 
 type (
-	// App defines an application.
-	App struct {
-		ID        gocql.UUID `json:"id" cql:"id"`
-		TeamID    gocql.UUID `json:"team_id" cql:"team_id"`
-		Name      string     `json:"name" validate:"required"`
-		Slug      string     `json:"slug"`
-		Config    AppConfig  `json:"config" cql:"config"`
-		CreatedAt time.Time  `json:"created_at"`
-		UpdatedAt time.Time  `json:"updated_at"`
+	// Stack defines an application.
+	Stack struct {
+		ID        gocql.UUID  `json:"id" cql:"id"`
+		TeamID    gocql.UUID  `json:"team_id" cql:"team_id"`
+		Name      string      `json:"name" validate:"required"`
+		Slug      string      `json:"slug"`
+		Config    StackConfig `json:"config" cql:"config"`
+		CreatedAt time.Time   `json:"created_at"`
+		UpdatedAt time.Time   `json:"updated_at"`
 	}
 
 	// Repo represents the git repository of an app.
@@ -232,9 +232,9 @@ type (
 	}
 )
 
-func (app *App) GetTable() itable.ITable { return appTable }
-func (app *App) PreCreate() error        { app.Slug = db.CreateSlug(app.Name); return nil }
-func (app *App) PreUpdate() error        { return nil }
+func (stack *Stack) GetTable() itable.ITable { return stackTable }
+func (stack *Stack) PreCreate() error        { stack.Slug = db.CreateSlug(stack.Name); return nil }
+func (stack *Stack) PreUpdate() error        { return nil }
 
 func (repo *Repo) GetTable() itable.ITable { return repoTable }
 func (repo *Repo) PreCreate() error        { return nil }

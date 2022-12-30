@@ -21,9 +21,9 @@ import (
 	"go.breu.io/ctrlplane/internal/entities"
 )
 
-func (c *Client) AppList() ([]entities.App, error) {
+func (c *Client) AppList() ([]entities.Stack, error) {
 	url := "/apps"
-	reply := make([]entities.App, 0)
+	reply := make([]entities.Stack, 0)
 
 	if err := c.request("GET", url, &reply, nil); err != nil {
 		return reply, err

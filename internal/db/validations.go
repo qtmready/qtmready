@@ -27,11 +27,15 @@ import (
 )
 
 type (
-	// placeholder is a struct that will be used as a destination for the "get" query during validations.
-	placeholder struct {
+	// GetPlaceholder is a struct that will be used as a destination for the "get" query during validations.
+	GetPlaceholder struct {
 		ID gocql.UUID `json:"id" cql:"id"`
 	}
 )
+
+func NewGetPlaceholder() *GetPlaceholder {
+	return &GetPlaceholder{}
+}
 
 // UniqueField validates that the value of the field is unique in the database.
 //
@@ -46,7 +50,7 @@ type (
 func UniqueField(fl validator.FieldLevel) bool {
 	var args []reflect.Value // Empty args for reflect.call
 
-	dest := &placeholder{} // Initializing the empty placeholder to act as a destination for Get call
+	dest := NewGetPlaceholder() // Initializing the temporary struct to act as a destination for the Get call.
 
 	tbl := fl.
 		Parent().Addr().             // Getting the pointer the parent struct
@@ -59,11 +63,15 @@ func UniqueField(fl validator.FieldLevel) bool {
 		EqLit(fl.FieldName(), "'"+fl.Field().Interface().(string)+"'") // forcing args inside '' to provide escaping
 
 	query := SelectBuilder(tbl).
+		AllowFiltering().
 		Columns("id", fl.FieldName()).
-		Where(clause).
-		Query(DB.Session.Session())
+		Where(clause)
 
-	err := query.Iter().Unsafe().Get(dest) // Running the "get" query in unsafe mode.
+	err := DB.Session.
+		Query(query.ToCql()).
+		Iter().
+		Unsafe().
+		Get(dest) // TODO: figure out a way to not use Unsafe()
 
 	return err != nil
 }
