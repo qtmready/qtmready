@@ -89,15 +89,14 @@ func main() {
 	e.Use(middleware.CORS())
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	// e.Use(auth.Middleware)
-	e.Use(auth.DebugMiddleware)
 
 	// configuring validator
 	e.Validator = &shared.EchoValidator{Validator: shared.Validator}
 
 	// register handlers
-	auth.RegisterHandlers(e, auth.NewServerHandler())
-	// github.RegisterHandlers(e, github.NewServerHandler())
+	auth.RegisterHandlers(e, auth.NewServerHandler(auth.Middleware))
+	github.RegisterHandlers(e, github.NewServerHandler(auth.Middleware))
+
 	e.GET("/healthz", healthz)
 
 	if err := e.Start(":8000"); err != nil {

@@ -151,15 +151,6 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 	}
 }
 
-func DebugMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(ctx echo.Context) error {
-		printContext(ctx, false)
-		printHeaders(ctx)
-
-		return next(ctx)
-	}
-}
-
 // bearerFn is the function that handles the JWT token authentication.
 func bearerFn(next echo.HandlerFunc, ctx echo.Context, token string) error {
 	parsed, err := jwt.ParseWithClaims(token, &JWTClaims{}, secretFn)

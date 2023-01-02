@@ -1,0 +1,16 @@
+{{$secure := false}}
+
+// ServerInterface represents all server handlers.
+type ServerInterface interface {
+{{range .}}{{.SummaryAsComment }}
+// ({{.Method}} {{.Path}})
+{{.OperationId}}(ctx echo.Context{{genParamArgs .PathParams}}{{if .RequiresParamObject}}, params {{.OperationId}}Params{{end}}) error
+  {{range .SecurityDefinitions}}
+    {{$secure = true}}
+  {{end}}
+{{end}}
+{{if $secure}}
+// Get Security Middleware
+SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
+{{end}}
+}

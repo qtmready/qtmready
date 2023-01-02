@@ -4,26 +4,95 @@
 package auth
 
 import (
+	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 	"github.com/labstack/echo/v4"
+	externalRef0 "go.breu.io/ctrlplane/internal/entities"
 )
+
+const (
+	APIKeyAuthScopes = "APIKeyAuth.Scopes"
+	BearerAuthScopes = "BearerAuth.Scopes"
+)
+
+// CreateAPIKeyRequest defines model for CreateAPIKeyRequest.
+type CreateAPIKeyRequest struct {
+	Name *string `json:"name,omitempty"`
+}
+
+// CreateAPIKeyResponse defines model for CreateAPIKeyResponse.
+type CreateAPIKeyResponse struct {
+	Key *string `json:"key,omitempty"`
+}
+
+// LoginRequest defines model for LoginRequest.
+type LoginRequest struct {
+	Email    openapi_types.Email `json:"email"`
+	Password string              `json:"password"`
+}
+
+// RegisterationRequest defines model for RegisterationRequest.
+type RegisterationRequest struct {
+	ConfirmPassword string              `json:"confirm_password"`
+	Email           openapi_types.Email `json:"email"`
+	FirstName       string              `json:"first_name"`
+	LastName        string              `json:"last_name"`
+	Password        string              `json:"password"`
+	TeamName        string              `json:"team_name"`
+}
+
+// RegisterationResponse defines model for RegisterationResponse.
+type RegisterationResponse struct {
+	Team *externalRef0.Team `json:"team,omitempty"`
+	User *externalRef0.User `json:"user,omitempty"`
+}
+
+// TokenResponse defines model for TokenResponse.
+type TokenResponse struct {
+	AccessToken  *string `json:"access_token,omitempty"`
+	RefreshToken *string `json:"refresh_token,omitempty"`
+}
+
+// ValidateAPIKeyResponse defines model for ValidateAPIKeyResponse.
+type ValidateAPIKeyResponse struct {
+	Message *string `json:"message,omitempty"`
+}
+
+// CreateTeamAPIKeyJSONRequestBody defines body for CreateTeamAPIKey for application/json ContentType.
+type CreateTeamAPIKeyJSONRequestBody = CreateAPIKeyRequest
+
+// CreateUserAPIKeyJSONRequestBody defines body for CreateUserAPIKey for application/json ContentType.
+type CreateUserAPIKeyJSONRequestBody = CreateAPIKeyRequest
+
+// LoginJSONRequestBody defines body for Login for application/json ContentType.
+type LoginJSONRequestBody = LoginRequest
+
+// RegisterJSONRequestBody defines body for Register for application/json ContentType.
+type RegisterJSONRequestBody = RegisterationRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Create a new API key for the team
 	// (POST /auth/api-keys/team)
 	CreateTeamAPIKey(ctx echo.Context) error
+
 	// Create a new API key for the user
 	// (POST /auth/api-keys/user)
 	CreateUserAPIKey(ctx echo.Context) error
+
 	// Validate an API key
 	// (GET /auth/api-keys/validate)
 	ValidateAPIKey(ctx echo.Context) error
+
 	// Login
 	// (POST /auth/login)
 	Login(ctx echo.Context) error
+
 	// Register a new user
 	// (POST /auth/register)
 	Register(ctx echo.Context) error
+
+	// Get Security Middleware
+	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -32,53 +101,76 @@ type ServerInterfaceWrapper struct {
 }
 
 // CreateTeamAPIKey converts echo context to params.
+
 func (w *ServerInterfaceWrapper) CreateTeamAPIKey(ctx echo.Context) error {
 	var err error
 
 	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.CreateTeamAPIKey(ctx)
+	handler := w.Handler.CreateTeamAPIKey
+
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
 	return err
 }
 
 // CreateUserAPIKey converts echo context to params.
+
 func (w *ServerInterfaceWrapper) CreateUserAPIKey(ctx echo.Context) error {
 	var err error
 
 	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.CreateUserAPIKey(ctx)
+	handler := w.Handler.CreateUserAPIKey
+
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
 	return err
 }
 
 // ValidateAPIKey converts echo context to params.
+
 func (w *ServerInterfaceWrapper) ValidateAPIKey(ctx echo.Context) error {
 	var err error
 
 	ctx.Set(APIKeyAuthScopes, []string{""})
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.ValidateAPIKey(ctx)
+	handler := w.Handler.ValidateAPIKey
+
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
 	return err
 }
 
 // Login converts echo context to params.
+
 func (w *ServerInterfaceWrapper) Login(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.Login(ctx)
+	handler := w.Handler.Login
+
+	err = handler(ctx)
+
 	return err
 }
 
 // Register converts echo context to params.
+
 func (w *ServerInterfaceWrapper) Register(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.Register(ctx)
+	handler := w.Handler.Register
+
+	err = handler(ctx)
+
 	return err
 }
 

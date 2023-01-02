@@ -9,17 +9,21 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 
+	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/entities"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
 type (
-	ServerHandler struct{}
+	ServerHandler struct{ *auth.SecurityHandler }
 )
 
-func NewServerHandler() *ServerHandler {
-	return &ServerHandler{}
+// NewServerHandler creates a new ServerHandler.
+func NewServerHandler(security echo.MiddlewareFunc) *ServerHandler {
+	return &ServerHandler{
+		SecurityHandler: &auth.SecurityHandler{Middleware: security},
+	}
 }
 
 func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {

@@ -131,12 +131,17 @@ type ServerInterface interface {
 	// Complete GitHub App installation
 	// (POST /providers/github/complete-installation)
 	GithubCompleteInstallation(ctx echo.Context) error
+
 	// Get GitHub repositories
 	// (GET /providers/github/repos)
 	GithubGetRepos(ctx echo.Context) error
+
 	// Webhook reciever for github
 	// (POST /providers/github/webhook)
 	GithubWebhook(ctx echo.Context) error
+
+	// Get Security Middleware
+	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -145,6 +150,7 @@ type ServerInterfaceWrapper struct {
 }
 
 // GithubCompleteInstallation converts echo context to params.
+
 func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) error {
 	var err error
 
@@ -153,11 +159,16 @@ func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) er
 	ctx.Set(APIKeyAuthScopes, []string{""})
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.GithubCompleteInstallation(ctx)
+	handler := w.Handler.GithubCompleteInstallation
+
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
 	return err
 }
 
 // GithubGetRepos converts echo context to params.
+
 func (w *ServerInterfaceWrapper) GithubGetRepos(ctx echo.Context) error {
 	var err error
 
@@ -166,16 +177,24 @@ func (w *ServerInterfaceWrapper) GithubGetRepos(ctx echo.Context) error {
 	ctx.Set(APIKeyAuthScopes, []string{""})
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.GithubGetRepos(ctx)
+	handler := w.Handler.GithubGetRepos
+
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
 	return err
 }
 
 // GithubWebhook converts echo context to params.
+
 func (w *ServerInterfaceWrapper) GithubWebhook(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.GithubWebhook(ctx)
+	handler := w.Handler.GithubWebhook
+
+	err = handler(ctx)
+
 	return err
 }
 
