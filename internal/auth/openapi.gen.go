@@ -91,7 +91,7 @@ type ServerInterface interface {
 	// (POST /auth/register)
 	Register(ctx echo.Context) error
 
-	// Get Security Middleware
+	// SecurityHandler returns the underlying Security Wrapper
 	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
 }
 
@@ -104,12 +104,10 @@ type ServerInterfaceWrapper struct {
 
 func (w *ServerInterfaceWrapper) CreateTeamAPIKey(ctx echo.Context) error {
 	var err error
-
 	ctx.Set(BearerAuthScopes, []string{""})
 
-	// Invoke the callback with all the unmarshalled arguments
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CreateTeamAPIKey
-
 	secure := w.Handler.SecureHandler
 	err = secure(handler, ctx)
 
@@ -120,12 +118,10 @@ func (w *ServerInterfaceWrapper) CreateTeamAPIKey(ctx echo.Context) error {
 
 func (w *ServerInterfaceWrapper) CreateUserAPIKey(ctx echo.Context) error {
 	var err error
-
 	ctx.Set(BearerAuthScopes, []string{""})
 
-	// Invoke the callback with all the unmarshalled arguments
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CreateUserAPIKey
-
 	secure := w.Handler.SecureHandler
 	err = secure(handler, ctx)
 
@@ -136,12 +132,10 @@ func (w *ServerInterfaceWrapper) CreateUserAPIKey(ctx echo.Context) error {
 
 func (w *ServerInterfaceWrapper) ValidateAPIKey(ctx echo.Context) error {
 	var err error
-
 	ctx.Set(APIKeyAuthScopes, []string{""})
 
-	// Invoke the callback with all the unmarshalled arguments
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.ValidateAPIKey
-
 	secure := w.Handler.SecureHandler
 	err = secure(handler, ctx)
 
@@ -153,9 +147,8 @@ func (w *ServerInterfaceWrapper) ValidateAPIKey(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) Login(ctx echo.Context) error {
 	var err error
 
-	// Invoke the callback with all the unmarshalled arguments
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.Login
-
 	err = handler(ctx)
 
 	return err
@@ -166,9 +159,8 @@ func (w *ServerInterfaceWrapper) Login(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) Register(ctx echo.Context) error {
 	var err error
 
-	// Invoke the callback with all the unmarshalled arguments
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.Register
-
 	err = handler(ctx)
 
 	return err

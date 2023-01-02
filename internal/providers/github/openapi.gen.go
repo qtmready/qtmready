@@ -15,6 +15,11 @@ const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
 
+var (
+	ErrInvalidSetupAction    = errors.New("invalid SetupAction value")
+	ErrInvalidWorkflowStatus = errors.New("invalid WorkflowStatus value")
+)
+
 type (
 	SetupActionMapType map[string]SetupAction // SetupActionMapType is a quick lookup map for SetupAction.
 )
@@ -29,7 +34,6 @@ const (
 // SetupActionValues returns all known values for SetupAction.
 var (
 	SetupActionMap = SetupActionMapType{
-
 		SetupActionCreated.String(): SetupActionCreated,
 		SetupActionDeleted.String(): SetupActionDeleted,
 		SetupActionUpdated.String(): SetupActionUpdated,
@@ -49,7 +53,7 @@ func (v *SetupAction) UnmarshalJSON(data []byte) error {
 
 	val, ok := SetupActionMap[s]
 	if !ok {
-		return errors.New("invalid SetupAction value")
+		return ErrInvalidSetupAction
 	}
 
 	*v = val
@@ -73,7 +77,6 @@ const (
 // WorkflowStatusValues returns all known values for WorkflowStatus.
 var (
 	WorkflowStatusMap = WorkflowStatusMapType{
-
 		WorkflowStatusFailure.String():  WorkflowStatusFailure,
 		WorkflowStatusQueued.String():   WorkflowStatusQueued,
 		WorkflowStatusSignaled.String(): WorkflowStatusSignaled,
@@ -95,7 +98,7 @@ func (v *WorkflowStatus) UnmarshalJSON(data []byte) error {
 
 	val, ok := WorkflowStatusMap[s]
 	if !ok {
-		return errors.New("invalid WorkflowStatus value")
+		return ErrInvalidWorkflowStatus
 	}
 
 	*v = val
@@ -140,7 +143,7 @@ type ServerInterface interface {
 	// (POST /providers/github/webhook)
 	GithubWebhook(ctx echo.Context) error
 
-	// Get Security Middleware
+	// SecurityHandler returns the underlying Security Wrapper
 	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
 }
 
@@ -153,14 +156,12 @@ type ServerInterfaceWrapper struct {
 
 func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) error {
 	var err error
-
 	ctx.Set(BearerAuthScopes, []string{""})
 
 	ctx.Set(APIKeyAuthScopes, []string{""})
 
-	// Invoke the callback with all the unmarshalled arguments
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubCompleteInstallation
-
 	secure := w.Handler.SecureHandler
 	err = secure(handler, ctx)
 
@@ -171,14 +172,12 @@ func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) er
 
 func (w *ServerInterfaceWrapper) GithubGetRepos(ctx echo.Context) error {
 	var err error
-
 	ctx.Set(BearerAuthScopes, []string{""})
 
 	ctx.Set(APIKeyAuthScopes, []string{""})
 
-	// Invoke the callback with all the unmarshalled arguments
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubGetRepos
-
 	secure := w.Handler.SecureHandler
 	err = secure(handler, ctx)
 
@@ -190,9 +189,8 @@ func (w *ServerInterfaceWrapper) GithubGetRepos(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GithubWebhook(ctx echo.Context) error {
 	var err error
 
-	// Invoke the callback with all the unmarshalled arguments
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubWebhook
-
 	err = handler(ctx)
 
 	return err
