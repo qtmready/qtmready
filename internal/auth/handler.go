@@ -29,11 +29,21 @@ import (
 )
 
 type (
-	ServerHandler struct{}
+	// SecurityHandler is the base security handler for the API. It is meant to be embedded in other handlers.
+	SecurityHandler struct{ Middleware echo.MiddlewareFunc }
+	ServerHandler   struct{ *SecurityHandler } // ServerHandler for auth
 )
 
-func NewServerHandler() *ServerHandler {
-	return &ServerHandler{}
+// NewServerHandler creates a new ServerHandler.
+func NewServerHandler(security echo.MiddlewareFunc) *ServerHandler {
+	return &ServerHandler{
+		SecurityHandler: &SecurityHandler{Middleware: security},
+	}
+}
+
+func (s *SecurityHandler) SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error {
+	err := s.Middleware(handler)(ctx)
+	return err
 }
 
 func (s *ServerHandler) Register(ctx echo.Context) error {
