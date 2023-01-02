@@ -26,9 +26,9 @@ func (w *ServerInterfaceWrapper) {{.OperationId}} (ctx echo.Context) error {
 {{end}}
 {{end}}
 
-{{range .SecurityDefinitions}}
-    ctx.Set({{.ProviderName | sanitizeGoIdentity | ucFirst}}Scopes, {{toStringArray .Scopes}})
-    {{$secure = true}}
+{{- range .SecurityDefinitions}}
+  ctx.Set({{.ProviderName | sanitizeGoIdentity | ucFirst}}Scopes, {{toStringArray .Scopes}})
+  {{$secure = true}}
 {{end}}
 
 {{if .RequiresParamObject}}
@@ -126,9 +126,9 @@ func (w *ServerInterfaceWrapper) {{.OperationId}} (ctx echo.Context) error {
 {{end}}{{/* .CookieParams */}}
 
 {{end}}{{/* .RequiresParamObject */}}
-    // Invoke the callback with all the unmarshalled arguments
+    // Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
     handler := w.Handler.{{.OperationId}}
-    {{if $secure}}
+    {{- if $secure }}
     secure := w.Handler.SecureHandler
     err = secure(handler, ctx{{genParamNames .PathParams}}{{if .RequiresParamObject}}, params{{end}})
     {{else}}

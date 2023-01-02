@@ -9,8 +9,8 @@ type ServerInterface interface {
     {{$secure = true}}
   {{end}}
 {{end}}
-{{if $secure}}
-// Get Security Middleware
+{{- if $secure }}
+// SecurityHandler returns the underlying Security Wrapper
 SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
 {{end}}
 }
