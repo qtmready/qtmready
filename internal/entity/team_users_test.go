@@ -15,47 +15,15 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package entities
+package entity_test
 
 import (
-	"time"
+	"testing"
 
-	itable "github.com/Guilospanck/igocqlx/table"
-	"github.com/gocql/gocql"
-	"github.com/scylladb/gocqlx/v2/table"
-
-	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/ctrlplane/internal/entity"
 )
 
-var (
-	teamColumns = []string{
-		"id",
-		"name",
-		"slug",
-		"created_at",
-		"updated_at",
-	}
-
-	teamMeta = itable.Metadata{
-		M: &table.Metadata{
-			Name:    "teams",
-			Columns: teamColumns,
-		},
-	}
-
-	teamTable = itable.New(*teamMeta.M)
-)
-
-type (
-	Team struct {
-		ID        gocql.UUID `json:"id" cql:"id"`
-		Name      string     `json:"name" validate:"required"`
-		Slug      string     `json:"slug"`
-		CreatedAt time.Time  `json:"created_at"`
-		UpdatedAt time.Time  `json:"updated_at"`
-	}
-)
-
-func (t *Team) GetTable() itable.ITable { return teamTable }
-func (t *Team) PreCreate() error        { t.Slug = db.CreateSlug(t.Name); return nil }
-func (t *Team) PreUpdate() error        { return nil }
+func TestTeamUser(t *testing.T) {
+	teamUser := &entity.TeamUser{}
+	t.Run("GetTable", testEntityGetTable("team_users", teamUser))
+}

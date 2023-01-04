@@ -34,7 +34,7 @@
 
 // This software is made available by Breu, Inc., under the terms of the Breu  Community License Agreement, Version 1.0 located at  http://www.breu.io/breu-community-license/v1. BY INSTALLING, DOWNLOADING,  ACCESSING, USING OR DISTRIBUTING ANY OF THE SOFTWARE, YOU AGREE TO THE TERMS  OF SUCH LICENSE AGREEMENT.
 
-package entities_test
+package entity_test
 
 import (
 	"context"
@@ -45,20 +45,20 @@ import (
 	"github.com/scylladb/gocqlx/v2/qb"
 
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/entities"
+	"go.breu.io/ctrlplane/internal/entity"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
 type (
 	guardnkey struct {
 		Key   string
-		Guard *entities.Guard
+		Guard *entity.Guard
 	}
 )
 
 func TestTeamGuard(t *testing.T) {
 	teamID, _ := gocql.RandomUUID()
-	guard := &entities.Guard{}
+	guard := &entity.Guard{}
 	key := guard.NewForTeam(teamID)
 	args := &guardnkey{Key: key, Guard: guard}
 
@@ -74,7 +74,7 @@ func TestTeamGuard(t *testing.T) {
 
 func TestUserGuard(t *testing.T) {
 	userID, _ := gocql.RandomUUID()
-	guard := &entities.Guard{}
+	guard := &entity.Guard{}
 	key := guard.NewForUser("test", userID)
 	args := &guardnkey{Key: key, Guard: guard}
 

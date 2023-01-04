@@ -15,38 +15,45 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package entities_test
+package entity
 
 import (
-	"testing"
+	"time"
 
-	"github.com/gosimple/slug"
-
-	"go.breu.io/ctrlplane/internal/entities"
-	"go.breu.io/ctrlplane/internal/shared"
+	itable "github.com/Guilospanck/igocqlx/table"
+	"github.com/gocql/gocql"
+	"github.com/scylladb/gocqlx/v2/table"
 )
 
-func TestTeam(t *testing.T) {
-	team := &entities.Team{
-		Name: "Team Name",
+var (
+	teamUserColumns = []string{
+		"id",
+		"user_id",
+		"team_id",
+		"created_at",
+		"updated_at",
 	}
-	_ = team.PreCreate()
 
-	opsTests := shared.TestFnMap{
-		"Slug": shared.TestFn{Args: team, Want: nil, Run: testTeamSlug},
+	teamUserMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "team_users",
+			Columns: teamUserColumns,
+		},
 	}
 
-	t.Run("GetTable", testEntityGetTable("teams", team))
-	t.Run("EntityOps", testEntityOps(team, opsTests))
-}
+	teamUserTable = itable.New(*teamUserMeta.M)
+)
 
-func testTeamSlug(args interface{}, want interface{}) func(*testing.T) {
-	team := args.(*entities.Team)
-	sluglen := len(slug.Make(team.Name)) + 1 + 22
-
-	return func(t *testing.T) {
-		if len(team.Slug) != sluglen {
-			t.Errorf("slug length is not correct, got: %d, want: %d", len(team.Slug), sluglen)
-		}
+type (
+	TeamUser struct {
+		ID        gocql.UUID `json:"id" cql:"id"`
+		UserID    gocql.UUID `json:"user_id" cql:"user_id"`
+		TeamID    gocql.UUID `json:"team_id" cql:"team_id"`
+		CreatedAt time.Time  `json:"created_at"`
+		UpdatedAt time.Time  `json:"updated_at"`
 	}
-}
+)
+
+func (tu *TeamUser) GetTable() itable.ITable { return teamUserTable }
+func (tu *TeamUser) PreCreate() error        { return nil }
+func (tu *TeamUser) PreUpdate() error        { return nil }

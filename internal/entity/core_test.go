@@ -32,27 +32,67 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package entities_test
+package entity_test
 
 import (
 	"testing"
 
-	"go.breu.io/ctrlplane/internal/db"
+	"github.com/gocql/gocql"
+	"github.com/gosimple/slug"
+
+	"go.breu.io/ctrlplane/internal/entity"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
-func testEntityGetTable(expect string, entity db.Entity) func(*testing.T) {
-	return func(t *testing.T) {
-		if expect != entity.GetTable().Metadata().M.Name {
-			t.Errorf("expected %s, got %s", expect, entity.GetTable().Metadata().M.Name)
-		}
+func TestApp(t *testing.T) {
+	app := &entity.Stack{
+		ID:     gocql.MustRandomUUID(),
+		Name:   "Test Stack",
+		Config: entity.StackConfig{},
+		TeamID: gocql.MustRandomUUID(),
 	}
+	_ = app.PreCreate()
+
+	opsTests := shared.TestFnMap{
+		"Slug": shared.TestFn{Args: app, Want: nil, Run: testAppSlug},
+	}
+
+	t.Run("GetTable", testEntityGetTable("apps", app))
+	t.Run("EntityOps", testEntityOps(app, opsTests))
 }
 
-func testEntityOps(entity db.Entity, tests shared.TestFnMap) func(*testing.T) {
+func TestRepo(t *testing.T) {
+	repo := &entity.Repo{}
+	t.Run("GetTable", testEntityGetTable("repos", repo))
+}
+
+func TestWorkload(t *testing.T) {
+	workload := &entity.Workload{}
+	t.Run("GetTable", testEntityGetTable("workloads", workload))
+}
+
+func TestResource(t *testing.T) {
+	resource := &entity.Resource{}
+	t.Run("GetTable", testEntityGetTable("resources", resource))
+}
+
+func TestBlueprint(t *testing.T) {
+	blueprint := &entity.Blueprint{}
+	t.Run("GetTable", testEntityGetTable("blueprints", blueprint))
+}
+
+func TestRollout(t *testing.T) {
+	rollout := &entity.Rollout{}
+	t.Run("GetTable", testEntityGetTable("rollouts", rollout))
+}
+
+func testAppSlug(args interface{}, want interface{}) func(*testing.T) {
+	app := args.(*entity.Stack)
+	sluglen := len(slug.Make(app.Name)) + 1 + 22
+
 	return func(t *testing.T) {
-		for name, test := range tests {
-			t.Run(name, test.Run(test.Args, test.Want))
+		if len(app.Slug) != sluglen {
+			t.Errorf("slug length is not correct, got: %d, want: %d", len(app.Slug), sluglen)
 		}
 	}
 }

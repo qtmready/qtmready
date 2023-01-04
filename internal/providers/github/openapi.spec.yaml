@@ -94,7 +94,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '../../entities/openapi.spec.yaml#/components/schemas/GithubRepo'
+                  $ref: '../../entity/openapi.spec.yaml#/components/schemas/GithubRepo'
         '400':
           description: Bad request
           content:
