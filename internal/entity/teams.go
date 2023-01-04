@@ -15,7 +15,7 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package entities
+package entity
 
 import (
 	"time"
@@ -23,37 +23,39 @@ import (
 	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/table"
+
+	"go.breu.io/ctrlplane/internal/db"
 )
 
 var (
-	teamUserColumns = []string{
+	teamColumns = []string{
 		"id",
-		"user_id",
-		"team_id",
+		"name",
+		"slug",
 		"created_at",
 		"updated_at",
 	}
 
-	teamUserMeta = itable.Metadata{
+	teamMeta = itable.Metadata{
 		M: &table.Metadata{
-			Name:    "team_users",
-			Columns: teamUserColumns,
+			Name:    "teams",
+			Columns: teamColumns,
 		},
 	}
 
-	teamUserTable = itable.New(*teamUserMeta.M)
+	teamTable = itable.New(*teamMeta.M)
 )
 
 type (
-	TeamUser struct {
+	Team struct {
 		ID        gocql.UUID `json:"id" cql:"id"`
-		UserID    gocql.UUID `json:"user_id" cql:"user_id"`
-		TeamID    gocql.UUID `json:"team_id" cql:"team_id"`
+		Name      string     `json:"name" validate:"required"`
+		Slug      string     `json:"slug"`
 		CreatedAt time.Time  `json:"created_at"`
 		UpdatedAt time.Time  `json:"updated_at"`
 	}
 )
 
-func (tu *TeamUser) GetTable() itable.ITable { return teamUserTable }
-func (tu *TeamUser) PreCreate() error        { return nil }
-func (tu *TeamUser) PreUpdate() error        { return nil }
+func (t *Team) GetTable() itable.ITable { return teamTable }
+func (t *Team) PreCreate() error        { t.Slug = db.CreateSlug(t.Name); return nil }
+func (t *Team) PreUpdate() error        { return nil }

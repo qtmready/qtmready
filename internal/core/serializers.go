@@ -20,13 +20,13 @@ package core
 import (
 	"github.com/gocql/gocql"
 
-	"go.breu.io/ctrlplane/internal/entities"
+	"go.breu.io/ctrlplane/internal/entity"
 )
 
 type (
 	AppCreateRequest struct {
-		Name   string               `json:"name"`
-		Config entities.StackConfig `json:"config"`
+		Name   string             `json:"name"`
+		Config entity.StackConfig `json:"config"`
 	}
 
 	AppRepoCreateRequest struct {

@@ -32,67 +32,20 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package entities_test
+package entity_test
 
 import (
 	"testing"
 
-	"github.com/gocql/gocql"
-	"github.com/gosimple/slug"
-
-	"go.breu.io/ctrlplane/internal/entities"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/ctrlplane/internal/entity"
 )
 
-func TestApp(t *testing.T) {
-	app := &entities.Stack{
-		ID:     gocql.MustRandomUUID(),
-		Name:   "Test Stack",
-		Config: entities.StackConfig{},
-		TeamID: gocql.MustRandomUUID(),
-	}
-	_ = app.PreCreate()
-
-	opsTests := shared.TestFnMap{
-		"Slug": shared.TestFn{Args: app, Want: nil, Run: testAppSlug},
-	}
-
-	t.Run("GetTable", testEntityGetTable("apps", app))
-	t.Run("EntityOps", testEntityOps(app, opsTests))
+func TestGithubInstallation(t *testing.T) {
+	gi := &entity.GithubInstallation{}
+	t.Run("GetTable", testEntityGetTable("github_installations", gi))
 }
 
-func TestRepo(t *testing.T) {
-	repo := &entities.Repo{}
-	t.Run("GetTable", testEntityGetTable("repos", repo))
-}
-
-func TestWorkload(t *testing.T) {
-	workload := &entities.Workload{}
-	t.Run("GetTable", testEntityGetTable("workloads", workload))
-}
-
-func TestResource(t *testing.T) {
-	resource := &entities.Resource{}
-	t.Run("GetTable", testEntityGetTable("resources", resource))
-}
-
-func TestBlueprint(t *testing.T) {
-	blueprint := &entities.Blueprint{}
-	t.Run("GetTable", testEntityGetTable("blueprints", blueprint))
-}
-
-func TestRollout(t *testing.T) {
-	rollout := &entities.Rollout{}
-	t.Run("GetTable", testEntityGetTable("rollouts", rollout))
-}
-
-func testAppSlug(args interface{}, want interface{}) func(*testing.T) {
-	app := args.(*entities.Stack)
-	sluglen := len(slug.Make(app.Name)) + 1 + 22
-
-	return func(t *testing.T) {
-		if len(app.Slug) != sluglen {
-			t.Errorf("slug length is not correct, got: %d, want: %d", len(app.Slug), sluglen)
-		}
-	}
+func TestGithubRepo(t *testing.T) {
+	gi := &entity.GithubRepo{}
+	t.Run("GetTable", testEntityGetTable("github_repos", gi))
 }

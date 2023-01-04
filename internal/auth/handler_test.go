@@ -15,7 +15,7 @@ import (
 
 	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/entities"
+	"go.breu.io/ctrlplane/internal/entity"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -83,7 +83,7 @@ func (handler *TestHandler) register() func(*testing.T) {
 		}
 		data.FromRegistrationRequest(reg)
 
-		eu := entities.User{}
+		eu := entity.User{}
 		uclause := qb.EqLit("email", "'johndoe@example.com'")
 		ustmt, unames := db.SelectBuilder(eu.GetTable().Name()).AllowFiltering().Columns("id", "email").Where(uclause).ToCql()
 		uquerymock := &gocqlxmock.QueryxMock{Ctx: context.Background(), Stmt: ustmt, Names: unames}

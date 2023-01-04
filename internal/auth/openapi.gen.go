@@ -6,7 +6,7 @@ package auth
 import (
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 	"github.com/labstack/echo/v4"
-	externalRef0 "go.breu.io/ctrlplane/internal/entities"
+	externalRef0 "go.breu.io/ctrlplane/internal/entity"
 )
 
 const (
@@ -104,6 +104,7 @@ type ServerInterfaceWrapper struct {
 
 func (w *ServerInterfaceWrapper) CreateTeamAPIKey(ctx echo.Context) error {
 	var err error
+
 	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
@@ -118,6 +119,7 @@ func (w *ServerInterfaceWrapper) CreateTeamAPIKey(ctx echo.Context) error {
 
 func (w *ServerInterfaceWrapper) CreateUserAPIKey(ctx echo.Context) error {
 	var err error
+
 	ctx.Set(BearerAuthScopes, []string{""})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
@@ -132,6 +134,7 @@ func (w *ServerInterfaceWrapper) CreateUserAPIKey(ctx echo.Context) error {
 
 func (w *ServerInterfaceWrapper) ValidateAPIKey(ctx echo.Context) error {
 	var err error
+
 	ctx.Set(APIKeyAuthScopes, []string{""})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
@@ -166,9 +169,8 @@ func (w *ServerInterfaceWrapper) Register(ctx echo.Context) error {
 	return err
 }
 
-// This is a simple interface which specifies echo.Route addition functions which
-// are present on both echo.Echo and echo.Group, since we want to allow using
-// either of them for path registration
+// EchoRouter is an interface that wraps the methods of echo.Echo & echo.Group to provide a common interface
+// for registering routes.
 type EchoRouter interface {
 	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
 	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route

@@ -4,7 +4,7 @@ generate:
   echo-server: true
 import-mapping:
   '../../shared/openapi.spec.yaml': go.breu.io/ctrlplane/internal/shared
-  '../../entities/openapi.spec.yaml': go.breu.io/ctrlplane/internal/entities
+  '../../entity/openapi.spec.yaml': go.breu.io/ctrlplane/internal/entity
 compatibility:
   always-prefix-enum-values: true
 output: openapi.gen.go

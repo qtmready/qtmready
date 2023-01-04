@@ -24,7 +24,7 @@ import (
 	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/entities"
+	"go.breu.io/ctrlplane/internal/entity"
 )
 
 type (
@@ -32,8 +32,8 @@ type (
 	Activities struct{}
 )
 
-// CreateOrUpdateInstallation creates or update the entities.GithubInstallation.
-func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *entities.GithubInstallation) (*entities.GithubInstallation, error) {
+// CreateOrUpdateInstallation creates or update the entity.GithubInstallation.
+func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *entity.GithubInstallation) (*entity.GithubInstallation, error) {
 	log := activity.GetLogger(ctx)
 	installation, err := a.GetInstallation(ctx, payload.InstallationID)
 
@@ -59,8 +59,8 @@ func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *en
 	return installation, nil
 }
 
-// CreateOrUpdateRepo creates a single row for entities.GithubRepo.
-func (a *Activities) CreateOrUpdateRepo(ctx context.Context, payload *entities.GithubRepo) error {
+// CreateOrUpdateRepo creates a single row for entity.GithubRepo.
+func (a *Activities) CreateOrUpdateRepo(ctx context.Context, payload *entity.GithubRepo) error {
 	log := activity.GetLogger(ctx)
 	repo, err := a.GetRepo(ctx, payload)
 
@@ -80,9 +80,9 @@ func (a *Activities) CreateOrUpdateRepo(ctx context.Context, payload *entities.G
 	return nil
 }
 
-// GetRepo gets entities.GithubRepo against given entities.GithubRepo.
-func (a *Activities) GetRepo(ctx context.Context, payload *entities.GithubRepo) (*entities.GithubRepo, error) {
-	repo := &entities.GithubRepo{}
+// GetRepo gets entity.GithubRepo against given entity.GithubRepo.
+func (a *Activities) GetRepo(ctx context.Context, payload *entity.GithubRepo) (*entity.GithubRepo, error) {
+	repo := &entity.GithubRepo{}
 	params := db.QueryParams{
 		"name":      "'" + payload.Name + "'",
 		"full_name": "'" + payload.FullName + "'",
@@ -97,9 +97,9 @@ func (a *Activities) GetRepo(ctx context.Context, payload *entities.GithubRepo) 
 	return repo, nil
 }
 
-// GetInstallation gets entities.GithubInstallation against given installation_id.
-func (a *Activities) GetInstallation(ctx context.Context, id int64) (*entities.GithubInstallation, error) {
-	installation := &entities.GithubInstallation{}
+// GetInstallation gets entity.GithubInstallation against given installation_id.
+func (a *Activities) GetInstallation(ctx context.Context, id int64) (*entity.GithubInstallation, error) {
+	installation := &entity.GithubInstallation{}
 
 	if err := db.Get(installation, db.QueryParams{"installation_id": strconv.FormatInt(id, 10)}); err != nil {
 		return installation, err

@@ -226,9 +226,9 @@ components:
       type: object
       properties:
         user:
-          $ref: '../entities/openapi.spec.yaml#/components/schemas/User'
+          $ref: '../entity/openapi.spec.yaml#/components/schemas/User'
         team:
-          $ref: '../entities/openapi.spec.yaml#/components/schemas/Team'
+          $ref: '../entity/openapi.spec.yaml#/components/schemas/Team'
 
     LoginRequest:
       type: object

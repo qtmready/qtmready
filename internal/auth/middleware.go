@@ -27,7 +27,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/entities"
+	"go.breu.io/ctrlplane/internal/entity"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -170,7 +170,7 @@ func bearerFn(next echo.HandlerFunc, ctx echo.Context, token string) error {
 
 // keyFn validates the API key.
 func keyFn(next echo.HandlerFunc, ctx echo.Context, key string) error {
-	guard := &entities.Guard{}
+	guard := &entity.Guard{}
 	err := guard.VerifyAPIKey(key) // This will always return true if err is nil
 
 	if err != nil {
@@ -182,7 +182,7 @@ func keyFn(next echo.HandlerFunc, ctx echo.Context, key string) error {
 		ctx.Set("team_id", guard.LookupID.String())
 
 	case GuardLookupUser: // NOTE: this uses two db queries. we should optimize this. use k/v ?
-		user := &entities.User{}
+		user := &entity.User{}
 		if err := db.Get(user, db.QueryParams{"id": guard.LookupID.String()}); err != nil {
 			return err
 		}

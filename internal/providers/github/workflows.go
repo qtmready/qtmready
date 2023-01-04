@@ -22,7 +22,7 @@ import (
 
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/ctrlplane/internal/entities"
+	"go.breu.io/ctrlplane/internal/entity"
 )
 
 var (
@@ -30,8 +30,7 @@ var (
 )
 
 type (
-	// Github Webhook Workflows.
-	Workflows struct{}
+	Workflows struct{} // Workflows is the entry point for all workflows for GitHub.
 )
 
 // OnInstall workflow is executed when we initiate the installation of GitHub core.
@@ -88,7 +87,7 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	log.Info("all signals received, processing ...")
 
 	// Finalizing the installation
-	installation := &entities.GithubInstallation{
+	installation := &entity.GithubInstallation{
 		TeamID:            request.TeamID,
 		InstallationID:    webhook.Installation.ID,
 		InstallationLogin: webhook.Installation.Account.Login,
@@ -118,7 +117,7 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 			log.Info("saving repository ...")
 			log.Debug("repository", "repository", repository)
 
-			repo := &entities.GithubRepo{
+			repo := &entity.GithubRepo{
 				GithubID: repository.ID,
 				Name:     repository.Name,
 				FullName: repository.FullName,
@@ -151,7 +150,10 @@ func (w *Workflows) OnPush(ctx workflow.Context, payload *PushEventPayload) erro
 	return nil
 }
 
-// OnPullRequest workflow responsible to create an idempotency key for the immutable infrastructre.
+// OnPullRequest workflow is responsible to create an idempotency key which is used to ensure that the rollout is
+// idempotent. It will then create a rollout workflow for the given pull request. The rollout workflow will then
+// be responsible for ramping up the rollout to 100%. The rollout workflow will also be responsible for cleaning up
+// the rollout if the pull request is closed without merging.
 func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEventPayload) error {
 	log := workflow.GetLogger(ctx)
 	complete := false

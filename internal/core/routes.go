@@ -25,7 +25,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/entities"
+	"go.breu.io/ctrlplane/internal/entity"
 )
 
 var (
@@ -56,16 +56,16 @@ type (
 // @Tags        core
 // @Accept      json
 // @Produce     json
-// @Success     200 {array}  entities.Stack
+// @Success     200 {array}  entity.Stack
 // @Failure     400 {object} echo.HTTPError
 // @Router      /apps [get]
 //
 // list all apps associated with the team.
 func (routes *AppRoutes) list(ctx echo.Context) error {
-	result := make([]entities.Stack, 0)
+	result := make([]entity.Stack, 0)
 	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
 
-	if err := db.Filter(&entities.Stack{}, &result, params); err != nil {
+	if err := db.Filter(&entity.Stack{}, &result, params); err != nil {
 		return err
 	}
 
@@ -78,7 +78,7 @@ func (routes *AppRoutes) list(ctx echo.Context) error {
 // @Accept      json
 // @Produce     json
 // @Param       body body     AppCreateRequest true "AppCreateRequest"
-// @Success     201  {object} entities.Stack
+// @Success     201  {object} entity.Stack
 // @Failure     400  {object} echo.HTTPError
 // @Router      /apps [post]
 //
@@ -90,7 +90,7 @@ func (routes *AppRoutes) create(ctx echo.Context) error {
 	}
 
 	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
-	app := &entities.Stack{Name: request.Name, TeamID: teamID}
+	app := &entity.Stack{Name: request.Name, TeamID: teamID}
 
 	if err := db.Save(app); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err)
@@ -105,13 +105,13 @@ func (routes *AppRoutes) create(ctx echo.Context) error {
 // @Accept      json
 // @Produce     json
 // @Param       slug path     string true "Stack slug"
-// @Success     200  {object} entities.Stack
+// @Success     200  {object} entity.Stack
 // @Failure     400  {object} echo.HTTPError
 // @Router      /apps/{slug} [get]
 //
 // get an app by slug.
 func (routes *AppRoutes) get(ctx echo.Context) error {
-	app := &entities.Stack{}
+	app := &entity.Stack{}
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'"}
 
 	if err := db.Get(app, params); err != nil {
@@ -127,14 +127,14 @@ func (routes *AppRoutes) get(ctx echo.Context) error {
 // @Accept      json
 // @Produce     json
 // @Param       slug path     string true "Stack slug"
-// @Success     200  {array}  entities.Repo
+// @Success     200  {array}  entity.Repo
 // @Failure     400  {object} echo.HTTPError
 // @Router      /apps/{slug}/repos [get]
 //
 // list all repos associated with an app.
 func (routes *AppRepoRoutes) list(ctx echo.Context) error {
-	result := make([]entities.Repo, 0)
-	app := &entities.Stack{}
+	result := make([]entity.Repo, 0)
+	app := &entity.Stack{}
 
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
 	if err := db.Get(app, params); err != nil {
@@ -142,7 +142,7 @@ func (routes *AppRepoRoutes) list(ctx echo.Context) error {
 	}
 
 	params = db.QueryParams{"app_id": app.ID.String()}
-	if err := db.Filter(&entities.Repo{}, &result, params); err != nil {
+	if err := db.Filter(&entity.Repo{}, &result, params); err != nil {
 		return err
 	}
 
@@ -156,7 +156,7 @@ func (routes *AppRepoRoutes) list(ctx echo.Context) error {
 // @Produce     json
 // @Param       slug path     string               true "Stack slug"
 // @Param       body body     AppRepoCreateRequest true "AppRepoCreateRequest"
-// @Success     201  {object} entities.Repo
+// @Success     201  {object} entity.Repo
 // @Failure     400  {object} echo.HTTPError
 // @Router      /apps/{slug}/repos [post]
 //
@@ -167,7 +167,7 @@ func (routes *AppRepoRoutes) create(ctx echo.Context) error {
 		return err
 	}
 
-	app := &entities.Stack{}
+	app := &entity.Stack{}
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
 
 	if err := db.Get(app, params); err != nil {
@@ -183,12 +183,12 @@ func (routes *AppRepoRoutes) create(ctx echo.Context) error {
 }
 
 // github creates associates an app with a github repo.
-func (routes *AppRepoRoutes) github(ctx echo.Context, request *AppRepoCreateRequest, app *entities.Stack) error {
-	if err := db.Get(&entities.GithubRepo{}, db.QueryParams{"id": request.RepoID.String()}); err != nil {
+func (routes *AppRepoRoutes) github(ctx echo.Context, request *AppRepoCreateRequest, app *entity.Stack) error {
+	if err := db.Get(&entity.GithubRepo{}, db.QueryParams{"id": request.RepoID.String()}); err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, ErrNotFound)
 	}
 
-	repo := &entities.Repo{
+	repo := &entity.Repo{
 		AppID:         app.ID,
 		RepoID:        request.RepoID,
 		DefaultBranch: request.DefaultBranch,
