@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu, Inc. <info@breu.io>. All rights reserved.
+// Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
 //
 // This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
 // found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
@@ -67,16 +67,14 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 		default:
 			log.Info("installation created, waiting for complete installation request ...")
 		}
-	},
-	)
+	})
 
 	// complete installation signal processor
 	selector.AddReceive(requestChannel, func(rx workflow.ReceiveChannel, more bool) {
 		log.Info("received complete installation request ...")
 		rx.Receive(ctx, request)
 		requestDone = true
-	},
-	)
+	})
 
 	// keep listening for signals until we have received both the installation id and the team id
 	for !(webhookDone && requestDone) {
@@ -150,10 +148,16 @@ func (w *Workflows) OnPush(ctx workflow.Context, payload *PushEventPayload) erro
 	return nil
 }
 
-// OnPullRequest workflow is responsible to create an idempotency key which is used to ensure that the rollout is
-// idempotent. It will then create a rollout workflow for the given pull request. The rollout workflow will then
-// be responsible for ramping up the rollout to 100%. The rollout workflow will also be responsible for cleaning up
-// the rollout if the pull request is closed without merging.
+// OnPullRequest workflow is responsible to get or create the idempotency key for the changeset controller workflow.
+// Regardless of the action on PR, the algorithm needs to arrive at the same idempotency key! One possible way is
+// to calculate the checksum  of different components. The trick would be to handle "synchronize" event as this relates
+// to a new commit on the PR.
+//
+//   - One possible way to handle "synchronize" would be to only listen to label events on the PR.
+//   - The other possible way to create an idempotency key would be to take the state, create a version set and then tag
+//     the git commit with the version set. We can also take a look at aviator.co to see how they are creating version-sets.
+//
+// After the creation of the idempotency key, we pass the idempotency key as a signal to the Aperture Workflow.
 func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEventPayload) error {
 	log := workflow.GetLogger(ctx)
 	complete := false

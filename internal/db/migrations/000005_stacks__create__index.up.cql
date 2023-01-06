@@ -1,4 +1,4 @@
--- Copyright © 2022, Breu, Inc. <info@breu.io>. All rights reserved.
+-- Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
 --
 -- This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
 -- found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
@@ -14,3 +14,18 @@
 -- Breu, Inc. SHALL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND, INCLUDING BUT NOT LIMITED TO, LOST PROFITS OR ANY
 -- CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 -- ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
+
+
+
+create table if not exists stacks (
+  id                uuid,
+  team_id           uuid,
+  name              varchar,
+  slug              varchar,
+  created_at        timestamp,
+  updated_at        timestamp,
+  primary key       (id),
+) with comment = 'stack defines a group of services that are deployed together.';
+
+create index if not exists on stacks (team_id);
+create index if not exists on stacks (slug);

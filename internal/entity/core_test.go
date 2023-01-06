@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu, Inc. <info@breu.io>. All rights reserved.
+// Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
 //
 // This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
 // found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
@@ -45,20 +45,20 @@ import (
 )
 
 func TestApp(t *testing.T) {
-	app := &entity.Stack{
+	stack := &entity.Stack{
 		ID:     gocql.MustRandomUUID(),
 		Name:   "Test Stack",
 		Config: entity.StackConfig{},
 		TeamID: gocql.MustRandomUUID(),
 	}
-	_ = app.PreCreate()
+	_ = stack.PreCreate()
 
 	opsTests := shared.TestFnMap{
-		"Slug": shared.TestFn{Args: app, Want: nil, Run: testAppSlug},
+		"Slug": shared.TestFn{Args: stack, Want: nil, Run: testAppSlug},
 	}
 
-	t.Run("GetTable", testEntityGetTable("apps", app))
-	t.Run("EntityOps", testEntityOps(app, opsTests))
+	t.Run("GetTable", testEntityGetTable("stacks", stack))
+	t.Run("EntityOps", testEntityOps(stack, opsTests))
 }
 
 func TestRepo(t *testing.T) {

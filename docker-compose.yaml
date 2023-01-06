@@ -1,4 +1,4 @@
-# Copyright © 2022, Breu, Inc. <info@breu.io>. All rights reserved.
+# Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
 #
 # This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
 # found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
@@ -104,7 +104,7 @@ services:
     container_name: ctrlplane-job-migrate
     image: cosmtrek/air
     environment:
-      SERVICE_NAME: job.migrate
+      SERVICE_NAME: job::migrate
       CASSANDRA_MIGRATION_SOURCE_URL: file:///migrate/internal/db/migrations
     env_file:
       - ./.env
@@ -122,7 +122,7 @@ services:
     container_name: ctrlplane-api
     image: cosmtrek/air
     environment:
-      SERVICE_NAME: web.api
+      SERVICE_NAME: web::api
     env_file:
       - ./.env
     ports:
@@ -141,7 +141,7 @@ services:
       - mothership
     image: cosmtrek/air
     environment:
-      SERVICE_NAME: worker.mothership
+      SERVICE_NAME: worker::mothership
     env_file:
       - ./.env
     volumes:
