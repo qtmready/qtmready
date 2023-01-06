@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu, Inc. <info@breu.io>. All rights reserved.
+// Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
 //
 // This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
 // found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
@@ -40,7 +40,7 @@ var (
 
 	stackMeta = itable.Metadata{
 		M: &table.Metadata{
-			Name:    "apps",
+			Name:    "stacks",
 			Columns: stackColumns,
 		}}
 
@@ -48,7 +48,7 @@ var (
 
 	repoColumns = []string{
 		"id",
-		"app_id",
+		"stack_id",
 		"repo_id",
 		"default_branch",
 		"is_monorepo",
@@ -68,7 +68,7 @@ var (
 
 	workloadColumns = []string{
 		"id",
-		"app_id",
+		"stack_id",
 		"repo_id",
 		"repo_path",
 		"name",
@@ -90,7 +90,7 @@ var (
 
 	resourceColumns = []string{
 		"id",
-		"app_id",
+		"stack_id",
 		"repo_id",
 		"name",
 		"provider",
@@ -111,7 +111,7 @@ var (
 
 	blueprintColumns = []string{
 		"id",
-		"app_id",
+		"stack_id",
 		"repo_id",
 		"name",
 		"regions",
@@ -130,9 +130,28 @@ var (
 
 	blueprintTable = itable.New(*blueprintMeta.M)
 
+	changesetColums = []string{
+		"id",
+		"stack_id",
+		"calver",
+		"repo_markers",
+		"created_by",
+		"created_at",
+		"updated_at",
+	}
+
+	changesetMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "changesets",
+			Columns: changesetColums,
+		},
+	}
+
+	changesetTable = itable.New(*changesetMeta.M)
+
 	rolloutColumns = []string{
 		"id",
-		"app_id",
+		"stack_id",
 		"blueprint_id",
 		"trigger",
 		"state",
@@ -151,7 +170,8 @@ var (
 )
 
 type (
-	// Stack defines an application.
+	// Stack defines a group of services that are deployed together.
+	// The deployment blueprint for each stack is defined under Blueprint.
 	Stack struct {
 		ID        gocql.UUID  `json:"id" cql:"id"`
 		TeamID    gocql.UUID  `json:"team_id" cql:"team_id"`
@@ -165,7 +185,7 @@ type (
 	// Repo represents the git repository of an app.
 	Repo struct {
 		ID            gocql.UUID `json:"id" cql:"id"`
-		AppID         gocql.UUID `json:"app_id" cql:"app_id"`
+		StackID       gocql.UUID `json:"stack_id" cql:"stack_id"`
 		RepoID        gocql.UUID `json:"repo_id" cql:"repo_id"`
 		DefaultBranch string     `json:"default_branch" cql:"default_branch"` // The default branch to keep track of major releases.
 		IsMonorepo    bool       `json:"is_monorepo" cql:"is_monorepo"`       // app can have multiple repos
@@ -177,7 +197,7 @@ type (
 	// Workload defines a workload for the app. See Workload.Kind for type.
 	Workload struct {
 		ID        gocql.UUID `json:"id" cql:"id"`
-		AppID     gocql.UUID `json:"app_id" cql:"app_id"`
+		StackID   gocql.UUID `json:"stack_id" cql:"stack_id"`
 		RepoID    gocql.UUID `json:"repo_id" cql:"repo_id"`
 		RepoPath  string     `json:"repo_path" cql:"repo_path"`
 		Name      string     `json:"name" cql:"name"`
@@ -191,7 +211,7 @@ type (
 	// Resource defines the cloud provider resources for the app e.g. s3, sqs, etc.
 	Resource struct {
 		ID          gocql.UUID `json:"id" cql:"id"`
-		AppID       gocql.UUID `json:"app_id" cql:"app_id"`
+		StackID     gocql.UUID `json:"stack_id" cql:"stack_id"`
 		RepoID      gocql.UUID `json:"repo_id" cql:"repo_id"`
 		Name        string     `json:"name" cql:"name"`
 		Provider    string     `json:"provider" cql:"provider"` // "aws" | "gcp" | "azure"
@@ -204,7 +224,7 @@ type (
 	// Blueprint contains a collection of Workload & Resource to define one single release.
 	Blueprint struct {
 		ID            gocql.UUID       `json:"id" cql:"id"`
-		AppID         gocql.UUID       `json:"app_id" cql:"app_id"`
+		StackID       gocql.UUID       `json:"stack_id" cql:"stack_id"`
 		RepoID        gocql.UUID       `json:"repo_id" cql:"repo_id"`
 		RepoBranch    string           `json:"repo_branch" cql:"repo_branch"`
 		Name          string           `json:"name" cql:"name"`
@@ -214,18 +234,23 @@ type (
 		UpdatedAt     time.Time        `json:"updated_at"`
 	}
 
-	// ChangeSet is the record for git commit id
-	// For a polyrepo BluePrint, a PR on one repo can trigger a release for the BluePrint.
+	// ChangeSet records the state of the stack at a given point in time.
+	// For a poly-repo BluePrint, a PR on one repo can trigger a release for the BluePrint.
 	ChangeSet struct {
 		ID          gocql.UUID           `json:"id" cql:"id"`
+		StackID     gocql.UUID           `json:"stack_id" cql:"stack_id"`
+		Calver      string               `json:"calver" cql:"calver"`
 		RepoMarkers ChangeSetRepoMarkers `json:"repo_markers" cql:"repo_markers"`
+		CreatedBy   string               `json:"created_by" cql:"created_by"`
+		CreatedAt   time.Time            `json:"created_at"`
+		UpdatedAt   time.Time            `json:"updated_at"`
 	}
 
 	Rollout struct {
 		ID          gocql.UUID   `json:"id" cql:"id"`
-		AppID       gocql.UUID   `json:"app_id" cql:"app_id"`
-		BlueprintID string       `json:"blueprint_id" cql:"blueprint_id"`
-		Trigger     string       `json:"trigger" cql:"trigger"`
+		StackID     gocql.UUID   `json:"stack_id" cql:"stack_id"`
+		BlueprintID gocql.UUID   `json:"blueprint_id" cql:"blueprint_id"`
+		ChangeSetID gocql.UUID   `json:"changeset_id" cql:"changeset_id"`
 		State       RolloutState `json:"state" cql:"state"` // "in_progress" | "live" | "rejected"
 		CreatedAt   time.Time    `json:"created_at"`
 		UpdatedAt   time.Time    `json:"updated_at"`
@@ -251,6 +276,10 @@ func (resource *Resource) PreUpdate() error        { return nil }
 func (blueprint *Blueprint) GetTable() itable.ITable { return blueprintTable }
 func (blueprint *Blueprint) PreCreate() error        { return nil }
 func (blueprint *Blueprint) PreUpdate() error        { return nil }
+
+func (changeset *ChangeSet) GetTable() itable.ITable { return changesetTable }
+func (changeset *ChangeSet) PreCreate() error        { return nil }
+func (changeset *ChangeSet) PreUpdate() error        { return nil }
 
 func (rollout *Rollout) GetTable() itable.ITable { return rolloutTable }
 func (rollout *Rollout) PreCreate() error        { return nil }

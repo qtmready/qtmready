@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu, Inc. <info@breu.io>. All rights reserved.
+// Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
 //
 // This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
 // found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
@@ -81,14 +81,16 @@ func main() {
 	defer shared.Temporal.Client.Close()
 
 	// web server based on echo
-	prom := prometheus.NewPrometheus("echo", nil)
 	e := echo.New()
 
 	// configure middleware
-	prom.Use(e)
 	e.Use(middleware.CORS())
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+
+	// adding prometheus metrics
+	prom := prometheus.NewPrometheus(shared.Service.Name, nil)
+	prom.Use(e)
 
 	// configuring validator
 	e.Validator = &shared.EchoValidator{Validator: shared.Validator}

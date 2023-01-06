@@ -1,4 +1,4 @@
--- Copyright © 2022, Breu, Inc. <info@breu.io>. All rights reserved.
+-- Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
 --
 -- This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
 -- found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
@@ -16,10 +16,11 @@
 -- ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
 
+
 create table if not exists repos
 (
   id                        uuid,
-  app_id                    uuid,
+  stack_id                    uuid,
   repo_id                   uuid,
   default_branch            varchar,
   is_monorepo               boolean,
@@ -29,6 +30,6 @@ create table if not exists repos
   primary key               (id),
 ) with comment = 'repo associated with the app';
 
-create index if not exists on repos (app_id);
+create index if not exists on repos (stack_id);
 create index if not exists on repos (repo_id);
 create index if not exists on repos (provider);

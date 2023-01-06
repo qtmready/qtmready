@@ -1,4 +1,4 @@
-// Copyright © 2022, Breu, Inc. <info@breu.io>. All rights reserved.
+// Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
 //
 // This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
 // found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
@@ -28,7 +28,6 @@ import (
 )
 
 type (
-	// Activities groups webhook related activites.
 	Activities struct{}
 )
 

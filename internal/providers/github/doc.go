@@ -15,31 +15,11 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package main
+// Package github provides functionality for GitHub provider.
+package github
 
 import (
-	"sync"
-
-	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/shared"
+	_ "github.com/deepmap/oapi-codegen/pkg/codegen" // Required for code generation
 )
 
-func main() {
-	waigroup := sync.WaitGroup{}
-	// Reading the configuration from the environment
-	shared.Service.ReadEnv()
-	shared.Service.InitLogger()
-	db.DB.ReadEnv()
-	// Reading the configuration from the environment ... Done
-
-	shared.Logger.Info("Running Migrations ...", "version", shared.Service.Version())
-	waigroup.Add(1)
-
-	go func() {
-		defer waigroup.Done()
-		db.DB.InitSessionWithMigrations()
-	}()
-
-	waigroup.Wait()
-	shared.Logger.Info("Migrations Done", "version", shared.Service.Version())
-}
+//go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --config openapi.codegen.yaml openapi.spec.yaml
