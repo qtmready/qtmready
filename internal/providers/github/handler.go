@@ -37,9 +37,9 @@ type (
 )
 
 // NewServerHandler creates a new ServerHandler.
-func NewServerHandler(security echo.MiddlewareFunc) *ServerHandler {
+func NewServerHandler(middleware echo.MiddlewareFunc) *ServerHandler {
 	return &ServerHandler{
-		SecurityHandler: &auth.SecurityHandler{Middleware: security},
+		SecurityHandler: &auth.SecurityHandler{Middleware: middleware},
 	}
 }
 

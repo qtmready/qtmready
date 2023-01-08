@@ -1,5 +1,32 @@
 components:
   schemas:
+    Stack:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        team_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+          format: slug
+        config:
+          $ref: '#/components/schemas/StackConfig'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    StackConfig:
+      type: object
+      additionalProperties: true
+
     User:
       type: object
       properties:
