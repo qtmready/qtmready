@@ -130,9 +130,9 @@ func (w *ServerInterfaceWrapper) {{.OperationId}} (ctx echo.Context) error {
     handler := w.Handler.{{.OperationId}}
     {{- if $secure }}
     secure := w.Handler.SecureHandler
-    err = secure(handler, ctx{{genParamNames .PathParams}}{{if .RequiresParamObject}}, params{{end}})
+    err = secure(handler, ctx)
     {{else}}
-    err = handler(ctx{{genParamNames .PathParams}}{{if .RequiresParamObject}}, params{{end}})
+    err = handler(ctx)
     {{end}}
     return err
 }

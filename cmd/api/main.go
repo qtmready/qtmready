@@ -27,6 +27,7 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 
 	"go.breu.io/ctrlplane/internal/auth"
+	"go.breu.io/ctrlplane/internal/core"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/providers/github"
 	"go.breu.io/ctrlplane/internal/shared"
@@ -97,6 +98,7 @@ func main() {
 
 	// register handlers
 	auth.RegisterHandlers(e, auth.NewServerHandler(auth.Middleware))
+	core.RegisterHandlers(e, core.NewServerHandler(auth.Middleware))
 	github.RegisterHandlers(e, github.NewServerHandler(auth.Middleware))
 
 	e.GET("/healthz", healthz)
