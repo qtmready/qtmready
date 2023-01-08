@@ -117,7 +117,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 	case "opened":
 		exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPullRequest, payload)
 		if err != nil {
-			return err
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 
 		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunId: exe.GetRunID(), Status: WorkflowStatusQueued})
@@ -125,9 +125,32 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		err := shared.Temporal.Client.SignalWorkflow(context.Background(), opts.ID, "", WebhookEventPullRequest.String(), payload)
 		if err != nil {
 			shared.Logger.Error("unable to signal ...", "options", opts, "error", err)
-			return err
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 
 		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunId: db.NullUUID, Status: WorkflowStatusSkipped})
 	}
+}
+
+func handleInstallationRepositoriesEvent(ctx echo.Context) error {
+	payload := &InstallationRepositoriesEventPayload{}
+	if err := ctx.Bind(payload); err != nil {
+		return err
+	}
+
+	w := &Workflows{}
+	opts := shared.Temporal.
+		Queues[shared.ProvidersQueue].
+		GetWorkflowOptions(
+			"github",
+			strconv.FormatInt(payload.Installation.ID, 10),
+			WebhookEventInstallationRepositories.String(),
+		)
+
+	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnInstallationRepositories, payload)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunId: exe.GetID(), Status: WorkflowStatusQueued})
 }

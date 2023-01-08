@@ -103,24 +103,27 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 	ctx.Request().Body = io.NopCloser(bytes.NewBuffer(body))
 
 	if err := Github.VerifyWebhookSignature(body, signature); err != nil {
-		return ctx.JSON(http.StatusUnauthorized, err)
+		return echo.NewHTTPError(http.StatusUnauthorized, err)
 	}
 
 	headerEvent := ctx.Request().Header.Get("X-GitHub-Event")
 	if headerEvent == "" {
-		return ctx.JSON(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
+		return echo.NewHTTPError(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
 	}
+
+	shared.Logger.Debug("headerEvent", "headerEvent", headerEvent)
 
 	event := WebhookEvent(headerEvent)
 	handlers := WebhookEventHandlers{
-		WebhookEventInstallation: handleInstallationEvent,
-		WebhookEventPush:         handlePushEvent,
-		WebhookEventPullRequest:  handlePullRequestEvent,
+		WebhookEventInstallation:             handleInstallationEvent,
+		WebhookEventInstallationRepositories: handleInstallationRepositoriesEvent,
+		WebhookEventPush:                     handlePushEvent,
+		WebhookEventPullRequest:              handlePullRequestEvent,
 	}
 
 	if handle, exists := handlers[event]; exists {
 		return handle(ctx)
 	}
 
-	return ctx.JSON(http.StatusBadRequest, ErrInvalidEvent)
+	return echo.NewHTTPError(http.StatusBadRequest, ErrInvalidEvent)
 }
