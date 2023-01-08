@@ -50,6 +50,7 @@ var (
 	githubRepoColumns = []string{
 		"id",
 		"github_id",
+		"installation_id",
 		"team_id",
 		"name",
 		"full_name",
@@ -83,13 +84,14 @@ type (
 	}
 
 	GithubRepo struct {
-		ID        gocql.UUID `json:"id" cql:"id"`
-		GithubID  int64      `json:"github_id" cql:"github_id" validate:"required"`
-		TeamID    gocql.UUID `json:"team_id" cql:"team_id"`
-		Name      string     `json:"name" cql:"name" validate:"required,db_unique"`
-		FullName  string     `json:"full_name" cql:"full_name" validate:"required,db_unique"`
-		CreatedAt time.Time  `json:"created_at" cql:"created_at"`
-		UpdatedAt time.Time  `json:"updated_at" cql:"updated_at"`
+		ID             gocql.UUID `json:"id" cql:"id"`
+		GithubID       int64      `json:"github_id" cql:"github_id" validate:"required"`
+		InstallationID int64      `json:"installation_id" cql:"installation_id" validate:"required"`
+		TeamID         gocql.UUID `json:"team_id" cql:"team_id"`
+		Name           string     `json:"name" cql:"name" validate:"required,db_unique"`
+		FullName       string     `json:"full_name" cql:"full_name" validate:"required,db_unique"`
+		CreatedAt      time.Time  `json:"created_at" cql:"created_at"`
+		UpdatedAt      time.Time  `json:"updated_at" cql:"updated_at"`
 	}
 )
 

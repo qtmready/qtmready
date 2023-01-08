@@ -28,6 +28,7 @@ import (
 
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/entity"
+	"go.breu.io/ctrlplane/internal/inspect"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -51,7 +52,6 @@ var (
 	ErrInvalidAuthHeader     = errors.New("invalid authorization header")
 	ErrInvalidOrExpiredToken = errors.New("invalid or expired token")
 	ErrMalformedAPIKey       = errors.New("malformed api key")
-	ErrMalformedToken        = errors.New("malformed token")
 	ErrMissingAuthHeader     = errors.New("no authorization header provided")
 )
 
@@ -96,8 +96,8 @@ func GenerateRefreshToken(userID, teamID string) (string, error) {
 // Middleware to provide JWT & API Key authentication.
 func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
-		printContext(ctx, true)
-		printHeaders(ctx)
+		inspect.Context(ctx, true)
+		inspect.EchoHeaders(ctx)
 
 		keyScopes, requiresKey := ctx.Get(APIKeyAuthScopes).([]string)
 		bearerScopes, requiresBearer := ctx.Get(BearerAuthScopes).([]string)
@@ -121,7 +121,7 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 				}
 				// at this point, although the bearer is invalid, we know that endpoint can also be accessed with an API key
 				// so we continue with the API key auth
-				goto APIKEY
+				goto APIKeyAuth
 			}
 
 			parts := strings.Split(header, " ")
@@ -133,7 +133,7 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return bearerFn(next, ctx, parts[1])
 		}
 
-	APIKEY:
+	APIKeyAuth:
 
 		// do api key authentication
 		if requiresKey && len(keyScopes) > -1 {

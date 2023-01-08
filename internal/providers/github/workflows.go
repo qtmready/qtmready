@@ -20,6 +20,7 @@ package github
 import (
 	"time"
 
+	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/ctrlplane/internal/entity"
@@ -43,7 +44,7 @@ type (
 // NOTE: This workflow is only meant to be started with `SignalWithStartWorkflow`.
 func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	// prelude
-	log := workflow.GetLogger(ctx)
+	logger := workflow.GetLogger(ctx)
 	selector := workflow.NewSelector(ctx)
 	webhook := &InstallationEventPayload{}
 	request := &CompleteInstallationSignalPayload{}
@@ -56,33 +57,33 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 
 	// webhook signal processor
 	selector.AddReceive(webhookChannel, func(rx workflow.ReceiveChannel, more bool) {
-		log.Info("received webhook installation event ...")
+		logger.Info("received webhook installation event ...", "action", webhook.Action)
 		rx.Receive(ctx, webhook)
 		webhookDone = true
 
 		switch webhook.Action {
 		case "deleted", "suspend", "unsuspend":
-			log.Info("installation removed, skipping complete installation request ...")
+			logger.Info("installation removed, skipping complete installation request ...")
 			requestDone = true
 		default:
-			log.Info("installation created, waiting for complete installation request ...")
+			logger.Info("installation created, waiting for complete installation request ...")
 		}
 	})
 
 	// complete installation signal processor
 	selector.AddReceive(requestChannel, func(rx workflow.ReceiveChannel, more bool) {
-		log.Info("received complete installation request ...")
+		logger.Info("received complete installation request ...")
 		rx.Receive(ctx, request)
 		requestDone = true
 	})
 
 	// keep listening for signals until we have received both the installation id and the team id
 	for !(webhookDone && requestDone) {
-		log.Info("waiting for signals ....")
+		logger.Info("waiting for signals ....")
 		selector.Select(ctx)
 	}
 
-	log.Info("all signals received, processing ...")
+	logger.Info("all signals received, processing ...")
 
 	// Finalizing the installation
 	installation := &entity.GithubInstallation{
@@ -96,34 +97,35 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 	}
 
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, activityOpts)
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
 	err := workflow.
-		ExecuteActivity(ctx, activities.CreateOrUpdateInstallation, installation).
-		Get(ctx, installation)
+		ExecuteActivity(actx, activities.CreateOrUpdateInstallation, installation).
+		Get(actx, installation)
 
 	if err != nil {
-		log.Error("error saving installation", "error", err)
+		logger.Error("error saving installation", "error", err)
 		return err
 	}
 
 	// If webhook.Action == "created", save the repository information to the database.
 	if webhook.Action == "created" {
-		log.Info("saving associated repositories ...")
+		logger.Info("saving associated repositories ...")
 
 		// asynchronously save the repos
 		for _, repository := range webhook.Repositories {
-			log.Info("saving repository ...")
-			log.Debug("repository", "repository", repository)
+			logger.Info("saving repository ...")
+			logger.Debug("repository", "repository", repository)
 
 			repo := &entity.GithubRepo{
-				GithubID: repository.ID,
-				Name:     repository.Name,
-				FullName: repository.FullName,
-				TeamID:   installation.TeamID,
+				GithubID:       repository.ID,
+				InstallationID: installation.InstallationID,
+				Name:           repository.Name,
+				FullName:       repository.FullName,
+				TeamID:         installation.TeamID,
 			}
 
-			future := workflow.ExecuteActivity(ctx, activities.CreateOrUpdateRepo, repo)
-			selector.AddFuture(future, func(f workflow.Future) { log.Info("repository saved ...", repo, repo.GithubID) })
+			future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateRepo, repo)
+			selector.AddFuture(future, w.onFutureRepoSaved(logger, repo))
 		}
 
 		// wait for all repositories to be saved.
@@ -132,8 +134,8 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 		}
 	}
 
-	log.Info("installation complete")
-	log.Debug("installation", "installation", installation)
+	logger.Info("installation complete")
+	logger.Debug("installation", "installation", installation)
 
 	return nil
 }
@@ -142,8 +144,8 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 // the immutable rollout. Depending upon the target branch, it will either queue the rollout or update the existing
 // rollout.
 func (w *Workflows) OnPush(ctx workflow.Context, payload *PushEventPayload) error {
-	log := workflow.GetLogger(ctx)
-	log.Info("received push event ...")
+	logger := workflow.GetLogger(ctx)
+	logger.Info("received push event ...")
 
 	return nil
 }
@@ -159,7 +161,7 @@ func (w *Workflows) OnPush(ctx workflow.Context, payload *PushEventPayload) erro
 //
 // After the creation of the idempotency key, we pass the idempotency key as a signal to the Aperture Workflow.
 func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEventPayload) error {
-	log := workflow.GetLogger(ctx)
+	logger := workflow.GetLogger(ctx)
 	complete := false
 	signal := &PullRequestEventPayload{}
 	selector := workflow.NewSelector(ctx)
@@ -173,23 +175,24 @@ func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEvent
 
 		switch signal.Action {
 		case "closed":
+			logger.Info("PR closed: scheduling the experiment to finish.", "action", signal.Action)
 			if signal.PullRequest.Merged {
-				log.Info("PR merged: ramping rollout to 100% ...")
+				logger.Info("PR merged: ramping rollout to 100% ...")
 				complete = true
 			} else {
-				log.Info("PR closed: skipping rollout ...")
+				logger.Info("PR closed: skipping rollout ...")
 				complete = true
 			}
 		case "synchronize":
-			log.Info("PR updated: checking the status of the environment ...")
+			logger.Info("PR updated: checking the status of the environment ...", "action", signal.Action)
 			// TODO: here we need to check the app associated with repo & get the `release` branch. If the PR branch is not
 			// the default branch, then we update in place, otherwise, we queue a new rollout.
 		default:
-			log.Info("PR: no action required, skipping ...")
+			logger.Info("PR: no action required, skipping ...", "action", signal.Action)
 		}
 	})
 
-	log.Info("PR created: creating new rollout ...")
+	logger.Info("PR created: creating new rollout ...")
 
 	// keep listening to signals until complete = true
 	for !complete {
@@ -197,4 +200,49 @@ func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEvent
 	}
 
 	return nil
+}
+
+func (w *Workflows) OnInstallationRepositories(ctx workflow.Context, payload *InstallationRepositoriesEventPayload) error {
+	logger := workflow.GetLogger(ctx)
+	selector := workflow.NewSelector(ctx)
+
+	logger.Info("received installation repositories event ...")
+
+	installation := &entity.GithubInstallation{}
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
+	err := workflow.
+		ExecuteActivity(actx, activities.GetInstallation, payload.Installation.ID).
+		Get(ctx, installation)
+
+	if err != nil {
+		logger.Error("error getting installation", "error", err)
+		return err
+	}
+
+	for _, repository := range payload.RepositoriesAdded {
+		logger.Info("saving repository ...")
+		logger.Debug("repository", "repository", repository)
+
+		repo := &entity.GithubRepo{
+			GithubID:       repository.ID,
+			InstallationID: installation.InstallationID,
+			Name:           repository.Name,
+			FullName:       repository.FullName,
+			TeamID:         installation.TeamID,
+		}
+
+		future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateRepo, repo)
+		selector.AddFuture(future, w.onFutureRepoSaved(logger, repo))
+	}
+
+	for range payload.RepositoriesAdded {
+		selector.Select(ctx)
+	}
+
+	return nil
+}
+
+func (w *Workflows) onFutureRepoSaved(logger log.Logger, repo *entity.GithubRepo) func(workflow.Future) {
+	return func(f workflow.Future) { logger.Info("repository saved ...", "repo", repo.GithubID) }
 }

@@ -75,6 +75,16 @@ type (
 		Sender       User                  `json:"sender"`
 	}
 
+	InstallationRepositoriesEventPayload struct {
+		Action              string              `json:"action"`
+		Installation        Installation        `json:"installation"`
+		RepositorySelection string              `json:"repository_selection"`
+		RepositoriesAdded   []PartialRepository `json:"repositories_added"`
+		RepositoriesRemoved []PartialRepository `json:"repositories_removed"`
+		Requester           *User               `json:"requester"`
+		Sender              User                `json:"sender"`
+	}
+
 	CompleteInstallationSignalPayload struct {
 		InstallationID int64       `json:"installation_id"`
 		SetupAction    SetupAction `json:"setup_action"`
@@ -159,7 +169,6 @@ func (e WebhookEvent) String() string { return string(e) }
 
 func (w WorkflowSignal) String() string               { return string(w) }
 func (w WorkflowSignal) MarshalJSON() ([]byte, error) { return json.Marshal(w.String()) }
-
 func (w *WorkflowSignal) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {

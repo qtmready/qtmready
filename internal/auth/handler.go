@@ -30,6 +30,15 @@ import (
 
 type (
 	// SecurityHandler is the base security handler for the API. It is meant to be embedded in other handlers.
+	//
+	// Usage:
+	//  package somepackage
+	//
+	//  import "go.breu.io/ctrlplane/internal/auth"
+	//
+	//  type ServerHandler struct {
+	//    *auth.SecurityHandler
+	//  }
 	SecurityHandler struct{ Middleware echo.MiddlewareFunc }
 	ServerHandler   struct{ *SecurityHandler } // ServerHandler for auth
 )
@@ -41,11 +50,13 @@ func NewServerHandler(security echo.MiddlewareFunc) *ServerHandler {
 	}
 }
 
+// SecureHandler wraps the handler with the security middleware.
 func (s *SecurityHandler) SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error {
 	err := s.Middleware(handler)(ctx)
 	return err
 }
 
+// Register registers a new user.
 func (s *ServerHandler) Register(ctx echo.Context) error {
 	request := &RegisterationRequest{}
 
@@ -76,6 +87,7 @@ func (s *ServerHandler) Register(ctx echo.Context) error {
 	}
 
 	if err := db.Save(team); err != nil {
+		// TODO: cleanup created team.
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
@@ -87,6 +99,7 @@ func (s *ServerHandler) Register(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &RegisterationResponse{Team: team, User: user})
 }
 
+// Login returns JWT tokens if the email & password are correct.
 func (s *ServerHandler) Login(ctx echo.Context) error {
 	request := &LoginRequest{}
 
@@ -115,6 +128,7 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 	return echo.NewHTTPError(http.StatusUnauthorized, "invalid credentials")
 }
 
+// CreateTeamAPIKey creates an API key for the entity.Team.
 func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 
@@ -138,6 +152,7 @@ func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: &key})
 }
 
+// CreateUserAPIKey creates an API Key for the entity.User.
 func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 
@@ -161,6 +176,7 @@ func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: &key})
 }
 
+// ValidateAPIKey validates the X-API-KEY header and return a boolean. This is mainly required for otel collector.
 func (s *ServerHandler) ValidateAPIKey(ctx echo.Context) error {
 	valid := "valid"
 	return ctx.JSON(http.StatusOK, &ValidateAPIKeyResponse{Message: &valid})

@@ -76,6 +76,7 @@ func main() {
 	workflows := &github.Workflows{}
 
 	wrkr.RegisterWorkflow(workflows.OnInstall)
+	wrkr.RegisterWorkflow(workflows.OnInstallationRepositories)
 	wrkr.RegisterWorkflow(workflows.OnPush)
 	wrkr.RegisterWorkflow(workflows.OnPullRequest)
 

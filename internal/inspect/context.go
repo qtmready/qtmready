@@ -15,10 +15,11 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package auth
+// Package inspect provides functions to inspect the contents of type Context. You logger should be configured to output
+// debug messages to see the output.
+package inspect
 
 import (
-	"fmt"
 	"reflect"
 	"unsafe"
 
@@ -27,12 +28,13 @@ import (
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
-func printContext(ctx interface{}, inner bool) {
+// Context prints the contents of a context.
+func Context(ctx interface{}, inner bool) {
 	contextValues := reflect.ValueOf(ctx).Elem()
 	contextKeys := reflect.TypeOf(ctx).Elem()
 
 	if !inner {
-		fmt.Printf("\nFields for %s.%s\n", contextKeys.PkgPath(), contextKeys.Name())
+		shared.Logger.Debug("Fields For:", contextKeys.PkgPath(), contextKeys.Name())
 	}
 
 	if contextKeys.Kind() == reflect.Struct {
@@ -43,19 +45,18 @@ func printContext(ctx interface{}, inner bool) {
 			reflectField := contextKeys.Field(i)
 
 			if reflectField.Name == "Context" {
-				printContext(reflectValue.Interface(), true)
+				Context(reflectValue.Interface(), true)
 			} else {
-				// fmt.Printf("field name: %+v\n", reflectField.Name)
 				shared.Logger.Debug("context", "name", reflectField.Name, "value", reflectValue.Interface())
-				// fmt.Printf("value: %+v\n", reflectValue.Interface())
 			}
 		}
 	} else {
-		fmt.Printf("context is empty (int)\n")
+		shared.Logger.Debug("context is empty (int)\n")
 	}
 }
 
-func printHeaders(ctx echo.Context) {
+// EchoHeaders prints the headers of an echo context.
+func EchoHeaders(ctx echo.Context) {
 	shared.Logger.Debug("--- Headers ---")
 
 	for k, v := range ctx.Request().Header {
