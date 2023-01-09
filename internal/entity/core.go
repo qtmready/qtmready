@@ -49,7 +49,7 @@ var (
 	repoColumns = []string{
 		"id",
 		"stack_id",
-		"repo_id",
+		"provider_id",
 		"default_branch",
 		"is_monorepo",
 		"provider",
@@ -186,7 +186,7 @@ type (
 	Repo struct {
 		ID            gocql.UUID `json:"id" cql:"id"`
 		StackID       gocql.UUID `json:"stack_id" cql:"stack_id"`
-		RepoID        gocql.UUID `json:"repo_id" cql:"repo_id"`
+		ProviderID    gocql.UUID `json:"repo_id" cql:"repo_id"`               // The ID as provided by the provider.
 		DefaultBranch string     `json:"default_branch" cql:"default_branch"` // The default branch to keep track of major releases.
 		IsMonorepo    bool       `json:"is_monorepo" cql:"is_monorepo"`       // app can have multiple repos
 		Provider      string     `json:"provider" cql:"provider"`             // can be github, gitlab, bitbucket, etc
