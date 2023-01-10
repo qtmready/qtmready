@@ -27,6 +27,37 @@ components:
       type: object
       additionalProperties: true
 
+    Repo:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        stack_id:
+          type: string
+          format: uuid
+        provider:
+          $ref: '#/components/schemas/RepoProvider'
+        provider_id:
+          type: string
+        default_branch:
+          type: string
+        is_monorepo:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    RepoProvider:
+      type: string
+      enum:
+        - github
+        - gitlab
+        - bitbucket
+
     User:
       type: object
       properties:

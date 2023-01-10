@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/deepmap/oapi-codegen/pkg/runtime"
+	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 	"github.com/labstack/echo/v4"
 	externalRef0 "go.breu.io/ctrlplane/internal/entity"
 )
@@ -16,6 +17,18 @@ const (
 	APIKeyAuthScopes = "APIKeyAuth.Scopes"
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
+
+// RepoCreateRequest defines model for RepoCreateRequest.
+type RepoCreateRequest struct {
+	DefaultBranch string                    `json:"default_branch"`
+	IsMonorepo    bool                      `json:"is_monorepo"`
+	Provider      externalRef0.RepoProvider `json:"provider"`
+	ProviderId    string                    `json:"provider_id"`
+	StackId       openapi_types.UUID        `json:"stack_id"`
+}
+
+// RepoListResponse defines model for RepoListResponse.
+type RepoListResponse = []externalRef0.Repo
 
 // StackCreateRequest defines model for StackCreateRequest.
 type StackCreateRequest struct {
@@ -26,11 +39,26 @@ type StackCreateRequest struct {
 // StackListResponse defines model for StackListResponse.
 type StackListResponse = []externalRef0.Stack
 
+// CreateRepoJSONRequestBody defines body for CreateRepo for application/json ContentType.
+type CreateRepoJSONRequestBody = RepoCreateRequest
+
 // CreateStackJSONRequestBody defines body for CreateStack for application/json ContentType.
 type CreateStackJSONRequestBody = StackCreateRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// List Repos
+	// (GET /core/repos)
+	ListRepos(ctx echo.Context) error
+
+	// Create repo
+	// (POST /core/repos)
+	CreateRepo(ctx echo.Context) error
+
+	// Get repo
+	// (GET /core/repos/{id})
+	GetRepo(ctx echo.Context) error
+
 	// List stacks
 	// (GET /core/stacks)
 	ListStacks(ctx echo.Context) error
@@ -50,6 +78,64 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// ListRepos converts echo context to params.
+
+func (w *ServerInterfaceWrapper) ListRepos(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	ctx.Set(APIKeyAuthScopes, []string{""})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.ListRepos
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
+}
+
+// CreateRepo converts echo context to params.
+
+func (w *ServerInterfaceWrapper) CreateRepo(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	ctx.Set(APIKeyAuthScopes, []string{""})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.CreateRepo
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
+}
+
+// GetRepo converts echo context to params.
+
+func (w *ServerInterfaceWrapper) GetRepo(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "id" -------------
+	var id openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	ctx.Set(APIKeyAuthScopes, []string{""})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.GetRepo
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
 }
 
 // ListStacks converts echo context to params.
@@ -137,6 +223,9 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.GET(baseURL+"/core/repos", wrapper.ListRepos)
+	router.POST(baseURL+"/core/repos", wrapper.CreateRepo)
+	router.GET(baseURL+"/core/repos/:id", wrapper.GetRepo)
 	router.GET(baseURL+"/core/stacks", wrapper.ListStacks)
 	router.POST(baseURL+"/core/stacks", wrapper.CreateStack)
 	router.GET(baseURL+"/core/stacks/:slug", wrapper.GetStack)

@@ -56,7 +56,6 @@ paths:
             application/json:
               schema:
                 $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
-
   /core/stacks/{slug}:
     get:
       summary: Get stack
@@ -94,6 +93,108 @@ paths:
             application/json:
               schema:
                 $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+  /core/repos:
+    post:
+      summary: Create repo
+      description: Create repo
+      operationId: create-repo
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      requestBody:
+        description: Repo
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RepoCreateRequest'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '../entity/openapi.spec.yaml#/components/schemas/Repo'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+
+    get:
+      summary: List Repos
+      description: List Repos
+      operationId: list-repos
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RepoListResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+  /core/repos/{id}:
+    get:
+      summary: Get repo
+      description: Get repo
+      operationId: get-repo
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      parameters:
+        - name: id
+          in: path
+          description: Repo ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '../entity/openapi.spec.yaml#/components/schemas/Repo'
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+
 
 components:
   securitySchemes:
@@ -118,3 +219,29 @@ components:
       type: array
       items:
         $ref: '../entity/openapi.spec.yaml#/components/schemas/Stack'
+
+    RepoCreateRequest:
+      type: object
+      properties:
+        stack_id:
+          type: string
+          format: uuid
+        provider:
+          $ref: '../entity/openapi.spec.yaml#/components/schemas/RepoProvider'
+        provider_id:
+          type: string
+        default_branch:
+          type: string
+        is_monorepo:
+          type: boolean
+      required:
+        - stack_id
+        - provider
+        - provider_id
+        - default_branch
+        - is_monorepo
+
+    RepoListResponse:
+      type: array
+      items:
+        $ref: '../entity/openapi.spec.yaml#/components/schemas/Repo'

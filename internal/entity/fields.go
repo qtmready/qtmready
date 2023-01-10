@@ -36,9 +36,12 @@ type (
 		Default string   `json:"default"`
 	}
 
+	RepoProvider        string
+	RepoProviderMapType map[string]RepoProvider
+
 	// RolloutState is the state of a rollout.
-	RolloutState    string
-	RolloutStateMap map[string]RolloutState
+	RolloutState        string
+	RolloutStateMapType map[string]RolloutState
 
 	ChangeSetRepoMarker struct {
 		Provider   string `json:"provider"`
@@ -57,11 +60,25 @@ const (
 )
 
 var (
-	RolloutStates = RolloutStateMap{
+	RolloutStateMap = RolloutStateMapType{
 		RolloutStateQueued.String():     RolloutStateQueued,
 		RolloutStateInProgress.String(): RolloutStateInProgress,
 		RolloutStateCompleted.String():  RolloutStateCompleted,
 		RolloutStateRejected.String():   RolloutStateRejected,
+	}
+)
+
+const (
+	RepoProviderGithub    RepoProvider = "github"
+	RepoProviderGitlab    RepoProvider = "gitlab"
+	RepoProviderBitbucket RepoProvider = "bitbucket"
+)
+
+var (
+	RepoProviderMap = RepoProviderMapType{
+		RepoProviderGithub.String():    RepoProviderGithub,
+		RepoProviderGitlab.String():    RepoProviderGitlab,
+		RepoProviderBitbucket.String(): RepoProviderBitbucket,
 	}
 )
 
@@ -81,6 +98,14 @@ func (regions *BluePrintRegions) UnmarshalCQL(info gocql.TypeInfo, data []byte) 
 	return json.Unmarshal(data, regions)
 }
 
+func (marker ChangeSetRepoMarkers) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
+	return json.Marshal(marker)
+}
+
+func (marker *ChangeSetRepoMarkers) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
+	return json.Unmarshal(data, marker)
+}
+
 func (rs RolloutState) String() string {
 	return string(rs)
 }
@@ -95,7 +120,7 @@ func (rs *RolloutState) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	val, ok := RolloutStates[s]
+	val, ok := RolloutStateMap[s]
 	if !ok {
 		return errors.New("invalid rollout state")
 	}
@@ -113,10 +138,34 @@ func (rs *RolloutState) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
 	return json.Unmarshal(data, rs)
 }
 
-func (marker ChangeSetRepoMarkers) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
-	return json.Marshal(marker)
+func (rp RepoProvider) String() string {
+	return string(rp)
 }
 
-func (marker *ChangeSetRepoMarkers) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
-	return json.Unmarshal(data, marker)
+func (rp RepoProvider) MarshalJSON() ([]byte, error) {
+	return json.Marshal(rp.String())
+}
+
+func (rp *RepoProvider) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	val, ok := RepoProviderMap[s]
+	if !ok {
+		return errors.New("invalid repo provider")
+	}
+
+	*rp = val
+
+	return nil
+}
+
+func (rp RepoProvider) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
+	return json.Marshal(rp)
+}
+
+func (rp *RepoProvider) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
+	return json.Unmarshal(data, rp)
 }
