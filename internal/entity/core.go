@@ -184,14 +184,14 @@ type (
 
 	// Repo represents the git repository of an app.
 	Repo struct {
-		ID            gocql.UUID `json:"id" cql:"id"`
-		StackID       gocql.UUID `json:"stack_id" cql:"stack_id"`
-		ProviderID    gocql.UUID `json:"repo_id" cql:"repo_id"`               // The ID as provided by the provider.
-		DefaultBranch string     `json:"default_branch" cql:"default_branch"` // The default branch to keep track of major releases.
-		IsMonorepo    bool       `json:"is_monorepo" cql:"is_monorepo"`       // app can have multiple repos
-		Provider      string     `json:"provider" cql:"provider"`             // can be github, gitlab, bitbucket, etc
-		CreatedAt     time.Time  `json:"created_at"`
-		UpdatedAt     time.Time  `json:"updated_at"`
+		ID            gocql.UUID   `json:"id" cql:"id"`
+		StackID       gocql.UUID   `json:"stack_id" cql:"stack_id"`
+		Provider      RepoProvider `json:"provider" cql:"provider"`             // can be github, gitlab, bitbucket, etc
+		ProviderID    string       `json:"repo_id" cql:"repo_id"`               // The ID as provided by the provider.
+		DefaultBranch string       `json:"default_branch" cql:"default_branch"` // The default branch to keep track of major releases.
+		IsMonorepo    bool         `json:"is_monorepo" cql:"is_monorepo"`       // app can have multiple repos
+		CreatedAt     time.Time    `json:"created_at"`
+		UpdatedAt     time.Time    `json:"updated_at"`
 	}
 
 	// Workload defines a workload for the app. See Workload.Kind for type.
