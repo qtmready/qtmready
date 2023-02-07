@@ -28,6 +28,7 @@ import (
 )
 
 type (
+	// Activities groups all the activities for the github provider.
 	Activities struct{}
 )
 
@@ -58,10 +59,10 @@ func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *en
 	return installation, nil
 }
 
-// CreateOrUpdateRepo creates a single row for entity.GithubRepo.
-func (a *Activities) CreateOrUpdateRepo(ctx context.Context, payload *entity.GithubRepo) error {
+// CreateOrUpdateGithubRepo creates a single row for entity.GithubRepo.
+func (a *Activities) CreateOrUpdateGithubRepo(ctx context.Context, payload *entity.GithubRepo) error {
 	log := activity.GetLogger(ctx)
-	repo, err := a.GetRepo(ctx, payload)
+	repo, err := a.GetGithubRepo(ctx, payload)
 
 	// if we get the repo, the error will be nil
 	if err == nil {
@@ -79,8 +80,8 @@ func (a *Activities) CreateOrUpdateRepo(ctx context.Context, payload *entity.Git
 	return nil
 }
 
-// GetRepo gets entity.GithubRepo against given entity.GithubRepo.
-func (a *Activities) GetRepo(ctx context.Context, payload *entity.GithubRepo) (*entity.GithubRepo, error) {
+// GetGithubRepo gets entity.GithubRepo against given entity.GithubRepo.
+func (a *Activities) GetGithubRepo(ctx context.Context, payload *entity.GithubRepo) (*entity.GithubRepo, error) {
 	repo := &entity.GithubRepo{}
 	params := db.QueryParams{
 		"name":      "'" + payload.Name + "'",
@@ -105,4 +106,14 @@ func (a *Activities) GetInstallation(ctx context.Context, id int64) (*entity.Git
 	}
 
 	return installation, nil
+}
+
+func (a *Activities) GetRepo(ctx context.Context, repo *entity.GithubRepo) (*entity.Repo, error) {
+	r := &entity.Repo{}
+
+	if err := db.Get(r, db.QueryParams{"github_id": strconv.FormatInt(repo.GithubID, 10)}); err != nil {
+		return r, err
+	}
+
+	return r, nil
 }

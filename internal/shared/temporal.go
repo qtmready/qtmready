@@ -39,15 +39,21 @@ type (
 	QueueName string
 
 	Queue interface {
+		// CreateWorkflowID creates an idempotency key. Sometimes we need to signal the workflow from a completely
+		// disconnected part of the application. For us, it is important to arrive at the same workflow ID regardless
+		// of the conditions.
 		CreateWorkflowID(sender string, args ...string) string
+
+		// GetWorkflowOptions returns the workflow options for the queue.
 		GetWorkflowOptions(sender string, args ...string) client.StartWorkflowOptions
+
+		// GetName gets the name of the queue as string.
 		GetName() string
 	}
 
 	Queues map[QueueName]Queue
 )
 
-// TODO: The greater plan is to move each tenant in its own namespace.
 const (
 	CoreQueue      QueueName = "core"      // core queue.
 	ProvidersQueue QueueName = "providers" // messaging related to providers
@@ -64,12 +70,15 @@ type (
 		Prefix string    // The prefix to create the workflow ID.
 	}
 
-	// temporal holds the temporal client and client.
+	// temporal holds the temporal server host and port, the client and all the available queues.
 	//
-	// FIXME: The current design is not ideal for a central multi-tenannt solution. Temporal provides strong isolation via
-	// namespaces. Ideally, each tenant should have its own namespace. That would require a change in the struct to have a
-	// map. The map would be keyed by tenant ID and the value would be the temporal client. A Client(id string)
-	// should either get the client from the map or create a new one (singleton) if it does not exist.
+	// TODO: The current design is not be ideal for a central multi-tenant solution due to the lack of strong isolation
+	// for each tenant. For complaince, e.g. GDPR, SOC2, ISO27001, HIPAA, etc. we require strong tennant isolation. As
+	// temporal.io provides strong namespace isolation, we can leverage this feature to implement a new design where
+	// the client.Client field is replaced with a map of client.Client organized by tenant ID. A thread-safe method should
+	// be added to the temporal struct to instantiate and return the appropriate client for a specific tenant. For
+	// subsequent requests, the already instantiated client should be returned. This would allow for separate clients to
+	// be created for each tenant, providing strong isolation and meeting compliance requirements.
 	temporal struct {
 		ServerHost string `env:"TEMPORAL_HOST" env-default:"temporal"`
 		ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`

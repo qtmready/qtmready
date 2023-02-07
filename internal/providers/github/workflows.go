@@ -14,7 +14,6 @@
 // Breu, Inc. SHALL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND, INCLUDING BUT NOT LIMITED TO, LOST PROFITS OR ANY
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
-
 package github
 
 import (
@@ -124,8 +123,8 @@ func (w *Workflows) OnInstall(ctx workflow.Context) error {
 				TeamID:         installation.TeamID,
 			}
 
-			future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateRepo, repo)
-			selector.AddFuture(future, w.onFutureRepoSaved(logger, repo))
+			future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateGithubRepo, repo)
+			selector.AddFuture(future, w.onSaveRepo(logger, repo))
 		}
 
 		// wait for all repositories to be saved.
@@ -175,12 +174,12 @@ func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEvent
 
 		switch signal.Action {
 		case "closed":
-			logger.Info("PR closed: scheduling the experiment to finish.", "action", signal.Action)
+			logger.Info("PR closed: scheduling aperture to be abandoned.", "action", signal.Action)
 			if signal.PullRequest.Merged {
-				logger.Info("PR merged: ramping rollout to 100% ...")
+				logger.Info("PR merged: scheduling aperture to finish with conculsion.")
 				complete = true
 			} else {
-				logger.Info("PR closed: skipping rollout ...")
+				logger.Info("PR closed: abort aperture.")
 				complete = true
 			}
 		case "synchronize":
@@ -192,7 +191,7 @@ func (w *Workflows) OnPullRequest(ctx workflow.Context, payload PullRequestEvent
 		}
 	})
 
-	logger.Info("PR created: creating new rollout ...")
+	logger.Info("PR created: scheduling new aperture at the application level.")
 
 	// keep listening to signals until complete = true
 	for !complete {
@@ -232,8 +231,8 @@ func (w *Workflows) OnInstallationRepositories(ctx workflow.Context, payload *In
 			TeamID:         installation.TeamID,
 		}
 
-		future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateRepo, repo)
-		selector.AddFuture(future, w.onFutureRepoSaved(logger, repo))
+		future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateGithubRepo, repo)
+		selector.AddFuture(future, w.onSaveRepo(logger, repo))
 	}
 
 	for range payload.RepositoriesAdded {
@@ -243,6 +242,6 @@ func (w *Workflows) OnInstallationRepositories(ctx workflow.Context, payload *In
 	return nil
 }
 
-func (w *Workflows) onFutureRepoSaved(logger log.Logger, repo *entity.GithubRepo) func(workflow.Future) {
+func (w *Workflows) onSaveRepo(logger log.Logger, repo *entity.GithubRepo) func(workflow.Future) {
 	return func(f workflow.Future) { logger.Info("repository saved ...", "repo", repo.GithubID) }
 }
