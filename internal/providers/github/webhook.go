@@ -95,8 +95,8 @@ func handlePushEvent(ctx echo.Context) error {
 
 // handlePullRequestEvent handles GitHub pull request event.
 func handlePullRequestEvent(ctx echo.Context) error {
-	payload := PullRequestEvent{}
-	if err := ctx.Bind(&payload); err != nil {
+	payload := &PullRequestEvent{}
+	if err := ctx.Bind(payload); err != nil {
 		shared.Logger.Error("unable to bind payload ...", "error", err)
 		return err
 	}

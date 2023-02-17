@@ -150,17 +150,17 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 //     the git commit with the version set. We can also take a look at aviator.co to see how they are creating version-sets.
 //
 // After the creation of the idempotency key, we pass the idempotency key as a signal to the Aperture Workflow.
-func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload PullRequestEvent) error {
+func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullRequestEvent) error {
 	logger := workflow.GetLogger(ctx)
 	complete := false
-	signal := &PullRequestEvent{}
+	pr := &PullRequestEvent{}
 	selector := workflow.NewSelector(ctx)
 
 	// setting up signals
 	prChannel := workflow.GetSignalChannel(ctx, WorkflowSignalPullRequest.String())
 
 	// signal processor
-	selector.AddReceive(prChannel, w.onPRChannel(ctx, signal, complete))
+	selector.AddReceive(prChannel, w.onPRChannel(ctx, pr, complete))
 
 	logger.Info("PR created: scheduling new aperture at the application level.")
 
