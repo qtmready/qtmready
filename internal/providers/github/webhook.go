@@ -30,7 +30,7 @@ import (
 
 // handleInstallationEvent handles GitHub App installation event.
 func handleInstallationEvent(ctx echo.Context) error {
-	payload := &InstallationEventPayload{}
+	payload := &InstallationEvent{}
 	if err := ctx.Bind(payload); err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 		WorkflowSignalInstallationEvent.String(),
 		payload,
 		opts,
-		workflows.OnInstall,
+		workflows.OnInstallationEvent,
 	)
 	if err != nil {
 		shared.Logger.Error("unable to signal ...", "options", opts, "error", err)
@@ -62,7 +62,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 
 // handlePushEvent handles GitHub push event.
 func handlePushEvent(ctx echo.Context) error {
-	payload := &PushEventPayload{}
+	payload := &PushEvent{}
 	if err := ctx.Bind(payload); err != nil {
 		shared.Logger.Error("unable to bind payload ...", "error", err)
 		return err
@@ -85,7 +85,7 @@ func handlePushEvent(ctx echo.Context) error {
 			"ref",
 			payload.After)
 
-	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPush, payload)
+	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPushEvent, payload)
 	if err != nil {
 		return err
 	}
@@ -95,8 +95,8 @@ func handlePushEvent(ctx echo.Context) error {
 
 // handlePullRequestEvent handles GitHub pull request event.
 func handlePullRequestEvent(ctx echo.Context) error {
-	payload := PullRequestEventPayload{}
-	if err := ctx.Bind(&payload); err != nil {
+	payload := &PullRequestEvent{}
+	if err := ctx.Bind(payload); err != nil {
 		shared.Logger.Error("unable to bind payload ...", "error", err)
 		return err
 	}
@@ -115,7 +115,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 
 	switch payload.Action {
 	case "opened":
-		exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPullRequest, payload)
+		exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPullRequestEvent, payload)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
@@ -133,7 +133,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 }
 
 func handleInstallationRepositoriesEvent(ctx echo.Context) error {
-	payload := &InstallationRepositoriesEventPayload{}
+	payload := &InstallationRepositoriesEvent{}
 	if err := ctx.Bind(payload); err != nil {
 		return err
 	}
@@ -147,7 +147,7 @@ func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 			WebhookEventInstallationRepositories.String(),
 		)
 
-	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnInstallationRepositories, payload)
+	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnInstallationRepositoriesEvent, payload)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}

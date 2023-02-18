@@ -36,19 +36,19 @@ type (
 
 // Payloads for internal events & signals.
 type (
-	AppAuthorizationEventPayload struct {
+	AppAuthorizationEvent struct {
 		Action string `json:"action"`
 		Sender User   `json:"sender"`
 	}
 
-	InstallationEventPayload struct {
+	InstallationEvent struct {
 		Action       string              `json:"action"`
 		Installation Installation        `json:"installation"`
 		Repositories []PartialRepository `json:"repositories"`
 		Sender       User                `json:"sender"`
 	}
 
-	PushEventPayload struct {
+	PushEvent struct {
 		Ref          string         `json:"ref"`
 		Before       string         `json:"before"`
 		After        string         `json:"after"`
@@ -65,7 +65,7 @@ type (
 		Installation InstallationID `json:"installation"`
 	}
 
-	PullRequestEventPayload struct {
+	PullRequestEvent struct {
 		Action       string                `json:"action"`
 		Number       int64                 `json:"number"`
 		PullRequest  PullRequest           `json:"pull_request"`
@@ -75,7 +75,7 @@ type (
 		Sender       User                  `json:"sender"`
 	}
 
-	InstallationRepositoriesEventPayload struct {
+	InstallationRepositoriesEvent struct {
 		Action              string              `json:"action"`
 		Installation        Installation        `json:"installation"`
 		RepositorySelection string              `json:"repository_selection"`
@@ -85,7 +85,7 @@ type (
 		Sender              User                `json:"sender"`
 	}
 
-	CompleteInstallationSignalPayload struct {
+	CompleteInstallationSignal struct {
 		InstallationID int64       `json:"installation_id"`
 		SetupAction    SetupAction `json:"setup_action"`
 		TeamID         gocql.UUID  `json:"team_id"`

@@ -55,7 +55,7 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 		return err
 	}
 
-	payload := &CompleteInstallationSignalPayload{request.InstallationId, request.SetupAction, teamID}
+	payload := &CompleteInstallationSignal{request.InstallationId, request.SetupAction, teamID}
 
 	workflows := &Workflows{}
 	opts := shared.Temporal.
@@ -68,7 +68,7 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 		WorkflowSignalCompleteInstallation.String(),
 		payload,
 		opts,
-		workflows.OnInstall,
+		workflows.OnInstallationEvent,
 	)
 	if err != nil {
 		shared.Logger.Error("error", "error", err)
