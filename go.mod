@@ -28,8 +28,9 @@ require (
 
 replace github.com/Guilospanck/igocqlx v1.0.0 => github.com/debuggerpk/igocqlx v1.0.3
 
-// replace github.com/deepmap/oapi-codegen v1.12.4 => github.com/breuHQ/oapi-codegen v1.12.4-templates
-replace github.com/deepmap/oapi-codegen v1.12.4 => /Users/jay/Work/opensource/oapi-codegen
+replace github.com/deepmap/oapi-codegen v1.12.4 => github.com/breuHQ/oapi-codegen v1.12.4-gocql
+
+// replace github.com/deepmap/oapi-codegen v1.12.4 => /Users/jay/Work/opensource/oapi-codegen
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
