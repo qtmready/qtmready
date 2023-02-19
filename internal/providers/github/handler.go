@@ -75,13 +75,26 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 		return err
 	}
 
-	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunId: exe.GetID(), Status: WorkflowStatusQueued})
+	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: exe.GetID(), Status: WorkflowStatusQueued})
 }
 
 func (s *ServerHandler) GithubGetRepos(ctx echo.Context) error {
 	result := make([]entity.GithubRepo, 0)
 	if err := db.Filter(
 		&entity.GithubRepo{},
+		&result,
+		db.QueryParams{"team_id": ctx.Get("team_id").(string)},
+	); err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusOK, result)
+}
+
+func (s *ServerHandler) GithubGetInstallations(ctx echo.Context) error {
+	result := make([]entity.GithubInstallation, 0)
+	if err := db.Filter(
+		&entity.GithubInstallation{},
 		&result,
 		db.QueryParams{"team_id": ctx.Get("team_id").(string)},
 	); err != nil {

@@ -42,10 +42,10 @@ type (
 	}
 
 	InstallationEvent struct {
-		Action       string              `json:"action"`
-		Installation Installation        `json:"installation"`
-		Repositories []PartialRepository `json:"repositories"`
-		Sender       User                `json:"sender"`
+		Action       string                  `json:"action"`
+		Installation FullInstallationPayload `json:"installation"`
+		Repositories []PartialRepository     `json:"repositories"`
+		Sender       User                    `json:"sender"`
 	}
 
 	PushEvent struct {
@@ -76,13 +76,13 @@ type (
 	}
 
 	InstallationRepositoriesEvent struct {
-		Action              string              `json:"action"`
-		Installation        Installation        `json:"installation"`
-		RepositorySelection string              `json:"repository_selection"`
-		RepositoriesAdded   []PartialRepository `json:"repositories_added"`
-		RepositoriesRemoved []PartialRepository `json:"repositories_removed"`
-		Requester           *User               `json:"requester"`
-		Sender              User                `json:"sender"`
+		Action              string                  `json:"action"`
+		Installation        FullInstallationPayload `json:"installation"`
+		RepositorySelection string                  `json:"repository_selection"`
+		RepositoriesAdded   []PartialRepository     `json:"repositories_added"`
+		RepositoriesRemoved []PartialRepository     `json:"repositories_removed"`
+		Requester           *User                   `json:"requester"`
+		Sender              User                    `json:"sender"`
 	}
 
 	CompleteInstallationSignal struct {

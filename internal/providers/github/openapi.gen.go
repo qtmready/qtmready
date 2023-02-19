@@ -6,8 +6,12 @@ package github
 import (
 	"encoding/json"
 	"errors"
+	"time"
 
+	itable "github.com/Guilospanck/igocqlx/table"
+	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
+	"github.com/scylladb/gocqlx/v2/table"
 )
 
 const (
@@ -112,12 +116,70 @@ type CompleteInstallationRequest struct {
 	SetupAction    SetupAction `json:"setup_action"`
 }
 
+// Installation defines model for GithubInstallation.
+type Installation struct {
+	CreatedAt        time.Time  `cql:"created_at" json:"created_at"`
+	ID               gocql.UUID `cql:"id" json:"id"`
+	InstallationID   int64      `cql:"installation_id" json:"installation_id" validate:"required,db_unique"`
+	InstallationType string     `cql:"installation_type" json:"installation_type"`
+	SenderID         int64      `cql:"sender_id" json:"sender_id"`
+	SenderLogin      string     `cql:"sender_login" json:"sender_login"`
+	Status           string     `cql:"status" json:"status"`
+	TeamID           gocql.UUID `cql:"team_id" json:"team_id"`
+	UpdatedAt        time.Time  `cql:"updated_at" json:"updated_at"`
+}
+
+var (
+	githubinstallationColumns = []string{"created_at", "id", "installation_id", "installation_type", "sender_id", "sender_login", "status", "team_id", "updated_at"}
+
+	githubinstallationMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "github_installations",
+			Columns: githubinstallationColumns,
+		},
+	}
+
+	githubinstallationTable = itable.New(*githubinstallationMeta.M)
+)
+
+func (githubinstallation *Installation) GetTable() itable.ITable {
+	return githubinstallationTable
+}
+
+// Repo defines model for GithubRepo.
+type Repo struct {
+	CreatedAt time.Time  `cql:"created_at" json:"created_at"`
+	FullName  string     `cql:"full_name" json:"full_name"`
+	GithubID  gocql.UUID `cql:"github_id" json:"github_id"`
+	ID        gocql.UUID `cql:"id" json:"id"`
+	Name      string     `cql:"name" json:"name"`
+	TeamID    gocql.UUID `cql:"team_id" json:"team_id"`
+	UpdatedAt time.Time  `cql:"updated_at" json:"updated_at"`
+}
+
+var (
+	githubrepoColumns = []string{"created_at", "full_name", "github_id", "id", "name", "team_id", "updated_at"}
+
+	githubrepoMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "github_repos",
+			Columns: githubrepoColumns,
+		},
+	}
+
+	githubrepoTable = itable.New(*githubrepoMeta.M)
+)
+
+func (githubrepo *Repo) GetTable() itable.ITable {
+	return githubrepoTable
+}
+
 // SetupAction defines model for SetupAction.
 type SetupAction string
 
 // WorkflowResponse workflow status & run id
 type WorkflowResponse struct {
-	RunId string `json:"run_id"`
+	RunID string `json:"run_id"`
 
 	// Status the workflow status
 	Status WorkflowStatus `json:"status"`
@@ -134,6 +196,10 @@ type ServerInterface interface {
 	// Complete GitHub App installation
 	// (POST /providers/github/complete-installation)
 	GithubCompleteInstallation(ctx echo.Context) error
+
+	// Get GitHub installations
+	// (GET /providers/github/installations)
+	GithubGetInstallations(ctx echo.Context) error
 
 	// Get GitHub repositories
 	// (GET /providers/github/repos)
@@ -163,6 +229,23 @@ func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) er
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubCompleteInstallation
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
+}
+
+// GithubGetInstallations converts echo context to params.
+
+func (w *ServerInterfaceWrapper) GithubGetInstallations(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	ctx.Set(APIKeyAuthScopes, []string{""})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.GithubGetInstallations
 	secure := w.Handler.SecureHandler
 	err = secure(handler, ctx)
 
@@ -226,6 +309,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.POST(baseURL+"/providers/github/complete-installation", wrapper.GithubCompleteInstallation)
+	router.GET(baseURL+"/providers/github/installations", wrapper.GithubGetInstallations)
 	router.GET(baseURL+"/providers/github/repos", wrapper.GithubGetRepos)
 	router.POST(baseURL+"/providers/github/webhook", wrapper.GithubWebhook)
 

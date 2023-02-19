@@ -263,7 +263,7 @@ type (
 		DueOn        time.Time `json:"due_on"`
 	}
 
-	Installation struct {
+	FullInstallationPayload struct {
 		ID                  int64       `json:"id"`
 		NodeID              string      `json:"node_id"`
 		Account             User        `json:"account"`
