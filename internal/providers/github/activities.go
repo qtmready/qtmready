@@ -108,6 +108,7 @@ func (a *Activities) GetInstallation(ctx context.Context, id int64) (*entity.Git
 	return installation, nil
 }
 
+// GetRepo gets entity.Repo against given entity.GithubRepo.
 func (a *Activities) GetRepo(ctx context.Context, repo *entity.GithubRepo) (*entity.Repo, error) {
 	r := &entity.Repo{}
 

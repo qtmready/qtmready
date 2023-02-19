@@ -33,10 +33,15 @@ type (
 	// Workflows is the entry point for all workflows for GitHub.
 	Workflows struct{}
 
-	// InstallationWorkflowStatus is the status of the installation workflow.
+	// InstallationWorkflowStatus handles the status of the workflow Workflows.OnInstallationEvent.
 	InstallationWorkflowStatus struct {
 		WebhookDone bool
 		RequestDone bool
+	}
+
+	// PullRequestWorkflowStatus handles the status of the workflow Workflows.OnPullRequestEvent.
+	PullRequestWorkflowStatus struct {
+		Complete bool
 	}
 
 	FutureHandler  func(workflow.Future)               // FutureHandler is the signature of the future handler function.
@@ -47,10 +52,10 @@ type (
 //
 // In an ideal world, the complete installation request would hit the API after the installation event has hit the
 // webhook, however, there can be number of things that can go wrong, and we can receive the complete installation
-// request before the push event. To handle this, we use temporal's signal API to provide two possible entry points
+// request before the push event. To handle this, we use temporal.io's signal API to provide two possible entry points
 // for the system. See the README.md for a detailed explanation on how this workflow works.
 //
-// NOTE: This workflow is only meant to be started with `SignalWithStartWorkflow`.
+// NOTE: This workflow is only meant to be started with SignalWithStartWorkflow.
 func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 	// prelude
 	logger := workflow.GetLogger(ctx)
@@ -64,8 +69,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 	requestChannel := workflow.GetSignalChannel(ctx, WorkflowSignalCompleteInstallation.String())
 
 	// setting up callbacks for the channels
-	selector.AddReceive(webhookChannel, w.onInstallationWebhookChannel(ctx, webhook, status))
-	selector.AddReceive(requestChannel, w.onRequestChannel(ctx, request, status))
+	selector.AddReceive(webhookChannel, onInstallationWebhookSignal(ctx, webhook, status))
+	selector.AddReceive(requestChannel, onRequestSignal(ctx, request, status))
 
 	// keep listening for signals until we have received both the installation id and the team id
 	for !(status.WebhookDone && status.RequestDone) {
@@ -87,10 +92,10 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 	}
 
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
+	act := workflow.WithActivityOptions(ctx, activityOpts)
 	err := workflow.
-		ExecuteActivity(actx, activities.CreateOrUpdateInstallation, installation).
-		Get(actx, installation)
+		ExecuteActivity(act, activities.CreateOrUpdateInstallation, installation).
+		Get(act, installation)
 
 	if err != nil {
 		logger.Error("error saving installation", "error", err)
@@ -114,8 +119,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 				TeamID:         installation.TeamID,
 			}
 
-			future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateGithubRepo, repo)
-			selector.AddFuture(future, w.onCreateOrUpdateRepoActivityFuture(ctx, repo))
+			future := workflow.ExecuteActivity(act, activities.CreateOrUpdateGithubRepo, repo)
+			selector.AddFuture(future, onCreateOrUpdateRepoActivityFuture(ctx, repo))
 		}
 
 		// wait for all repositories to be saved.
@@ -152,7 +157,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 // After the creation of the idempotency key, we pass the idempotency key as a signal to the Aperture Workflow.
 func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullRequestEvent) error {
 	logger := workflow.GetLogger(ctx)
-	complete := false
+	status := &PullRequestWorkflowStatus{Complete: false}
 	pr := &PullRequestEvent{}
 	selector := workflow.NewSelector(ctx)
 
@@ -160,12 +165,12 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	prChannel := workflow.GetSignalChannel(ctx, WorkflowSignalPullRequest.String())
 
 	// signal processor
-	selector.AddReceive(prChannel, w.onPRChannel(ctx, pr, complete))
+	selector.AddReceive(prChannel, onPRSignal(ctx, pr, status))
 
 	logger.Info("PR created: scheduling new aperture at the application level.")
 
 	// keep listening to signals until complete = true
-	for !complete {
+	for !status.Complete {
 		selector.Select(ctx)
 	}
 
@@ -181,9 +186,9 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 
 	installation := &entity.GithubInstallation{}
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
+	act := workflow.WithActivityOptions(ctx, activityOpts)
 	err := workflow.
-		ExecuteActivity(actx, activities.GetInstallation, payload.Installation.ID).
+		ExecuteActivity(act, activities.GetInstallation, payload.Installation.ID).
 		Get(ctx, installation)
 
 	if err != nil {
@@ -203,8 +208,8 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 			TeamID:         installation.TeamID,
 		}
 
-		future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateGithubRepo, repo)
-		selector.AddFuture(future, w.onCreateOrUpdateRepoActivityFuture(ctx, repo))
+		future := workflow.ExecuteActivity(act, activities.CreateOrUpdateGithubRepo, repo)
+		selector.AddFuture(future, onCreateOrUpdateRepoActivityFuture(ctx, repo))
 	}
 
 	// wait for all the repositories to be saved.
@@ -215,14 +220,14 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 	return nil
 }
 
-// onCreateOrUpdateRepoActivityFuture is used to do post processing after the repository is saved.
-func (w *Workflows) onCreateOrUpdateRepoActivityFuture(ctx workflow.Context, payload *entity.GithubRepo) FutureHandler {
+// onCreateOrUpdateRepoActivityFuture handles post-processing after a repository is saved against an installation.
+func onCreateOrUpdateRepoActivityFuture(ctx workflow.Context, payload *entity.GithubRepo) FutureHandler {
 	logger := workflow.GetLogger(ctx)
 	return func(f workflow.Future) { logger.Info("repository saved ...", "repo", payload.GithubID) }
 }
 
-// onInstallationWebhookChannel is used to process incoming webhook events on an open installation workflow.
-func (w *Workflows) onInstallationWebhookChannel(ctx workflow.Context, installation *InstallationEvent, status *InstallationWorkflowStatus) ChannelHandler {
+// onInstallationWebhookSignal handles webhook events for installation that is in progress.
+func onInstallationWebhookSignal(ctx workflow.Context, installation *InstallationEvent, status *InstallationWorkflowStatus) ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
@@ -242,8 +247,8 @@ func (w *Workflows) onInstallationWebhookChannel(ctx workflow.Context, installat
 	}
 }
 
-// onRequestChannel is used to process incoming complete installation requests on an open installation workflow.
-func (w *Workflows) onRequestChannel(ctx workflow.Context, installation *CompleteInstallationSignal, status *InstallationWorkflowStatus) ChannelHandler {
+// onRequestSignal handles new http requests on an installation in progress.
+func onRequestSignal(ctx workflow.Context, installation *CompleteInstallationSignal, status *InstallationWorkflowStatus) ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
@@ -254,8 +259,8 @@ func (w *Workflows) onRequestChannel(ctx workflow.Context, installation *Complet
 	}
 }
 
-// onPRChannel is used to process incoming pull request events on an open PR.
-func (w *Workflows) onPRChannel(ctx workflow.Context, pr *PullRequestEvent, complete bool) ChannelHandler {
+// onPRSignal handles incoming signals on open PR.
+func onPRSignal(ctx workflow.Context, pr *PullRequestEvent, status *PullRequestWorkflowStatus) ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
@@ -266,14 +271,14 @@ func (w *Workflows) onPRChannel(ctx workflow.Context, pr *PullRequestEvent, comp
 			logger.Info("PR closed: scheduling aperture to be abandoned.", "action", pr.Action)
 
 			if pr.PullRequest.Merged {
-				logger.Info("PR merged: scheduling aperture to finish with conculsion.")
+				logger.Info("PR merged: scheduling aperture to finish with conclusion.")
 
 				// TODO: send the signal to the aperture workflow to finish with conclusion.
-				complete = true
+				status.Complete = true
 			} else {
 				logger.Info("PR closed: abort aperture.")
 
-				complete = true
+				status.Complete = true
 			}
 		case "synchronize":
 			logger.Info("PR updated: checking the status of the environment ...", "action", pr.Action)
