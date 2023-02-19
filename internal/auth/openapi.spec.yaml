@@ -228,7 +228,7 @@ components:
         user:
           $ref: '../entity/openapi.spec.yaml#/components/schemas/User'
         team:
-          $ref: '../entity/openapi.spec.yaml#/components/schemas/Team'
+          $ref: '#/components/schemas/Team'
 
     LoginRequest:
       type: object
@@ -268,3 +268,34 @@ components:
       properties:
         message:
           type: string
+    
+    Team:
+      type: object
+      x-breu-entity: team
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+          x-go-type-import:
+            path: github.com/gocql/gocql
+          x-oapi-codegen-extra-tags:
+            validate: required
+        name:
+          type: string
+        slug:
+          type: string
+          format: slug
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - slug
+        - created_at
+        - updated_at

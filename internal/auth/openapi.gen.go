@@ -4,7 +4,10 @@
 package auth
 
 import (
+	"time"
+
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
+	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	externalRef0 "go.breu.io/ctrlplane/internal/entity"
 )
@@ -42,8 +45,17 @@ type RegisterationRequest struct {
 
 // RegisterationResponse defines model for RegisterationResponse.
 type RegisterationResponse struct {
-	Team *externalRef0.Team `json:"team,omitempty"`
+	Team *Team              `json:"team,omitempty"`
 	User *externalRef0.User `json:"user,omitempty"`
+}
+
+// Team defines model for Team.
+type Team struct {
+	CreatedAt time.Time  `cql:"created_at" json:"created_at"`
+	ID        gocql.UUID `cql:"id" json:"id" validate:"required"`
+	Name      string     `cql:"name" json:"name"`
+	Slug      string     `cql:"slug" json:"slug"`
+	UpdatedAt time.Time  `cql:"updated_at" json:"updated_at"`
 }
 
 // TokenResponse defines model for TokenResponse.
