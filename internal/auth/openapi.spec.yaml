@@ -226,7 +226,7 @@ components:
       type: object
       properties:
         user:
-          $ref: '../entity/openapi.spec.yaml#/components/schemas/User'
+          $ref: '#/components/schemas/User'
         team:
           $ref: '#/components/schemas/Team'
 
@@ -271,19 +271,17 @@ components:
 
     Team:
       type: object
-      x-breu-entity: team
+      x-breu-entity: teams
       properties:
         id:
           type: string
           format: uuid
           x-go-name: ID
           x-go-type: gocql.UUID
-          x-go-type-import:
-            path: github.com/gocql/gocql
-          x-oapi-codegen-extra-tags:
-            validate: required
         name:
           type: string
+          x-oapi-codegen-extra-tags:
+            validate: required
         slug:
           type: string
           format: slug
@@ -297,5 +295,51 @@ components:
         - id
         - name
         - slug
+        - created_at
+        - updated_at
+
+    User:
+      type: object
+      x-breu-entity: users
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+        team_id:
+          type: string
+          format: uuid
+          x-go-name: TeamID
+          x-go-type: gocql.UUID
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        first_name:
+          type: string
+        last_name:
+          type: string
+        is_verified:
+          type: boolean
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - team_id
+        - email
+        - password
+        - first_name
+        - last_name
+        - is_verified
+        - is_active
         - created_at
         - updated_at

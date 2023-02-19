@@ -1,4 +1,23 @@
 {{range .Types}}
 {{ if .Schema.Description }}{{ toGoComment .Schema.Description .TypeName  }}{{ else }}// {{.TypeName}} defines model for {{.JsonName}}.{{ end }}
 type {{.TypeName}} {{if .IsAlias }}={{end}} {{.Schema.TypeDecl}}
+
+{{ if ne .Schema.BreuEntity "" }}
+var (
+{{.JsonName | lower}}Columns = []string{ {{ range $idx, $prop := .Schema.Properties }}"{{$prop.JsonFieldName}}",{{end}} }
+
+{{.JsonName | lower}}Meta = itable.Metadata{
+  M: &table.Metadata{
+    Name: {{.Schema.BreuEntity}},
+    Columns: {{.JsonName | lower}}Columns,
+  },
+}
+
+{{.JsonName | lower}}Table = itable.New(*{{.JsonName | lower}}Meta.M)
+)
+
+func ({{.JsonName | lower}} *{{.TypeName}}) GetTable() itable.ITable {
+  return {{.JsonName | lower}}Table
+}
+{{end}}
 {{end}}

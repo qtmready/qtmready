@@ -71,15 +71,15 @@ func (s *ServerHandler) Register(ctx echo.Context) error {
 	}
 
 	// Validating team
-	team := &entity.Team{Name: request.TeamName}
+	team := &Team{Name: request.TeamName}
 	if err := ctx.Validate(team); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	user := &entity.User{
+	user := &User{
 		FirstName: request.FirstName,
 		LastName:  request.LastName,
-		Email:     string(request.Email),
+		Email:     request.Email,
 		Password:  request.Password,
 	}
 	if err := ctx.Validate(user); err != nil {

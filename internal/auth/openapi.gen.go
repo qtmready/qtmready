@@ -6,10 +6,11 @@ package auth
 import (
 	"time"
 
+	itable "github.com/Guilospanck/igocqlx/table"
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
-	externalRef0 "go.breu.io/ctrlplane/internal/entity"
+	"github.com/scylladb/gocqlx/v2/table"
 )
 
 const (
@@ -45,23 +46,71 @@ type RegisterationRequest struct {
 
 // RegisterationResponse defines model for RegisterationResponse.
 type RegisterationResponse struct {
-	Team *Team              `json:"team,omitempty"`
-	User *externalRef0.User `json:"user,omitempty"`
+	Team *Team `json:"team,omitempty"`
+	User *User `json:"user,omitempty"`
 }
 
 // Team defines model for Team.
 type Team struct {
 	CreatedAt time.Time  `cql:"created_at" json:"created_at"`
-	ID        gocql.UUID `cql:"id" json:"id" validate:"required"`
-	Name      string     `cql:"name" json:"name"`
+	ID        gocql.UUID `cql:"id" json:"id"`
+	Name      string     `cql:"name" json:"name" validate:"required"`
 	Slug      string     `cql:"slug" json:"slug"`
 	UpdatedAt time.Time  `cql:"updated_at" json:"updated_at"`
+}
+
+var (
+	teamColumns = []string{"created_at", "id", "name", "slug", "updated_at"}
+
+	teamMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "teams",
+			Columns: teamColumns,
+		},
+	}
+
+	teamTable = itable.New(*teamMeta.M)
+)
+
+func (team *Team) GetTable() itable.ITable {
+	return teamTable
 }
 
 // TokenResponse defines model for TokenResponse.
 type TokenResponse struct {
 	AccessToken  *string `json:"access_token,omitempty"`
 	RefreshToken *string `json:"refresh_token,omitempty"`
+}
+
+// User defines model for User.
+type User struct {
+	CreatedAt  time.Time           `cql:"created_at" json:"created_at"`
+	Email      openapi_types.Email `cql:"email" json:"email"`
+	FirstName  string              `cql:"first_name" json:"first_name"`
+	ID         gocql.UUID          `cql:"id" json:"id"`
+	IsActive   bool                `cql:"is_active" json:"is_active"`
+	IsVerified bool                `cql:"is_verified" json:"is_verified"`
+	LastName   string              `cql:"last_name" json:"last_name"`
+	Password   string              `cql:"password" json:"password"`
+	TeamID     gocql.UUID          `cql:"team_id" json:"team_id"`
+	UpdatedAt  time.Time           `cql:"updated_at" json:"updated_at"`
+}
+
+var (
+	userColumns = []string{"created_at", "email", "first_name", "id", "is_active", "is_verified", "last_name", "password", "team_id", "updated_at"}
+
+	userMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "users",
+			Columns: userColumns,
+		},
+	}
+
+	userTable = itable.New(*userMeta.M)
+)
+
+func (user *User) GetTable() itable.ITable {
+	return userTable
 }
 
 // ValidateAPIKeyResponse defines model for ValidateAPIKeyResponse.
