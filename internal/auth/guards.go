@@ -15,7 +15,7 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package entity
+package auth
 
 import (
 	"crypto/rand"
@@ -34,8 +34,7 @@ import (
 )
 
 var (
-	ErrMalformedAPIKey = errors.New("malformed API key")
-	ErrInvalidAPIKey   = errors.New("invalid api key")
+	ErrInvalidAPIKey = errors.New("invalid api key")
 )
 
 var (

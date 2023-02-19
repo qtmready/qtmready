@@ -24,7 +24,6 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/entity"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -112,7 +111,7 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 	}
 
 	params := db.QueryParams{"email": "'" + string(request.Email) + "'"}
-	user := &entity.User{}
+	user := &User{}
 
 	if err := db.Get(user, params); err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, "user not found")
@@ -141,7 +140,7 @@ func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
 	}
 
 	id, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
-	guard := &entity.Guard{}
+	guard := &Guard{}
 	key := guard.NewForTeam(id)
 
 	if err := guard.Save(); err != nil {
@@ -165,7 +164,7 @@ func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 	}
 
 	id, _ := gocql.ParseUUID(ctx.Get("user_id").(string))
-	guard := &entity.Guard{}
+	guard := &Guard{}
 	key := guard.NewForUser(*request.Name, id)
 
 	if err := guard.Save(); err != nil {

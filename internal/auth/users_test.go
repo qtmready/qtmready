@@ -15,38 +15,50 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package entity_test
+package auth_test
 
 import (
 	"testing"
 
-	"github.com/gosimple/slug"
-
-	"go.breu.io/ctrlplane/internal/entity"
+	"go.breu.io/ctrlplane/internal/auth"
+	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
-func TestTeam(t *testing.T) {
-	team := &entity.Team{
-		Name: "Team Name",
-	}
-	_ = team.PreCreate()
+var (
+	password string
+)
+
+func TestUser(t *testing.T) {
+	password = "password"
+	user := &auth.User{Password: password}
+	_ = user.PreCreate()
 
 	opsTests := shared.TestFnMap{
-		"Slug": shared.TestFn{Args: team, Want: nil, Run: testTeamSlug},
+		"SetPassword":    shared.TestFn{Args: user, Want: nil, Run: testUserSetPassword},
+		"VerifyPassword": shared.TestFn{Args: user, Want: nil, Run: testUserVerifyPassword},
 	}
 
-	t.Run("GetTable", testEntityGetTable("teams", team))
-	t.Run("EntityOps", testEntityOps(team, opsTests))
+	t.Run("GetTable", db.TestEntityGetTable("users", user))
+	t.Run("EntityOps", db.TestEntityOps(user, opsTests))
 }
 
-func testTeamSlug(args interface{}, want interface{}) func(*testing.T) {
-	team := args.(*entity.Team)
-	sluglen := len(slug.Make(team.Name)) + 1 + 22
+func testUserSetPassword(args interface{}, want interface{}) func(*testing.T) {
+	user := args.(*auth.User)
 
 	return func(t *testing.T) {
-		if len(team.Slug) != sluglen {
-			t.Errorf("slug length is not correct, got: %d, want: %d", len(team.Slug), sluglen)
+		if user.Password == "password" {
+			t.Errorf("expected password to be encrypted")
+		}
+	}
+}
+
+func testUserVerifyPassword(args interface{}, want interface{}) func(*testing.T) {
+	v := args.(*auth.User)
+
+	return func(t *testing.T) {
+		if !v.VerifyPassword(password) {
+			t.Errorf("expected password to be verified")
 		}
 	}
 }
