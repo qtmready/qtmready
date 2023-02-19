@@ -268,7 +268,7 @@ components:
       properties:
         message:
           type: string
-    
+
     Team:
       type: object
       x-breu-entity: team
