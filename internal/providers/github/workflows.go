@@ -21,8 +21,6 @@ import (
 	"time"
 
 	"go.temporal.io/sdk/workflow"
-
-	"go.breu.io/ctrlplane/internal/entity"
 )
 
 var (
@@ -81,7 +79,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 	logger.Info("all signals received, processing ...")
 
 	// Finalizing the installation
-	installation := &entity.GithubInstallation{
+	installation := &Installation{
 		TeamID:            request.TeamID,
 		InstallationID:    webhook.Installation.ID,
 		InstallationLogin: webhook.Installation.Account.Login,
@@ -111,7 +109,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 			logger.Info("saving repository ...")
 			logger.Debug("repository", "repository", repository)
 
-			repo := &entity.GithubRepo{
+			repo := &Repo{
 				GithubID:       repository.ID,
 				InstallationID: installation.InstallationID,
 				Name:           repository.Name,
@@ -184,7 +182,7 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 
 	logger.Info("received installation repositories event ...")
 
-	installation := &entity.GithubInstallation{}
+	installation := &Installation{}
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	act := workflow.WithActivityOptions(ctx, activityOpts)
 	err := workflow.
@@ -200,7 +198,7 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 		logger.Info("saving repository ...")
 		logger.Debug("repository", "repository", repository)
 
-		repo := &entity.GithubRepo{
+		repo := &Repo{
 			GithubID:       repository.ID,
 			InstallationID: installation.InstallationID,
 			Name:           repository.Name,
@@ -221,7 +219,7 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 }
 
 // onCreateOrUpdateRepoActivityFuture handles post-processing after a repository is saved against an installation.
-func onCreateOrUpdateRepoActivityFuture(ctx workflow.Context, payload *entity.GithubRepo) FutureHandler {
+func onCreateOrUpdateRepoActivityFuture(ctx workflow.Context, payload *Repo) FutureHandler {
 	logger := workflow.GetLogger(ctx)
 	return func(f workflow.Future) { logger.Info("repository saved ...", "repo", payload.GithubID) }
 }

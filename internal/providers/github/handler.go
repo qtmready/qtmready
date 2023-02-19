@@ -28,7 +28,6 @@ import (
 
 	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/entity"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -79,9 +78,9 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 }
 
 func (s *ServerHandler) GithubGetRepos(ctx echo.Context) error {
-	result := make([]entity.GithubRepo, 0)
+	result := make([]Repo, 0)
 	if err := db.Filter(
-		&entity.GithubRepo{},
+		&Repo{},
 		&result,
 		db.QueryParams{"team_id": ctx.Get("team_id").(string)},
 	); err != nil {
@@ -92,9 +91,9 @@ func (s *ServerHandler) GithubGetRepos(ctx echo.Context) error {
 }
 
 func (s *ServerHandler) GithubGetInstallations(ctx echo.Context) error {
-	result := make([]entity.GithubInstallation, 0)
+	result := make([]Installation, 0)
 	if err := db.Filter(
-		&entity.GithubInstallation{},
+		&Installation{},
 		&result,
 		db.QueryParams{"team_id": ctx.Get("team_id").(string)},
 	); err != nil {

@@ -160,15 +160,18 @@ components:
           x-go-name: ID
           x-go-type: gocql.UUID
         github_id:
-          type: string
-          format: uuid
+          type: integer
+          format: int64
           x-go-name: GithubID
-          x-go-type: gocql.UUID
         team_id:
           type: string
           format: uuid
           x-go-name: TeamID
           x-go-type: gocql.UUID
+        installation_id:
+          type: integer
+          format: int64
+          x-go-name: InstallationID
         name:
           type: string
         full_name:
@@ -183,6 +186,7 @@ components:
         - id
         - github_id
         - team_id
+        - installation_id
         - name
         - full_name
         - created_at
@@ -209,6 +213,8 @@ components:
           x-go-name: InstallationID
           x-oapi-codegen-extra-tags:
             validate: required,db_unique
+        installation_login:
+          type: string
         installation_type:
           type: string
         sender_id:
@@ -229,6 +235,7 @@ components:
         - id
         - team_id
         - installation_id
+        - installation_login
         - installation_type
         - sender_id
         - sender_login

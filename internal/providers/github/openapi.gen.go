@@ -118,19 +118,20 @@ type CompleteInstallationRequest struct {
 
 // Installation defines model for GithubInstallation.
 type Installation struct {
-	CreatedAt        time.Time  `cql:"created_at" json:"created_at"`
-	ID               gocql.UUID `cql:"id" json:"id"`
-	InstallationID   int64      `cql:"installation_id" json:"installation_id" validate:"required,db_unique"`
-	InstallationType string     `cql:"installation_type" json:"installation_type"`
-	SenderID         int64      `cql:"sender_id" json:"sender_id"`
-	SenderLogin      string     `cql:"sender_login" json:"sender_login"`
-	Status           string     `cql:"status" json:"status"`
-	TeamID           gocql.UUID `cql:"team_id" json:"team_id"`
-	UpdatedAt        time.Time  `cql:"updated_at" json:"updated_at"`
+	CreatedAt         time.Time  `cql:"created_at" json:"created_at"`
+	ID                gocql.UUID `cql:"id" json:"id"`
+	InstallationID    int64      `cql:"installation_id" json:"installation_id" validate:"required,db_unique"`
+	InstallationLogin string     `cql:"installation_login" json:"installation_login"`
+	InstallationType  string     `cql:"installation_type" json:"installation_type"`
+	SenderID          int64      `cql:"sender_id" json:"sender_id"`
+	SenderLogin       string     `cql:"sender_login" json:"sender_login"`
+	Status            string     `cql:"status" json:"status"`
+	TeamID            gocql.UUID `cql:"team_id" json:"team_id"`
+	UpdatedAt         time.Time  `cql:"updated_at" json:"updated_at"`
 }
 
 var (
-	githubinstallationColumns = []string{"created_at", "id", "installation_id", "installation_type", "sender_id", "sender_login", "status", "team_id", "updated_at"}
+	githubinstallationColumns = []string{"created_at", "id", "installation_id", "installation_login", "installation_type", "sender_id", "sender_login", "status", "team_id", "updated_at"}
 
 	githubinstallationMeta = itable.Metadata{
 		M: &table.Metadata{
@@ -148,17 +149,18 @@ func (githubinstallation *Installation) GetTable() itable.ITable {
 
 // Repo defines model for GithubRepo.
 type Repo struct {
-	CreatedAt time.Time  `cql:"created_at" json:"created_at"`
-	FullName  string     `cql:"full_name" json:"full_name"`
-	GithubID  gocql.UUID `cql:"github_id" json:"github_id"`
-	ID        gocql.UUID `cql:"id" json:"id"`
-	Name      string     `cql:"name" json:"name"`
-	TeamID    gocql.UUID `cql:"team_id" json:"team_id"`
-	UpdatedAt time.Time  `cql:"updated_at" json:"updated_at"`
+	CreatedAt      time.Time  `cql:"created_at" json:"created_at"`
+	FullName       string     `cql:"full_name" json:"full_name"`
+	GithubID       int64      `cql:"github_id" json:"github_id"`
+	ID             gocql.UUID `cql:"id" json:"id"`
+	InstallationID int64      `cql:"installation_id" json:"installation_id"`
+	Name           string     `cql:"name" json:"name"`
+	TeamID         gocql.UUID `cql:"team_id" json:"team_id"`
+	UpdatedAt      time.Time  `cql:"updated_at" json:"updated_at"`
 }
 
 var (
-	githubrepoColumns = []string{"created_at", "full_name", "github_id", "id", "name", "team_id", "updated_at"}
+	githubrepoColumns = []string{"created_at", "full_name", "github_id", "id", "installation_id", "name", "team_id", "updated_at"}
 
 	githubrepoMeta = itable.Metadata{
 		M: &table.Metadata{

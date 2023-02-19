@@ -32,20 +32,21 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package entity_test
+package github_test
 
 import (
 	"testing"
 
-	"go.breu.io/ctrlplane/internal/entity"
+	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/ctrlplane/internal/providers/github"
 )
 
 func TestGithubInstallation(t *testing.T) {
-	gi := &entity.GithubInstallation{}
-	t.Run("GetTable", testEntityGetTable("github_installations", gi))
+	gi := &github.Installation{}
+	t.Run("GetTable", db.TestEntityGetTable("github_installations", gi))
 }
 
 func TestGithubRepo(t *testing.T) {
-	gi := &entity.GithubRepo{}
-	t.Run("GetTable", testEntityGetTable("github_repos", gi))
+	gi := &github.Repo{}
+	t.Run("GetTable", db.TestEntityGetTable("github_repos", gi))
 }
