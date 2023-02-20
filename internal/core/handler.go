@@ -8,7 +8,6 @@ import (
 
 	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/entity"
 )
 
 type (
@@ -31,20 +30,20 @@ func (s *ServerHandler) CreateStack(ctx echo.Context) error {
 	}
 
 	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
-	app := &entity.Stack{Name: request.Name, TeamID: teamID}
+	stack := &Stack{Name: request.Name, TeamID: teamID}
 
-	if err := db.Save(app); err != nil {
+	if err := db.Save(stack); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
-	return ctx.JSON(http.StatusCreated, app)
+	return ctx.JSON(http.StatusCreated, stack)
 }
 
 func (s *ServerHandler) ListStacks(ctx echo.Context) error {
-	stacks := make([]entity.Stack, 0)
+	stacks := make([]Stack, 0)
 	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
 
-	if err := db.Filter(&entity.Stack{}, &stacks, params); err != nil {
+	if err := db.Filter(&Stack{}, &stacks, params); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
@@ -52,7 +51,7 @@ func (s *ServerHandler) ListStacks(ctx echo.Context) error {
 }
 
 func (s *ServerHandler) GetStack(ctx echo.Context) error {
-	stack := &entity.Stack{}
+	stack := &Stack{}
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
 
 	if err := db.Get(stack, params); err != nil {
@@ -68,27 +67,26 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 		return err
 	}
 
-	stackID, _ := gocql.ParseUUID(request.StackId.String())
-	app := &entity.Repo{
-		StackID:       stackID,
-		ProviderID:    request.ProviderId,
+	stack := &Repo{
+		StackID:       request.StackID,
+		ProviderID:    request.ProviderID,
 		DefaultBranch: request.DefaultBranch,
 		IsMonorepo:    request.IsMonorepo,
 		Provider:      request.Provider,
 	}
 
-	if err := db.Save(app); err != nil {
+	if err := db.Save(stack); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
-	return ctx.JSON(http.StatusCreated, app)
+	return ctx.JSON(http.StatusCreated, stack)
 }
 
 func (s *ServerHandler) ListRepos(ctx echo.Context) error {
-	repos := make([]entity.Repo, 0)
+	repos := make([]Repo, 0)
 	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
 
-	if err := db.Filter(&entity.Repo{}, &repos, params); err != nil {
+	if err := db.Filter(&Repo{}, &repos, params); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
@@ -96,7 +94,7 @@ func (s *ServerHandler) ListRepos(ctx echo.Context) error {
 }
 
 func (s *ServerHandler) GetRepo(ctx echo.Context) error {
-	repo := &entity.Repo{}
+	repo := &Repo{}
 	params := db.QueryParams{"id": "'" + ctx.Param("id") + "'", "team_id": ctx.Get("team_id").(string)}
 
 	if err := db.Get(repo, params); err != nil {
