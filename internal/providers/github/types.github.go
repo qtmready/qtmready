@@ -41,8 +41,8 @@ type (
 		Message   string      `json:"message"`
 		Timestamp string      `json:"timestamp"`
 		URL       string      `json:"url"`
-		Author    PartialUser `json:"author"`
-		Committer PartialUser `json:"committer"`
+		Author    UserPartial `json:"author"`
+		Committer UserPartial `json:"committer"`
 		Added     []string    `json:"added"`
 		Removed   []string    `json:"removed"`
 		Modified  []string    `json:"modified"`
@@ -56,14 +56,14 @@ type (
 		Message   string      `json:"message"`
 		Timestamp string      `json:"timestamp"`
 		URL       string      `json:"url"`
-		Author    PartialUser `json:"author"`
-		Committer PartialUser `json:"committer"`
+		Author    UserPartial `json:"author"`
+		Committer UserPartial `json:"committer"`
 		Added     []string    `json:"added"`
 		Removed   []string    `json:"removed"`
 		Modified  []string    `json:"modified"`
 	}
 
-	PartialUser struct {
+	UserPartial struct {
 		Name     string `json:"name"`
 		Email    string `json:"email"`
 		Username string `json:"username"`
@@ -142,7 +142,7 @@ type (
 		MasterBranch     string    `json:"master_branch"`
 	}
 
-	PullRequestRepository struct {
+	RepositoryPR struct {
 		ID               int64     `json:"id"`
 		NodeID           string    `json:"node_id"`
 		Name             string    `json:"name"`
@@ -236,15 +236,15 @@ type (
 		SiteAdmin         bool   `json:"site_admin"`
 	}
 
-	Permissions struct {
+	Permission struct {
 		Issues             string `json:"issues"`
 		Metadata           string `json:"metadata"`
 		PullRequests       string `json:"pull_requests"`
 		RepositoryProjects string `json:"repository_projects"`
 	}
 
-	// Milestone contains GitHub's milestone information.
-	Milestone struct {
+	// MileStone contains GitHub's milestone information.
+	MileStone struct {
 		URL          string    `json:"url"`
 		HTMLUrl      string    `json:"html_url"`
 		LabelsURL    string    `json:"labels_url"`
@@ -263,22 +263,22 @@ type (
 		DueOn        time.Time `json:"due_on"`
 	}
 
-	FullInstallationPayload struct {
-		ID                  int64       `json:"id"`
-		NodeID              string      `json:"node_id"`
-		Account             User        `json:"account"`
-		RepositorySelection string      `json:"repository_selection"`
-		AccessTokensURL     string      `json:"access_tokens_url"`
-		RepositoriesURL     string      `json:"repositories_url"`
-		HTMLUrl             string      `json:"html_url"`
-		AppID               int         `json:"app_id"`
-		TargetID            int         `json:"target_id"`
-		TargetType          string      `json:"target_type"`
-		Permissions         Permissions `json:"permissions"`
-		Events              []string    `json:"events"`
-		CreatedAt           time.Time   `json:"created_at"`
-		UpdatedAt           time.Time   `json:"updated_at"`
-		SingleFileName      *string     `json:"single_file_name"`
+	InstallationPayload struct {
+		ID                  int64      `json:"id"`
+		NodeID              string     `json:"node_id"`
+		Account             User       `json:"account"`
+		RepositorySelection string     `json:"repository_selection"`
+		AccessTokensURL     string     `json:"access_tokens_url"`
+		RepositoriesURL     string     `json:"repositories_url"`
+		HTMLUrl             string     `json:"html_url"`
+		AppID               int        `json:"app_id"`
+		TargetID            int        `json:"target_id"`
+		TargetType          string     `json:"target_type"`
+		Permissions         Permission `json:"permissions"`
+		Events              []string   `json:"events"`
+		CreatedAt           time.Time  `json:"created_at"`
+		UpdatedAt           time.Time  `json:"updated_at"`
+		SingleFileName      *string    `json:"single_file_name"`
 	}
 
 	PartialRepository struct {
@@ -289,20 +289,12 @@ type (
 		Private  bool   `json:"private"`
 	}
 
-	PullRequestHead struct {
-		Label string                `json:"label"`
-		Ref   string                `json:"ref"`
-		SHA   string                `json:"sha"`
-		User  User                  `json:"user"`
-		Repo  PullRequestRepository `json:"repo"`
-	}
-
-	PullRequestBase struct {
-		Label string                `json:"label"`
-		Ref   string                `json:"ref"`
-		SHA   string                `json:"sha"`
-		User  User                  `json:"user"`
-		Repo  PullRequestRepository `json:"repo"`
+	PullRequestRef struct {
+		Label string       `json:"label"`
+		Ref   string       `json:"ref"`
+		SHA   string       `json:"sha"`
+		User  User         `json:"user"`
+		Repo  RepositoryPR `json:"repo"`
 	}
 
 	Href struct {
@@ -341,7 +333,7 @@ type (
 		MergeCommitSha     *string          `json:"merge_commit_sha"`
 		Assignee           *User            `json:"assignee"`
 		Assignees          []*User          `json:"assignees"`
-		Milestone          *Milestone       `json:"milestone"`
+		Milestone          *MileStone       `json:"milestone"`
 		Draft              bool             `json:"draft"`
 		CommitsURL         string           `json:"commits_url"`
 		ReviewCommentsURL  string           `json:"review_comments_url"`
@@ -350,8 +342,8 @@ type (
 		StatusesURL        string           `json:"statuses_url"`
 		RequestedReviewers []User           `json:"requested_reviewers,omitempty"`
 		Labels             []Label          `json:"labels"`
-		Head               PullRequestHead  `json:"head"`
-		Base               PullRequestBase  `json:"base"`
+		Head               PullRequestRef   `json:"head"`
+		Base               PullRequestRef   `json:"base"`
 		Links              PullRequestLinks `json:"_links"`
 		Merged             bool             `json:"merged"`
 		Mergeable          *bool            `json:"mergeable"`

@@ -19,7 +19,6 @@ package auth
 
 import (
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -31,10 +30,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"go.breu.io/ctrlplane/internal/db"
-)
-
-var (
-	ErrInvalidAPIKey = errors.New("invalid api key")
 )
 
 var (

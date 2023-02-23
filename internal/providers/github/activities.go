@@ -23,8 +23,8 @@ import (
 
 	"go.temporal.io/sdk/activity"
 
+	"go.breu.io/ctrlplane/internal/core"
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/entity"
 )
 
 type (
@@ -108,9 +108,9 @@ func (a *Activities) GetInstallation(ctx context.Context, id int64) (*Installati
 	return installation, nil
 }
 
-// GetRepo gets entity.Repo against given Repo.
-func (a *Activities) GetRepo(ctx context.Context, repo *Repo) (*entity.Repo, error) {
-	r := &entity.Repo{}
+// GetCoreRepo gets entity.Repo against given Repo.
+func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*core.Repo, error) {
+	r := &core.Repo{}
 
 	if err := db.Get(r, db.QueryParams{"github_id": strconv.FormatInt(repo.GithubID, 10)}); err != nil {
 		return r, err

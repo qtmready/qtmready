@@ -114,7 +114,7 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 	user := &User{}
 
 	if err := db.Get(user, params); err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, "user not found")
+		return echo.NewHTTPError(http.StatusNotFound, ErrInvalidCredentials.Error())
 	}
 
 	if user.VerifyPassword(request.Password) {
@@ -124,10 +124,10 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 		return ctx.JSON(http.StatusOK, &TokenResponse{AccessToken: &access, RefreshToken: &refresh})
 	}
 
-	return echo.NewHTTPError(http.StatusUnauthorized, "invalid credentials")
+	return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidCredentials.Error())
 }
 
-// CreateTeamAPIKey creates an API key for the entity.Team.
+// CreateTeamAPIKey creates an API key for the Team.
 func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 
@@ -151,7 +151,7 @@ func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: &key})
 }
 
-// CreateUserAPIKey creates an API Key for the entity.User.
+// CreateUserAPIKey creates an API Key for the User.
 func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 
