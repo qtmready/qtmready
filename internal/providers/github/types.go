@@ -19,7 +19,6 @@ package github
 
 import (
 	"encoding/json"
-	"errors"
 
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
@@ -43,7 +42,7 @@ type (
 
 	InstallationEvent struct {
 		Action       string              `json:"action"`
-		Installation Installation        `json:"installation"`
+		Installation InstallationPayload `json:"installation"`
 		Repositories []PartialRepository `json:"repositories"`
 		Sender       User                `json:"sender"`
 	}
@@ -66,18 +65,18 @@ type (
 	}
 
 	PullRequestEvent struct {
-		Action       string                `json:"action"`
-		Number       int64                 `json:"number"`
-		PullRequest  PullRequest           `json:"pull_request"`
-		Repository   PullRequestRepository `json:"repository"`
-		Organization *Organization         `json:"organization"`
-		Installation InstallationID        `json:"installation"`
-		Sender       User                  `json:"sender"`
+		Action       string         `json:"action"`
+		Number       int64          `json:"number"`
+		PullRequest  PullRequest    `json:"pull_request"`
+		Repository   RepositoryPR   `json:"repository"`
+		Organization *Organization  `json:"organization"`
+		Installation InstallationID `json:"installation"`
+		Sender       User           `json:"sender"`
 	}
 
 	InstallationRepositoriesEvent struct {
 		Action              string              `json:"action"`
-		Installation        Installation        `json:"installation"`
+		Installation        InstallationPayload `json:"installation"`
 		RepositorySelection string              `json:"repository_selection"`
 		RepositoriesAdded   []PartialRepository `json:"repositories_added"`
 		RepositoriesRemoved []PartialRepository `json:"repositories_removed"`
@@ -177,7 +176,7 @@ func (w *WorkflowSignal) UnmarshalJSON(b []byte) error {
 
 	val, ok := WorkflowSignalMap[s]
 	if !ok {
-		return errors.New("invalid workflow signal")
+		return ErrInvalidRolloutState
 	}
 
 	*w = val

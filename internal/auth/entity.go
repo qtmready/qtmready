@@ -15,59 +15,20 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package entity
+package auth
 
 import (
-	"time"
-
-	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
-	"github.com/scylladb/gocqlx/v2/table"
 	"golang.org/x/crypto/bcrypt"
+
+	"go.breu.io/ctrlplane/internal/db"
 )
 
-var (
-	userColumns = []string{
-		"id",
-		"team_id",
-		"first_name",
-		"last_name",
-		"email",
-		"password",
-		"is_active",
-		"is_verified",
-		"created_at",
-		"updated_at",
-	}
+func (t *Team) PreCreate() error { t.Slug = db.CreateSlug(t.Name); return nil }
+func (t *Team) PreUpdate() error { return nil }
 
-	userMeta = itable.Metadata{
-		M: &table.Metadata{
-			Name:    "users",
-			Columns: userColumns,
-		},
-	}
-
-	userTable = itable.New(*userMeta.M)
-)
-
-type (
-	User struct {
-		ID         gocql.UUID `json:"id" cql:"id"`
-		TeamID     gocql.UUID `json:"team_id" cql:"team_id"`
-		FirstName  string     `json:"first_name"`
-		LastName   string     `json:"last_name"`
-		Email      string     `json:"email" validate:"email,required,db_unique"`
-		Password   string     `json:"-" copier:"-"`
-		IsVerified bool       `json:"is_verified"`
-		IsActive   bool       `json:"is_active"`
-		CreatedAt  time.Time  `json:"created_at"`
-		UpdatedAt  time.Time  `json:"updated_at"`
-	}
-)
-
-func (u *User) GetTable() itable.ITable { return userTable }
-func (u *User) PreCreate() error        { u.SetPassword(u.Password); return nil }
-func (u *User) PreUpdate() error        { return nil }
+func (u *User) PreCreate() error { u.SetPassword(u.Password); return nil }
+func (u *User) PreUpdate() error { return nil }
 
 // SetPassword hashes the clear text password using bcrypt.
 //

@@ -18,7 +18,6 @@
 package auth
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -27,17 +26,16 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/entity"
 	"go.breu.io/ctrlplane/internal/inspect"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
 const (
-	BearerHeaderName = "Authorization"
-	BearerPrefix     = "Token"
-	APIKeyHeaderName = "X-API-KEY"
-	GuardLookupTeam  = "team"
-	GuardLookupUser  = "user"
+	BearerHeaderName    = "Authorization"
+	BearerPrefix        = "Token"
+	APIKeyHeaderName    = "X-API-KEY"
+	GuardLookupTypeTeam = "team"
+	GuardLookupTypeUser = "user"
 )
 
 type (
@@ -46,13 +44,6 @@ type (
 		TeamID string `json:"team_id"`
 		jwt.StandardClaims
 	}
-)
-
-var (
-	ErrInvalidAuthHeader     = errors.New("invalid authorization header")
-	ErrInvalidOrExpiredToken = errors.New("invalid or expired token")
-	ErrMalformedAPIKey       = errors.New("malformed api key")
-	ErrMissingAuthHeader     = errors.New("no authorization header provided")
 )
 
 // GenerateAccessToken generates a short lived JWT token for the given user.
@@ -170,7 +161,7 @@ func bearerFn(next echo.HandlerFunc, ctx echo.Context, token string) error {
 
 // keyFn validates the API key.
 func keyFn(next echo.HandlerFunc, ctx echo.Context, key string) error {
-	guard := &entity.Guard{}
+	guard := &Guard{}
 	err := guard.VerifyAPIKey(key) // This will always return true if err is nil
 
 	if err != nil {
@@ -178,11 +169,11 @@ func keyFn(next echo.HandlerFunc, ctx echo.Context, key string) error {
 	}
 
 	switch guard.LookupType {
-	case GuardLookupTeam:
+	case GuardLookupTypeTeam:
 		ctx.Set("team_id", guard.LookupID.String())
 
-	case GuardLookupUser: // NOTE: this uses two db queries. we should optimize this. use k/v ?
-		user := &entity.User{}
+	case GuardLookupTypeUser: // NOTE: this uses two db queries. we should optimize this. use k/v ?
+		user := &User{}
 		if err := db.Get(user, db.QueryParams{"id": guard.LookupID.String()}); err != nil {
 			return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidAuthHeader)
 		}

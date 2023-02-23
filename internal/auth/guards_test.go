@@ -34,7 +34,7 @@
 
 // This software is made available by Breu, Inc., under the terms of the Breu  Community License Agreement, Version 1.0 located at  http://www.breu.io/breu-community-license/v1. BY INSTALLING, DOWNLOADING,  ACCESSING, USING OR DISTRIBUTING ANY OF THE SOFTWARE, YOU AGREE TO THE TERMS  OF SUCH LICENSE AGREEMENT.
 
-package entity_test
+package auth_test
 
 import (
 	"context"
@@ -44,21 +44,21 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/qb"
 
+	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/entity"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
 type (
 	guardnkey struct {
 		Key   string
-		Guard *entity.Guard
+		Guard *auth.Guard
 	}
 )
 
 func TestTeamGuard(t *testing.T) {
 	teamID, _ := gocql.RandomUUID()
-	guard := &entity.Guard{}
+	guard := &auth.Guard{}
 	key := guard.NewForTeam(teamID)
 	args := &guardnkey{Key: key, Guard: guard}
 
@@ -68,13 +68,13 @@ func TestTeamGuard(t *testing.T) {
 		"TestVerifyAPIKey": shared.TestFn{Args: args, Want: nil, Run: testVerifyAPIKey},
 	}
 
-	t.Run("GetTable", testEntityGetTable("guards", guard))
-	t.Run("EntityOps", testEntityOps(guard, opsTest))
+	t.Run("GetTable", db.TestEntityGetTable("guards", guard))
+	t.Run("EntityOps", db.TestEntityOps(guard, opsTest))
 }
 
 func TestUserGuard(t *testing.T) {
 	userID, _ := gocql.RandomUUID()
-	guard := &entity.Guard{}
+	guard := &auth.Guard{}
 	key := guard.NewForUser("test", userID)
 	args := &guardnkey{Key: key, Guard: guard}
 
@@ -84,8 +84,8 @@ func TestUserGuard(t *testing.T) {
 		"TestVerifyAPIKey": shared.TestFn{Args: args, Want: nil, Run: testVerifyAPIKey},
 	}
 
-	t.Run("GetTable", testEntityGetTable("guards", guard))
-	t.Run("EntityOps", testEntityOps(guard, opsTest))
+	t.Run("GetTable", db.TestEntityGetTable("guards", guard))
+	t.Run("EntityOps", db.TestEntityOps(guard, opsTest))
 }
 
 func testTeamGuardName(args interface{}, want interface{}) func(*testing.T) {

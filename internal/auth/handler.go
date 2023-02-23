@@ -24,7 +24,6 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/entity"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -71,15 +70,15 @@ func (s *ServerHandler) Register(ctx echo.Context) error {
 	}
 
 	// Validating team
-	team := &entity.Team{Name: request.TeamName}
+	team := &Team{Name: request.TeamName}
 	if err := ctx.Validate(team); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
-	user := &entity.User{
+	user := &User{
 		FirstName: request.FirstName,
 		LastName:  request.LastName,
-		Email:     string(request.Email),
+		Email:     request.Email,
 		Password:  request.Password,
 	}
 	if err := ctx.Validate(user); err != nil {
@@ -112,10 +111,10 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 	}
 
 	params := db.QueryParams{"email": "'" + string(request.Email) + "'"}
-	user := &entity.User{}
+	user := &User{}
 
 	if err := db.Get(user, params); err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, "user not found")
+		return echo.NewHTTPError(http.StatusNotFound, ErrInvalidCredentials.Error())
 	}
 
 	if user.VerifyPassword(request.Password) {
@@ -125,10 +124,10 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 		return ctx.JSON(http.StatusOK, &TokenResponse{AccessToken: &access, RefreshToken: &refresh})
 	}
 
-	return echo.NewHTTPError(http.StatusUnauthorized, "invalid credentials")
+	return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidCredentials.Error())
 }
 
-// CreateTeamAPIKey creates an API key for the entity.Team.
+// CreateTeamAPIKey creates an API key for the Team.
 func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 
@@ -141,7 +140,7 @@ func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
 	}
 
 	id, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
-	guard := &entity.Guard{}
+	guard := &Guard{}
 	key := guard.NewForTeam(id)
 
 	if err := guard.Save(); err != nil {
@@ -152,7 +151,7 @@ func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: &key})
 }
 
-// CreateUserAPIKey creates an API Key for the entity.User.
+// CreateUserAPIKey creates an API Key for the User.
 func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 
@@ -165,7 +164,7 @@ func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 	}
 
 	id, _ := gocql.ParseUUID(ctx.Get("user_id").(string))
-	guard := &entity.Guard{}
+	guard := &Guard{}
 	key := guard.NewForUser(*request.Name, id)
 
 	if err := guard.Save(); err != nil {
@@ -180,4 +179,20 @@ func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 func (s *ServerHandler) ValidateAPIKey(ctx echo.Context) error {
 	valid := "valid"
 	return ctx.JSON(http.StatusOK, &ValidateAPIKeyResponse{Message: &valid})
+}
+
+func (s *ServerHandler) ListTeams(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) GetTeam(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) CreateTeam(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) AddUserToTeam(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
 }

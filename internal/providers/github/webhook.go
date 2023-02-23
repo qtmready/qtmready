@@ -57,7 +57,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 
 	shared.Logger.Debug("installation event handled ...", "options", opts, "execution", exe.GetRunID())
 
-	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunId: exe.GetRunID(), Status: WorkflowStatusQueued})
+	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
 }
 
 // handlePushEvent handles GitHub push event.
@@ -70,7 +70,7 @@ func handlePushEvent(ctx echo.Context) error {
 
 	// the value will be `NoCommit` if we have a tag push, or squash merge.
 	if payload.After == NoCommit {
-		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunId: db.NullUUID, Status: WorkflowStatusSkipped})
+		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: db.NullUUID, Status: WorkflowStatusSkipped})
 	}
 
 	w := &Workflows{}
@@ -90,7 +90,7 @@ func handlePushEvent(ctx echo.Context) error {
 		return err
 	}
 
-	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunId: exe.GetRunID(), Status: WorkflowStatusQueued})
+	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
 }
 
 // handlePullRequestEvent handles GitHub pull request event.
@@ -120,7 +120,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 
-		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunId: exe.GetRunID(), Status: WorkflowStatusQueued})
+		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
 	default:
 		err := shared.Temporal.Client.SignalWorkflow(context.Background(), opts.ID, "", WebhookEventPullRequest.String(), payload)
 		if err != nil {
@@ -128,7 +128,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 
-		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunId: db.NullUUID, Status: WorkflowStatusSkipped})
+		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: db.NullUUID, Status: WorkflowStatusSkipped})
 	}
 }
 
@@ -152,5 +152,5 @@ func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunId: exe.GetID(), Status: WorkflowStatusQueued})
+	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: exe.GetID(), Status: WorkflowStatusQueued})
 }

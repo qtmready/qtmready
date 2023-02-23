@@ -32,27 +32,21 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package entity_test
+package github_test
 
 import (
 	"testing"
 
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/ctrlplane/internal/providers/github"
 )
 
-func testEntityGetTable(expect string, entity db.Entity) func(*testing.T) {
-	return func(t *testing.T) {
-		if expect != entity.GetTable().Metadata().M.Name {
-			t.Errorf("expected %s, got %s", expect, entity.GetTable().Metadata().M.Name)
-		}
-	}
+func TestGithubInstallation(t *testing.T) {
+	gi := &github.Installation{}
+	t.Run("GetTable", db.TestEntityGetTable("github_installations", gi))
 }
 
-func testEntityOps(entity db.Entity, tests shared.TestFnMap) func(*testing.T) {
-	return func(t *testing.T) {
-		for name, test := range tests {
-			t.Run(name, test.Run(test.Args, test.Want))
-		}
-	}
+func TestGithubRepo(t *testing.T) {
+	gi := &github.Repo{}
+	t.Run("GetTable", db.TestEntityGetTable("github_repos", gi))
 }

@@ -94,7 +94,40 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '../../entity/openapi.spec.yaml#/components/schemas/GithubRepo'
+                  $ref: '#/components/schemas/GithubRepo'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+  
+  /providers/github/installations:
+    get:
+      summary: Get GitHub installations
+      description: List all the github installations registered with ctrlplane
+      operationId: github-get-installations
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - providers
+        - github
+      responses:
+        '200':
+          description: GitHub installations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GithubInstallation'
         '400':
           description: Bad request
           content:
@@ -116,6 +149,100 @@ components:
       $ref: '../../shared/openapi.spec.yaml#/components/securitySchemes/APIKeyAuth'
 
   schemas:
+    GithubRepo:
+      type: object
+      x-go-name: Repo
+      x-breu-entity: github_repos
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+        github_id:
+          type: integer
+          format: int64
+          x-go-name: GithubID
+        team_id:
+          type: string
+          format: uuid
+          x-go-name: TeamID
+          x-go-type: gocql.UUID
+        installation_id:
+          type: integer
+          format: int64
+          x-go-name: InstallationID
+        name:
+          type: string
+        full_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - github_id
+        - team_id
+        - installation_id
+        - name
+        - full_name
+        - created_at
+        - updated_at
+
+    GithubInstallation:
+      type: object
+      x-go-name: Installation
+      x-breu-entity: github_installations
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+        team_id:
+          type: string
+          format: uuid
+          x-go-name: TeamID
+          x-go-type: gocql.UUID
+        installation_id:
+          type: integer
+          format: int64
+          x-go-name: InstallationID
+          x-oapi-codegen-extra-tags:
+            validate: required,db_unique
+        installation_login:
+          type: string
+        installation_type:
+          type: string
+        sender_id:
+          type: integer
+          format: int64
+          x-go-name: SenderID
+        sender_login:
+          type: string
+        status:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - team_id
+        - installation_id
+        - installation_login
+        - installation_type
+        - sender_id
+        - sender_login
+        - status
+        - created_at
+        - updated_at
+  
     CompleteInstallationRequest:
       type: object
       description: complete the installation given the installation_id & setup_action
@@ -142,6 +269,7 @@ components:
       properties:
         run_id:
           type: string
+          x-go-name: RunID
         status:
           $ref: '#/components/schemas/WorkflowStatus'
       required:

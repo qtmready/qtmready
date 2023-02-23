@@ -21,7 +21,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../entity/openapi.spec.yaml#/components/schemas/Stack'
+                $ref: '#/components/schemas/Stack'
         '400':
           description: Bad request
           content:
@@ -80,7 +80,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../entity/openapi.spec.yaml#/components/schemas/Stack'
+                $ref: '#/components/schemas/Stack'
         '404':
           description: Not found
           content:
@@ -115,7 +115,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../entity/openapi.spec.yaml#/components/schemas/Repo'
+                $ref: '#/components/schemas/Repo'
         '400':
           description: Bad request
           content:
@@ -175,13 +175,14 @@ paths:
           schema:
             type: string
             format: uuid
+            x-go-type: string
       responses:
         '200':
           description: OK
           content:
             application/json:
               schema:
-                $ref: '../entity/openapi.spec.yaml#/components/schemas/Repo'
+                $ref: '#/components/schemas/Repo'
         '404':
           description: Not found
           content:
@@ -210,7 +211,7 @@ components:
         name:
           type: string
         config:
-          $ref: '../entity/openapi.spec.yaml#/components/schemas/StackConfig'
+          $ref: '#/components/schemas/StackConfig'
       required:
         - name
         - config
@@ -218,7 +219,7 @@ components:
     StackListResponse:
       type: array
       items:
-        $ref: '../entity/openapi.spec.yaml#/components/schemas/Stack'
+        $ref: '#/components/schemas/Stack'
 
     RepoCreateRequest:
       type: object
@@ -226,10 +227,13 @@ components:
         stack_id:
           type: string
           format: uuid
+          x-go-name: StackID
+          x-go-type: gocql.UUID
         provider:
-          $ref: '../entity/openapi.spec.yaml#/components/schemas/RepoProvider'
+          $ref: '#/components/schemas/RepoProvider'
         provider_id:
           type: string
+          x-go-name: ProviderID
         default_branch:
           type: string
         is_monorepo:
@@ -244,4 +248,92 @@ components:
     RepoListResponse:
       type: array
       items:
-        $ref: '../entity/openapi.spec.yaml#/components/schemas/Repo'
+        $ref: '#/components/schemas/Repo'
+
+    Stack:
+      type: object
+      x-breu-entity: stacks
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+        team_id:
+          type: string
+          format: uuid
+          x-go-name: TeamID
+          x-go-type: gocql.UUID
+        name:
+          type: string
+          x-oapi-codegen-extra-tags:
+            validate: required
+        slug:
+          type: string
+          format: slug
+        config:
+          $ref: '#/components/schemas/StackConfig'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - team_id
+        - name
+        - slug
+        - config
+        - created_at
+        - updated_at
+
+    StackConfig:
+      type: object
+      additionalProperties: true
+
+    Repo:
+      type: object
+      x-breu-entity: repos
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+        stack_id:
+          type: string
+          format: uuid
+          x-go-name: StackID
+          x-go-type: gocql.UUID
+        provider:
+          $ref: '#/components/schemas/RepoProvider'
+        provider_id:
+          type: string
+          x-go-name: ProviderID
+        default_branch:
+          type: string
+        is_monorepo:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - stack_id
+        - provider
+        - provider_id
+        - default_branch
+        - is_monorepo
+        - created_at
+        - updated_at
+
+    RepoProvider:
+      type: string
+      enum:
+        - github
+        - gitlab
+        - bitbucket

@@ -28,7 +28,9 @@ require (
 
 replace github.com/Guilospanck/igocqlx v1.0.0 => github.com/debuggerpk/igocqlx v1.0.3
 
-replace github.com/deepmap/oapi-codegen v1.12.4 => github.com/breuHQ/oapi-codegen v1.12.4-templates
+replace github.com/deepmap/oapi-codegen v1.12.4 => github.com/breuHQ/oapi-codegen v1.12.4-gocql
+
+// replace github.com/deepmap/oapi-codegen v1.12.4 => /Users/jay/Work/opensource/oapi-codegen
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
@@ -85,7 +87,7 @@ require (
 	github.com/scylladb/go-reflectx v1.0.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
 	go.temporal.io/api v1.16.0 // indirect
