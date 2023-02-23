@@ -18,12 +18,12 @@
 package client
 
 import (
-	"go.breu.io/ctrlplane/internal/entity"
+	"go.breu.io/ctrlplane/internal/core"
 )
 
-func (c *Client) AppList() ([]entity.Stack, error) {
+func (c *Client) AppList() ([]core.Stack, error) {
 	url := "/apps"
-	reply := make([]entity.Stack, 0)
+	reply := make([]core.Stack, 0)
 
 	if err := c.request("GET", url, &reply, nil); err != nil {
 		return reply, err
