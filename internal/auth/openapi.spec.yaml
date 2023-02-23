@@ -187,6 +187,180 @@ paths:
             application/json:
               schema:
                 $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+  /auth/teams:
+    get:
+      summary: List all teams the user is a member of
+      description: List all teams the user is a member of
+      operationId: list-teams
+      tags:
+        - auth
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Teams retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamList'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+    post:
+      summary: Create a new team
+      description: Create a new team
+      operationId: create-team
+      tags:
+        - auth
+      requestBody:
+        description: Team to create
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTeamRequest'
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: Team created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+  /auth/teams/{slug}:
+    get:
+      summary: Get a team
+      description: Get a team
+      operationId: get-team
+      tags:
+        - auth
+      parameters:
+        - name: slug
+          in: path
+          description: Team slug
+          required: true
+          schema:
+            type: string
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Team retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Team'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '404':
+          description: Team not found
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+  /auth/teams/{slug}/users:
+    post:
+      summary: Add a user to a team
+      description: Add a user to a team
+      operationId: add-user-to-team
+      tags:
+        - auth
+      parameters:
+        - name: slug
+          in: path
+          description: Team slug
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: User to add to the team
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddUserToTeamRequest'
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: User added to team
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamUser'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '404':
+          description: Team not found
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+
 
 components:
   securitySchemes:
@@ -298,6 +472,25 @@ components:
         - created_at
         - updated_at
 
+    CreateTeamRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          x-oapi-codegen-extra-tags:
+            validate: required
+        slug:
+          type: string
+          format: slug
+
+    TeamList:
+      type: object
+      properties:
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/Team'
+
     User:
       type: object
       x-breu-entity: users
@@ -341,5 +534,46 @@ components:
         - last_name
         - is_verified
         - is_active
+        - created_at
+        - updated_at
+
+    AddUserToTeamRequest:
+      type: object
+      properties:
+        team_id:
+          type: string
+          format: uuid
+      required:
+        - team_id
+
+    TeamUser:
+      type: object
+      x-breu-entity: team_users
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+        team_id:
+          type: string
+          format: uuid
+          x-go-name: TeamID
+          x-go-type: gocql.UUID
+        user_id:
+          type: string
+          format: uuid
+          x-go-name: UserID
+          x-go-type: gocql.UUID
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - team_id
+        - user_id
         - created_at
         - updated_at

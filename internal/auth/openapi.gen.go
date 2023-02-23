@@ -10,9 +10,12 @@
 package auth
 
 import (
+	"fmt"
+	"net/http"
 	"time"
 
 	itable "github.com/Guilospanck/igocqlx/table"
+	"github.com/deepmap/oapi-codegen/pkg/runtime"
 	openapi_types "github.com/deepmap/oapi-codegen/pkg/types"
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
@@ -24,6 +27,11 @@ const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
 
+// AddUserToTeamRequest defines model for AddUserToTeamRequest.
+type AddUserToTeamRequest struct {
+	TeamId openapi_types.UUID `json:"team_id"`
+}
+
 // CreateAPIKeyRequest defines model for CreateAPIKeyRequest.
 type CreateAPIKeyRequest struct {
 	Name *string `json:"name,omitempty"`
@@ -32,6 +40,12 @@ type CreateAPIKeyRequest struct {
 // CreateAPIKeyResponse defines model for CreateAPIKeyResponse.
 type CreateAPIKeyResponse struct {
 	Key *string `json:"key,omitempty"`
+}
+
+// CreateTeamRequest defines model for CreateTeamRequest.
+type CreateTeamRequest struct {
+	Name *string `json:"name,omitempty" validate:"required"`
+	Slug *string `json:"slug,omitempty"`
 }
 
 // LoginRequest defines model for LoginRequest.
@@ -80,6 +94,37 @@ var (
 
 func (team *Team) GetTable() itable.ITable {
 	return teamTable
+}
+
+// TeamList defines model for TeamList.
+type TeamList struct {
+	Teams *[]Team `json:"teams,omitempty"`
+}
+
+// TeamUser defines model for TeamUser.
+type TeamUser struct {
+	CreatedAt time.Time  `cql:"created_at" json:"created_at"`
+	ID        gocql.UUID `cql:"id" json:"id"`
+	TeamID    gocql.UUID `cql:"team_id" json:"team_id"`
+	UpdatedAt time.Time  `cql:"updated_at" json:"updated_at"`
+	UserID    gocql.UUID `cql:"user_id" json:"user_id"`
+}
+
+var (
+	teamuserColumns = []string{"created_at", "id", "team_id", "updated_at", "user_id"}
+
+	teamuserMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "team_users",
+			Columns: teamuserColumns,
+		},
+	}
+
+	teamuserTable = itable.New(*teamuserMeta.M)
+)
+
+func (teamuser *TeamUser) GetTable() itable.ITable {
+	return teamuserTable
 }
 
 // TokenResponse defines model for TokenResponse.
@@ -136,6 +181,12 @@ type LoginJSONRequestBody = LoginRequest
 // RegisterJSONRequestBody defines body for Register for application/json ContentType.
 type RegisterJSONRequestBody = RegisterationRequest
 
+// CreateTeamJSONRequestBody defines body for CreateTeam for application/json ContentType.
+type CreateTeamJSONRequestBody = CreateTeamRequest
+
+// AddUserToTeamJSONRequestBody defines body for AddUserToTeam for application/json ContentType.
+type AddUserToTeamJSONRequestBody = AddUserToTeamRequest
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Create a new API key for the team
@@ -157,6 +208,22 @@ type ServerInterface interface {
 	// Register a new user
 	// (POST /auth/register)
 	Register(ctx echo.Context) error
+
+	// List all teams the user is a member of
+	// (GET /auth/teams)
+	ListTeams(ctx echo.Context) error
+
+	// Create a new team
+	// (POST /auth/teams)
+	CreateTeam(ctx echo.Context) error
+
+	// Get a team
+	// (GET /auth/teams/{slug})
+	GetTeam(ctx echo.Context) error
+
+	// Add a user to a team
+	// (POST /auth/teams/{slug}/users)
+	AddUserToTeam(ctx echo.Context) error
 
 	// SecurityHandler returns the underlying Security Wrapper
 	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
@@ -236,6 +303,80 @@ func (w *ServerInterfaceWrapper) Register(ctx echo.Context) error {
 	return err
 }
 
+// ListTeams converts echo context to params.
+
+func (w *ServerInterfaceWrapper) ListTeams(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.ListTeams
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
+}
+
+// CreateTeam converts echo context to params.
+
+func (w *ServerInterfaceWrapper) CreateTeam(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.CreateTeam
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
+}
+
+// GetTeam converts echo context to params.
+
+func (w *ServerInterfaceWrapper) GetTeam(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "slug" -------------
+	var slug string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "slug", runtime.ParamLocationPath, ctx.Param("slug"), &slug)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter slug: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.GetTeam
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
+}
+
+// AddUserToTeam converts echo context to params.
+
+func (w *ServerInterfaceWrapper) AddUserToTeam(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "slug" -------------
+	var slug string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "slug", runtime.ParamLocationPath, ctx.Param("slug"), &slug)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter slug: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.AddUserToTeam
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
+}
+
 // EchoRouter is an interface that wraps the methods of echo.Echo & echo.Group to provide a common interface
 // for registering routes.
 type EchoRouter interface {
@@ -268,5 +409,9 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/auth/api-keys/validate", wrapper.ValidateAPIKey)
 	router.POST(baseURL+"/auth/login", wrapper.Login)
 	router.POST(baseURL+"/auth/register", wrapper.Register)
+	router.GET(baseURL+"/auth/teams", wrapper.ListTeams)
+	router.POST(baseURL+"/auth/teams", wrapper.CreateTeam)
+	router.GET(baseURL+"/auth/teams/:slug", wrapper.GetTeam)
+	router.POST(baseURL+"/auth/teams/:slug/users", wrapper.AddUserToTeam)
 
 }

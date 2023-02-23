@@ -180,3 +180,19 @@ func (s *ServerHandler) ValidateAPIKey(ctx echo.Context) error {
 	valid := "valid"
 	return ctx.JSON(http.StatusOK, &ValidateAPIKeyResponse{Message: &valid})
 }
+
+func (s *ServerHandler) ListTeams(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) GetTeam(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) CreateTeam(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) AddUserToTeam(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
