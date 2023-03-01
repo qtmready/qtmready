@@ -37,16 +37,16 @@ package github_test
 import (
 	"testing"
 
-	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/providers/github"
+	"go.breu.io/ctrlplane/internal/testutils"
 )
 
 func TestGithubInstallation(t *testing.T) {
 	gi := &github.Installation{}
-	t.Run("GetTable", db.TestEntityGetTable("github_installations", gi))
+	t.Run("GetTable", testutils.TestEntityGetTable("github_installations", gi))
 }
 
 func TestGithubRepo(t *testing.T) {
 	gi := &github.Repo{}
-	t.Run("GetTable", db.TestEntityGetTable("github_repos", gi))
+	t.Run("GetTable", testutils.TestEntityGetTable("github_repos", gi))
 }
