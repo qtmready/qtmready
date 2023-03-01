@@ -73,12 +73,12 @@ func main() {
 	options := worker.Options{}
 	wrkr := worker.New(shared.Temporal.Client, queue, options)
 
-	workflows := &github.Workflows{}
+	ghwfs := &github.Workflows{}
 
-	wrkr.RegisterWorkflow(workflows.OnInstallationEvent)
-	wrkr.RegisterWorkflow(workflows.OnInstallationRepositoriesEvent)
-	wrkr.RegisterWorkflow(workflows.OnPushEvent)
-	wrkr.RegisterWorkflow(workflows.OnPullRequestEvent)
+	wrkr.RegisterWorkflow(ghwfs.OnInstallationEvent)
+	wrkr.RegisterWorkflow(ghwfs.OnInstallationRepositoriesEvent)
+	wrkr.RegisterWorkflow(ghwfs.OnPushEvent)
+	wrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
 
 	wrkr.RegisterActivity(&github.Activities{})
 

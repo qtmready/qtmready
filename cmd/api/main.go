@@ -117,7 +117,7 @@ type (
 
 // healthz is the health check endpoint.
 //
-// TODO: make sure that connection to all services it needs to connect to is working properly.
+// TODO: make sure that connection to all services it needs to connect to are working properly.
 func healthz(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, &HealthzResponse{Status: "OK"})
 }
