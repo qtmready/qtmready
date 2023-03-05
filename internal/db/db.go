@@ -143,10 +143,9 @@ func (d *db) InitMockSession(session *gocqlxmock.SessionxMock) {
 
 // InitSessionForTests initializes the session with the configured hosts.
 //
-// NOTE: Do not do this unless we find a way around it. Directly talking to database during testing is not recommended until
-// we find a way around the [gocql bug] reported on [gocql github].
+// FIXME: Do not use intil we fix the [issue]. For some reason the fixes in [gocql github] does not work.
 //
-// [gocql bug]: https://app.shortcut.com/ctrlplane/story/2509/migrate-testing-to-use-test-containers-instead-of-mocks#activity-2749
+// [issue]: https://app.shortcut.com/ctrlplane/story/2509/migrate-testing-to-use-test-containers-instead-of-mocks#activity-2749
 // [gocql github]: https://github.com/gocql/gocql/issues/575
 func (d *db) InitSessionForTests(port int) error {
 	d.Hosts = []string{"localhost"}
@@ -161,8 +160,8 @@ func (d *db) InitSessionForTests(port int) error {
 	cluster.IgnorePeerAddr = true
 	cluster.DisableInitialHostLookup = true
 	cluster.Events.DisableTopologyEvents = true
-	cluster.Events.DisableNodeStatusEvents = false
-	cluster.Events.DisableSchemaEvents = false
+	cluster.Events.DisableNodeStatusEvents = true
+	cluster.Events.DisableSchemaEvents = true
 	session, err := igocqlx.WrapSession(cluster.CreateSession())
 	if err != nil {
 		shared.Logger.Error("db: failed to connect", "error", err)

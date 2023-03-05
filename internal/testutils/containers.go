@@ -11,7 +11,7 @@ import (
 
 const (
 	TestNetwork = "testnet-io"
-	DBImage     = "cassandra:4"
+	DBImage     = "cassandra:3.11"
 )
 
 type (
@@ -65,13 +65,16 @@ func StartDBContainer(ctx context.Context) (*DatabaseContainer, error) {
 func (d *DatabaseContainer) RunCQL(stmt string) error {
 	fmt.Printf("Running CQL: %s\n", stmt)
 	cmd := []string{"cqlsh", "-e", stmt}
-	_, _, err := d.Exec(d.Context, cmd)
+	exitcode, out, err := d.Exec(d.Context, cmd)
+	b := make([]byte, 0)
+	out.Read(b)
+	fmt.Printf("Exit code: %d\n", exitcode)
+	fmt.Printf("Output: %s\n", string(b))
 	return err
 }
 
 func (d *DatabaseContainer) CreateKeyspace(keyspace string) error {
 	stmt := fmt.Sprintf("create keyspace if not exists %s with replication = {'class': 'SimpleStrategy', 'replication_factor': 1};", keyspace)
-	stmt = fmt.Sprintf("%q", stmt)
 	return d.RunCQL(stmt)
 }
 
