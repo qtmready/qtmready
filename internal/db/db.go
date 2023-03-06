@@ -114,10 +114,13 @@ func (d *db) RunMigrations() {
 	version, dirty, err := migrations.Version()
 	if err == migrate.ErrNilVersion {
 		shared.Logger.Info("db: no migrations have been run ...")
+	} else if err != nil {
+		shared.Logger.Error("db: failed to get migration version ...", "error", err)
+		return
 	}
 
 	if dirty {
-		shared.Logger.Warn("db: migration is dirty, forcing fix ...", "version", version)
+		shared.Logger.Warn("db: migration is dirty, force setting previous version ...", "version", version)
 		if err = migrations.Force(int(version) - 1); err != nil {
 			shared.Logger.Error("db: failed to force migration ...", "error", err)
 		}
