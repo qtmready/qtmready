@@ -90,7 +90,7 @@ func (g *Guard) DecodeUUID(prefix string) (gocql.UUID, error) {
 
 // GenerateRandomValue generates a 512 bit random value for the API key.
 func (g *Guard) GenerateRandomValue() string {
-	bytes := make([]byte, 50)
+	bytes := make([]byte, 48)
 	_, _ = rand.Read(bytes)
 
 	return base62.EncodeToString(bytes)
@@ -157,7 +157,7 @@ func (g *Guard) VerifyAPIKey(key string) error {
 		return nil
 	}
 
-	return ErrInvalidAPIKey
+	return ErrCrypto
 }
 
 func (g *Guard) SplitAPIKey(key string) (string, string, string, error) {

@@ -28,4 +28,5 @@ var (
 	ErrInvalidCredentials    = errors.New("invalid credentials")
 	ErrMalformedAPIKey       = errors.New("malformed API key")
 	ErrMissingAuthHeader     = errors.New("no authorization header provided")
+	ErrCrypto                = errors.New("crypto error")
 )

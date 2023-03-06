@@ -37,9 +37,13 @@ func TestHandler(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = db.DB.InitSessionForTests(port.Int()); err != nil {
-		t.Fatal(err)
+	err = db.DB.InitSessionForTests(port.Int(), "file://../db/migrations")
+	shared.Logger.Warn("session gets initiated, but if we catch the error and do t.Fatal(err), the test panics!")
+	if db.DB.Session.Session().S == nil {
+		t.Fatal("session is nil")
 	}
+
+	db.DB.RunMigrations()
 
 	t.Cleanup(func() {
 		_ = dbcon.Stop()

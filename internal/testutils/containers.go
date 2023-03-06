@@ -11,7 +11,7 @@ import (
 
 const (
 	TestNetwork = "testnet-io"
-	DBImage     = "cassandra:3.11"
+	DBImage     = "cassandra:4"
 )
 
 type (
@@ -31,7 +31,7 @@ func StartDBContainer(ctx context.Context) (*DatabaseContainer, error) {
 		"CASSANDRA_CLUSTER_NAME": "ctrlplane_test",
 	}
 
-	mnts := testcontainers.ContainerMounts{
+	mounts := testcontainers.ContainerMounts{
 		testcontainers.ContainerMount{
 			Source: testcontainers.GenericVolumeMountSource{Name: "test-db"},
 			Target: "/var/lib/cassandra",
@@ -42,12 +42,11 @@ func StartDBContainer(ctx context.Context) (*DatabaseContainer, error) {
 		Name:         "test-db",
 		Hostname:     "database",
 		Image:        DBImage,
-		Mounts:       mnts,
+		Mounts:       mounts,
 		Env:          env,
 		Networks:     []string{TestNetwork},
 		ExposedPorts: []string{"9042/tcp"},
-		// WaitingFor:   wait.ForListeningPort("9042/tcp").WithStartupTimeout(time.Minute * 5),
-		WaitingFor: wait.ForListeningPort("9042/tcp").WithPollInterval(time.Second * 5).WithStartupTimeout(time.Minute * 5),
+		WaitingFor:   wait.ForListeningPort("9042/tcp").WithPollInterval(time.Second * 5).WithStartupTimeout(time.Minute * 5),
 	}
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -63,13 +62,8 @@ func StartDBContainer(ctx context.Context) (*DatabaseContainer, error) {
 }
 
 func (d *DatabaseContainer) RunCQL(stmt string) error {
-	fmt.Printf("Running CQL: %s\n", stmt)
 	cmd := []string{"cqlsh", "-e", stmt}
-	exitcode, out, err := d.Exec(d.Context, cmd)
-	b := make([]byte, 0)
-	out.Read(b)
-	fmt.Printf("Exit code: %d\n", exitcode)
-	fmt.Printf("Output: %s\n", string(b))
+	_, _, err := d.Exec(d.Context, cmd)
 	return err
 }
 

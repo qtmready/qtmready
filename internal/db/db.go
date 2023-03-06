@@ -111,14 +111,21 @@ func (d *db) RunMigrations() {
 		shared.Logger.Error("db: failed to initialize migrations ...", "error", err)
 	}
 
+	version, dirty, err := migrations.Version()
+	if err == migrate.ErrNilVersion {
+		shared.Logger.Info("db: no migrations have been run ...")
+	}
+
+	if dirty {
+		shared.Logger.Warn("db: migration is dirty, forcing fix ...", "version", version)
+		if err = migrations.Force(int(version) - 1); err != nil {
+			shared.Logger.Error("db: failed to force migration ...", "error", err)
+		}
+	}
 	err = migrations.Up()
 
 	if err == migrate.ErrNoChange {
 		shared.Logger.Info("db: no migrations to run")
-	}
-
-	if err != nil && err != migrate.ErrNoChange {
-		shared.Logger.Error("db: failed to run migrations ...", "error", err)
 	}
 
 	shared.Logger.Info("db: migrations done")
@@ -143,12 +150,14 @@ func (d *db) InitMockSession(session *gocqlxmock.SessionxMock) {
 
 // InitSessionForTests initializes the session with the configured hosts.
 //
-// FIXME: Do not use intil we fix the [issue]. For some reason the fixes in [gocql github] does not work.
+// NOTE: It might appear that the client throws error as explained at [issue], which will eventially point to [gocql github],
+// but IRL, it will work. This is a known issue with gocql and it's not a problem for us.
 //
 // [issue]: https://app.shortcut.com/ctrlplane/story/2509/migrate-testing-to-use-test-containers-instead-of-mocks#activity-2749
 // [gocql github]: https://github.com/gocql/gocql/issues/575
-func (d *db) InitSessionForTests(port int) error {
+func (d *db) InitSessionForTests(port int, migrationsPath string) error {
 	d.Hosts = []string{"localhost"}
+	d.MigrationSourceURL = migrationsPath
 	d.Keyspace = TestKeyspace
 	cluster := gocql.NewCluster(d.Hosts...)
 	// cluster.ProtoVersion = 4
@@ -164,7 +173,6 @@ func (d *db) InitSessionForTests(port int) error {
 	cluster.Events.DisableSchemaEvents = true
 	session, err := igocqlx.WrapSession(cluster.CreateSession())
 	if err != nil {
-		shared.Logger.Error("db: failed to connect", "error", err)
 		return err
 	}
 
