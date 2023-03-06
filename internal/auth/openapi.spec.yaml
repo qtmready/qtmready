@@ -508,6 +508,8 @@ components:
         email:
           type: string
           format: email
+          x-oapi-codegen-extra-tags:
+            validate: email,required,db_unique
         password:
           type: string
           format: password
