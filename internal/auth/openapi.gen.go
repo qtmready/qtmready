@@ -136,7 +136,7 @@ type TokenResponse struct {
 // User defines model for User.
 type User struct {
 	CreatedAt  time.Time           `cql:"created_at" json:"created_at"`
-	Email      openapi_types.Email `cql:"email" json:"email"`
+	Email      openapi_types.Email `cql:"email" json:"email" validate:"email,required,db_unique"`
 	FirstName  string              `cql:"first_name" json:"first_name"`
 	ID         gocql.UUID          `cql:"id" json:"id"`
 	IsActive   bool                `cql:"is_active" json:"is_active"`
