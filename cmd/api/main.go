@@ -20,11 +20,11 @@ package main
 import (
 	"net/http"
 	"os"
-	"sync"
 
 	"github.com/labstack/echo-contrib/prometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/sourcegraph/conc"
 
 	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/core"
@@ -34,7 +34,8 @@ import (
 )
 
 func init() {
-	waitgroup := sync.WaitGroup{}
+	waitgroup := conc.WaitGroup{}
+	defer waitgroup.Wait()
 	// Reading the configuration from the environment
 	shared.Service.ReadEnv()
 	shared.Service.InitLogger()
@@ -48,26 +49,9 @@ func init() {
 
 	// Initializing reference to adapters
 	shared.Logger.Info("initializing ...")
-	waitgroup.Add(3)
-
-	go func() {
-		defer waitgroup.Done()
-		db.DB.InitSession()
-	}()
-
-	go func() {
-		defer waitgroup.Done()
-		shared.EventStream.InitConnection()
-	}()
-
-	go func() {
-		defer waitgroup.Done()
-		shared.Temporal.InitClient()
-	}()
-
-	waitgroup.Wait()
-	// Initializing singleton objects ... Done
-
+	waitgroup.Go(db.DB.InitSession)
+	waitgroup.Go(shared.EventStream.InitConnection)
+	waitgroup.Go(shared.Temporal.InitClient)
 	shared.Logger.Info("initialized", "version", shared.Service.Version())
 }
 
@@ -117,7 +101,7 @@ type (
 
 // healthz is the health check endpoint.
 //
-// TODO: make sure that connection to all services it needs to connect to is working properly.
+// TODO: make sure that connection to all services it needs to connect to are working properly.
 func healthz(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, &HealthzResponse{Status: "OK"})
 }

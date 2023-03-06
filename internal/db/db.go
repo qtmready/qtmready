@@ -34,12 +34,13 @@ import (
 )
 
 const (
-	NullUUID   = "00000000-0000-0000-0000-000000000000"
-	NullString = ""
+	NullUUID     = "00000000-0000-0000-0000-000000000000"
+	NullString   = ""
+	TestKeyspace = "ctrlplane_test"
 )
 
 var (
-	DB = &db{}
+	DB = &db{} // represents the initialized gocql session.
 )
 
 type (
@@ -110,14 +111,24 @@ func (d *db) RunMigrations() {
 		shared.Logger.Error("db: failed to initialize migrations ...", "error", err)
 	}
 
+	version, dirty, err := migrations.Version()
+	if err == migrate.ErrNilVersion {
+		shared.Logger.Info("db: no migrations have been run ...")
+	} else if err != nil {
+		shared.Logger.Error("db: failed to get migration version ...", "error", err)
+		return
+	}
+
+	if dirty {
+		shared.Logger.Warn("db: migration is dirty, force setting previous version ...", "version", version)
+		if err = migrations.Force(int(version) - 1); err != nil {
+			shared.Logger.Error("db: failed to force migration ...", "error", err)
+		}
+	}
 	err = migrations.Up()
 
 	if err == migrate.ErrNoChange {
 		shared.Logger.Info("db: no migrations to run")
-	}
-
-	if err != nil && err != migrate.ErrNoChange {
-		shared.Logger.Error("db: failed to run migrations ...", "error", err)
 	}
 
 	shared.Logger.Info("db: migrations done")
@@ -134,7 +145,40 @@ func (d *db) RegisterValidations() {
 	_ = shared.Validator.RegisterValidation("db_unique", UniqueField)
 }
 
+// InitMockSession initializes the session with the provided mock session.
 func (d *db) InitMockSession(session *gocqlxmock.SessionxMock) {
 	ms := &ms{session}
 	d.Session = ms
+}
+
+// InitSessionForTests initializes the session with the configured hosts.
+//
+// NOTE: It might appear that the client throws error as explained at [issue], which will eventially point to [gocql github],
+// but IRL, it will work. This is a known issue with gocql and it's not a problem for us.
+//
+// [issue]: https://app.shortcut.com/ctrlplane/story/2509/migrate-testing-to-use-test-containers-instead-of-mocks#activity-2749
+// [gocql github]: https://github.com/gocql/gocql/issues/575
+func (d *db) InitSessionForTests(port int, migrationsPath string) error {
+	d.Hosts = []string{"localhost"}
+	d.MigrationSourceURL = migrationsPath
+	d.Keyspace = TestKeyspace
+	cluster := gocql.NewCluster(d.Hosts...)
+	// cluster.ProtoVersion = 4
+	cluster.Keyspace = d.Keyspace
+	cluster.Timeout = 10 * time.Second
+	cluster.ConnectTimeout = 10 * time.Second
+	cluster.Port = port
+	// NOTE: Workaround for https://github.com/gocql/gocql/issues/575#issuecomment-172124342
+	cluster.IgnorePeerAddr = true
+	cluster.DisableInitialHostLookup = true
+	cluster.Events.DisableTopologyEvents = true
+	cluster.Events.DisableNodeStatusEvents = true
+	cluster.Events.DisableSchemaEvents = true
+	session, err := igocqlx.WrapSession(cluster.CreateSession())
+	if err != nil {
+		return err
+	}
+
+	d.Session = session
+	return nil
 }

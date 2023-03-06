@@ -32,8 +32,6 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-// This software is made available by Breu, Inc., under the terms of the Breu  Community License Agreement, Version 1.0 located at  http://www.breu.io/breu-community-license/v1. BY INSTALLING, DOWNLOADING,  ACCESSING, USING OR DISTRIBUTING ANY OF THE SOFTWARE, YOU AGREE TO THE TERMS  OF SUCH LICENSE AGREEMENT.
-
 package auth_test
 
 import (
@@ -46,7 +44,7 @@ import (
 
 	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/ctrlplane/internal/testutils"
 )
 
 type (
@@ -62,14 +60,14 @@ func TestTeamGuard(t *testing.T) {
 	key := guard.NewForTeam(teamID)
 	args := &guardnkey{Key: key, Guard: guard}
 
-	opsTest := shared.TestFnMap{
-		"TestGuardName":    shared.TestFn{Args: args, Want: nil, Run: testTeamGuardName},
-		"TestSave":         shared.TestFn{Args: args, Want: nil, Run: testSave},
-		"TestVerifyAPIKey": shared.TestFn{Args: args, Want: nil, Run: testVerifyAPIKey},
+	opsTest := testutils.TestFnMap{
+		"TestGuardName":    testutils.TestFn{Args: args, Want: nil, Run: testTeamGuardName},
+		"TestSave":         testutils.TestFn{Args: args, Want: nil, Run: testSave},
+		"TestVerifyAPIKey": testutils.TestFn{Args: args, Want: nil, Run: testVerifyAPIKey},
 	}
 
-	t.Run("GetTable", db.TestEntityGetTable("guards", guard))
-	t.Run("EntityOps", db.TestEntityOps(guard, opsTest))
+	t.Run("GetTable", testutils.TestEntityGetTable("guards", guard))
+	t.Run("EntityOps", testutils.TestEntityOps(guard, opsTest))
 }
 
 func TestUserGuard(t *testing.T) {
@@ -78,14 +76,14 @@ func TestUserGuard(t *testing.T) {
 	key := guard.NewForUser("test", userID)
 	args := &guardnkey{Key: key, Guard: guard}
 
-	opsTest := shared.TestFnMap{
-		"TestGuardName":    shared.TestFn{Args: args, Want: nil, Run: testUserGuardName},
-		"TestSave":         shared.TestFn{Args: args, Want: nil, Run: testSave},
-		"TestVerifyAPIKey": shared.TestFn{Args: args, Want: nil, Run: testVerifyAPIKey},
+	opsTest := testutils.TestFnMap{
+		"TestGuardName":    testutils.TestFn{Args: args, Want: nil, Run: testUserGuardName},
+		"TestSave":         testutils.TestFn{Args: args, Want: nil, Run: testSave},
+		"TestVerifyAPIKey": testutils.TestFn{Args: args, Want: nil, Run: testVerifyAPIKey},
 	}
 
-	t.Run("GetTable", db.TestEntityGetTable("guards", guard))
-	t.Run("EntityOps", db.TestEntityOps(guard, opsTest))
+	t.Run("GetTable", testutils.TestEntityGetTable("guards", guard))
+	t.Run("EntityOps", testutils.TestEntityOps(guard, opsTest))
 }
 
 func testTeamGuardName(args interface{}, want interface{}) func(*testing.T) {

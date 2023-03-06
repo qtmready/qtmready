@@ -31,7 +31,7 @@ type (
 	// SecurityHandler is the base security handler for the API. It is meant to be embedded in other handlers.
 	//
 	// Usage:
-	//  package somepackage
+	//  package {name}
 	//
 	//  import "go.breu.io/ctrlplane/internal/auth"
 	//

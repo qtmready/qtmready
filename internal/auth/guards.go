@@ -90,7 +90,7 @@ func (g *Guard) DecodeUUID(prefix string) (gocql.UUID, error) {
 
 // GenerateRandomValue generates a 512 bit random value for the API key.
 func (g *Guard) GenerateRandomValue() string {
-	bytes := make([]byte, 50)
+	bytes := make([]byte, 48)
 	_, _ = rand.Read(bytes)
 
 	return base62.EncodeToString(bytes)
@@ -103,7 +103,7 @@ func (g *Guard) SetHashed(token string) {
 
 // VerifyToken verifies the given api key against the hashed value.
 //
-// TODO: lookup the relevant parent entity (user or team) first to check if it exists.
+// FIXME: sometimes the bcrypt.CompareHashAndPassword() returns an error even though the token is valid.
 func (g *Guard) VerifyToken(token string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(g.Hashed), []byte(token)) == nil
 }
@@ -119,7 +119,7 @@ func (g *Guard) ConstructAPIKey() (string, string) {
 }
 
 // VerifyAPIKey verifies the API key against the database.
-// TODO: implement the database loookup against lookup_id.
+//
 // TODO: implement the cache so that we don't have to hit the database every time. An in-memory K/V store maybe? We can
 // look at some LevelDB's implementations in golang. e.g.
 //
@@ -157,7 +157,7 @@ func (g *Guard) VerifyAPIKey(key string) error {
 		return nil
 	}
 
-	return ErrInvalidAPIKey
+	return ErrCrypto
 }
 
 func (g *Guard) SplitAPIKey(key string) (string, string, string, error) {

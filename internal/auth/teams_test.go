@@ -23,8 +23,7 @@ import (
 	"github.com/gosimple/slug"
 
 	"go.breu.io/ctrlplane/internal/auth"
-	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/ctrlplane/internal/testutils"
 )
 
 func TestTeam(t *testing.T) {
@@ -33,12 +32,12 @@ func TestTeam(t *testing.T) {
 	}
 	_ = team.PreCreate()
 
-	opsTests := shared.TestFnMap{
-		"Slug": shared.TestFn{Args: team, Want: nil, Run: testTeamSlug},
+	opsTests := testutils.TestFnMap{
+		"Slug": testutils.TestFn{Args: team, Want: nil, Run: testTeamSlug},
 	}
 
-	t.Run("GetTable", db.TestEntityGetTable("teams", team))
-	t.Run("EntityOps", db.TestEntityOps(team, opsTests))
+	t.Run("GetTable", testutils.TestEntityGetTable("teams", team))
+	t.Run("EntityOps", testutils.TestEntityOps(team, opsTests))
 }
 
 func testTeamSlug(args interface{}, want interface{}) func(*testing.T) {

@@ -203,3 +203,13 @@ func InitValidator() {
 		return name
 	})
 }
+
+func InitForTest() {
+	Service = &service{
+		Name:  "test",
+		Debug: true,
+	}
+
+	Service.InitLogger()
+	Service.InitValidator()
+}

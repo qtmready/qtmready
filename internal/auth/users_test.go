@@ -21,8 +21,7 @@ import (
 	"testing"
 
 	"go.breu.io/ctrlplane/internal/auth"
-	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/ctrlplane/internal/testutils"
 )
 
 var (
@@ -34,13 +33,13 @@ func TestUser(t *testing.T) {
 	user := &auth.User{Password: password}
 	_ = user.PreCreate()
 
-	opsTests := shared.TestFnMap{
-		"SetPassword":    shared.TestFn{Args: user, Want: nil, Run: testUserSetPassword},
-		"VerifyPassword": shared.TestFn{Args: user, Want: nil, Run: testUserVerifyPassword},
+	opsTests := testutils.TestFnMap{
+		"SetPassword":    testutils.TestFn{Args: user, Want: nil, Run: testUserSetPassword},
+		"VerifyPassword": testutils.TestFn{Args: user, Want: nil, Run: testUserVerifyPassword},
 	}
 
-	t.Run("GetTable", db.TestEntityGetTable("users", user))
-	t.Run("EntityOps", db.TestEntityOps(user, opsTests))
+	t.Run("GetTable", testutils.TestEntityGetTable("users", user))
+	t.Run("EntityOps", testutils.TestEntityOps(user, opsTests))
 }
 
 func testUserSetPassword(args interface{}, want interface{}) func(*testing.T) {

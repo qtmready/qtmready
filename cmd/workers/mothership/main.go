@@ -19,8 +19,8 @@ package main
 
 import (
 	"os"
-	"sync"
 
+	"github.com/sourcegraph/conc"
 	"go.temporal.io/sdk/worker"
 
 	"go.breu.io/ctrlplane/internal/db"
@@ -29,7 +29,8 @@ import (
 )
 
 func init() {
-	waitgroup := sync.WaitGroup{}
+	waitgroup := conc.WaitGroup{}
+	defer waitgroup.Wait()
 
 	shared.Service.ReadEnv()
 	shared.Service.InitLogger()
@@ -38,25 +39,9 @@ func init() {
 	github.Github.ReadEnv()
 	db.DB.ReadEnv()
 
-	waitgroup.Add(3)
-	shared.Logger.Info("initializing ...")
-
-	go func() {
-		defer waitgroup.Done()
-		db.DB.InitSession()
-	}()
-
-	go func() {
-		defer waitgroup.Done()
-		shared.EventStream.InitConnection()
-	}()
-
-	go func() {
-		defer waitgroup.Done()
-		shared.Temporal.InitClient()
-	}()
-
-	waitgroup.Wait()
+	waitgroup.Go(db.DB.InitSession)
+	waitgroup.Go(shared.EventStream.InitConnection)
+	waitgroup.Go(shared.Temporal.InitClient)
 
 	shared.Logger.Info("initialized", "version", shared.Service.Version())
 }
@@ -73,12 +58,12 @@ func main() {
 	options := worker.Options{}
 	wrkr := worker.New(shared.Temporal.Client, queue, options)
 
-	workflows := &github.Workflows{}
+	ghwfs := &github.Workflows{}
 
-	wrkr.RegisterWorkflow(workflows.OnInstallationEvent)
-	wrkr.RegisterWorkflow(workflows.OnInstallationRepositoriesEvent)
-	wrkr.RegisterWorkflow(workflows.OnPushEvent)
-	wrkr.RegisterWorkflow(workflows.OnPullRequestEvent)
+	wrkr.RegisterWorkflow(ghwfs.OnInstallationEvent)
+	wrkr.RegisterWorkflow(ghwfs.OnInstallationRepositoriesEvent)
+	wrkr.RegisterWorkflow(ghwfs.OnPushEvent)
+	wrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
 
 	wrkr.RegisterActivity(&github.Activities{})
 
