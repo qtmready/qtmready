@@ -46,6 +46,7 @@ func TestHandler(t *testing.T) {
 	db.DB.RunMigrations()
 
 	t.Cleanup(func() {
-		_ = dbcon.Stop()
+		db.DB.Session.Close()
+		_ = dbcon.ShutdownCassandra()
 	})
 }
