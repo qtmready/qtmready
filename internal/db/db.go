@@ -18,6 +18,7 @@
 package db
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/Guilospanck/gocqlxmock"
@@ -44,18 +45,34 @@ var (
 )
 
 type (
-	// Holds the information about the database.
+	// db holds the information about the database.
 	db struct {
 		Session            igocqlx.ISessionx
-		Hosts              []string `env:"CASSANDRA_HOSTS" env-default:"database"`
-		Keyspace           string   `env:"CASSANDRA_KEYSPACE" env-default:"ctrlplane"`
-		MigrationSourceURL string   `env:"CASSANDRA_MIGRATION_SOURCE_URL"`
+		Hosts              []string      `env:"CASSANDRA_HOSTS" env-default:"database"`
+		Keyspace           string        `env:"CASSANDRA_KEYSPACE" env-default:"ctrlplane"`
+		MigrationSourceURL string        `env:"CASSANDRA_MIGRATION_SOURCE_URL"`
+		Timeout            time.Duration `env:"CASSANDRA_TIMEOUT" env-default:"1m"`
 	}
 
+	// ms represents the mock session.
 	ms struct {
 		*gocqlxmock.SessionxMock
 	}
+
+	// mlog is an implementation of the migrate.Logger interface.
+	mlog struct {
+		verbose bool
+	}
 )
+
+func (m *mlog) Printf(format string, v ...interface{}) {
+	format = fmt.Sprintf("db: [external/migrate] %s", format)
+	shared.Logger.Debug(fmt.Sprintf(format, v...))
+}
+
+func (m *mlog) Verbose() bool {
+	return m.verbose
+}
 
 func (m *ms) Session() *igocqlx.Session {
 	return nil
@@ -70,6 +87,7 @@ func (d *db) ReadEnv() {
 func (d *db) InitSession() {
 	cluster := gocql.NewCluster(d.Hosts...)
 	cluster.Keyspace = d.Keyspace
+	cluster.Timeout = d.Timeout
 	createSession := func() error {
 		shared.Logger.Info("db: connecting ...", "hosts", d.Hosts, "keyspace", d.Keyspace)
 
@@ -97,6 +115,7 @@ func (d *db) InitSession() {
 
 // RunMigrations runs database migrations if any.
 func (d *db) RunMigrations() {
+	logger := &mlog{verbose: shared.Service.Debug}
 	shared.Logger.Info("db: running migrations ...", "source", d.MigrationSourceURL)
 
 	config := &cassandra.Config{KeyspaceName: d.Keyspace, MultiStatementEnabled: true}
@@ -111,24 +130,25 @@ func (d *db) RunMigrations() {
 		shared.Logger.Error("db: failed to initialize migrations ...", "error", err)
 	}
 
+	migrations.Log = logger
+
 	version, dirty, err := migrations.Version()
 	if err == migrate.ErrNilVersion {
-		shared.Logger.Info("db: no migrations have been run ...")
+		shared.Logger.Info("db: no migrations have been run, initializing keyspace ...")
 	} else if err != nil {
 		shared.Logger.Error("db: failed to get migration version ...", "error", err)
 		return
 	}
 
-	if dirty {
-		shared.Logger.Warn("db: migration is dirty, force setting previous version ...", "version", version)
-		if err = migrations.Force(int(version) - 1); err != nil {
-			shared.Logger.Error("db: failed to force migration ...", "error", err)
-		}
-	}
+	shared.Logger.Info("db: migrations version ...", "version", version, "dirty", dirty)
+
 	err = migrations.Up()
+	if err != nil && err != migrate.ErrNoChange {
+		shared.Logger.Warn("db: failed to run migrations ...", "error", err)
+	}
 
 	if err == migrate.ErrNoChange {
-		shared.Logger.Info("db: no migrations to run")
+		shared.Logger.Info("db: no new migrations to run")
 	}
 
 	shared.Logger.Info("db: migrations done")
@@ -163,10 +183,9 @@ func (d *db) InitSessionForTests(port int, migrationsPath string) error {
 	d.MigrationSourceURL = migrationsPath
 	d.Keyspace = TestKeyspace
 	cluster := gocql.NewCluster(d.Hosts...)
-	// cluster.ProtoVersion = 4
 	cluster.Keyspace = d.Keyspace
-	cluster.Timeout = 10 * time.Second
-	cluster.ConnectTimeout = 10 * time.Second
+	cluster.Timeout = 10 * time.Minute
+	cluster.ConnectTimeout = 10 * time.Minute
 	cluster.Port = port
 	// NOTE: Workaround for https://github.com/gocql/gocql/issues/575#issuecomment-172124342
 	cluster.IgnorePeerAddr = true
