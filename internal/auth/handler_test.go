@@ -29,18 +29,19 @@ func TestHandler(t *testing.T) {
 	}
 
 	t.Cleanup(func() {
-		t.Log("Cleaning up...")
+		shared.Logger.Info("shutting down ...")
 		time.Sleep(5 * time.Second)
 		db.DB.Session.Close()
 		_ = temporalctr.Shutdown()
 		_ = dbctr.ShutdownCassandra()
 		_ = network.Remove(ctx)
+		shared.Logger.Info("Test done. Exiting...")
 	})
 }
 
 func setup(ctx context.Context, t *testing.T) (testcontainers.Network, *testutils.Container, *testutils.Container, error) {
 	shared.InitForTest()
-	network, err := testutils.CreateTestNetowkr(ctx)
+	network, err := testutils.CreateTestNetwork(ctx)
 	if err != nil {
 		t.Fatalf("failed to create test network: %v", err)
 	}
@@ -59,7 +60,7 @@ func setup(ctx context.Context, t *testing.T) (testcontainers.Network, *testutil
 	}
 
 	err = db.DB.InitSessionForTests(port.Int(), "file://../db/migrations")
-	t.Log("session gets initiated, but if we catch the error and do t.Fatal(err), the test panics!")
+	shared.Logger.Info("session gets initiated, but if we catch the error and do t.Fatal(err), the test panics!")
 	if db.DB.Session.Session().S == nil {
 		t.Fatal("session is nil")
 	}
@@ -74,8 +75,7 @@ func setup(ctx context.Context, t *testing.T) (testcontainers.Network, *testutil
 	dbhost, _ := dbctr.Container.ContainerIP(ctx)
 	temporalhost, _ := temporalctr.Container.ContainerIP(ctx)
 
-	t.Log("dbhost", "host", dbhost)
-	t.Log("temporalhost", "host", temporalhost)
+	shared.Logger.Info("hosts ...", "db", dbhost, "temporal", temporalhost)
 
 	return network, dbctr, temporalctr, nil
 }

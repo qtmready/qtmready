@@ -36,7 +36,7 @@ type (
 	ContainerEnvironment map[string]string
 )
 
-func CreateTestNetowkr(ctx context.Context) (testcontainers.Network, error) {
+func CreateTestNetwork(ctx context.Context) (testcontainers.Network, error) {
 	req := testcontainers.GenericNetworkRequest{
 		NetworkRequest: testcontainers.NetworkRequest{Name: TestNetworkName, CheckDuplicate: true},
 	}
@@ -73,6 +73,7 @@ func StartDBContainer(ctx context.Context) (*Container, error) {
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
+		Logger:           shared.Logger,
 		Started:          true,
 		Reuse:            true,
 	})
@@ -92,7 +93,7 @@ func StartTemporalContainer(ctx context.Context) (*Container, error) {
 
 	_, caller, _, _ := runtime.Caller(0)
 	hostpath := path.Join(path.Dir(caller), "..", "..", "deploy", "temporal", "dynamicconfig")
-	shared.Logger.Debug("Mounting volume", "path", hostpath)
+	shared.Logger.Info("Mounting volume", "path", hostpath)
 
 	mounts := testcontainers.ContainerMounts{
 		testcontainers.ContainerMount{
@@ -115,6 +116,7 @@ func StartTemporalContainer(ctx context.Context) (*Container, error) {
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
+		Logger:           shared.Logger,
 		Started:          true,
 		Reuse:            true,
 	})
