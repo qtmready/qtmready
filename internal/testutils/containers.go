@@ -10,23 +10,31 @@ import (
 )
 
 const (
-	TestNetwork = "testnet-io"
-	DBImage     = "cassandra:4"
+	TestNetwork           = "testnet-io"
+	DBImage               = "cassandra:4"
+	DBContainerHost       = "database"
+	TemporalImage         = "temporalio/auto-setup:1.20.0"
+	TemporalContainerHost = "temporal"
 )
 
 type (
-	DatabaseContainer struct {
+	Container struct {
 		testcontainers.Container
 		Context context.Context
 		Request testcontainers.ContainerRequest
 	}
 
-	TemporalContainer    struct{}
+	TemporalContainer struct {
+		testcontainers.Container
+		Context context.Context
+		Request testcontainers.ContainerRequest
+	}
+
 	ContainerEnvironment map[string]string
 )
 
 // StartDBContainer starts a Cassandra container for testing purposes.
-func StartDBContainer(ctx context.Context) (*DatabaseContainer, error) {
+func StartDBContainer(ctx context.Context) (*Container, error) {
 	env := ContainerEnvironment{
 		"CASSANDRA_CLUSTER_NAME": "ctrlplane_test",
 	}
@@ -40,7 +48,7 @@ func StartDBContainer(ctx context.Context) (*DatabaseContainer, error) {
 
 	req := testcontainers.ContainerRequest{
 		Name:         "test-db",
-		Hostname:     "database",
+		Hostname:     DBContainerHost,
 		Image:        DBImage,
 		Mounts:       mounts,
 		Env:          env,
@@ -58,25 +66,28 @@ func StartDBContainer(ctx context.Context) (*DatabaseContainer, error) {
 		return nil, err
 	}
 
-	return &DatabaseContainer{Container: ctr, Context: ctx, Request: req}, nil
+	return &Container{Container: ctr, Context: ctx, Request: req}, nil
 }
 
-func (d *DatabaseContainer) RunCQL(stmt string) error {
+func (d *Container) RunCQL(stmt string) error {
 	cmd := []string{"cqlsh", "-e", stmt}
 	_, _, err := d.Exec(d.Context, cmd)
 	return err
 }
 
-func (d *DatabaseContainer) CreateKeyspace(keyspace string) error {
+func (d *Container) CreateKeyspace(keyspace string) error {
 	stmt := fmt.Sprintf("create keyspace if not exists %s with replication = {'class': 'SimpleStrategy', 'replication_factor': 1};", keyspace)
 	return d.RunCQL(stmt)
 }
 
-func (d *DatabaseContainer) DropKeyspace(keyspace string) error {
+func (d *Container) DropKeyspace(keyspace string) error {
 	stmt := fmt.Sprintf("drop keyspace if exists %s;", keyspace)
 	return d.RunCQL(stmt)
 }
 
-func (d *DatabaseContainer) Stop() error {
+func (d *Container) ShutdownCassandra() error {
+	_, _, _ = d.Exec(d.Context, []string{"nodetool", "disablegossip"})
+	_, _, _ = d.Exec(d.Context, []string{"nodetool", "disablebinary"})
+	_, _, _ = d.Exec(d.Context, []string{"nodetool", "drain"})
 	return d.Terminate(d.Context)
 }
