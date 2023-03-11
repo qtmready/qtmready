@@ -1,5 +1,7 @@
 # ctrlplane.ai
 
+> TLDR? show me how to [run!](./contributing/getting-started.md).
+
 Because an infraless movement is finally possible.
 
 > Note: This is alpha-quality software.The surface API is subject to change without warning.
