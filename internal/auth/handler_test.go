@@ -11,35 +11,26 @@ import (
 	"go.breu.io/ctrlplane/internal/testutils"
 )
 
-type (
-	TestLogConsumer struct {
-		Msgs []string
-	}
-)
-
-func (t *TestLogConsumer) Accept(content testcontainers.Log) {
-	t.Msgs = append(t.Msgs, string(content.Content))
-}
-
 func TestHandler(t *testing.T) {
 	ctx := context.Background()
-	network, dbctr, temporalctr, err := setup(ctx, t)
+	network, dbctr, temporalctr, natsctr, err := setup(ctx, t)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	t.Cleanup(func() {
 		shared.Logger.Info("shutting down ...")
-		time.Sleep(5 * time.Second)
+		time.Sleep(5 * time.Second) // TODO: remove this
 		db.DB.Session.Close()
 		_ = temporalctr.Shutdown()
+		_ = natsctr.Shutdown()
 		_ = dbctr.ShutdownCassandra()
 		_ = network.Remove(ctx)
 		shared.Logger.Info("Test done. Exiting...")
 	})
 }
 
-func setup(ctx context.Context, t *testing.T) (testcontainers.Network, *testutils.Container, *testutils.Container, error) {
+func setup(ctx context.Context, t *testing.T) (testcontainers.Network, *testutils.Container, *testutils.Container, *testutils.Container, error) {
 	shared.InitForTest()
 	network, err := testutils.CreateTestNetwork(ctx)
 	if err != nil {
@@ -60,7 +51,7 @@ func setup(ctx context.Context, t *testing.T) (testcontainers.Network, *testutil
 	}
 
 	err = db.DB.InitSessionForTests(port.Int(), "file://../db/migrations")
-	shared.Logger.Info("session gets initiated, but if we catch the error and do t.Fatal(err), the test panics!")
+	shared.Logger.Warn("session gets initiated, but if we catch the error and do t.Fatal(err), the test panics!")
 	if db.DB.Session.Session().S == nil {
 		t.Fatal("session is nil")
 	}
@@ -72,10 +63,16 @@ func setup(ctx context.Context, t *testing.T) (testcontainers.Network, *testutil
 		t.Fatalf("failed to start temporal container: %v", err)
 	}
 
+	natsctr, err := testutils.StartNatsIOContainer(ctx)
+	if err != nil {
+		t.Fatalf("failed to start natsio container: %v", err)
+	}
+
 	dbhost, _ := dbctr.Container.ContainerIP(ctx)
 	temporalhost, _ := temporalctr.Container.ContainerIP(ctx)
+	natshost, _ := natsctr.Container.ContainerIP(ctx)
 
-	shared.Logger.Info("hosts ...", "db", dbhost, "temporal", temporalhost)
+	shared.Logger.Info("hosts ...", "db", dbhost, "temporal", temporalhost, "nats", natshost)
 
-	return network, dbctr, temporalctr, nil
+	return network, dbctr, temporalctr, natsctr, nil
 }

@@ -18,6 +18,8 @@ const (
 	DBContainerHost       = "test-db"
 	TemporalImage         = "temporalio/auto-setup:1.20.0"
 	TemporalContainerHost = "test-temporal"
+	NatsIOImage           = "nats:2.9.15"
+	NatsIOContainerHost   = "test-natsio"
 )
 
 type (
@@ -112,6 +114,29 @@ func StartTemporalContainer(ctx context.Context) (*Container, error) {
 		Networks:     []string{TestNetworkName},
 		ExposedPorts: []string{"7233/tcp", "7234/tcp", "7239/tcp"},
 		WaitingFor:   wait.ForListeningPort("7233/tcp").WithPollInterval(time.Second * 5).WithStartupTimeout(time.Minute * 5),
+	}
+
+	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: req,
+		Logger:           shared.Logger,
+		Started:          true,
+		Reuse:            true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &Container{Container: ctr, Context: ctx, Request: req}, nil
+}
+
+func StartNatsIOContainer(ctx context.Context) (*Container, error) {
+	req := testcontainers.ContainerRequest{
+		Name:         NatsIOContainerHost,
+		Hostname:     NatsIOContainerHost,
+		Image:        NatsIOImage,
+		Networks:     []string{TestNetworkName},
+		ExposedPorts: []string{"4222/tcp"},
+		WaitingFor:   wait.ForLog("Server is ready"),
 	}
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
