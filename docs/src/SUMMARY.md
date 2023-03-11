@@ -9,8 +9,8 @@
 # Contributing
 
 - [Code of Conduct](./contributing/guidelines.md)
-  - [Commit Message](./contributing/commit-msg.md)
   - [Pull Requests](./contributing/pull-requests.md)
+    - [Creating PR, Title & Description](./contributing/creating-pr.md)
     - [Contributor Guidelines](./contributing/contributor.md)
     - [Reviewer Guidelines](./contributing/reviewer.md)
     - [Merge Guidelines](./contributing/merge-responsibility.md)
