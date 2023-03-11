@@ -7,8 +7,10 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/docker/docker/api/types/container"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -20,6 +22,8 @@ const (
 	TemporalContainerHost = "test-temporal"
 	NatsIOImage           = "nats:2.9.15"
 	NatsIOContainerHost   = "test-natsio"
+	APIContainerHost      = "test-api"
+	AirImage              = "cosmtrek/air:v1.42.0"
 )
 
 type (
@@ -99,7 +103,6 @@ func StartTemporalContainer(ctx context.Context) (*Container, error) {
 
 	mounts := testcontainers.ContainerMounts{
 		testcontainers.ContainerMount{
-			// NOTE: We are assuming that we are running the tests from the root of the project.
 			Source: testcontainers.GenericBindMountSource{HostPath: hostpath},
 			Target: "/etc/temporal/config/dynamicconfig",
 		},
@@ -150,6 +153,54 @@ func StartNatsIOContainer(ctx context.Context) (*Container, error) {
 	}
 
 	return &Container{Container: ctr, Context: ctx, Request: req}, nil
+}
+
+func StartAPIContainer(ctx context.Context) (*Container, error) {
+	env := ContainerEnvironment{
+		"DEBUG":              "true",
+		"SECRET":             "vnLeH6RPyDR9kcVrELmnMtB5rcR2Ukenm8KgdvndTvXAz5XRUVFWfJR8dpvJ3FEh",
+		"EVENTS_SERVERS_URL": fmt.Sprintf("nats://%s:4222", NatsIOContainerHost),
+		"TEMPORAL_HOST":      TemporalContainerHost,
+		"CASSANDRA_HOSTS":    DBContainerHost,
+		"CASSANDRA_KEYSPACE": db.TestKeyspace,
+	}
+
+	_, caller, _, _ := runtime.Caller(0)
+	pkgroot := path.Join(path.Dir(caller), "..", "..")
+	mounts := testcontainers.ContainerMounts{
+		testcontainers.ContainerMount{
+			Source: testcontainers.GenericBindMountSource{HostPath: pkgroot},
+			Target: "/api/",
+		},
+		testcontainers.ContainerMount{
+			Source: testcontainers.GenericBindMountSource{HostPath: path.Join(pkgroot, "deploy/air/api.toml")},
+			Target: "/api/.air.toml",
+		},
+	}
+
+	request := testcontainers.ContainerRequest{
+		Name:           APIContainerHost,
+		Hostname:       APIContainerHost,
+		Image:          AirImage,
+		Mounts:         mounts,
+		Env:            env,
+		Networks:       []string{TestNetworkName},
+		ExposedPorts:   []string{"8000/tcp"},
+		WaitingFor:     wait.ForListeningPort("8000/tcp").WithPollInterval(time.Second * 5).WithStartupTimeout(time.Minute * 5),
+		ConfigModifier: func(config *container.Config) { config.WorkingDir = "/api" },
+	}
+
+	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
+		ContainerRequest: request,
+		Logger:           shared.Logger,
+		Started:          true,
+		Reuse:            true,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return &Container{Container: ctr, Context: ctx, Request: request}, nil
 }
 
 // RunCQL runs a CQL statement against the Cassandra container.

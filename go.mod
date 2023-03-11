@@ -8,6 +8,7 @@ require (
 	github.com/avast/retry-go/v4 v4.3.3
 	github.com/bradleyfalzon/ghinstallation/v2 v2.1.0
 	github.com/deepmap/oapi-codegen v1.12.4
+	github.com/docker/docker v23.0.0+incompatible
 	github.com/go-playground/validator/v10 v10.11.2
 	github.com/gocql/gocql v1.3.1
 	github.com/google/go-github/v45 v45.2.0
@@ -46,7 +47,6 @@ require (
 	github.com/containerd/containerd v1.6.17 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/distribution v2.8.1+incompatible // indirect
-	github.com/docker/docker v23.0.0+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect

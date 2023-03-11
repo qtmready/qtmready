@@ -3,7 +3,6 @@ package auth_test
 import (
 	"context"
 	"testing"
-	"time"
 
 	"github.com/testcontainers/testcontainers-go"
 	"go.breu.io/ctrlplane/internal/db"
@@ -11,27 +10,40 @@ import (
 	"go.breu.io/ctrlplane/internal/testutils"
 )
 
+type (
+	containers struct {
+		network    testcontainers.Network
+		db         *testutils.Container
+		temporal   *testutils.Container
+		nats       *testutils.Container
+		api        *testutils.Container
+		mothership *testutils.Container
+	}
+)
+
+func (c *containers) shutdown(ctx context.Context) {
+	shared.Logger.Info("graceful shutdown test environment ...")
+	db.DB.Session.Close()
+	_ = c.temporal.Shutdown()
+	_ = c.nats.Shutdown()
+	_ = c.api.Shutdown()
+	_ = c.db.ShutdownCassandra()
+	_ = c.network.Remove(ctx)
+	shared.Logger.Info("graceful shutdown complete.")
+}
+
 func TestHandler(t *testing.T) {
 	ctx := context.Background()
-	network, dbctr, temporalctr, natsctr, err := setup(ctx, t)
-	if err != nil {
-		t.Fatal(err)
-	}
+	ctrs := setup(ctx, t)
 
 	t.Cleanup(func() {
-		shared.Logger.Info("shutting down ...")
-		time.Sleep(5 * time.Second) // TODO: remove this
-		db.DB.Session.Close()
-		_ = temporalctr.Shutdown()
-		_ = natsctr.Shutdown()
-		_ = dbctr.ShutdownCassandra()
-		_ = network.Remove(ctx)
-		shared.Logger.Info("Test done. Exiting...")
+		ctrs.shutdown(ctx)
 	})
 }
 
-func setup(ctx context.Context, t *testing.T) (testcontainers.Network, *testutils.Container, *testutils.Container, *testutils.Container, error) {
+func setup(ctx context.Context, t *testing.T) *containers {
 	shared.InitForTest()
+	shared.Logger.Info("setting up test environment ...")
 	network, err := testutils.CreateTestNetwork(ctx)
 	if err != nil {
 		t.Fatalf("failed to create test network: %v", err)
@@ -68,11 +80,23 @@ func setup(ctx context.Context, t *testing.T) (testcontainers.Network, *testutil
 		t.Fatalf("failed to start natsio container: %v", err)
 	}
 
+	apictr, err := testutils.StartAPIContainer(ctx)
+	if err != nil {
+		t.Fatalf("failed to start api container: %v", err)
+	}
+
 	dbhost, _ := dbctr.Container.ContainerIP(ctx)
 	temporalhost, _ := temporalctr.Container.ContainerIP(ctx)
 	natshost, _ := natsctr.Container.ContainerIP(ctx)
+	apihost, _ := apictr.Container.ContainerIP(ctx)
 
-	shared.Logger.Info("hosts ...", "db", dbhost, "temporal", temporalhost, "nats", natshost)
+	shared.Logger.Info("hosts ...", "db", dbhost, "temporal", temporalhost, "nats", natshost, "api", apihost)
 
-	return network, dbctr, temporalctr, natsctr, nil
+	return &containers{
+		network:  network,
+		db:       dbctr,
+		temporal: temporalctr,
+		nats:     natsctr,
+		api:      apictr,
+	}
 }
