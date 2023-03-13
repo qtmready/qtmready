@@ -15,15 +15,16 @@ import (
 )
 
 const (
-	DBImage               = "cassandra:4"
-	TestNetworkName       = "testnet"
-	DBContainerHost       = "test-db"
-	TemporalImage         = "temporalio/auto-setup:1.20.0"
-	TemporalContainerHost = "test-temporal"
-	NatsIOImage           = "nats:2.9.15"
-	NatsIOContainerHost   = "test-natsio"
-	APIContainerHost      = "test-api"
-	AirImage              = "cosmtrek/air:v1.42.0"
+	DBImage                 = "cassandra:4"
+	TestNetworkName         = "testnet"
+	DBContainerHost         = "test-db"
+	TemporalImage           = "temporalio/auto-setup:1.20.0"
+	TemporalContainerHost   = "test-temporal"
+	NatsIOImage             = "nats:2.9.15"
+	NatsIOContainerHost     = "test-natsio"
+	AirImage                = "cosmtrek/air:v1.42.0"
+	APIContainerHost        = "test-api"
+	MothershipContainerHost = "test-mothership"
 )
 
 type (
@@ -132,6 +133,7 @@ func StartTemporalContainer(ctx context.Context) (*Container, error) {
 	return &Container{Container: ctr, Context: ctx, Request: req}, nil
 }
 
+// StartNatsIOContainer starts a NatsIO container for testing purposes.
 func StartNatsIOContainer(ctx context.Context) (*Container, error) {
 	req := testcontainers.ContainerRequest{
 		Name:         NatsIOContainerHost,
@@ -155,7 +157,19 @@ func StartNatsIOContainer(ctx context.Context) (*Container, error) {
 	return &Container{Container: ctr, Context: ctx, Request: req}, nil
 }
 
+// StartAPIContainer starts the API container for testing purposes.
 func StartAPIContainer(ctx context.Context) (*Container, error) {
+	return StartAirContainer(
+		ctx,
+		APIContainerHost,
+		"/api",
+		"api.toml",
+		"8000/tcp",
+		wait.ForListeningPort("8000/tcp").WithPollInterval(time.Second*5).WithStartupTimeout(time.Minute*5),
+	)
+}
+
+func StartAirContainer(ctx context.Context, name string, workdir string, config string, port string, waiting wait.Strategy) (*Container, error) {
 	env := ContainerEnvironment{
 		"DEBUG":              "true",
 		"SECRET":             "vnLeH6RPyDR9kcVrELmnMtB5rcR2Ukenm8KgdvndTvXAz5XRUVFWfJR8dpvJ3FEh",
@@ -164,34 +178,41 @@ func StartAPIContainer(ctx context.Context) (*Container, error) {
 		"CASSANDRA_HOSTS":    DBContainerHost,
 		"CASSANDRA_KEYSPACE": db.TestKeyspace,
 	}
-
 	_, caller, _, _ := runtime.Caller(0)
 	pkgroot := path.Join(path.Dir(caller), "..", "..")
 	mounts := testcontainers.ContainerMounts{
 		testcontainers.ContainerMount{
-			Source: testcontainers.GenericBindMountSource{HostPath: pkgroot},
-			Target: "/api/",
+			Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("%s-test--go-pkg-mod", name)},
+			Target: "/go/pkg/mod",
 		},
 		testcontainers.ContainerMount{
-			Source: testcontainers.GenericBindMountSource{HostPath: path.Join(pkgroot, "deploy/air/api.toml")},
-			Target: "/api/.air.toml",
+			Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("%s-test--go-build-cache", name)},
+			Target: "/root/.cache/go-build",
+		},
+		testcontainers.ContainerMount{
+			Source: testcontainers.GenericBindMountSource{HostPath: pkgroot},
+			Target: testcontainers.ContainerMountTarget(workdir),
+		},
+		testcontainers.ContainerMount{
+			Source: testcontainers.GenericBindMountSource{HostPath: path.Join(pkgroot, "deploy", "air", config)},
+			Target: testcontainers.ContainerMountTarget(path.Join(workdir, ".air.toml")),
 		},
 	}
 
-	request := testcontainers.ContainerRequest{
-		Name:           APIContainerHost,
-		Hostname:       APIContainerHost,
+	req := testcontainers.ContainerRequest{
+		Name:           name,
+		Hostname:       name,
 		Image:          AirImage,
 		Mounts:         mounts,
 		Env:            env,
 		Networks:       []string{TestNetworkName},
-		ExposedPorts:   []string{"8000/tcp"},
-		WaitingFor:     wait.ForListeningPort("8000/tcp").WithPollInterval(time.Second * 5).WithStartupTimeout(time.Minute * 5),
-		ConfigModifier: func(config *container.Config) { config.WorkingDir = "/api" },
+		ExposedPorts:   []string{port},
+		WaitingFor:     waiting,
+		ConfigModifier: func(config *container.Config) { config.WorkingDir = workdir },
 	}
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
-		ContainerRequest: request,
+		ContainerRequest: req,
 		Logger:           shared.Logger,
 		Started:          true,
 		Reuse:            true,
@@ -200,7 +221,7 @@ func StartAPIContainer(ctx context.Context) (*Container, error) {
 		return nil, err
 	}
 
-	return &Container{Container: ctr, Context: ctx, Request: request}, nil
+	return &Container{Container: ctr, Context: ctx, Request: req}, nil
 }
 
 // RunCQL runs a CQL statement against the Cassandra container.
