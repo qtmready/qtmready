@@ -169,6 +169,19 @@ func StartAPIContainer(ctx context.Context) (*Container, error) {
 	)
 }
 
+// StartMothershipContainer starts the Mothership container for testing purposes.
+func StartMothershipContainer(ctx context.Context) (*Container, error) {
+	return StartAirContainer(
+		ctx,
+		MothershipContainerHost,
+		"/mothership",
+		"mothership.toml",
+		"8080/tcp",
+		wait.ForLog("Started Worker").WithPollInterval(time.Second*5).WithStartupTimeout(time.Minute*5),
+	)
+}
+
+// StartAirContainer sets up comsmtrek/air to quickly compile different containers for services written in go.
 func StartAirContainer(ctx context.Context, name string, workdir string, config string, port string, waiting wait.Strategy) (*Container, error) {
 	env := ContainerEnvironment{
 		"DEBUG":              "true",

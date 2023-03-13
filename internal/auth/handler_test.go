@@ -24,9 +24,10 @@ type (
 func (c *containers) shutdown(ctx context.Context) {
 	shared.Logger.Info("graceful shutdown test environment ...")
 	db.DB.Session.Close()
+	_ = c.api.Shutdown()
+	_ = c.mothership.Shutdown()
 	_ = c.temporal.Shutdown()
 	_ = c.nats.Shutdown()
-	_ = c.api.Shutdown()
 	_ = c.db.ShutdownCassandra()
 	_ = c.network.Remove(ctx)
 	shared.Logger.Info("graceful shutdown complete.")
@@ -85,18 +86,22 @@ func setup(ctx context.Context, t *testing.T) *containers {
 		t.Fatalf("failed to start api container: %v", err)
 	}
 
+	mxctr, err := testutils.StartMothershipContainer(ctx)
+
 	dbhost, _ := dbctr.Container.ContainerIP(ctx)
 	temporalhost, _ := temporalctr.Container.ContainerIP(ctx)
 	natshost, _ := natsctr.Container.ContainerIP(ctx)
 	apihost, _ := apictr.Container.ContainerIP(ctx)
+	mxhost, _ := mxctr.Container.ContainerIP(ctx)
 
-	shared.Logger.Info("hosts ...", "db", dbhost, "temporal", temporalhost, "nats", natshost, "api", apihost)
+	shared.Logger.Info("hosts ...", "db", dbhost, "temporal", temporalhost, "nats", natshost, "api", apihost, "mothership", mxhost)
 
 	return &containers{
-		network:  network,
-		db:       dbctr,
-		temporal: temporalctr,
-		nats:     natsctr,
-		api:      apictr,
+		network:    network,
+		db:         dbctr,
+		temporal:   temporalctr,
+		nats:       natsctr,
+		api:        apictr,
+		mothership: mxctr,
 	}
 }
