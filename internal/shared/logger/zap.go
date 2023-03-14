@@ -78,6 +78,10 @@ func (adapter *ZapAdapter) Error(msg string, fields ...interface{}) {
 	adapter.logger.Error(msg, adapter.fields(fields)...)
 }
 
+func (adapter *ZapAdapter) Printf(msg string, fields ...interface{}) {
+	adapter.logger.Sugar().Infof(msg, fields...)
+}
+
 func (adapter *ZapAdapter) Sync() error {
 	return adapter.logger.Sync()
 }

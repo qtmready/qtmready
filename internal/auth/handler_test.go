@@ -11,30 +11,56 @@ import (
 )
 
 type (
-	TestLogConsumer struct {
-		Msgs []string
+	containers struct {
+		network    testcontainers.Network
+		db         *testutils.Container
+		temporal   *testutils.Container
+		nats       *testutils.Container
+		api        *testutils.Container
+		mothership *testutils.Container
 	}
 )
 
-func (t *TestLogConsumer) Accept(content testcontainers.Log) {
-	t.Msgs = append(t.Msgs, string(content.Content))
+func (c *containers) shutdown(ctx context.Context) {
+	shared.Logger.Info("graceful shutdown test environment ...")
+	db.DB.Session.Close()
+	_ = c.api.Shutdown()
+	_ = c.mothership.Shutdown()
+	_ = c.temporal.Shutdown()
+	_ = c.nats.Shutdown()
+	_ = c.db.ShutdownCassandra()
+	_ = c.network.Remove(ctx)
+	shared.Logger.Info("graceful shutdown complete.")
 }
 
 func TestHandler(t *testing.T) {
 	ctx := context.Background()
+	ctrs := setup(ctx, t)
+
+	t.Cleanup(func() {
+		ctrs.shutdown(ctx)
+	})
+}
+
+func setup(ctx context.Context, t *testing.T) *containers {
 	shared.InitForTest()
-	dbcon, err := testutils.StartDBContainer(ctx)
+	shared.Logger.Info("setting up test environment ...")
+	network, err := testutils.CreateTestNetwork(ctx)
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed to create test network: %v", err)
+	}
+	dbctr, err := testutils.StartDBContainer(ctx)
+	if err != nil {
+		t.Fatalf("failed to start db container: %v", err)
 	}
 
-	if err = dbcon.CreateKeyspace(db.TestKeyspace); err != nil {
-		t.Fatal(err)
+	if err = dbctr.CreateKeyspace(db.TestKeyspace); err != nil {
+		t.Fatalf("failed to create keyspace: %v", err)
 	}
 
-	port, err := dbcon.Container.MappedPort(context.Background(), "9042")
+	port, err := dbctr.Container.MappedPort(context.Background(), "9042")
 	if err != nil {
-		t.Fatal(err)
+		t.Fatalf("failed to get mapped db port: %v", err)
 	}
 
 	err = db.DB.InitSessionForTests(port.Int(), "file://../db/migrations")
@@ -45,8 +71,37 @@ func TestHandler(t *testing.T) {
 
 	db.DB.RunMigrations()
 
-	t.Cleanup(func() {
-		db.DB.Session.Close()
-		_ = dbcon.ShutdownCassandra()
-	})
+	temporalctr, err := testutils.StartTemporalContainer(ctx)
+	if err != nil {
+		t.Fatalf("failed to start temporal container: %v", err)
+	}
+
+	natsctr, err := testutils.StartNatsIOContainer(ctx)
+	if err != nil {
+		t.Fatalf("failed to start natsio container: %v", err)
+	}
+
+	apictr, err := testutils.StartAPIContainer(ctx)
+	if err != nil {
+		t.Fatalf("failed to start api container: %v", err)
+	}
+
+	mxctr, err := testutils.StartMothershipContainer(ctx)
+
+	dbhost, _ := dbctr.Container.ContainerIP(ctx)
+	temporalhost, _ := temporalctr.Container.ContainerIP(ctx)
+	natshost, _ := natsctr.Container.ContainerIP(ctx)
+	apihost, _ := apictr.Container.ContainerIP(ctx)
+	mxhost, _ := mxctr.Container.ContainerIP(ctx)
+
+	shared.Logger.Info("hosts ...", "db", dbhost, "temporal", temporalhost, "nats", natshost, "api", apihost, "mothership", mxhost)
+
+	return &containers{
+		network:    network,
+		db:         dbctr,
+		temporal:   temporalctr,
+		nats:       natsctr,
+		api:        apictr,
+		mothership: mxctr,
+	}
 }
