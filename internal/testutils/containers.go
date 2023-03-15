@@ -28,21 +28,18 @@ const (
 )
 
 type (
+	// Container is a wrapper around testcontainers.Container
 	Container struct {
 		testcontainers.Container
 		Context context.Context
 		Request testcontainers.ContainerRequest
 	}
 
-	TemporalContainer struct {
-		testcontainers.Container
-		Context context.Context
-		Request testcontainers.ContainerRequest
-	}
-
+	// ContainerEnvironment is a map of environment variables for a container.
 	ContainerEnvironment map[string]string
 )
 
+// CreateTestNetwork creates a test network for testing purposes.
 func CreateTestNetwork(ctx context.Context) (testcontainers.Network, error) {
 	req := testcontainers.GenericNetworkRequest{
 		NetworkRequest: testcontainers.NetworkRequest{Name: TestNetworkName, CheckDuplicate: true},
@@ -100,8 +97,6 @@ func StartTemporalContainer(ctx context.Context) (*Container, error) {
 
 	_, caller, _, _ := runtime.Caller(0)
 	hostpath := path.Join(path.Dir(caller), "..", "..", "deploy", "temporal", "dynamicconfig")
-	shared.Logger.Info("Mounting volume", "path", hostpath)
-
 	mounts := testcontainers.ContainerMounts{
 		testcontainers.ContainerMount{
 			Source: testcontainers.GenericBindMountSource{HostPath: hostpath},

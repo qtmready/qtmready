@@ -61,18 +61,18 @@ func (s *ServerHandler) Register(ctx echo.Context) error {
 
 	// Translating request to json
 	if err := ctx.Bind(request); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	// Validating request
 	if err := ctx.Validate(request); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	// Validating team
 	team := &Team{Name: request.TeamName}
 	if err := ctx.Validate(team); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	user := &User{
@@ -82,17 +82,17 @@ func (s *ServerHandler) Register(ctx echo.Context) error {
 		Password:  request.Password,
 	}
 	if err := ctx.Validate(user); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	if err := db.Save(team); err != nil {
 		// TODO: cleanup created team.
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	user.TeamID = team.ID
 	if err := db.Save(user); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	return ctx.JSON(http.StatusCreated, &RegisterationResponse{Team: team, User: user})
@@ -103,18 +103,18 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 	request := &LoginRequest{}
 
 	if err := ctx.Bind(request); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	if err := ctx.Validate(request); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	params := db.QueryParams{"email": "'" + string(request.Email) + "'"}
 	user := &User{}
 
 	if err := db.Get(user, params); err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, ErrInvalidCredentials.Error())
+		return echo.NewHTTPError(http.StatusNotFound, ErrInvalidCredentials)
 	}
 
 	if user.VerifyPassword(request.Password) {
@@ -124,7 +124,7 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 		return ctx.JSON(http.StatusOK, &TokenResponse{AccessToken: &access, RefreshToken: &refresh})
 	}
 
-	return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidCredentials.Error())
+	return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidCredentials)
 }
 
 // CreateTeamAPIKey creates an API key for the Team.
@@ -132,11 +132,11 @@ func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 
 	if err := ctx.Bind(request); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	if err := ctx.Validate(request); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	id, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
@@ -145,7 +145,7 @@ func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
 
 	if err := guard.Save(); err != nil {
 		shared.Logger.Error("error saving guard", "error", err)
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: &key})
@@ -156,11 +156,11 @@ func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 
 	if err := ctx.Bind(request); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	if err := ctx.Validate(request); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	id, _ := gocql.ParseUUID(ctx.Get("user_id").(string))
@@ -169,7 +169,7 @@ func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 
 	if err := guard.Save(); err != nil {
 		shared.Logger.Error("error saving guard", "error", err)
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
 
 	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: &key})
@@ -178,7 +178,7 @@ func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 // ValidateAPIKey validates the X-API-KEY header and return a boolean. This is mainly required for otel collector.
 func (s *ServerHandler) ValidateAPIKey(ctx echo.Context) error {
 	valid := "valid"
-	return ctx.JSON(http.StatusOK, &ValidateAPIKeyResponse{Message: &valid})
+	return ctx.JSON(http.StatusOK, &APIKeyValidationResponse{Message: &valid})
 }
 
 func (s *ServerHandler) ListTeams(ctx echo.Context) error {
