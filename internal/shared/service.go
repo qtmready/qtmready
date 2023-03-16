@@ -18,7 +18,6 @@
 package shared
 
 import (
-	"net/http"
 	"os"
 	"path"
 	"reflect"
@@ -28,7 +27,6 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/labstack/echo/v4"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -180,13 +178,9 @@ func (s *service) InitCLI() error {
 	return nil
 }
 
-func (e APIErrorResponse) Error() string {
-	return *e.Message
-}
-
 func (ev *EchoValidator) Validate(i interface{}) error {
 	if err := ev.Validator.Struct(i); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		return err
 	}
 
 	return nil

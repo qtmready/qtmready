@@ -28,6 +28,8 @@ services:
       - CASSNDRA_CLUSTER_NAME=ctrlplane
     volumes:
       - db-data:/var/lib/cassandra
+    networks:
+      - ctrlplane
 
   database-init:
     container_name: ctrlplane-db-init
@@ -44,12 +46,17 @@ services:
         max_attempts: 3
         window: 120s
 
+    networks:
+      - ctrlplane
+
   mailslurper:
     container_name: mailslurper
     image: oryd/mailslurper:latest-smtps
     ports:
       - '4436:4436'
       - '4437:4437'
+    networks:
+      - ctrlplane
 
   # nats.io
   event-stream:
@@ -58,6 +65,8 @@ services:
     ports:
       - '4222:4222'
     command: --cluster_name ctrlplane
+    networks:
+      - ctrlplane
 
   # temporal.io
   temporal:
@@ -72,6 +81,8 @@ services:
       - '7233:7233'
     volumes:
       - ./deploy/temporal/dynamicconfig/:/etc/temporal/config/dynamicconfig/
+    networks:
+      - ctrlplane
 
   temporal-admin-tools:
     container_name: temporal-admin-tools
@@ -82,6 +93,8 @@ services:
     image: temporalio/admin-tools:1.20.0
     stdin_open: true
     tty: true
+    networks:
+      - ctrlplane
 
   temporal-ui:
     container_name: temporal-ui
@@ -93,6 +106,8 @@ services:
     image: temporalio/ui:2.10.3
     ports:
       - 8080:8080
+    networks:
+      - ctrlplane
 
   # ctrlplane.ai
   ctrlplane-job-migrate:
@@ -114,6 +129,8 @@ services:
       - job-migrate-go-pkg-mod:/go/pkg/mod
       - job-migrate-build-cache:/root/.cache/go-build
     working_dir: /migrate
+    networks:
+      - ctrlplane
 
   ctrlplane-api:
     profiles:
@@ -133,6 +150,8 @@ services:
       - api-go-pkg-mod:/go/pkg/mod
       - api-build-cache:/root/.cache/go-build
     working_dir: /api
+    networks:
+      - ctrlplane
 
   ctrlplane-worker--mothership:
     container_name: ctrlplane-worker--mothership
@@ -150,7 +169,11 @@ services:
       - worker-mothership-go-pkg-mod:/go/pkg/mod
       - worker-mothership-build-cache:/root/.cache/go-build
     working_dir: /mothership
+    networks:
+      - ctrlplane
 
+networks:
+  ctrlplane: {}
 
 volumes:
   temporal-pg-data: {}
