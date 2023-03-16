@@ -105,7 +105,13 @@ func (g *Guard) SetHashed(token string) {
 //
 // FIXME: sometimes the bcrypt.CompareHashAndPassword() returns an error even though the token is valid.
 func (g *Guard) VerifyToken(token string) bool {
-	return bcrypt.CompareHashAndPassword([]byte(g.Hashed), []byte(token)) == nil
+	err := bcrypt.CompareHashAndPassword([]byte(g.Hashed), []byte(token))
+	if err != nil {
+		// shared.Logger.Error("bcrypt.CompareHashAndPassword() returned an error", "error", err)
+		fmt.Printf("bcrypt.CompareHashAndPassword() returned an error: %s \n", err)
+	}
+	return err == nil
+	// return bcrypt.CompareHashAndPassword([]byte(g.Hashed), []byte(token)) == nil
 }
 
 // ConstructAPIKey constructs a new API Key & return the key plain text and the constructed key.

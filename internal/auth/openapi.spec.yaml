@@ -168,7 +168,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ValidateAPIKeyResponse'
+                $ref: '#/components/schemas/APIKeyValidationResponse'
         '400':
           description: Bad request
           content:
@@ -376,6 +376,7 @@ components:
         email:
           type: string
           format: email
+          x-go-type: string
         password:
           type: string
           format: password
@@ -410,6 +411,7 @@ components:
         email:
           type: string
           format: email
+          x-go-type: string
         password:
           type: string
           format: password
@@ -437,7 +439,7 @@ components:
         key:
           type: string
 
-    ValidateAPIKeyResponse:
+    APIKeyValidationResponse:
       type: object
       properties:
         message:
@@ -508,11 +510,13 @@ components:
         email:
           type: string
           format: email
+          x-go-type: string
           x-oapi-codegen-extra-tags:
             validate: email,required,db_unique
         password:
           type: string
           format: password
+          x-go-json-ignore: true
         first_name:
           type: string
         last_name:
