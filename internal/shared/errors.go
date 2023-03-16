@@ -71,7 +71,7 @@ func APIErrorHandler(err error, ctx echo.Context) {
 		apierr.WithInternal(err)
 	}
 
-	// Now we check if the internal error is a valiator error.
+	// Now we check if the internal error is a validator.ValidationErrors.
 	ve, vok := apierr.Message.(validator.ValidationErrors)
 	if vok {
 		errs := ErrorMap{}
