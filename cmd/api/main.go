@@ -77,8 +77,9 @@ func main() {
 	prom := prometheus.NewPrometheus(shared.Service.Name, nil)
 	prom.Use(e)
 
-	// configuring validator
+	// override the defaults
 	e.Validator = &shared.EchoValidator{Validator: shared.Validator}
+	e.HTTPErrorHandler = shared.APIErrorHandler
 
 	// register handlers
 	auth.RegisterHandlers(e, auth.NewServerHandler(auth.Middleware))

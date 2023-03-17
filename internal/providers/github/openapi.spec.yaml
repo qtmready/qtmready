@@ -24,13 +24,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
 
   /providers/github/complete-installation:
     post:
@@ -67,13 +67,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
 
   /providers/github/repos:
     get:
@@ -100,13 +100,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
   
   /providers/github/installations:
     get:
@@ -133,13 +133,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
 
 components:
   securitySchemes:

@@ -70,7 +70,6 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 		workflows.OnInstallationEvent,
 	)
 	if err != nil {
-		shared.Logger.Error("error", "error", err)
 		return err
 	}
 
@@ -115,12 +114,12 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 	ctx.Request().Body = io.NopCloser(bytes.NewBuffer(body))
 
 	if err := Github.VerifyWebhookSignature(body, signature); err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, err)
+		return shared.NewAPIError(http.StatusUnauthorized, err)
 	}
 
 	headerEvent := ctx.Request().Header.Get("X-GitHub-Event")
 	if headerEvent == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
+		return shared.NewAPIError(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
 	}
 
 	shared.Logger.Debug("headerEvent", "headerEvent", headerEvent)
@@ -137,5 +136,5 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 		return handle(ctx)
 	}
 
-	return echo.NewHTTPError(http.StatusBadRequest, ErrInvalidEvent)
+	return shared.NewAPIError(http.StatusBadRequest, ErrInvalidEvent)
 }

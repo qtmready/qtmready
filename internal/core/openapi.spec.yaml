@@ -27,13 +27,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
     get:
       summary: List stacks
       description: List stacks
@@ -55,7 +55,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
   /core/stacks/{slug}:
     get:
       summary: Get stack
@@ -86,13 +86,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
   /core/repos:
     post:
       summary: Create repo
@@ -121,13 +121,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
 
     get:
       summary: List Repos
@@ -150,13 +150,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
   /core/repos/{id}:
     get:
       summary: Get repo
@@ -188,13 +188,13 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
         '500':
           description: Internal server error
           content:
             application/json:
               schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIErrorResponse'
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
 
 
 components:
