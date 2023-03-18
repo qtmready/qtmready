@@ -57,6 +57,7 @@ func (s *SecurityHandler) SecureHandler(handler echo.HandlerFunc, ctx echo.Conte
 
 // Register registers a new user.
 func (s *ServerHandler) Register(ctx echo.Context) error {
+	shared.Logger.Debug("investigating code path")
 	request := &RegisterationRequest{}
 
 	// Translating request to json
@@ -110,7 +111,7 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	params := db.QueryParams{"email": "'" + string(request.Email) + "'"}
+	params := db.QueryParams{"email": "'" + request.Email + "'"}
 	user := &User{}
 
 	if err := db.Get(user, params); err != nil {

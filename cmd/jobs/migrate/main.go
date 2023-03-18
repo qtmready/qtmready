@@ -19,6 +19,7 @@ package main
 
 import (
 	"github.com/sourcegraph/conc"
+
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/shared"
 )

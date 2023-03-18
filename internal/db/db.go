@@ -116,6 +116,7 @@ func (d *db) InitSession() {
 // RunMigrations runs database migrations if any.
 func (d *db) RunMigrations() {
 	logger := &mlog{verbose: shared.Service.Debug}
+
 	shared.Logger.Info("db: running migrations ...", "source", d.MigrationSourceURL)
 
 	config := &cassandra.Config{KeyspaceName: d.Keyspace, MultiStatementEnabled: true}
@@ -193,11 +194,13 @@ func (d *db) InitSessionForTests(port int, migrationsPath string) error {
 	cluster.Events.DisableTopologyEvents = true
 	cluster.Events.DisableNodeStatusEvents = true
 	cluster.Events.DisableSchemaEvents = true
+
 	session, err := igocqlx.WrapSession(cluster.CreateSession())
 	if err != nil {
 		return err
 	}
 
 	d.Session = session
+
 	return nil
 }

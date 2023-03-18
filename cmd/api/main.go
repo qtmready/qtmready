@@ -18,8 +18,11 @@
 package main
 
 import (
+	"context"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/labstack/echo-contrib/prometheus"
 	"github.com/labstack/echo/v4"
@@ -59,12 +62,16 @@ func main() {
 	// graceful shutdown.
 	// LINK: https://stackoverflow.com/a/46255965/228697.
 	exitcode := 0
-	defer func() { os.Exit(exitcode) }()              // all connections are closed, exit with the right code.
+	defer func() {
+		shared.Logger.Debug("exiting ...")
+		os.Exit(exitcode)
+	}() // all connections are closed, exit with the right code.
 	defer func() { _ = shared.Logger.Sync() }()       // flush log buffer.
 	defer func() { _ = shared.EventStream.Drain() }() // process events in the buffer before closing connection.
 	defer db.DB.Session.Close()
 	defer shared.Temporal.Client.Close()
 
+	shared.Logger.Debug("starting ...")
 	// web server based on echo
 	e := echo.New()
 
@@ -79,7 +86,7 @@ func main() {
 
 	// override the defaults
 	e.Validator = &shared.EchoValidator{Validator: shared.Validator}
-	e.HTTPErrorHandler = shared.APIErrorHandler
+	e.HTTPErrorHandler = shared.EchoAPIErrorHandler
 
 	// register handlers
 	auth.RegisterHandlers(e, auth.NewServerHandler(auth.Middleware))
@@ -88,10 +95,23 @@ func main() {
 
 	e.GET("/healthz", healthz)
 
-	if err := e.Start(":8000"); err != nil {
+	go func() {
+		if err := e.Start(":8000"); err != nil && err != http.ErrServerClosed {
+			exitcode = 1
+			return
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)                                       // create a channel to listen for quit signals.
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL) // listen for quit signals.
+	<-quit                                                                // wait for quit signal.
+
+	if err := e.Shutdown(context.Background()); err != nil {
 		exitcode = 1
 		return
 	}
+
+	exitcode = 1
 }
 
 type (

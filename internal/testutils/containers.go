@@ -27,6 +27,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
+
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/shared"
 )
@@ -45,7 +46,7 @@ const (
 )
 
 type (
-	// Container is a wrapper around testcontainers.Container
+	// Container is a wrapper around testcontainers.Container.
 	Container struct {
 		testcontainers.Container
 		Context context.Context
@@ -61,10 +62,12 @@ func CreateTestNetwork(ctx context.Context) (testcontainers.Network, error) {
 	req := testcontainers.GenericNetworkRequest{
 		NetworkRequest: testcontainers.NetworkRequest{Name: TestNetworkName, CheckDuplicate: true},
 	}
+
 	network, err := testcontainers.GenericNetwork(ctx, req)
 	if err != nil {
 		return nil, err
 	}
+
 	return network, nil
 }
 
@@ -202,6 +205,8 @@ func StartAirContainer(ctx context.Context, name string, workdir string, config 
 		"TEMPORAL_HOST":      TemporalContainerHost,
 		"CASSANDRA_HOSTS":    DBContainerHost,
 		"CASSANDRA_KEYSPACE": db.TestKeyspace,
+		"GOCOVERDIR":         ".coverage",
+		"GOEXPERIMENT":       "coverageredesign",
 	}
 	_, caller, _, _ := runtime.Caller(0)
 	pkgroot := path.Join(path.Dir(caller), "..", "..")
@@ -253,6 +258,7 @@ func StartAirContainer(ctx context.Context, name string, workdir string, config 
 func (d *Container) RunCQL(stmt string) error {
 	cmd := []string{"cqlsh", "-e", stmt}
 	_, _, err := d.Exec(d.Context, cmd)
+
 	return err
 }
 
@@ -268,14 +274,17 @@ func (d *Container) DropKeyspace(keyspace string) error {
 	return d.RunCQL(stmt)
 }
 
-// ShutdownCassandra shuts down the Cassandra container.
+// ShutdownCassandra first disables gossip and binary protocols, then drains the node, and finally terminates the container.
 func (d *Container) ShutdownCassandra() error {
 	_, _, _ = d.Exec(d.Context, []string{"nodetool", "disablegossip"})
 	_, _, _ = d.Exec(d.Context, []string{"nodetool", "disablebinary"})
 	_, _, _ = d.Exec(d.Context, []string{"nodetool", "drain"})
-	return d.Terminate(d.Context)
+
+	return d.Container.Terminate(d.Context)
 }
 
+// Shutdown gracefully shuts down the container.
 func (d *Container) Shutdown() error {
-	return d.Terminate(d.Context)
+	timeout := 5 * time.Second
+	return d.Container.Stop(d.Context, &timeout)
 }

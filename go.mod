@@ -15,6 +15,7 @@ require (
 	github.com/google/go-github/v45 v45.2.0
 	github.com/gosimple/slug v1.13.1
 	github.com/ilyakaznacheev/cleanenv v1.4.2
+	github.com/jinzhu/copier v0.3.5
 	github.com/jxskiss/base62 v1.1.0
 	github.com/labstack/echo-contrib v0.14.1
 	github.com/labstack/echo/v4 v4.10.2

@@ -27,7 +27,9 @@ import (
 
 func main() {
 	ctx := context.Background()
+
 	shared.InitForTest()
+
 	dbcon, err := testutils.StartDBContainer(ctx)
 	if err != nil {
 		shared.Logger.Error("db: failed to connect", "error", err)
