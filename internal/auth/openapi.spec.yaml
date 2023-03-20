@@ -426,6 +426,9 @@ components:
           type: string
         refresh_token:
           type: string
+      required:
+        - access_token
+        - refresh_token
 
     CreateAPIKeyRequest:
       type: object

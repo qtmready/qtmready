@@ -141,8 +141,8 @@ func (teamuser *TeamUser) GetTable() itable.ITable {
 
 // TokenResponse defines model for TokenResponse.
 type TokenResponse struct {
-	AccessToken  *string `json:"access_token,omitempty"`
-	RefreshToken *string `json:"refresh_token,omitempty"`
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 // User defines model for User.

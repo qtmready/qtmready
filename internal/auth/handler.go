@@ -57,7 +57,6 @@ func (s *SecurityHandler) SecureHandler(handler echo.HandlerFunc, ctx echo.Conte
 
 // Register registers a new user.
 func (s *ServerHandler) Register(ctx echo.Context) error {
-	shared.Logger.Debug("investigating code path")
 	request := &RegisterationRequest{}
 
 	// Translating request to json
@@ -122,7 +121,7 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 		access, _ := GenerateAccessToken(user.ID.String(), user.TeamID.String())
 		refresh, _ := GenerateRefreshToken(user.ID.String(), user.TeamID.String())
 
-		return ctx.JSON(http.StatusOK, &TokenResponse{AccessToken: &access, RefreshToken: &refresh})
+		return ctx.JSON(http.StatusOK, &TokenResponse{AccessToken: access, RefreshToken: refresh})
 	}
 
 	return shared.NewAPIError(http.StatusUnauthorized, ErrInvalidCredentials)

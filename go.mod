@@ -12,10 +12,10 @@ require (
 	github.com/docker/docker v23.0.1+incompatible
 	github.com/go-playground/validator/v10 v10.11.2
 	github.com/gocql/gocql v1.3.1
+	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/go-github/v45 v45.2.0
 	github.com/gosimple/slug v1.13.1
 	github.com/ilyakaznacheev/cleanenv v1.4.2
-	github.com/jinzhu/copier v0.3.5
 	github.com/jxskiss/base62 v1.1.0
 	github.com/labstack/echo-contrib v0.14.1
 	github.com/labstack/echo/v4 v4.10.2
@@ -57,8 +57,7 @@ require (
 	github.com/gogo/googleapis v1.4.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/gogo/status v1.1.1 // indirect
-	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
+	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
 	github.com/golang-migrate/migrate/v4 v4.15.2
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect

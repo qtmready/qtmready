@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/Pallinder/go-randomdata"
-	"github.com/jinzhu/copier"
+	"github.com/golang-jwt/jwt/v4"
 	pwg "github.com/sethvargo/go-password/password"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
@@ -50,15 +50,18 @@ type (
 		login    *auth.LoginRequest
 	}
 
-	ResponseData struct{}
+	ResponseData struct {
+		register *auth.RegisterationResponse
+	}
 
 	ServerHandlerTestSuite struct {
 		suite.Suite
-		context  context.Context
-		ctrs     *Containers
-		url      string
-		client   *auth.Client
-		requests *RequestData
+		context   context.Context
+		ctrs      *Containers
+		url       string
+		client    *auth.Client
+		requests  *RequestData
+		responses *ResponseData
 	}
 )
 
@@ -78,10 +81,13 @@ func (c *Containers) shutdown(ctx context.Context) {
 }
 
 func (s *ServerHandlerTestSuite) SetupSuite() {
+	shared.InitForTest()
+
 	s.context = context.Background()
 	s.SetupContainers()
 	s.SetupAPIClient()
 	s.SetupRequestData()
+	s.responses = &ResponseData{}
 }
 
 func (s *ServerHandlerTestSuite) TearDownSuite() {
@@ -89,7 +95,6 @@ func (s *ServerHandlerTestSuite) TearDownSuite() {
 }
 
 func (s *ServerHandlerTestSuite) SetupContainers() {
-	shared.InitForTest()
 	shared.Logger.Info("setting up test environment ...")
 
 	network, err := testutils.CreateTestNetwork(s.context)
@@ -113,8 +118,6 @@ func (s *ServerHandlerTestSuite) SetupContainers() {
 
 	_ = db.DB.InitSessionForTests(port.Int(), "file://../db/migrations")
 
-	shared.Logger.Warn("session gets initiated, but if we catch the error and do t.Fatal(err), the test panics!")
-
 	if db.DB.Session.Session().S == nil {
 		s.T().Fatal("session is nil")
 	}
@@ -131,12 +134,12 @@ func (s *ServerHandlerTestSuite) SetupContainers() {
 		s.T().Fatalf("failed to start natsio container: %v", err)
 	}
 
-	apictr, err := testutils.StartAPIContainer(s.context)
+	apictr, err := testutils.StartAPIContainer(s.context, shared.Service.Secret)
 	if err != nil {
 		s.T().Fatalf("failed to start api container: %v", err)
 	}
 
-	mxctr, err := testutils.StartMothershipContainer(s.context)
+	mxctr, err := testutils.StartMothershipContainer(s.context, shared.Service.Secret)
 	if err != nil {
 		s.T().Fatalf("failed to start api container: %v", err)
 	}
@@ -159,16 +162,25 @@ func (s *ServerHandlerTestSuite) SetupContainers() {
 	}
 }
 
-func (s *ServerHandlerTestSuite) SetupRequestData() {
+func (s *ServerHandlerTestSuite) GenRegistrationRequest() *auth.RegisterationRequest {
 	password := pwg.MustGenerate(16, 4, 4, true, true)
-	s.requests = &RequestData{}
-	s.requests.register = &auth.RegisterationRequest{
+
+	return &auth.RegisterationRequest{
 		Email:           randomdata.Email(),
 		Password:        password,
 		ConfirmPassword: password,
 		FirstName:       randomdata.FirstName(randomdata.Male),
 		LastName:        randomdata.LastName(),
 		TeamName:        randomdata.SillyName(),
+	}
+}
+
+func (s *ServerHandlerTestSuite) SetupRequestData() {
+	s.requests = &RequestData{}
+	s.requests.register = s.GenRegistrationRequest()
+	s.requests.login = &auth.LoginRequest{
+		Email:    s.requests.register.Email,
+		Password: s.requests.register.Password,
 	}
 }
 
@@ -211,6 +223,8 @@ func (s *ServerHandlerTestSuite) TestRegister() {
 	s.Assert().Equal(s.requests.register.LastName, parsed.JSON201.User.LastName)
 	s.Assert().Equal(parsed.JSON201.User.TeamID, parsed.JSON201.Team.ID)
 	s.Assert().Equal(s.requests.register.TeamName, parsed.JSON201.Team.Name)
+
+	s.responses.register = parsed.JSON201
 }
 
 func (s *ServerHandlerTestSuite) TestRegister_FailOnDuplicateEmail() {
@@ -232,8 +246,7 @@ func (s *ServerHandlerTestSuite) TestRegister_FailOnDuplicateEmail() {
 }
 
 func (s *ServerHandlerTestSuite) TestRegister_FailOnInvalidEmail() {
-	request := &auth.RegisterationRequest{}
-	_ = copier.Copy(request, s.requests.register)
+	request := s.GenRegistrationRequest()
 	request.Email = "invalid"
 
 	response, err := s.client.Register(s.context, *request)
@@ -252,6 +265,39 @@ func (s *ServerHandlerTestSuite) TestRegister_FailOnInvalidEmail() {
 	emailerr, ok := parsed.JSON400.Errors.Get("email")
 	s.Assert().True(ok)
 	s.Assert().Equal(emailerr, "invalid format")
+}
+
+func (s *ServerHandlerTestSuite) TestRegister_Login() {
+	response, err := s.client.Login(s.context, *s.requests.login)
+	if err != nil {
+		s.T().Fatalf("failed to login: %v", err)
+	}
+
+	defer response.Body.Close()
+
+	s.Assert().Equal(http.StatusOK, response.StatusCode)
+
+	parsed, err := auth.ParseLoginResponse(response)
+	if err != nil {
+		s.T().Fatalf("failed to parse login response: %v", err)
+	}
+
+	s.Assert().NotNil(parsed.JSON200)
+	s.Assert().NotNil(parsed.JSON200.AccessToken)
+
+	access := parsed.JSON200.AccessToken
+
+	paccess, err := jwt.NewParser().ParseWithClaims(access, &auth.JWTClaims{}, auth.SecretFn)
+	if err != nil {
+		s.T().Fatalf("failed to parse access token: %v", err)
+	}
+
+	if claims, ok := paccess.Claims.(*auth.JWTClaims); ok {
+		s.Assert().Equal(claims.UserID, s.responses.register.User.ID.String())
+		s.Assert().Equal(claims.TeamID, s.responses.register.Team.ID.String())
+	} else {
+		s.T().Fatalf("failed to parse claims")
+	}
 }
 
 func TestHandler(t *testing.T) {

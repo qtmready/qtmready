@@ -173,10 +173,11 @@ func StartNatsIOContainer(ctx context.Context) (*Container, error) {
 }
 
 // StartAPIContainer starts the API container for testing purposes.
-func StartAPIContainer(ctx context.Context) (*Container, error) {
+func StartAPIContainer(ctx context.Context, secret string) (*Container, error) {
 	return StartAirContainer(
 		ctx,
 		APIContainerHost,
+		secret,
 		"/api",
 		"api.toml",
 		"8000/tcp",
@@ -185,10 +186,11 @@ func StartAPIContainer(ctx context.Context) (*Container, error) {
 }
 
 // StartMothershipContainer starts the Mothership container for testing purposes.
-func StartMothershipContainer(ctx context.Context) (*Container, error) {
+func StartMothershipContainer(ctx context.Context, secret string) (*Container, error) {
 	return StartAirContainer(
 		ctx,
 		MothershipContainerHost,
+		secret,
 		"/mothership",
 		"mothership.toml",
 		"8080/tcp",
@@ -197,10 +199,10 @@ func StartMothershipContainer(ctx context.Context) (*Container, error) {
 }
 
 // StartAirContainer sets up comsmtrek/air to quickly compile different containers for services written in go.
-func StartAirContainer(ctx context.Context, name string, workdir string, config string, port string, waiting wait.Strategy) (*Container, error) {
+func StartAirContainer(ctx context.Context, name string, secret string, workdir string, config string, port string, waiting wait.Strategy) (*Container, error) {
 	env := ContainerEnvironment{
 		"DEBUG":              "true",
-		"SECRET":             "vnLeH6RPyDR9kcVrELmnMtB5rcR2Ukenm8KgdvndTvXAz5XRUVFWfJR8dpvJ3FEh",
+		"SECRET":             secret,
 		"EVENTS_SERVERS_URL": fmt.Sprintf("nats://%s:4222", NatsIOContainerHost),
 		"TEMPORAL_HOST":      TemporalContainerHost,
 		"CASSANDRA_HOSTS":    DBContainerHost,
