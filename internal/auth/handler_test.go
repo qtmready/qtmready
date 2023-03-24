@@ -203,7 +203,7 @@ func (s *ServerHandlerTestSuite) SetupAPIClient() {
 	s.client = client
 }
 
-func (s *ServerHandlerTestSuite) TestRegister() {
+func (s *ServerHandlerTestSuite) Test_0001_Register() {
 	response, err := s.client.Register(s.context, *s.requests.register)
 	if err != nil {
 		s.T().Fatalf("failed to register: %v", err)
@@ -227,7 +227,7 @@ func (s *ServerHandlerTestSuite) TestRegister() {
 	s.responses.register = parsed.JSON201
 }
 
-func (s *ServerHandlerTestSuite) TestRegister_FailOnDuplicateEmail() {
+func (s *ServerHandlerTestSuite) Test_0002_Register_DuplicateEmail() {
 	response, err := s.client.Register(s.context, *s.requests.register)
 	if err != nil {
 		s.T().Fatalf("failed to register: %v", err)
@@ -245,7 +245,7 @@ func (s *ServerHandlerTestSuite) TestRegister_FailOnDuplicateEmail() {
 	s.Assert().Equal(emailerr, "already exists")
 }
 
-func (s *ServerHandlerTestSuite) TestRegister_FailOnInvalidEmail() {
+func (s *ServerHandlerTestSuite) Test_0003_Register_InvalidEmail() {
 	request := s.GenRegistrationRequest()
 	request.Email = "invalid"
 
@@ -267,7 +267,7 @@ func (s *ServerHandlerTestSuite) TestRegister_FailOnInvalidEmail() {
 	s.Assert().Equal(emailerr, "invalid format")
 }
 
-func (s *ServerHandlerTestSuite) TestRegister_Login() {
+func (s *ServerHandlerTestSuite) Test_0101_Login() {
 	response, err := s.client.Login(s.context, *s.requests.login)
 	if err != nil {
 		s.T().Fatalf("failed to login: %v", err)
@@ -300,6 +300,17 @@ func (s *ServerHandlerTestSuite) TestRegister_Login() {
 	}
 }
 
+// TestHandler runs the test suite for the server handler. Please note that suite tests run in alphabetical order.
+// In the light of this, we prefix the test functions with numbers to ensure the correct order of execution.
+//
+//   - 00xx - Register
+//   - 01xx - Login
+//   - 02xx - API Key
+//
+// This is a bookkeeping nightmare, but it's the easiest way to ensure that the tests are run in the correct order. For
+// more information, please see [github] issue.
+//
+// [github]: https://github.com/stretchr/testify/issues/194
 func TestHandler(t *testing.T) {
 	suite.Run(t, new(ServerHandlerTestSuite))
 }

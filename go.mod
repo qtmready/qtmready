@@ -13,7 +13,7 @@ require (
 	github.com/go-playground/validator/v10 v10.11.2
 	github.com/gocql/gocql v1.3.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/google/go-github/v45 v45.2.0
+	github.com/google/go-github/v50 v50.1.0
 	github.com/gosimple/slug v1.13.1
 	github.com/ilyakaznacheev/cleanenv v1.4.2
 	github.com/jxskiss/base62 v1.1.0
@@ -62,7 +62,6 @@ require (
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/go-github/v50 v50.1.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gosimple/unidecode v1.0.1 // indirect
