@@ -5,6 +5,8 @@
     "ui.semanticTokens": true
   },
   "go.lintTool": "golangci-lint",
+  "go.lintOnSave": "package",
+  "go.lintFlags": ["--fast"],
   "go.toolsManagement.autoUpdate": true,
   "go.useLanguageServer": true,
   "go.editorContextMenuCommands": {

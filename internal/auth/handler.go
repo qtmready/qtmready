@@ -110,7 +110,7 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	params := db.QueryParams{"email": "'" + string(request.Email) + "'"}
+	params := db.QueryParams{"email": "'" + request.Email + "'"}
 	user := &User{}
 
 	if err := db.Get(user, params); err != nil {
@@ -121,7 +121,7 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 		access, _ := GenerateAccessToken(user.ID.String(), user.TeamID.String())
 		refresh, _ := GenerateRefreshToken(user.ID.String(), user.TeamID.String())
 
-		return ctx.JSON(http.StatusOK, &TokenResponse{AccessToken: &access, RefreshToken: &refresh})
+		return ctx.JSON(http.StatusOK, &TokenResponse{AccessToken: access, RefreshToken: refresh})
 	}
 
 	return shared.NewAPIError(http.StatusUnauthorized, ErrInvalidCredentials)

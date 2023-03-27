@@ -24,7 +24,7 @@ import (
 	"net/http"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	gh "github.com/google/go-github/v45/github"
+	gh "github.com/google/go-github/v50/github"
 	"github.com/ilyakaznacheev/cleanenv"
 
 	"go.breu.io/ctrlplane/internal/shared"

@@ -27,6 +27,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/ilyakaznacheev/cleanenv"
+	pwg "github.com/sethvargo/go-password/password"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -200,8 +201,9 @@ func InitValidator() {
 
 func InitForTest() {
 	Service = &service{
-		Name:  "test",
-		Debug: true,
+		Name:   "test",
+		Secret: pwg.MustGenerate(32, 8, 0, false, false),
+		Debug:  true,
 	}
 
 	Service.InitLogger()

@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/ctrlplane/internal/db"
@@ -42,21 +42,21 @@ type (
 	JWTClaims struct {
 		UserID string `json:"user_id"`
 		TeamID string `json:"team_id"`
-		jwt.StandardClaims
+		jwt.RegisteredClaims
 	}
 )
 
 // GenerateAccessToken generates a short lived JWT token for the given user.
 func GenerateAccessToken(userID, teamID string) (string, error) {
-	expires := time.Now().Add(time.Minute * 15).Unix()
+	expires := time.Now().Add(time.Minute * 15)
 	if shared.Service.Debug {
-		expires = time.Now().Add(time.Hour * 24).Unix()
+		expires = time.Now().Add(time.Hour * 24)
 	}
 
 	claims := &JWTClaims{
-		UserID:         userID,
-		TeamID:         teamID,
-		StandardClaims: jwt.StandardClaims{ExpiresAt: expires, Issuer: shared.Service.Name},
+		UserID:           userID,
+		TeamID:           teamID,
+		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(expires), Issuer: shared.Service.Name},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -68,15 +68,15 @@ func GenerateAccessToken(userID, teamID string) (string, error) {
 //
 // TODO: Implement the logic for refreshing tokens using the refresh token.
 func GenerateRefreshToken(userID, teamID string) (string, error) {
-	expires := time.Now().Add(time.Minute * 60).Unix()
+	expires := time.Now().Add(time.Minute * 60)
 	if shared.Service.Debug {
-		expires = time.Now().Add(time.Hour * 24 * 30).Unix()
+		expires = time.Now().Add(time.Hour * 24 * 30)
 	}
 
 	claims := &JWTClaims{
-		UserID:         userID,
-		TeamID:         teamID,
-		StandardClaims: jwt.StandardClaims{ExpiresAt: expires, Issuer: shared.Service.Name},
+		UserID:           userID,
+		TeamID:           teamID,
+		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(expires), Issuer: shared.Service.Name},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -135,7 +135,7 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 				return echo.NewHTTPError(http.StatusBadRequest, ErrMissingAuthHeader)
 			}
 
-			return keyFn(next, ctx, key)
+			return KeyFn(next, ctx, key)
 		}
 
 		return echo.NewHTTPError(http.StatusBadRequest, ErrInvalidAuthHeader)
@@ -144,7 +144,7 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 // bearerFn is the function that handles the JWT token authentication.
 func bearerFn(next echo.HandlerFunc, ctx echo.Context, token string) error {
-	parsed, err := jwt.ParseWithClaims(token, &JWTClaims{}, secretFn)
+	parsed, err := jwt.ParseWithClaims(token, &JWTClaims{}, SecretFn)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err)
 	}
@@ -159,8 +159,8 @@ func bearerFn(next echo.HandlerFunc, ctx echo.Context, token string) error {
 	return next(ctx)
 }
 
-// keyFn validates the API key.
-func keyFn(next echo.HandlerFunc, ctx echo.Context, key string) error {
+// KeyFn validates the API key.
+func KeyFn(next echo.HandlerFunc, ctx echo.Context, key string) error {
 	guard := &Guard{}
 	err := guard.VerifyAPIKey(key) // This will always return true if err is nil
 
@@ -188,7 +188,7 @@ func keyFn(next echo.HandlerFunc, ctx echo.Context, key string) error {
 	return next(ctx)
 }
 
-// secretFn provides the secret for the JWT token.
-func secretFn(t *jwt.Token) (interface{}, error) {
+// SecretFn provides the secret for the JWT token.
+func SecretFn(t *jwt.Token) (interface{}, error) {
 	return []byte(shared.Service.Secret), nil
 }

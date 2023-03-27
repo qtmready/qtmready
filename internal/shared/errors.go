@@ -35,14 +35,6 @@ type (
 	ErrorMap map[string]string
 )
 
-// NewAPIError replaces echo.NewHTTPError.
-func NewAPIError(code int, message error) *APIError {
-	return &APIError{
-		Code:    code,
-		Message: message,
-	}
-}
-
 func (e *APIError) Error() string {
 	return fmt.Sprintf("%d: %s", e.Code, e.Message)
 }
@@ -67,6 +59,7 @@ func (e *APIError) format() *APIError {
 		errs["internal"] = e.Internal.Error()
 		e.Errors = &errs
 	}
+
 	return e
 }
 
@@ -74,9 +67,23 @@ func (e *APIError) Unwrap() error {
 	return e.Internal
 }
 
-// APIErrorHandler adds syntax sugar to the default echo error handler.
-func APIErrorHandler(err error, ctx echo.Context) {
+func (e *ErrorMap) Get(key string) (string, bool) {
+	val, ok := (*e)[key]
+	return val, ok
+}
+
+// NewAPIError replaces echo.NewHTTPError.
+func NewAPIError(code int, message error) *APIError {
+	return &APIError{
+		Code:    code,
+		Message: message,
+	}
+}
+
+// EchoAPIErrorHandler adds syntax sugar to the default echo error handler.
+func EchoAPIErrorHandler(err error, ctx echo.Context) {
 	var apierr *APIError
+
 	if ctx.Response().Committed {
 		return
 	}
@@ -115,6 +122,8 @@ func TagMessage(tag string) string {
 	switch tag {
 	case "required":
 		return "required"
+	case "email":
+		return "invalid format"
 	case "db_unique":
 		return "already exists"
 	default:
