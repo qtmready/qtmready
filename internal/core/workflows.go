@@ -25,7 +25,8 @@ import (
 )
 
 const (
-	unLockTimeOutStackMutex time.Duration = time.Minute * 30 //TODO: adjust this
+	unLockTimeOutStackMutex             time.Duration = time.Minute * 30 //TODO: adjust this
+	OnPullRequestWorkflowPRSignalsLimit               = 1000             // TODO: adjust this
 )
 
 type (
@@ -49,7 +50,7 @@ func (w *Workflows) ChangesetController(id string) error {
 // get repo from stack
 // compute changeset idempotency key
 // signal sentinal to start orchestration
-func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string, stackName string) {
+func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string, stackName string) error {
 
 	logger := workflow.GetLogger(ctx)
 	currentWorkflowID := workflow.GetInfo(ctx).WorkflowExecution.ID
@@ -63,9 +64,17 @@ func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string, 
 	m.Init(ctx)
 
 	payload := &shared.PullRequestSignal{}
+	var prSignalsCounter int = 0
 	for {
+		// return continue as new if this workflow has processes signals upto a limit
+		if prSignalsCounter >= OnPullRequestWorkflowPRSignalsLimit {
+			return workflow.NewContinueAsNewError(ctx, w.OnPullRequestWorkflow, stackID, stackName)
+		}
+
 		// Wait for PR event
 		workflow.GetSignalChannel(ctx, pullRequestSignalName).Receive(ctx, payload)
+		prSignalsCounter++
+
 		logger.Info("Pull request signal received from Github Workflow:", payload.SenderWorkflowID)
 		unlockFunc, err := m.Lock(ctx)
 		if err != nil {
@@ -75,4 +84,5 @@ func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string, 
 		time.Sleep(time.Second * 5)
 		unlockFunc()
 	}
+	return nil
 }
