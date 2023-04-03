@@ -78,7 +78,7 @@ paths:
   /providers/github/repos:
     get:
       summary: Get GitHub repositories
-      description: List all the github repositories registered with ctrlplane
+      description: List all the github repositories registered with ctrlplane with user's team id
       operationId: github-get-repos
       security:
         - BearerAuth: []

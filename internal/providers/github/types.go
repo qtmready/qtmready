@@ -18,19 +18,15 @@
 package github
 
 import (
-	"encoding/json"
-
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 )
 
 // Webhook events & Workflow singals.
 type (
-	WebhookEvent          string                               // WebhookEvent defines the event type.
-	WebhookEventHandler   func(ctx echo.Context) error         // EventHandler is the signature of the event handler function.
-	WebhookEventHandlers  map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers.
-	WorkflowSignal        string                               // WorkflowSignal is the name of a workflow signal.
-	WorkflowSignalMapType map[string]WorkflowSignal            // WorkflowSignalMap maps strings to their respective signal.
+	WebhookEvent         string                               // WebhookEvent defines the event type.
+	WebhookEventHandler  func(ctx echo.Context) error         // EventHandler is the signature of the event handler function.
+	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers.
 )
 
 // Payloads for internal events & signals.
@@ -141,45 +137,8 @@ const (
 	WebhookEventWorkflowRun                         WebhookEvent = "workflow_run"
 )
 
-// Workflow signal types.
-const (
-	WorkflowSignalInstallationEvent    WorkflowSignal = "installation_event"
-	WorkflowSignalCompleteInstallation WorkflowSignal = "complete_installation"
-	WorkflowSignalPullRequest          WorkflowSignal = "pull_request"
-)
-
 const (
 	NoCommit = "0000000000000000000000000000000000000000"
 )
 
-var (
-	WorkflowSignalMap = WorkflowSignalMapType{
-		WorkflowSignalInstallationEvent.String():    WorkflowSignalInstallationEvent,
-		WorkflowSignalCompleteInstallation.String(): WorkflowSignalCompleteInstallation,
-		WorkflowSignalPullRequest.String():          WorkflowSignalPullRequest,
-	}
-)
-
 func (e WebhookEvent) String() string { return string(e) }
-
-/*
- * Methods for WorkflowSignal.
- */
-
-func (w WorkflowSignal) String() string               { return string(w) }
-func (w WorkflowSignal) MarshalJSON() ([]byte, error) { return json.Marshal(w.String()) }
-func (w *WorkflowSignal) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
-
-	val, ok := WorkflowSignalMap[s]
-	if !ok {
-		return ErrInvalidRolloutState
-	}
-
-	*w = val
-
-	return nil
-}

@@ -18,6 +18,7 @@
 package core
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/gocql/gocql"
@@ -25,6 +26,7 @@ import (
 
 	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 type (
@@ -52,6 +54,23 @@ func (s *ServerHandler) CreateStack(ctx echo.Context) error {
 	if err := db.Save(stack); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
+
+	/*
+		start infinite stack workflow
+		reason for going with infinite workflow instead of starting with signal is to follow the
+		temporal guideline which state that workflow ids should not be resued
+	*/
+	w := &Workflows{}
+	opts := shared.Temporal.Queues[shared.CoreQueue].
+		GetWorkflowOptions("core", "stack", request.Name, "stackId", stack.ID.String())
+
+	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPullRequestWorkflow, request.Name)
+	if err != nil {
+		// TODO: remove stack if workflow not started? or always start this workflow with signal so it can be started on pull request (if not already running)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	shared.Logger.Info("started workflow: ", opts.ID, " run ID: ", exe.GetRunID())
 
 	return ctx.JSON(http.StatusCreated, stack)
 }

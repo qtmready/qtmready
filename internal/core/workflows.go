@@ -17,11 +17,62 @@
 
 package core
 
+import (
+	"time"
+
+	"go.breu.io/ctrlplane/internal/shared"
+	"go.temporal.io/sdk/workflow"
+)
+
+const (
+	unLockTimeOutStackMutex time.Duration = time.Minute * 30 //TODO: adjust this
+)
+
 type (
-	Workflows struct{}
+	Activities struct{}
+	Workflows  struct {
+	}
 )
 
 // ChangesetController controls the rollout lifecycle for one changeset.
 func (w *Workflows) ChangesetController(id string) error {
 	return nil
+}
+
+// this workflow will be started on stack creation
+
+// activity to start mutex workflow
+// wait on signal for pr with repo id
+
+// acquire lock on stack
+// get stack from repo id
+// get repo from stack
+// compute changeset idempotency key
+// signal sentinal to start orchestration
+func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string, stackName string) {
+
+	logger := workflow.GetLogger(ctx)
+	currentWorkflowID := workflow.GetInfo(ctx).WorkflowExecution.ID
+	pullRequestSignalName := currentWorkflowID
+	resourceID := currentWorkflowID
+
+	// execute activity to start mutex workflow
+	logger.Info("executing SignalWithStartMutexWorkflowActivity")
+
+	m := NewMutex(currentWorkflowID, resourceID, unLockTimeOutStackMutex)
+	m.Init(ctx)
+
+	payload := &shared.PullRequestSignal{}
+	for {
+		// Wait for PR event
+		workflow.GetSignalChannel(ctx, pullRequestSignalName).Receive(ctx, payload)
+		logger.Info("Pull request signal received from Github Workflow:", payload.SenderWorkflowID)
+		unlockFunc, err := m.Lock(ctx)
+		if err != nil {
+			logger.Info("Error in acquiring lock", err)
+		}
+
+		time.Sleep(time.Second * 5)
+		unlockFunc()
+	}
 }

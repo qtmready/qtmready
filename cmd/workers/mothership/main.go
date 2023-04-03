@@ -23,6 +23,7 @@ import (
 	"github.com/sourcegraph/conc"
 	"go.temporal.io/sdk/worker"
 
+	"go.breu.io/ctrlplane/internal/core"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/providers/github"
 	"go.breu.io/ctrlplane/internal/shared"
@@ -59,13 +60,17 @@ func main() {
 	wrkr := worker.New(shared.Temporal.Client, queue, options)
 
 	ghwfs := &github.Workflows{}
+	cwfs := &core.Workflows{}
 
 	wrkr.RegisterWorkflow(ghwfs.OnInstallationEvent)
 	wrkr.RegisterWorkflow(ghwfs.OnInstallationRepositoriesEvent)
 	wrkr.RegisterWorkflow(ghwfs.OnPushEvent)
 	wrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
+	wrkr.RegisterWorkflow(cwfs.OnPullRequestWorkflow)
+	wrkr.RegisterWorkflow(cwfs.MutexWorkflow)
 
 	wrkr.RegisterActivity(&github.Activities{})
+	wrkr.RegisterActivity(&core.Activities{})
 
 	err := wrkr.Run(worker.InterruptCh())
 

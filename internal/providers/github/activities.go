@@ -112,9 +112,29 @@ func (a *Activities) GetInstallation(ctx context.Context, id int64) (*Installati
 func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*core.Repo, error) {
 	r := &core.Repo{}
 
-	if err := db.Get(r, db.QueryParams{"github_id": strconv.FormatInt(repo.GithubID, 10)}); err != nil {
+	params := db.QueryParams{
+		"provider_id": strconv.FormatInt(repo.GithubID, 10),
+		"provider":    "github",
+	}
+
+	if err := db.Get(r, params); err != nil {
 		return r, err
 	}
 
 	return r, nil
+}
+
+// GetCoreRepo gets entity.Stack against given core Repo.
+func (a *Activities) GetStack(ctx context.Context, repo *core.Repo) (*core.Stack, error) {
+	s := &core.Stack{}
+
+	params := db.QueryParams{
+		"id": repo.StackID.String(),
+	}
+
+	if err := db.Get(s, params); err != nil {
+		return s, err
+	}
+
+	return s, nil
 }
