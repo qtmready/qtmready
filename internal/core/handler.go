@@ -103,7 +103,7 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 		return err
 	}
 
-	stack := &Repo{
+	repo := &Repo{
 		StackID:       request.StackID,
 		ProviderID:    request.ProviderID,
 		DefaultBranch: request.DefaultBranch,
@@ -111,11 +111,11 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 		Provider:      request.Provider,
 	}
 
-	if err := db.Save(stack); err != nil {
+	if err := db.Save(repo); err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err)
 	}
 
-	return ctx.JSON(http.StatusCreated, stack)
+	return ctx.JSON(http.StatusCreated, repo)
 }
 
 func (s *ServerHandler) ListRepos(ctx echo.Context) error {

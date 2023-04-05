@@ -103,7 +103,7 @@ func (a *Activities) StartMutexWorkflowActivity(ctx context.Context, resourceID 
 			resourceID,
 		)
 
-	println("SignalWithStartMutexWorkflowActivity: signal mutex workflow ")
+	println("Execute mutex workflow ")
 	wr, err := shared.Temporal.Client.ExecuteWorkflow(ctx, opts, w.MutexWorkflow, resourceID, unlockTimeout)
 
 	activity.GetLogger(ctx).Info("Started Workflow", "WorkflowID", wr.GetID(), "RunID", wr.GetRunID(), "Error:", err)
@@ -130,7 +130,7 @@ func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceId string, unloc
 	for {
 		// wait for the acquire lock signal
 		logger.Info("MutexWorkflow: wait for request lock signal")
-		requestLockCh.Receive(ctx, requestLockWorkflowID)
+		requestLockCh.Receive(ctx, &requestLockWorkflowID)
 
 		// send lock acquired ack to sender workflow
 		err := workflow.SignalExternalWorkflow(ctx, requestLockWorkflowID, "", AcquireLockSignalName, true).Get(ctx, nil)
@@ -152,7 +152,7 @@ func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceId string, unloc
 		// wait for a release lock signal from the workflow that has acquired the lock
 		logger.Info("MutexWorkflow: wait for release lock signal")
 		for {
-			releaseLockCh.Receive(ctx, releaseLockWorkflowID)
+			releaseLockCh.Receive(ctx, &releaseLockWorkflowID)
 			if releaseLockWorkflowID == requestLockWorkflowID {
 				logger.Info("MutexWorkflow: release signal received")
 				break

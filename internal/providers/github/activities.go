@@ -112,9 +112,9 @@ func (a *Activities) GetInstallation(ctx context.Context, id int64) (*Installati
 func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*core.Repo, error) {
 	r := &core.Repo{}
 
+	// TODO: add provider name in query
 	params := db.QueryParams{
-		"provider_id": strconv.FormatInt(repo.GithubID, 10),
-		"provider":    "github",
+		"provider_id": "'" + strconv.FormatInt(repo.GithubID, 10) + "'",
 	}
 
 	if err := db.Get(r, params); err != nil {

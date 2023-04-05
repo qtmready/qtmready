@@ -58,14 +58,14 @@ func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string) 
 
 	logger := workflow.GetLogger(ctx)
 	currentWorkflowID := workflow.GetInfo(ctx).WorkflowExecution.ID
-	pullRequestSignalName := currentWorkflowID
-	resourceID := currentWorkflowID
+	pullRequestSignalName := shared.CoreWorkflowSignalPullRequest.String()
+	resourceID := "stack." + stackID
 
 	// execute activity to start mutex workflow
 	logger.Info("executing SignalWithStartMutexWorkflowActivity")
 
-	m := NewMutex(currentWorkflowID, resourceID, unLockTimeOutStackMutex)
-	m.Init(ctx)
+	mutex := NewMutex(currentWorkflowID, resourceID, unLockTimeOutStackMutex)
+	mutex.Init(ctx)
 
 	payload := &shared.PullRequestSignal{}
 	var prSignalsCounter int = 0
@@ -76,11 +76,12 @@ func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string) 
 		}
 
 		// Wait for PR event
+		logger.Info("wait for pull request event")
 		workflow.GetSignalChannel(ctx, pullRequestSignalName).Receive(ctx, payload)
 		prSignalsCounter++
 
 		logger.Info("Pull request signal received from Github Workflow:", payload.SenderWorkflowID)
-		unlockFunc, err := m.Lock(ctx)
+		unlockFunc, err := mutex.Lock(ctx)
 		if err != nil {
 			logger.Info("Error in acquiring lock", err)
 		}
