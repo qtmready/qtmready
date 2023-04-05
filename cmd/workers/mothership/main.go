@@ -39,9 +39,9 @@ func init() {
 	shared.Temporal.ReadEnv()
 	github.Github.ReadEnv()
 	db.DB.ReadEnv()
-
+	db.DB.Hosts = append(db.DB.Hosts, "127.0.0.1")
 	waitgroup.Go(db.DB.InitSession)
-	waitgroup.Go(shared.EventStream.InitConnection)
+	// waitgroup.Go(shared.EventStream.InitConnection)
 	waitgroup.Go(shared.Temporal.InitClient)
 
 	shared.Logger.Info("initialized", "version", shared.Service.Version())
@@ -56,23 +56,39 @@ func main() {
 	defer shared.Temporal.Client.Close()
 
 	queue := shared.Temporal.Queues[shared.ProvidersQueue].GetName()
+	coreQueue := shared.Temporal.Queues[shared.CoreQueue].GetName()
+
 	options := worker.Options{}
 	wrkr := worker.New(shared.Temporal.Client, queue, options)
+	coreWrkr := worker.New(shared.Temporal.Client, coreQueue, options)
 
 	ghwfs := &github.Workflows{}
 	cwfs := &core.Workflows{}
 
+	// provider workflows
 	wrkr.RegisterWorkflow(ghwfs.OnInstallationEvent)
 	wrkr.RegisterWorkflow(ghwfs.OnInstallationRepositoriesEvent)
 	wrkr.RegisterWorkflow(ghwfs.OnPushEvent)
 	wrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
-	wrkr.RegisterWorkflow(cwfs.OnPullRequestWorkflow)
-	wrkr.RegisterWorkflow(cwfs.MutexWorkflow)
 
+	// provider activities
 	wrkr.RegisterActivity(&github.Activities{})
-	wrkr.RegisterActivity(&core.Activities{})
+
+	// core workflows
+	coreWrkr.RegisterWorkflow(cwfs.OnPullRequestWorkflow)
+	coreWrkr.RegisterWorkflow(cwfs.MutexWorkflow)
+
+	// core activities
+	coreWrkr.RegisterActivity(&core.Activities{})
 
 	err := wrkr.Run(worker.InterruptCh())
+
+	if err != nil {
+		exitcode = 1
+		return
+	}
+
+	err = coreWrkr.Run(worker.InterruptCh())
 
 	if err != nil {
 		exitcode = 1

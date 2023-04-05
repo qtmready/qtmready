@@ -62,9 +62,9 @@ func (s *ServerHandler) CreateStack(ctx echo.Context) error {
 	*/
 	w := &Workflows{}
 	opts := shared.Temporal.Queues[shared.CoreQueue].
-		GetWorkflowOptions("core", "stack", request.Name, "stackId", stack.ID.String())
+		GetWorkflowOptions("stack", stack.ID.String())
 
-	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPullRequestWorkflow, request.Name)
+	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPullRequestWorkflow, stack.ID.String())
 	if err != nil {
 		// TODO: remove stack if workflow not started? or always start this workflow with signal so it can be started on pull request (if not already running)
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())

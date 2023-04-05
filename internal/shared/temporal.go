@@ -95,8 +95,8 @@ type (
 	}
 )
 
-func (w *workflowTools) GetStackWorkflowName(stackName string, stackID string) string {
-	return Temporal.Queues[CoreQueue].CreateWorkflowID("core", "stack", stackName, "stackId", stackID)
+func (w *workflowTools) GetStackWorkflowName(stackID string) string {
+	return Temporal.Queues[CoreQueue].CreateWorkflowID("stack", stackID)
 }
 
 // GetName gets the name as string from QueueName.

@@ -173,17 +173,8 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	}
 	logger.Debug("Got core repo")
 
-	logger.Debug("")
-	stack := &core.Stack{}
-	err = workflow.ExecuteActivity(act, activities.GetStack, coreRepo).Get(ctx, stack)
-	if err != nil {
-		logger.Error("error getting stack", "error", err)
-		return err
-	}
-	logger.Debug("Got stack")
-
 	// get core workflow ID for this stack
-	corePRWfID := shared.Temporal.WorkflowTools.GetStackWorkflowName(stack.Name, stack.ID.String())
+	corePRWfID := shared.Temporal.WorkflowTools.GetStackWorkflowName(coreRepo.StackID.String())
 
 	// payload for core stack workflow
 	signalPayload := &shared.PullRequestSignal{

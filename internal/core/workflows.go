@@ -35,6 +35,10 @@ type (
 	}
 )
 
+var (
+	activities *Activities
+)
+
 // ChangesetController controls the rollout lifecycle for one changeset.
 func (w *Workflows) ChangesetController(id string) error {
 	return nil
@@ -50,7 +54,7 @@ func (w *Workflows) ChangesetController(id string) error {
 // get repo from stack
 // compute changeset idempotency key
 // signal sentinal to start orchestration
-func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string, stackName string) error {
+func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string) error {
 
 	logger := workflow.GetLogger(ctx)
 	currentWorkflowID := workflow.GetInfo(ctx).WorkflowExecution.ID
@@ -68,7 +72,7 @@ func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string, 
 	for {
 		// return continue as new if this workflow has processes signals upto a limit
 		if prSignalsCounter >= OnPullRequestWorkflowPRSignalsLimit {
-			return workflow.NewContinueAsNewError(ctx, w.OnPullRequestWorkflow, stackID, stackName)
+			return workflow.NewContinueAsNewError(ctx, w.OnPullRequestWorkflow, stackID)
 		}
 
 		// Wait for PR event
@@ -84,5 +88,4 @@ func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string, 
 		time.Sleep(time.Second * 5)
 		unlockFunc()
 	}
-	return nil
 }
