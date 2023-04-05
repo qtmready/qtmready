@@ -19,6 +19,8 @@ package main
 
 import (
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/sourcegraph/conc"
 	"go.temporal.io/sdk/worker"
@@ -40,6 +42,7 @@ func init() {
 	github.Github.ReadEnv()
 	db.DB.ReadEnv()
 	db.DB.Hosts = append(db.DB.Hosts, "127.0.0.1")
+	shared.Temporal.ServerHost = "127.0.0.1"
 	waitgroup.Go(db.DB.InitSession)
 	// waitgroup.Go(shared.EventStream.InitConnection)
 	waitgroup.Go(shared.Temporal.InitClient)
@@ -58,7 +61,7 @@ func main() {
 	queue := shared.Temporal.Queues[shared.ProvidersQueue].GetName()
 	coreQueue := shared.Temporal.Queues[shared.CoreQueue].GetName()
 
-	options := worker.Options{}
+	options := worker.Options{OnFatalError: func(err error) { shared.Logger.Error("Fatal error during worker execution", err) }}
 	wrkr := worker.New(shared.Temporal.Client, queue, options)
 	coreWrkr := worker.New(shared.Temporal.Client, coreQueue, options)
 
@@ -81,17 +84,28 @@ func main() {
 	// core activities
 	coreWrkr.RegisterActivity(&core.Activities{})
 
-	err := wrkr.Run(worker.InterruptCh())
+	// start worker for provider queue
+	err := wrkr.Start()
+	if err != nil {
+		exitcode = 1
+		return
+	}
+	defer wrkr.Stop()
 
+	// start worker for core queue
+	err = coreWrkr.Start()
 	if err != nil {
 		exitcode = 1
 		return
 	}
 
-	err = coreWrkr.Run(worker.InterruptCh())
+	defer coreWrkr.Stop()
 
-	if err != nil {
-		exitcode = 1
-		return
-	}
+	// wait on signals to exit process
+	quit := make(chan os.Signal, 1)                                       // create a channel to listen for quit signals.
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL) // listen for quit signals.
+	<-quit                                                                // wait for quit signal.
+
+	shared.Logger.Info("Exiting....")
+	exitcode = 1
 }
