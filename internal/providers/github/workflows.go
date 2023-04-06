@@ -184,7 +184,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 
 	// signal core stack workflow
 	workflow.SignalExternalWorkflow(ctx, corePRWfID, "", shared.CoreWorkflowSignalPullRequest.String(), signalPayload).Get(ctx, nil)
-	logger.Info("Signaled workflow", "ID", signalPayload.SenderWorkflowID, "core repo ID", signalPayload.RepoID.String())
+	logger.Info("Signaled workflow ID" + signalPayload.SenderWorkflowID + " core repo ID: " + signalPayload.RepoID.String())
 
 	// workflow.GetSignalChannel(ctx, shared.GithubWorkflowSignalPullRequestProcessed.String()).Receive(ctx, &status)
 

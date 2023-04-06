@@ -80,13 +80,13 @@ func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string) 
 		workflow.GetSignalChannel(ctx, pullRequestSignalName).Receive(ctx, payload)
 		prSignalsCounter++
 
-		logger.Info("Pull request signal received from Github Workflow:", payload.SenderWorkflowID)
+		logger.Info("Pull request signal received from Github Workflow", "workflow ID", payload.SenderWorkflowID)
 		unlockFunc, err := mutex.Lock(ctx)
 		if err != nil {
 			logger.Info("Error in acquiring lock", err)
 		}
 
-		time.Sleep(time.Second * 5)
+		workflow.Sleep(ctx, 5*time.Second)
 		unlockFunc()
 	}
 }
