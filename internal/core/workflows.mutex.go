@@ -29,6 +29,7 @@ import (
 type (
 	UnlockFunc func() error
 
+	// Mutex holds the informations for a specific mutex resource
 	Mutex struct {
 		currentWorkflowID string
 		mutexWorkflowID   string
@@ -37,7 +38,7 @@ type (
 	}
 )
 
-// NewMutex initializes mutex
+// NewMutex creates a mutex
 func NewMutex(currentWorkflowID string, resourceID string, unlockTimeout time.Duration) *Mutex {
 	return &Mutex{
 		currentWorkflowID: currentWorkflowID,
@@ -46,6 +47,7 @@ func NewMutex(currentWorkflowID string, resourceID string, unlockTimeout time.Du
 	}
 }
 
+// Init executes mutex workflow
 func (m *Mutex) Init(ctx workflow.Context) error {
 
 	activityCtx := workflow.WithActivityOptions(ctx, workflow.ActivityOptions{

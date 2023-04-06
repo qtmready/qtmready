@@ -103,20 +103,20 @@ func (s *ServerHandler) GithubGetInstallations(ctx echo.Context) error {
 }
 
 func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
-	//TODO: uncomment this. commented for testing from insomnia
-	// signature := ctx.Request().Header.Get("X-Hub-Signature-256")
 
-	// if signature == "" {
-	// 	return ctx.JSON(http.StatusUnauthorized, ErrMissingHeaderGithubSignature)
-	// }
+	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
+
+	if signature == "" {
+		return ctx.JSON(http.StatusUnauthorized, ErrMissingHeaderGithubSignature)
+	}
 
 	// NOTE: We are reading the request body twice. This is not ideal.
 	body, _ := io.ReadAll(ctx.Request().Body)
 	ctx.Request().Body = io.NopCloser(bytes.NewBuffer(body))
 
-	// if err := Github.VerifyWebhookSignature(body, signature); err != nil {
-	// 	return shared.NewAPIError(http.StatusUnauthorized, err)
-	// }
+	if err := Github.VerifyWebhookSignature(body, signature); err != nil {
+		return shared.NewAPIError(http.StatusUnauthorized, err)
+	}
 
 	headerEvent := ctx.Request().Header.Get("X-GitHub-Event")
 	if headerEvent == "" {
