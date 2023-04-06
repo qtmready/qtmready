@@ -150,9 +150,13 @@ func (s *service) InitLogger() {
 	if s.Debug {
 		config := zap.NewDevelopmentConfig()
 		config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		config.EncoderConfig.FunctionKey = "func"
 		zl, _ = config.Build()
 	} else {
-		zl, _ = zap.NewProduction()
+		println("production logger")
+		config := zap.NewProductionConfig()
+		config.EncoderConfig.FunctionKey = "func"
+		zl, _ = config.Build()
 	}
 
 	Logger = logger.NewZapAdapter(zl)
