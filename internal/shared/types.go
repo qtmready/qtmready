@@ -27,7 +27,10 @@ const (
 	GithubWorkflowSignalPullRequestProcessed WorkflowSignal = "pull_request_processed"
 
 	// core signals
-	CoreWorkflowSignalPullRequest WorkflowSignal = "pull_request"
+	CoreWorkflowSignalPullRequest  WorkflowSignal = "pull_request"
+	CoreWorkflowSignalLockAcquired WorkflowSignal = "lock_acquired"
+	CoreWorkflowSignalRequestLock  WorkflowSignal = "request_lock"
+	CoreWorkflowSignalReleaseLock  WorkflowSignal = "release_lock"
 )
 
 var (
@@ -36,7 +39,10 @@ var (
 		GithubWorkflowSignalCompleteInstallation.String(): GithubWorkflowSignalCompleteInstallation,
 		GithubWorkflowSignalPullRequestProcessed.String(): GithubWorkflowSignalPullRequestProcessed,
 
-		CoreWorkflowSignalPullRequest.String(): CoreWorkflowSignalPullRequest,
+		CoreWorkflowSignalPullRequest.String():  CoreWorkflowSignalPullRequest,
+		CoreWorkflowSignalLockAcquired.String(): CoreWorkflowSignalLockAcquired,
+		CoreWorkflowSignalRequestLock.String():  CoreWorkflowSignalRequestLock,
+		CoreWorkflowSignalReleaseLock.String():  CoreWorkflowSignalReleaseLock,
 	}
 )
 

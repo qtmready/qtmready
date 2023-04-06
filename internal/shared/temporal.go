@@ -74,7 +74,7 @@ type (
 		Prefix string    // The prefix to create the workflow ID.
 	}
 
-	// workflow holds the helper methods for ctrlplane workflows
+	// workflowTools holds the helper methods for ctrlplane workflows. TODO: See how it evolves and comeup with a better solution
 	workflowTools struct{}
 
 	// temporal holds the temporal server host and port, the client and all the available queues.

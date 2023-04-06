@@ -44,31 +44,25 @@ func (w *Workflows) ChangesetController(id string) error {
 	return nil
 }
 
-// this workflow will be started on stack creation
-
-// activity to start mutex workflow
-// wait on signal for pr with repo id
-
-// acquire lock on stack
-// get stack from repo id
-// get repo from stack
-// compute changeset idempotency key
-// signal sentinal to start orchestration
+// OnPullRequestWorkflow runs indefinitely and controls and synchronizes all actions on stack
+// This workflow will start when createStack call is received. it will be the master workflow for all child stack workflows
+// like for tasks like creating infrastructure, doing deployment, apperture controller etc
+//
+// The workflow waits for the signals from github workflows for pull requests. It consumes events for PR created, updated, merged etc
 func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string) error {
 
 	logger := workflow.GetLogger(ctx)
 	currentWorkflowID := workflow.GetInfo(ctx).WorkflowExecution.ID
-	pullRequestSignalName := shared.CoreWorkflowSignalPullRequest.String()
-	resourceID := "stack." + stackID
+	resourceID := "stack." + stackID // stack.<stack id>
 
-	// execute activity to start mutex workflow
+	// create and initialize mutex, initializing mutex will start a mutex workflow
 	logger.Info("executing SignalWithStartMutexWorkflowActivity")
-
 	mutex := NewMutex(currentWorkflowID, resourceID, unLockTimeOutStackMutex)
 	mutex.Init(ctx)
 
 	payload := &shared.PullRequestSignal{}
 	var prSignalsCounter int = 0
+
 	for {
 		// return continue as new if this workflow has processes signals upto a limit
 		if prSignalsCounter >= OnPullRequestWorkflowPRSignalsLimit {
@@ -77,16 +71,20 @@ func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string) 
 
 		// Wait for PR event
 		logger.Info("wait for pull request event")
-		workflow.GetSignalChannel(ctx, pullRequestSignalName).Receive(ctx, payload)
+		workflow.GetSignalChannel(ctx, shared.CoreWorkflowSignalPullRequest.String()).Receive(ctx, payload)
 		prSignalsCounter++
 
+		// Acquire lock
 		logger.Info("Pull request signal received from Github Workflow", "workflow ID", payload.SenderWorkflowID)
 		unlockFunc, err := mutex.Lock(ctx)
 		if err != nil {
 			logger.Info("Error in acquiring lock", err)
 		}
 
+		// simulate critical section
 		workflow.Sleep(ctx, 5*time.Second)
+
+		// release lock
 		unlockFunc()
 	}
 }

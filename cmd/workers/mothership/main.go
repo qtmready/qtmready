@@ -41,10 +41,8 @@ func init() {
 	shared.Temporal.ReadEnv()
 	github.Github.ReadEnv()
 	db.DB.ReadEnv()
-	db.DB.Hosts = append(db.DB.Hosts, "127.0.0.1")
-	shared.Temporal.ServerHost = "127.0.0.1"
 	waitgroup.Go(db.DB.InitSession)
-	// waitgroup.Go(shared.EventStream.InitConnection)
+	waitgroup.Go(shared.EventStream.InitConnection)
 	waitgroup.Go(shared.Temporal.InitClient)
 
 	shared.Logger.Info("initialized", "version", shared.Service.Version())
