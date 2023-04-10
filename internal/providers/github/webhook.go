@@ -45,7 +45,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 	exe, err := shared.Temporal.Client.SignalWithStartWorkflow(
 		ctx.Request().Context(),
 		opts.ID,
-		shared.GithubWorkflowSignalInstallationEvent.String(),
+		WorkflowSignalInstallationEvent.String(),
 		payload,
 		opts,
 		workflows.OnInstallationEvent,

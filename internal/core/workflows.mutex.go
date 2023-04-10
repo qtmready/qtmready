@@ -71,16 +71,16 @@ func (m *Mutex) Lock(ctx workflow.Context) (UnlockFunc, error) {
 
 	// request mutex workflow to acquire lock
 	logger.Info("Lock: sending acquire lock signal")
-	workflow.SignalExternalWorkflow(ctx, m.mutexWorkflowID, "", shared.CoreWorkflowSignalRequestLock.String(), m.currentWorkflowID).Get(ctx, nil)
+	workflow.SignalExternalWorkflow(ctx, m.mutexWorkflowID, "", WorkflowSignalRequestLock.String(), m.currentWorkflowID).Get(ctx, nil)
 	logger.Info("Lock: waiting to acquire lock")
 
 	// wait for the acknowledgement from mutex workflow that lock has been acquired
-	workflow.GetSignalChannel(ctx, shared.CoreWorkflowSignalLockAcquired.String()).Receive(ctx, nil)
+	workflow.GetSignalChannel(ctx, WorkflowSignalLockAcquired.String()).Receive(ctx, nil)
 	logger.Info("Lock: lock acquired")
 
 	unlockFunc := func() error {
 		logger.Info("Lock: sending release lock signal")
-		return workflow.SignalExternalWorkflow(ctx, m.mutexWorkflowID, "", shared.CoreWorkflowSignalReleaseLock.String(), m.currentWorkflowID).Get(ctx, nil)
+		return workflow.SignalExternalWorkflow(ctx, m.mutexWorkflowID, "", WorkflowSignalReleaseLock.String(), m.currentWorkflowID).Get(ctx, nil)
 	}
 	return unlockFunc, nil
 }
@@ -116,8 +116,8 @@ func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceId string, unloc
 	// get lock request from workflows on request lock channel
 	var requestLockWorkflowID string
 	var releaseLockWorkflowID string = ""
-	requestLockCh := workflow.GetSignalChannel(ctx, shared.CoreWorkflowSignalRequestLock.String())
-	releaseLockCh := workflow.GetSignalChannel(ctx, shared.CoreWorkflowSignalReleaseLock.String())
+	requestLockCh := workflow.GetSignalChannel(ctx, WorkflowSignalRequestLock.String())
+	releaseLockCh := workflow.GetSignalChannel(ctx, WorkflowSignalReleaseLock.String())
 
 	for {
 		// wait for the acquire lock signal
@@ -127,7 +127,7 @@ func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceId string, unloc
 		logger.Info("Aquire lock request received from workflow ID: " + requestLockWorkflowID)
 
 		// send lock acquired ack to sender workflow
-		err := workflow.SignalExternalWorkflow(ctx, requestLockWorkflowID, "", shared.CoreWorkflowSignalLockAcquired.String(), nil).Get(ctx, nil)
+		err := workflow.SignalExternalWorkflow(ctx, requestLockWorkflowID, "", WorkflowSignalLockAcquired.String(), nil).Get(ctx, nil)
 
 		if err != nil {
 			// .Get(ctx, nil) blocks until the signal is sent.

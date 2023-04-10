@@ -65,8 +65,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 	status := &InstallationWorkflowStatus{WebhookDone: false, RequestDone: false}
 
 	// setting up channels to receive signals
-	webhookChannel := workflow.GetSignalChannel(ctx, shared.GithubWorkflowSignalInstallationEvent.String())
-	requestChannel := workflow.GetSignalChannel(ctx, shared.GithubWorkflowSignalCompleteInstallation.String())
+	webhookChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInstallationEvent.String())
+	requestChannel := workflow.GetSignalChannel(ctx, WorkflowSignalCompleteInstallation.String())
 
 	// setting up callbacks for the channels
 	selector.AddReceive(webhookChannel, onInstallationWebhookSignal(ctx, webhook, status))
@@ -183,10 +183,10 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	}
 
 	// signal core stack workflow
-	workflow.SignalExternalWorkflow(ctx, corePRWfID, "", shared.CoreWorkflowSignalPullRequest.String(), signalPayload).Get(ctx, nil)
+	workflow.SignalExternalWorkflow(ctx, corePRWfID, "", shared.WorkflowSignalPullRequest.String(), signalPayload).Get(ctx, nil)
 	logger.Info("Signaled workflow ID" + signalPayload.SenderWorkflowID + " core repo ID: " + signalPayload.RepoID.String())
 
-	// workflow.GetSignalChannel(ctx, shared.GithubWorkflowSignalPullRequestProcessed.String()).Receive(ctx, &status)
+	// workflow.GetSignalChannel(ctx, WorkflowSignalPullRequestProcessed.String()).Receive(ctx, &status)
 
 	// signal processor
 	// selector.AddReceive(prChannel, onPRSignal(ctx, pr, status))

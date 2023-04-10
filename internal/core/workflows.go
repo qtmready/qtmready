@@ -71,7 +71,7 @@ func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string) 
 
 		// Wait for PR event
 		logger.Info("wait for pull request event")
-		workflow.GetSignalChannel(ctx, shared.CoreWorkflowSignalPullRequest.String()).Receive(ctx, payload)
+		workflow.GetSignalChannel(ctx, shared.WorkflowSignalPullRequest.String()).Receive(ctx, payload)
 		prSignalsCounter++
 
 		// Acquire lock

@@ -31,7 +31,6 @@ var (
 		Queues: Queues{
 			CoreQueue:      &queue{CoreQueue, "ai.ctrlplane.core"},
 			ProvidersQueue: &queue{ProvidersQueue, "ai.ctrlplane.providers"},
-			MutexQueue:     &queue{MutexQueue, "ai.ctrlplane.mutex"},
 		},
 
 		WorkflowTools: workflowTools{},

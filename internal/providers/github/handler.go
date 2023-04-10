@@ -64,7 +64,7 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 	exe, err := shared.Temporal.Client.SignalWithStartWorkflow(
 		ctx.Request().Context(),
 		opts.ID,
-		shared.GithubWorkflowSignalCompleteInstallation.String(),
+		WorkflowSignalCompleteInstallation.String(),
 		payload,
 		opts,
 		workflows.OnInstallationEvent,
