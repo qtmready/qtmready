@@ -19,10 +19,13 @@ package main
 
 import (
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/sourcegraph/conc"
 	"go.temporal.io/sdk/worker"
 
+	"go.breu.io/ctrlplane/internal/core"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/providers/github"
 	"go.breu.io/ctrlplane/internal/shared"
@@ -38,7 +41,6 @@ func init() {
 	shared.Temporal.ReadEnv()
 	github.Github.ReadEnv()
 	db.DB.ReadEnv()
-
 	waitgroup.Go(db.DB.InitSession)
 	waitgroup.Go(shared.EventStream.InitConnection)
 	waitgroup.Go(shared.Temporal.InitClient)
@@ -55,22 +57,53 @@ func main() {
 	defer shared.Temporal.Client.Close()
 
 	queue := shared.Temporal.Queues[shared.ProvidersQueue].GetName()
-	options := worker.Options{}
+	coreQueue := shared.Temporal.Queues[shared.CoreQueue].GetName()
+
+	options := worker.Options{OnFatalError: func(err error) { shared.Logger.Error("Fatal error during worker execution", err) }}
 	wrkr := worker.New(shared.Temporal.Client, queue, options)
+	coreWrkr := worker.New(shared.Temporal.Client, coreQueue, options)
 
 	ghwfs := &github.Workflows{}
+	cwfs := &core.Workflows{}
 
+	// provider workflows
 	wrkr.RegisterWorkflow(ghwfs.OnInstallationEvent)
 	wrkr.RegisterWorkflow(ghwfs.OnInstallationRepositoriesEvent)
 	wrkr.RegisterWorkflow(ghwfs.OnPushEvent)
 	wrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
 
+	// provider activities
 	wrkr.RegisterActivity(&github.Activities{})
 
-	err := wrkr.Run(worker.InterruptCh())
+	// core workflows
+	coreWrkr.RegisterWorkflow(cwfs.OnPullRequestWorkflow)
+	coreWrkr.RegisterWorkflow(cwfs.MutexWorkflow)
 
+	// core activities
+	coreWrkr.RegisterActivity(&core.Activities{})
+
+	// start worker for provider queue
+	err := wrkr.Start()
 	if err != nil {
 		exitcode = 1
 		return
 	}
+	defer wrkr.Stop()
+
+	// start worker for core queue
+	err = coreWrkr.Start()
+	if err != nil {
+		exitcode = 1
+		return
+	}
+
+	defer coreWrkr.Stop()
+
+	// wait on signals to exit process
+	quit := make(chan os.Signal, 1)                                       // create a channel to listen for quit signals.
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL) // listen for quit signals.
+	<-quit                                                                // wait for quit signal.
+
+	shared.Logger.Info("Exiting....")
+	exitcode = 1
 }

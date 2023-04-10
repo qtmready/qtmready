@@ -32,6 +32,8 @@ var (
 			CoreQueue:      &queue{CoreQueue, "ai.ctrlplane.core"},
 			ProvidersQueue: &queue{ProvidersQueue, "ai.ctrlplane.providers"},
 		},
+
+		WorkflowTools: workflowTools{},
 	}
 )
 
@@ -55,8 +57,9 @@ type (
 )
 
 const (
-	CoreQueue      QueueName = "core"      // core queue.
+	CoreQueue      QueueName = "core"      // core queue
 	ProvidersQueue QueueName = "providers" // messaging related to providers
+	MutexQueue     QueueName = "mutex"     // mutex workflow queue
 )
 
 func (q QueueName) ToString() string {
@@ -70,6 +73,9 @@ type (
 		Prefix string    // The prefix to create the workflow ID.
 	}
 
+	// workflowTools holds the helper methods for ctrlplane workflows. TODO: See how it evolves and comeup with a better solution
+	workflowTools struct{}
+
 	// temporal holds the temporal server host and port, the client and all the available queues.
 	//
 	// TODO: The current design is not be ideal for a central multi-tenant solution due to the lack of strong isolation
@@ -80,12 +86,17 @@ type (
 	// subsequent requests, the already instantiated client should be returned. This would allow for separate clients to
 	// be created for each tenant, providing strong isolation and meeting compliance requirements.
 	temporal struct {
-		ServerHost string `env:"TEMPORAL_HOST" env-default:"temporal"`
-		ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
-		Client     client.Client
-		Queues     Queues
+		ServerHost    string `env:"TEMPORAL_HOST" env-default:"temporal"`
+		ServerPort    string `env:"TEMPORAL_PORT" env-default:"7233"`
+		Client        client.Client
+		Queues        Queues
+		WorkflowTools workflowTools
 	}
 )
+
+func (w *workflowTools) GetStackWorkflowName(stackID string) string {
+	return Temporal.Queues[CoreQueue].CreateWorkflowID("stack", stackID)
+}
 
 // GetName gets the name as string from QueueName.
 func (q *queue) GetName() string {

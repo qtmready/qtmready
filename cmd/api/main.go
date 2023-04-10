@@ -80,6 +80,11 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
+	// e.Use(middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte) {
+	// 	body := string(reqBody[:])
+	// 	shared.Logger.Debug("body: %s", body)
+	// }))
+
 	// adding prometheus metrics
 	prom := prometheus.NewPrometheus(shared.Service.Name, nil)
 	prom.Use(e)

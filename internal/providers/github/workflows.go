@@ -20,6 +20,8 @@ package github
 import (
 	"time"
 
+	"go.breu.io/ctrlplane/internal/core"
+	"go.breu.io/ctrlplane/internal/shared"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -155,22 +157,46 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 // After the creation of the idempotency key, we pass the idempotency key as a signal to the Aperture Workflow.
 func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullRequestEvent) error {
 	logger := workflow.GetLogger(ctx)
-	status := &PullRequestWorkflowStatus{Complete: false}
-	pr := &PullRequestEvent{}
-	selector := workflow.NewSelector(ctx)
+	// status := &PullRequestWorkflowStatus{Complete: false}
 
-	// setting up signals
-	prChannel := workflow.GetSignalChannel(ctx, WorkflowSignalPullRequest.String())
+	// setting activity options
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	act := workflow.WithActivityOptions(ctx, activityOpts)
+
+	// get core repo
+	repo := &Repo{GithubID: payload.Repository.ID}
+	coreRepo := &core.Repo{}
+	err := workflow.ExecuteActivity(act, activities.GetCoreRepo, repo).Get(ctx, coreRepo)
+	if err != nil {
+		logger.Error("error getting core repo", "error", err)
+		return err
+	}
+	logger.Debug("Got core repo")
+
+	// get core workflow ID for this stack
+	corePRWfID := shared.Temporal.WorkflowTools.GetStackWorkflowName(coreRepo.StackID.String())
+
+	// payload for core stack workflow
+	signalPayload := &shared.PullRequestSignal{
+		RepoID:           coreRepo.ID,
+		SenderWorkflowID: workflow.GetInfo(ctx).WorkflowExecution.ID,
+	}
+
+	// signal core stack workflow
+	workflow.SignalExternalWorkflow(ctx, corePRWfID, "", shared.WorkflowSignalPullRequest.String(), signalPayload).Get(ctx, nil)
+	logger.Debug("Signaled workflow", "ID"+signalPayload.SenderWorkflowID+" core repo ID: "+signalPayload.RepoID.String())
+
+	// workflow.GetSignalChannel(ctx, WorkflowSignalPullRequestProcessed.String()).Receive(ctx, &status)
 
 	// signal processor
-	selector.AddReceive(prChannel, onPRSignal(ctx, pr, status))
+	// selector.AddReceive(prChannel, onPRSignal(ctx, pr, status))
 
-	logger.Info("PR created: scheduling new aperture at the application level.")
+	// logger.Info("PR created: scheduling new aperture at the application level.")
 
-	// keep listening to signals until complete = true
-	for !status.Complete {
-		selector.Select(ctx)
-	}
+	// // keep listening to signals until complete = true
+	// for !status.Complete {
+	// 	selector.Select(ctx)
+	// }
 
 	return nil
 }

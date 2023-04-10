@@ -103,6 +103,7 @@ func (s *ServerHandler) GithubGetInstallations(ctx echo.Context) error {
 }
 
 func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
+
 	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
 
 	if signature == "" {

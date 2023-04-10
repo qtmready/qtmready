@@ -29,5 +29,4 @@ var (
 	ErrInvalidEvent                 = errors.New("event not defined to be parsed")
 	ErrPayloadParser                = errors.New("error parsing payload")
 	ErrVerifySignature              = errors.New("HMAC verification failed")
-	ErrInvalidRolloutState          = errors.New("invalid rollout state")
 )
