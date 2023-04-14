@@ -284,6 +284,10 @@ type ServerInterface interface {
 	// (POST /core/resources)
 	CreateResource(ctx echo.Context) error
 
+	// Get resource
+	// (GET /core/resources/{id})
+	GetResource(ctx echo.Context) error
+
 	// List stacks
 	// (GET /core/stacks)
 	ListStacks(ctx echo.Context) error
@@ -380,6 +384,30 @@ func (w *ServerInterfaceWrapper) CreateResource(ctx echo.Context) error {
 	return err
 }
 
+// GetResource converts echo context to params.
+
+func (w *ServerInterfaceWrapper) GetResource(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	ctx.Set(APIKeyAuthScopes, []string{""})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.GetResource
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
+}
+
 // ListStacks converts echo context to params.
 
 func (w *ServerInterfaceWrapper) ListStacks(ctx echo.Context) error {
@@ -469,6 +497,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/core/repos", wrapper.CreateRepo)
 	router.GET(baseURL+"/core/repos/:id", wrapper.GetRepo)
 	router.POST(baseURL+"/core/resources", wrapper.CreateResource)
+	router.GET(baseURL+"/core/resources/:id", wrapper.GetResource)
 	router.GET(baseURL+"/core/stacks", wrapper.ListStacks)
 	router.POST(baseURL+"/core/stacks", wrapper.CreateStack)
 	router.GET(baseURL+"/core/stacks/:slug", wrapper.GetStack)

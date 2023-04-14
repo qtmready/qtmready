@@ -177,9 +177,8 @@ func (workload *Workload) GetTable() itable.ITable { return workloadTable }
 func (workload *Workload) PreCreate() error        { return nil }
 func (workload *Workload) PreUpdate() error        { return nil }
 
-func (resource *Resource) GetTable() itable.ITable { return resourceTable }
-func (resource *Resource) PreCreate() error        { return nil }
-func (resource *Resource) PreUpdate() error        { return nil }
+func (resource *Resource) PreCreate() error { return nil }
+func (resource *Resource) PreUpdate() error { return nil }
 
 func (blueprint *Blueprint) GetTable() itable.ITable { return blueprintTable }
 func (blueprint *Blueprint) PreCreate() error        { return nil }

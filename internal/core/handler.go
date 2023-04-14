@@ -42,6 +42,14 @@ func NewServerHandler(security echo.MiddlewareFunc) *ServerHandler {
 	}
 }
 
+func (s *ServerHandler) CreateResource(ctx echo.Context) error {
+	return nil
+}
+
+func (s *ServerHandler) GetResource(ctx echo.Context) error {
+	return nil
+}
+
 func (s *ServerHandler) CreateStack(ctx echo.Context) error {
 	request := &StackCreateRequest{}
 	if err := ctx.Bind(request); err != nil {
