@@ -1,4 +1,63 @@
 paths:
+  /core/workload:
+    post:
+      summary: Create workload
+      description: Create workload
+      operationId: create-workload
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      requestBody:
+        description: Workload
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkloadCreateRequest'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workload'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /core/workloads/{id}:
+    get:
+      summary: Get workload
+      description: Get workload
+      operationId: get-workload
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      parameters:
+        - name: id
+          in: path
+          description: workload ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+            x-go-type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workload'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /core/resources:
     post:
       summary: Create resource
@@ -223,6 +282,36 @@ components:
       $ref: '../shared/openapi.spec.yaml#/components/securitySchemes/APIKeyAuth'
 
   schemas:
+    WorkloadCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        stack_id:
+          type: string
+          format: uuid
+          x-go-name: StackID
+          x-go-type: gocql.UUID
+        repo_id:
+          type: string
+          format: uuid
+          x-go-name: RepoID
+          x-go-type: gocql.UUID
+        repo_path:
+          type: string
+        kind:
+          type: string
+        container:
+          type: string
+        builder:
+          type: string
+      required:
+        - name
+        - stack_id
+        - repo_id
+        - provider
+        - immutable
+
     ResourceCreateRequest:
       type: object
       properties:
@@ -293,6 +382,57 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/Repo'
+
+    Workload:
+      type: object
+      x-breu-entity: workloads
+      description: 'Workload defines a workload for the app'
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+        name:
+          type: string
+        stack_id:
+          type: string
+          format: uuid
+          x-go-name: StackID
+          x-go-type: gocql.UUID
+        repo_id:
+          type: string
+          format: uuid
+          x-go-name: RepoID
+          x-go-type: gocql.UUID
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        repo_path:
+          type: string
+        kind:
+          type: string
+          description: 'Default, worker, job, cronjob'
+        container:
+          type: string
+          description: 'json with keys: image, command, environment, dependencies'
+        builder:
+          type: string
+          description: 'json with keys: buildpack, dockerfile, script, external'
+      required:
+        - id
+        - name
+        - stack_id
+        - repo_id
+        - repo_path
+        - kind
+        - container
+        - builder
+        - created_at
+        - updated_at
 
     Resource:
       type: object

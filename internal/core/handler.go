@@ -42,6 +42,14 @@ func NewServerHandler(security echo.MiddlewareFunc) *ServerHandler {
 	}
 }
 
+func (s *ServerHandler) CreateWorkload(ctx echo.Context) error {
+	return nil
+}
+
+func (s *ServerHandler) GetWorkload(ctx echo.Context) error {
+	return nil
+}
+
 func (s *ServerHandler) CreateResource(ctx echo.Context) error {
 	return nil
 }

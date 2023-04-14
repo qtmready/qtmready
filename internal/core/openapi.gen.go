@@ -248,6 +248,53 @@ type StackCreateRequest struct {
 // StackListResponse defines model for StackListResponse.
 type StackListResponse = []Stack
 
+// Workload Workload defines a workload for the app
+type Workload struct {
+	// Builder json with keys: buildpack, dockerfile, script, external
+	Builder string `cql:"builder" json:"builder"`
+
+	// Container json with keys: image, command, environment, dependencies
+	Container string     `cql:"container" json:"container"`
+	CreatedAt time.Time  `cql:"created_at" json:"created_at"`
+	ID        gocql.UUID `cql:"id" json:"id"`
+
+	// Kind Default, worker, job, cronjob
+	Kind      string     `cql:"kind" json:"kind"`
+	Name      string     `cql:"name" json:"name"`
+	RepoID    gocql.UUID `cql:"repo_id" json:"repo_id"`
+	RepoPath  string     `cql:"repo_path" json:"repo_path"`
+	StackID   gocql.UUID `cql:"stack_id" json:"stack_id"`
+	UpdatedAt time.Time  `cql:"updated_at" json:"updated_at"`
+}
+
+var (
+	workloadColumns = []string{"builder", "container", "created_at", "id", "kind", "name", "repo_id", "repo_path", "stack_id", "updated_at"}
+
+	workloadMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "workloads",
+			Columns: workloadColumns,
+		},
+	}
+
+	workloadTable = itable.New(*workloadMeta.M)
+)
+
+func (workload *Workload) GetTable() itable.ITable {
+	return workloadTable
+}
+
+// WorkloadCreateRequest defines model for WorkloadCreateRequest.
+type WorkloadCreateRequest struct {
+	Builder   *string    `json:"builder,omitempty"`
+	Container *string    `json:"container,omitempty"`
+	Kind      *string    `json:"kind,omitempty"`
+	Name      string     `json:"name"`
+	RepoID    gocql.UUID `json:"repo_id"`
+	RepoPath  *string    `json:"repo_path,omitempty"`
+	StackID   gocql.UUID `json:"stack_id"`
+}
+
 // BadRequest defines the structure of an API error response
 type BadRequest = externalRef1.APIError
 
@@ -265,6 +312,9 @@ type CreateResourceJSONRequestBody = ResourceCreateRequest
 
 // CreateStackJSONRequestBody defines body for CreateStack for application/json ContentType.
 type CreateStackJSONRequestBody = StackCreateRequest
+
+// CreateWorkloadJSONRequestBody defines body for CreateWorkload for application/json ContentType.
+type CreateWorkloadJSONRequestBody = WorkloadCreateRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -299,6 +349,10 @@ type ServerInterface interface {
 	// Get stack
 	// (GET /core/stacks/{slug})
 	GetStack(ctx echo.Context) error
+
+	// Create workload
+	// (POST /core/workload)
+	CreateWorkload(ctx echo.Context) error
 
 	// SecurityHandler returns the underlying Security Wrapper
 	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
@@ -466,6 +520,23 @@ func (w *ServerInterfaceWrapper) GetStack(ctx echo.Context) error {
 	return err
 }
 
+// CreateWorkload converts echo context to params.
+
+func (w *ServerInterfaceWrapper) CreateWorkload(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	ctx.Set(APIKeyAuthScopes, []string{""})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.CreateWorkload
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
+}
+
 // EchoRouter is an interface that wraps the methods of echo.Echo & echo.Group to provide a common interface
 // for registering routes.
 type EchoRouter interface {
@@ -501,5 +572,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/core/stacks", wrapper.ListStacks)
 	router.POST(baseURL+"/core/stacks", wrapper.CreateStack)
 	router.GET(baseURL+"/core/stacks/:slug", wrapper.GetStack)
+	router.POST(baseURL+"/core/workload", wrapper.CreateWorkload)
 
 }
