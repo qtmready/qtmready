@@ -29,8 +29,50 @@ const (
 )
 
 var (
-	ErrInvalidRepoProvider = errors.New("invalid RepoProvider value")
+	ErrInvalidCloudProvider = errors.New("invalid CloudProvider value")
+	ErrInvalidRepoProvider  = errors.New("invalid RepoProvider value")
 )
+
+type (
+	CloudProviderMapType map[string]CloudProvider // CloudProviderMapType is a quick lookup map for CloudProvider.
+)
+
+// Defines values for CloudProvider.
+const (
+	CloudProviderAWS   CloudProvider = "AWS"
+	CloudProviderAzure CloudProvider = "Azure"
+	CloudProviderGCP   CloudProvider = "GCP"
+)
+
+// CloudProviderValues returns all known values for CloudProvider.
+var (
+	CloudProviderMap = CloudProviderMapType{
+		CloudProviderAWS.String():   CloudProviderAWS,
+		CloudProviderAzure.String(): CloudProviderAzure,
+		CloudProviderGCP.String():   CloudProviderGCP,
+	}
+)
+
+/*
+ * Helper methods for CloudProvider for easy marshalling and unmarshalling.
+ */
+func (v CloudProvider) String() string               { return string(v) }
+func (v CloudProvider) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
+func (v *CloudProvider) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	val, ok := CloudProviderMap[s]
+	if !ok {
+		return ErrInvalidCloudProvider
+	}
+
+	*v = val
+
+	return nil
+}
 
 type (
 	RepoProviderMapType map[string]RepoProvider // RepoProviderMapType is a quick lookup map for RepoProvider.
@@ -72,6 +114,9 @@ func (v *RepoProvider) UnmarshalJSON(data []byte) error {
 
 	return nil
 }
+
+// CloudProvider aws, gcp, azure
+type CloudProvider string
 
 // Repo defines model for Repo.
 type Repo struct {
@@ -117,6 +162,51 @@ type RepoListResponse = []Repo
 // RepoProvider defines model for RepoProvider.
 type RepoProvider string
 
+// Resource Resource defines the cloud provider resources for the app e.g. s3, sqs, etc
+type Resource struct {
+	CreatedAt time.Time `cql:"created_at" json:"created_at"`
+
+	// Driver s3, sqs, sns, dynamodb, postfres, mysql etc
+	Driver      *string    `cql:"driver" json:"driver,omitempty"`
+	ID          gocql.UUID `cql:"id" json:"id"`
+	IsImmutable *bool      `cql:"is_immutable" json:"is_immutable,omitempty"`
+	Name        string     `cql:"name" json:"name"`
+
+	// Provider aws, gcp, azure
+	Provider  CloudProvider `cql:"provider" json:"provider"`
+	RepoID    gocql.UUID    `cql:"repo_id" json:"repo_id"`
+	StackID   gocql.UUID    `cql:"stack_id" json:"stack_id"`
+	UpdatedAt time.Time     `cql:"updated_at" json:"updated_at"`
+}
+
+var (
+	resourceColumns = []string{"created_at", "driver", "id", "is_immutable", "name", "provider", "repo_id", "stack_id", "updated_at"}
+
+	resourceMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "resources",
+			Columns: resourceColumns,
+		},
+	}
+
+	resourceTable = itable.New(*resourceMeta.M)
+)
+
+func (resource *Resource) GetTable() itable.ITable {
+	return resourceTable
+}
+
+// ResourceCreateRequest defines model for ResourceCreateRequest.
+type ResourceCreateRequest struct {
+	Immutable bool   `json:"immutable"`
+	Name      string `json:"name"`
+
+	// Provider aws, gcp, azure
+	Provider CloudProvider `json:"provider"`
+	RepoID   gocql.UUID    `json:"repo_id"`
+	StackID  gocql.UUID    `json:"stack_id"`
+}
+
 // Stack defines model for Stack.
 type Stack struct {
 	Config    StackConfig `cql:"config" json:"config"`
@@ -160,6 +250,9 @@ type StackListResponse = []Stack
 // CreateRepoJSONRequestBody defines body for CreateRepo for application/json ContentType.
 type CreateRepoJSONRequestBody = RepoCreateRequest
 
+// CreateResourceJSONRequestBody defines body for CreateResource for application/json ContentType.
+type CreateResourceJSONRequestBody = ResourceCreateRequest
+
 // CreateStackJSONRequestBody defines body for CreateStack for application/json ContentType.
 type CreateStackJSONRequestBody = StackCreateRequest
 
@@ -176,6 +269,10 @@ type ServerInterface interface {
 	// Get repo
 	// (GET /core/repos/{id})
 	GetRepo(ctx echo.Context) error
+
+	// Create resource
+	// (POST /core/resources)
+	CreateResource(ctx echo.Context) error
 
 	// List stacks
 	// (GET /core/stacks)
@@ -250,6 +347,23 @@ func (w *ServerInterfaceWrapper) GetRepo(ctx echo.Context) error {
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GetRepo
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
+}
+
+// CreateResource converts echo context to params.
+
+func (w *ServerInterfaceWrapper) CreateResource(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	ctx.Set(APIKeyAuthScopes, []string{""})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.CreateResource
 	secure := w.Handler.SecureHandler
 	err = secure(handler, ctx)
 
@@ -344,6 +458,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/core/repos", wrapper.ListRepos)
 	router.POST(baseURL+"/core/repos", wrapper.CreateRepo)
 	router.GET(baseURL+"/core/repos/:id", wrapper.GetRepo)
+	router.POST(baseURL+"/core/resources", wrapper.CreateResource)
 	router.GET(baseURL+"/core/stacks", wrapper.ListStacks)
 	router.POST(baseURL+"/core/stacks", wrapper.CreateStack)
 	router.GET(baseURL+"/core/stacks/:slug", wrapper.GetStack)

@@ -1,4 +1,39 @@
 paths:
+  /core/resources:
+    post:
+      summary: Create resource
+      description: Create resource
+      operationId: create-resource
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      requestBody:
+        description: Resource
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceCreateRequest'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
   /core/stacks:
     post:
       summary: Create stack
@@ -196,7 +231,6 @@ paths:
               schema:
                 $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
 
-
 components:
   securitySchemes:
     BearerAuth:
@@ -205,6 +239,32 @@ components:
       $ref: '../shared/openapi.spec.yaml#/components/securitySchemes/APIKeyAuth'
 
   schemas:
+    ResourceCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        stack_id:
+          type: string
+          format: uuid
+          x-go-name: StackID
+          x-go-type: gocql.UUID
+        repo_id:
+          type: string
+          format: uuid
+          x-go-name: RepoID
+          x-go-type: gocql.UUID
+        provider:
+          $ref: '#/components/schemas/CloudProvider'
+        immutable:
+          type: boolean
+      required:
+        - name
+        - stack_id
+        - repo_id
+        - provider
+        - immutable
+
     StackCreateRequest:
       type: object
       properties:
@@ -249,6 +309,50 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/Repo'
+
+    Resource:
+      type: object
+      x-breu-entity: resources
+      description: 'Resource defines the cloud provider resources for the app e.g. s3, sqs, etc'
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+        name:
+          type: string
+        stack_id:
+          type: string
+          format: uuid
+          x-go-name: StackID
+          x-go-type: gocql.UUID
+        repo_id:
+          type: string
+          format: uuid
+          x-go-name: RepoID
+          x-go-type: gocql.UUID
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        driver:
+          type: string
+          description: 's3, sqs, sns, dynamodb, postfres, mysql etc'
+        is_immutable:
+          type: boolean
+        provider:
+          $ref: '#/components/schemas/CloudProvider'
+      required:
+        - id
+        - name
+        - stack_id
+        - repo_id
+        - provider
+        - created_at
+        - updated_at
 
     Stack:
       type: object
@@ -337,3 +441,11 @@ components:
         - github
         - gitlab
         - bitbucket
+
+    CloudProvider:
+      type: string
+      description: 'aws, gcp, azure'
+      enum:
+        - AWS
+        - GCP
+        - Azure

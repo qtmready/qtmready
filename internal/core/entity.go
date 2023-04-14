@@ -60,27 +60,6 @@ var (
 
 	workloadTable = itable.New(*workloadMeta.M)
 
-	resourceColumns = []string{
-		"id",
-		"stack_id",
-		"repo_id",
-		"name",
-		"provider",
-		"driver",
-		"is_immutable",
-		"created_at",
-		"updated_at",
-	}
-
-	resourceMeta = itable.Metadata{
-		M: &table.Metadata{
-			Name:    "resources",
-			Columns: resourceColumns,
-		},
-	}
-
-	resourceTable = itable.New(*resourceMeta.M)
-
 	blueprintColumns = []string{
 		"id",
 		"stack_id",
@@ -157,17 +136,6 @@ type (
 	}
 
 	// Resource defines the cloud provider resources for the app e.g. s3, sqs, etc.
-	Resource struct {
-		ID          gocql.UUID `json:"id" cql:"id"`
-		StackID     gocql.UUID `json:"stack_id" cql:"stack_id"`
-		RepoID      gocql.UUID `json:"repo_id" cql:"repo_id"`
-		Name        string     `json:"name" cql:"name"`
-		Provider    string     `json:"provider" cql:"provider"` // "aws" | "gcp" | "azure"
-		Driver      string     `json:"driver" cql:"driver"`     // "s3" | "sqs" | "sns" | "dynamodb" | "postgres" | "mysql" etc.
-		IsImmutable bool       `json:"is_immutable" cql:"is_immutable"`
-		CreatedAt   time.Time  `json:"created_at"`
-		UpdatedAt   time.Time  `json:"updated_at"`
-	}
 
 	// Blueprint contains a collection of Workload & Resource to define one single release.
 	Blueprint struct {
