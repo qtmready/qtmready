@@ -23,17 +23,49 @@ paths:
               schema:
                 $ref: '#/components/schemas/Resource'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/NotFound'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
+
+  # /core/resources/{id}:
+  #   get:
+  #     summary: Get resource
+  #     description: Get resource
+  #     operationId: get-resource
+  #     security:
+  #       - BearerAuth: []
+  #       - APIKeyAuth: []
+  #     tags:
+  #       - core
+  #     parameters:
+  #       - name: id
+  #         in: path
+  #         description: Resource ID
+  #         required: true
+  #         schema:
+  #           type: string
+  #           format: uuid
+  #           x-go-type: string
+  #     responses:
+  #       '200':
+  #         description: OK
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: '#/components/schemas/Resource'
+  #       '404':
+  #         description: Not found
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+  #       '500':
+  #         description: Internal server error
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+
   /core/stacks:
     post:
       summary: Create stack
@@ -58,17 +90,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/Stack'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
+
     get:
       summary: List stacks
       description: List stacks
@@ -86,11 +111,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/StackListResponse'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
+
   /core/stacks/{slug}:
     get:
       summary: Get stack
@@ -117,17 +139,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/Stack'
         '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/NotFound'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
+
   /core/repos:
     post:
       summary: Create repo
@@ -152,17 +167,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Repo'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
 
     get:
       summary: List Repos
@@ -181,17 +188,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/RepoListResponse'
         '404':
-          description: Not Found
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/NotFound'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
+
   /core/repos/{id}:
     get:
       summary: Get repo
@@ -219,17 +219,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Repo'
         '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/NotFound'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
 
 components:
   securitySchemes:
@@ -449,3 +441,23 @@ components:
         - AWS
         - GCP
         - Azure
+
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'

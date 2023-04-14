@@ -21,6 +21,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/scylladb/gocqlx/v2/table"
+	externalRef1 "go.breu.io/ctrlplane/internal/shared"
 )
 
 const (
@@ -246,6 +247,15 @@ type StackCreateRequest struct {
 
 // StackListResponse defines model for StackListResponse.
 type StackListResponse = []Stack
+
+// BadRequest defines the structure of an API error response
+type BadRequest = externalRef1.APIError
+
+// InternalServerError defines the structure of an API error response
+type InternalServerError = externalRef1.APIError
+
+// NotFound defines the structure of an API error response
+type NotFound = externalRef1.APIError
 
 // CreateRepoJSONRequestBody defines body for CreateRepo for application/json ContentType.
 type CreateRepoJSONRequestBody = RepoCreateRequest
