@@ -132,13 +132,15 @@ type Blueprint struct {
 
 	// Regions BluePrintRegions sets the cloud regions where a blueprint can be deployed
 	Regions       BluePrintRegions `cql:"regions" json:"regions"`
+	RepoBranch    string           `cql:"repo_branch" json:"repo_branch"`
+	RepoID        gocql.UUID       `cql:"repo_id" json:"repo_id"`
 	RollOutBudget int              `cql:"roll_out_budget" json:"roll_out_budget"`
 	StackID       gocql.UUID       `cql:"stack_id" json:"stack_id"`
 	UpdatedAt     time.Time        `cql:"updated_at" json:"updated_at"`
 }
 
 var (
-	blueprintColumns = []string{"created_at", "id", "name", "regions", "roll_out_budget", "stack_id", "updated_at"}
+	blueprintColumns = []string{"created_at", "id", "name", "regions", "repo_branch", "repo_id", "roll_out_budget", "stack_id", "updated_at"}
 
 	blueprintMeta = itable.Metadata{
 		M: &table.Metadata{

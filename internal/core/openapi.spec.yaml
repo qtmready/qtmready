@@ -481,6 +481,13 @@ components:
           format: uuid
           x-go-name: StackID
           x-go-type: gocql.UUID
+        repo_id:
+          type: string
+          format: uuid
+          x-go-name: RepoID
+          x-go-type: gocql.UUID
+        repo_branch:
+          type: string
         regions:
           $ref: '#/components/schemas/BluePrintRegions'
         roll_out_budget:
@@ -497,6 +504,8 @@ components:
         - stack_id
         - regions
         - roll_out_budget
+        - repo_id
+        - repo_branch
         - created_at
         - updated_at
 
