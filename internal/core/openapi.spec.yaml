@@ -1,5 +1,64 @@
 paths:
-  /core/workload:
+  /core/blueprints:
+    post:
+      summary: Create blueprint
+      description: Create blueprint
+      operationId: create-blueprint
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      requestBody:
+        description: blueprints
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlueprintCreateRequest'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blueprint'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /core/blueprints/{id}:
+    get:
+      summary: Get blueprint
+      description: Get blueprint
+      operationId: get-blueprint
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      parameters:
+        - name: id
+          in: path
+          description: blueprints ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+            x-go-type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blueprint'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /core/workloads:
     post:
       summary: Create workload
       description: Create workload
@@ -282,6 +341,26 @@ components:
       $ref: '../shared/openapi.spec.yaml#/components/securitySchemes/APIKeyAuth'
 
   schemas:
+    BlueprintCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        stack_id:
+          type: string
+          format: uuid
+          x-go-name: StackID
+          x-go-type: gocql.UUID
+        roll_out_budget:
+          type: integer
+        regions:
+          $ref: '#/components/schemas/BluePrintRegions'
+      required:
+        - name
+        - stack_id
+        - roll_out_budget
+        - regions
+
     WorkloadCreateRequest:
       type: object
       properties:
@@ -309,8 +388,10 @@ components:
         - name
         - stack_id
         - repo_id
-        - provider
-        - immutable
+        - repo_path
+        - kind
+        - container
+        - builder
 
     ResourceCreateRequest:
       type: object
@@ -383,6 +464,42 @@ components:
       items:
         $ref: '#/components/schemas/Repo'
 
+    Blueprint:
+      type: object
+      x-breu-entity: blueprints
+      description: 'Blueprint contains a collection of Workload & Resource to define one single release'
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+        name:
+          type: string
+        stack_id:
+          type: string
+          format: uuid
+          x-go-name: StackID
+          x-go-type: gocql.UUID
+        regions:
+          $ref: '#/components/schemas/BluePrintRegions'
+        roll_out_budget:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - stack_id
+        - regions
+        - roll_out_budget
+        - created_at
+        - updated_at
+
     Workload:
       type: object
       x-breu-entity: workloads
@@ -405,12 +522,6 @@ components:
           format: uuid
           x-go-name: RepoID
           x-go-type: gocql.UUID
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
         repo_path:
           type: string
         kind:
@@ -422,6 +533,12 @@ components:
         builder:
           type: string
           description: 'json with keys: buildpack, dockerfile, script, external'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
       required:
         - id
         - name
@@ -456,12 +573,6 @@ components:
           format: uuid
           x-go-name: RepoID
           x-go-type: gocql.UUID
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
         driver:
           type: string
           description: 's3, sqs, sns, dynamodb, postfres, mysql etc'
@@ -469,6 +580,12 @@ components:
           type: boolean
         provider:
           $ref: '#/components/schemas/CloudProvider'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
       required:
         - id
         - name
@@ -573,6 +690,35 @@ components:
         - AWS
         - GCP
         - Azure
+
+    BluePrintRegions:
+      type: object
+      description: BluePrintRegions sets the cloud regions where a blueprint can be deployed
+      properties:
+        gcp:
+          type: array
+          items:
+            type: string
+            x-go-name: GCP
+        aws:
+          type: array
+          items:
+            type: string
+            x-go-name: AWS
+        azure:
+          type: array
+          items:
+            type: string
+            x-go-name: AZURE
+        default:
+          type: array
+          items:
+            type: string
+      required:
+        - gcp
+        - aws
+        - azure
+        - default
 
   responses:
     NotFound:

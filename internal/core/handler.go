@@ -42,6 +42,14 @@ func NewServerHandler(security echo.MiddlewareFunc) *ServerHandler {
 	}
 }
 
+func (s *ServerHandler) CreateBlueprint(ctx echo.Context) error {
+	return nil
+}
+
+func (s *ServerHandler) GetBlueprint(ctx echo.Context) error {
+	return nil
+}
+
 func (s *ServerHandler) CreateWorkload(ctx echo.Context) error {
 	return nil
 }

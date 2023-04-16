@@ -116,6 +116,54 @@ func (v *RepoProvider) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// BluePrintRegions BluePrintRegions sets the cloud regions where a blueprint can be deployed
+type BluePrintRegions struct {
+	Aws     []string `json:"aws"`
+	Azure   []string `json:"azure"`
+	Default []string `json:"default"`
+	Gcp     []string `json:"gcp"`
+}
+
+// Blueprint Blueprint contains a collection of Workload & Resource to define one single release
+type Blueprint struct {
+	CreatedAt time.Time  `cql:"created_at" json:"created_at"`
+	ID        gocql.UUID `cql:"id" json:"id"`
+	Name      string     `cql:"name" json:"name"`
+
+	// Regions BluePrintRegions sets the cloud regions where a blueprint can be deployed
+	Regions       BluePrintRegions `cql:"regions" json:"regions"`
+	RollOutBudget int              `cql:"roll_out_budget" json:"roll_out_budget"`
+	StackID       gocql.UUID       `cql:"stack_id" json:"stack_id"`
+	UpdatedAt     time.Time        `cql:"updated_at" json:"updated_at"`
+}
+
+var (
+	blueprintColumns = []string{"created_at", "id", "name", "regions", "roll_out_budget", "stack_id", "updated_at"}
+
+	blueprintMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "blueprints",
+			Columns: blueprintColumns,
+		},
+	}
+
+	blueprintTable = itable.New(*blueprintMeta.M)
+)
+
+func (blueprint *Blueprint) GetTable() itable.ITable {
+	return blueprintTable
+}
+
+// BlueprintCreateRequest defines model for BlueprintCreateRequest.
+type BlueprintCreateRequest struct {
+	Name string `json:"name"`
+
+	// Regions BluePrintRegions sets the cloud regions where a blueprint can be deployed
+	Regions       BluePrintRegions `json:"regions"`
+	RollOutBudget int              `json:"roll_out_budget"`
+	StackID       gocql.UUID       `json:"stack_id"`
+}
+
 // CloudProvider aws, gcp, azure
 type CloudProvider string
 
@@ -286,12 +334,12 @@ func (workload *Workload) GetTable() itable.ITable {
 
 // WorkloadCreateRequest defines model for WorkloadCreateRequest.
 type WorkloadCreateRequest struct {
-	Builder   *string    `json:"builder,omitempty"`
-	Container *string    `json:"container,omitempty"`
-	Kind      *string    `json:"kind,omitempty"`
+	Builder   string     `json:"builder"`
+	Container string     `json:"container"`
+	Kind      string     `json:"kind"`
 	Name      string     `json:"name"`
 	RepoID    gocql.UUID `json:"repo_id"`
-	RepoPath  *string    `json:"repo_path,omitempty"`
+	RepoPath  string     `json:"repo_path"`
 	StackID   gocql.UUID `json:"stack_id"`
 }
 
@@ -303,6 +351,9 @@ type InternalServerError = externalRef1.APIError
 
 // NotFound defines the structure of an API error response
 type NotFound = externalRef1.APIError
+
+// CreateBlueprintJSONRequestBody defines body for CreateBlueprint for application/json ContentType.
+type CreateBlueprintJSONRequestBody = BlueprintCreateRequest
 
 // CreateRepoJSONRequestBody defines body for CreateRepo for application/json ContentType.
 type CreateRepoJSONRequestBody = RepoCreateRequest
@@ -318,6 +369,14 @@ type CreateWorkloadJSONRequestBody = WorkloadCreateRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Create blueprint
+	// (POST /core/blueprints)
+	CreateBlueprint(ctx echo.Context) error
+
+	// Get blueprint
+	// (GET /core/blueprints/{id})
+	GetBlueprint(ctx echo.Context) error
+
 	// List Repos
 	// (GET /core/repos)
 	ListRepos(ctx echo.Context) error
@@ -351,8 +410,12 @@ type ServerInterface interface {
 	GetStack(ctx echo.Context) error
 
 	// Create workload
-	// (POST /core/workload)
+	// (POST /core/workloads)
 	CreateWorkload(ctx echo.Context) error
+
+	// Get workload
+	// (GET /core/workloads/{id})
+	GetWorkload(ctx echo.Context) error
 
 	// SecurityHandler returns the underlying Security Wrapper
 	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
@@ -361,6 +424,47 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// CreateBlueprint converts echo context to params.
+
+func (w *ServerInterfaceWrapper) CreateBlueprint(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	ctx.Set(APIKeyAuthScopes, []string{""})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.CreateBlueprint
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
+}
+
+// GetBlueprint converts echo context to params.
+
+func (w *ServerInterfaceWrapper) GetBlueprint(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	ctx.Set(APIKeyAuthScopes, []string{""})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.GetBlueprint
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
 }
 
 // ListRepos converts echo context to params.
@@ -537,6 +641,30 @@ func (w *ServerInterfaceWrapper) CreateWorkload(ctx echo.Context) error {
 	return err
 }
 
+// GetWorkload converts echo context to params.
+
+func (w *ServerInterfaceWrapper) GetWorkload(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{""})
+
+	ctx.Set(APIKeyAuthScopes, []string{""})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.GetWorkload
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
+}
+
 // EchoRouter is an interface that wraps the methods of echo.Echo & echo.Group to provide a common interface
 // for registering routes.
 type EchoRouter interface {
@@ -564,6 +692,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.POST(baseURL+"/core/blueprints", wrapper.CreateBlueprint)
+	router.GET(baseURL+"/core/blueprints/:id", wrapper.GetBlueprint)
 	router.GET(baseURL+"/core/repos", wrapper.ListRepos)
 	router.POST(baseURL+"/core/repos", wrapper.CreateRepo)
 	router.GET(baseURL+"/core/repos/:id", wrapper.GetRepo)
@@ -572,6 +702,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/core/stacks", wrapper.ListStacks)
 	router.POST(baseURL+"/core/stacks", wrapper.CreateStack)
 	router.GET(baseURL+"/core/stacks/:slug", wrapper.GetStack)
-	router.POST(baseURL+"/core/workload", wrapper.CreateWorkload)
+	router.POST(baseURL+"/core/workloads", wrapper.CreateWorkload)
+	router.GET(baseURL+"/core/workloads/:id", wrapper.GetWorkload)
 
 }
