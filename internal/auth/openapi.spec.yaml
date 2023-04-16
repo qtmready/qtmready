@@ -20,17 +20,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/RegisterationResponse'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
   /auth/login:
     post:
       summary: Login
@@ -56,23 +48,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/TokenResponse'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/Unauthorized'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
   /auth/api-keys/user:
     post:
       summary: Create a new API key for the user
@@ -96,23 +76,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/CreateAPIKeyResponse'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/Unauthorized'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
   /auth/api-keys/team:
     post:
       summary: Create a new API key for the team
@@ -136,23 +104,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/CreateAPIKeyResponse'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/Unauthorized'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
   /auth/api-keys/validate:
     get:
       summary: Validate an API key
@@ -170,23 +126,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/APIKeyValidationResponse'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/Unauthorized'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
   /auth/teams:
     get:
       summary: List all teams the user is a member of
@@ -204,23 +148,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/TeamList'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/Unauthorized'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
     post:
       summary: Create a new team
       description: Create a new team
@@ -243,23 +175,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Team'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/Unauthorized'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
   /auth/teams/{slug}:
     get:
       summary: Get a team
@@ -284,29 +204,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/Team'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/Unauthorized'
         '404':
-          description: Team not found
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/NotFound'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
+
   /auth/teams/{slug}/users:
     post:
       summary: Add a user to a team
@@ -337,30 +242,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/TeamUser'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/Unauthorized'
         '404':
-          description: Team not found
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/NotFound'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
-
+          $ref: '#/components/responses/InternalServerError'
 
 components:
   securitySchemes:
@@ -586,3 +474,28 @@ components:
         - user_id
         - created_at
         - updated_at
+  responses:
+    NotFound:
+      description: Team Not found
+      content:
+        application/json:
+          schema:
+            $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'

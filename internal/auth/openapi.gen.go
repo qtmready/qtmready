@@ -176,6 +176,18 @@ func (user *User) GetTable() itable.ITable {
 	return userTable
 }
 
+// BadRequest defines the structure of an API error response
+type BadRequest = externalRef1.APIError
+
+// InternalServerError defines the structure of an API error response
+type InternalServerError = externalRef1.APIError
+
+// NotFound defines the structure of an API error response
+type NotFound = externalRef1.APIError
+
+// Unauthorized defines the structure of an API error response
+type Unauthorized = externalRef1.APIError
+
 // CreateTeamAPIKeyJSONRequestBody defines body for CreateTeamAPIKey for application/json ContentType.
 type CreateTeamAPIKeyJSONRequestBody = CreateAPIKeyRequest
 

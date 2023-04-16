@@ -20,17 +20,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/WorkflowResponse'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
 
   /providers/github/complete-installation:
     post:
@@ -63,17 +55,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/WorkflowResponse'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
 
   /providers/github/repos:
     get:
@@ -96,18 +80,10 @@ paths:
                 items:
                   $ref: '#/components/schemas/GithubRepo'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
-  
+          $ref: '#/components/responses/InternalServerError'
+
   /providers/github/installations:
     get:
       summary: Get GitHub installations
@@ -129,17 +105,9 @@ paths:
                 items:
                   $ref: '#/components/schemas/GithubInstallation'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
 
 components:
   securitySchemes:
@@ -242,7 +210,7 @@ components:
         - status
         - created_at
         - updated_at
-  
+
     CompleteInstallationRequest:
       type: object
       description: complete the installation given the installation_id & setup_action
@@ -285,3 +253,23 @@ components:
         - queued
         - signaled
         - skipped
+
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '../../shared/openapi.spec.yaml#/components/schemas/APIError'
