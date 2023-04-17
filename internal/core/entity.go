@@ -120,14 +120,6 @@ func (rollout *Rollout) PreUpdate() error        { return nil }
 
 type (
 
-	// BluePrintRegions sets the cloud regions where a blueprint can be deployed.
-	// BluePrintRegions struct {
-	// 	GCP     []string `json:"gcp"`
-	// 	AWS     []string `json:"aws"`
-	// 	Azure   []string `json:"azure"`
-	// 	Default string   `json:"default"`
-	// }
-
 	// RolloutState is the state of a rollout.
 	RolloutState        string
 	RolloutStateMapType map[string]RolloutState

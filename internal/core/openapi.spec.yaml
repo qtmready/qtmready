@@ -589,7 +589,7 @@ components:
           x-go-type: gocql.UUID
         driver:
           type: string
-          description: 's3, sqs, sns, dynamodb, postfres, mysql etc'
+          description: 's3, sqs, sns, dynamodb, postgres, mysql etc'
         is_immutable:
           type: boolean
         provider:
