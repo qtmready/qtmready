@@ -132,15 +132,13 @@ type Blueprint struct {
 
 	// Regions BluePrintRegions sets the cloud regions where a blueprint can be deployed
 	Regions       BluePrintRegions `cql:"regions" json:"regions"`
-	RepoBranch    string           `cql:"repo_branch" json:"repo_branch"`
-	RepoID        gocql.UUID       `cql:"repo_id" json:"repo_id"`
-	RollOutBudget int              `cql:"roll_out_budget" json:"roll_out_budget"`
+	RolloutBudget string           `cql:"rollout_budget" json:"rollout_budget"`
 	StackID       gocql.UUID       `cql:"stack_id" json:"stack_id"`
 	UpdatedAt     time.Time        `cql:"updated_at" json:"updated_at"`
 }
 
 var (
-	blueprintColumns = []string{"created_at", "id", "name", "regions", "repo_branch", "repo_id", "roll_out_budget", "stack_id", "updated_at"}
+	blueprintColumns = []string{"created_at", "id", "name", "regions", "rollout_budget", "stack_id", "updated_at"}
 
 	blueprintMeta = itable.Metadata{
 		M: &table.Metadata{
@@ -162,7 +160,7 @@ type BlueprintCreateRequest struct {
 
 	// Regions BluePrintRegions sets the cloud regions where a blueprint can be deployed
 	Regions       BluePrintRegions `json:"regions"`
-	RollOutBudget int              `json:"roll_out_budget"`
+	RolloutBudget string           `json:"rollout_budget"`
 	StackID       gocql.UUID       `json:"stack_id"`
 }
 
@@ -175,6 +173,7 @@ type Repo struct {
 	DefaultBranch string       `cql:"default_branch" json:"default_branch"`
 	ID            gocql.UUID   `cql:"id" json:"id"`
 	IsMonorepo    bool         `cql:"is_monorepo" json:"is_monorepo"`
+	Name          string       `cql:"name" json:"name"`
 	Provider      RepoProvider `cql:"provider" json:"provider"`
 	ProviderID    string       `cql:"provider_id" json:"provider_id"`
 	StackID       gocql.UUID   `cql:"stack_id" json:"stack_id"`
@@ -182,7 +181,7 @@ type Repo struct {
 }
 
 var (
-	repoColumns = []string{"created_at", "default_branch", "id", "is_monorepo", "provider", "provider_id", "stack_id", "updated_at"}
+	repoColumns = []string{"created_at", "default_branch", "id", "is_monorepo", "name", "provider", "provider_id", "stack_id", "updated_at"}
 
 	repoMeta = itable.Metadata{
 		M: &table.Metadata{
@@ -202,6 +201,7 @@ func (repo *Repo) GetTable() itable.ITable {
 type RepoCreateRequest struct {
 	DefaultBranch string       `json:"default_branch"`
 	IsMonorepo    bool         `json:"is_monorepo"`
+	Name          string       `json:"name"`
 	Provider      RepoProvider `json:"provider"`
 	ProviderID    string       `json:"provider_id"`
 	StackID       gocql.UUID   `json:"stack_id"`
@@ -218,20 +218,19 @@ type Resource struct {
 	CreatedAt time.Time `cql:"created_at" json:"created_at"`
 
 	// Driver s3, sqs, sns, dynamodb, postfres, mysql etc
-	Driver      *string    `cql:"driver" json:"driver,omitempty"`
+	Driver      string     `cql:"driver" json:"driver"`
 	ID          gocql.UUID `cql:"id" json:"id"`
 	IsImmutable *bool      `cql:"is_immutable" json:"is_immutable,omitempty"`
 	Name        string     `cql:"name" json:"name"`
 
 	// Provider aws, gcp, azure
 	Provider  CloudProvider `cql:"provider" json:"provider"`
-	RepoID    gocql.UUID    `cql:"repo_id" json:"repo_id"`
 	StackID   gocql.UUID    `cql:"stack_id" json:"stack_id"`
 	UpdatedAt time.Time     `cql:"updated_at" json:"updated_at"`
 }
 
 var (
-	resourceColumns = []string{"created_at", "driver", "id", "is_immutable", "name", "provider", "repo_id", "stack_id", "updated_at"}
+	resourceColumns = []string{"created_at", "driver", "id", "is_immutable", "name", "provider", "stack_id", "updated_at"}
 
 	resourceMeta = itable.Metadata{
 		M: &table.Metadata{
@@ -249,14 +248,17 @@ func (resource *Resource) GetTable() itable.ITable {
 
 // ResourceCreateRequest defines model for ResourceCreateRequest.
 type ResourceCreateRequest struct {
+	Driver    string `json:"driver"`
 	Immutable bool   `json:"immutable"`
 	Name      string `json:"name"`
 
 	// Provider aws, gcp, azure
 	Provider CloudProvider `json:"provider"`
-	RepoID   gocql.UUID    `json:"repo_id"`
 	StackID  gocql.UUID    `json:"stack_id"`
 }
+
+// ResourceListResponse defines model for ResourceListResponse.
+type ResourceListResponse = []Resource
 
 // Stack defines model for Stack.
 type Stack struct {
@@ -345,6 +347,9 @@ type WorkloadCreateRequest struct {
 	StackID   gocql.UUID `json:"stack_id"`
 }
 
+// WorkloadListResponse defines model for WorkloadListResponse.
+type WorkloadListResponse = []Workload
+
 // BadRequest defines the structure of an API error response
 type BadRequest = externalRef1.APIError
 
@@ -353,6 +358,15 @@ type InternalServerError = externalRef1.APIError
 
 // NotFound defines the structure of an API error response
 type NotFound = externalRef1.APIError
+
+// GetWorkloadParams defines parameters for GetWorkload.
+type GetWorkloadParams struct {
+	// RepoId Repo ID
+	RepoId *string `form:"repo_id,omitempty" json:"repo_id,omitempty"`
+
+	// StackId Stack ID
+	StackId *string `form:"stack_id,omitempty" json:"stack_id,omitempty"`
+}
 
 // CreateBlueprintJSONRequestBody defines body for CreateBlueprint for application/json ContentType.
 type CreateBlueprintJSONRequestBody = BlueprintCreateRequest
@@ -376,7 +390,7 @@ type ServerInterface interface {
 	CreateBlueprint(ctx echo.Context) error
 
 	// Get blueprint
-	// (GET /core/blueprints/{id})
+	// (GET /core/blueprints/{stack_id})
 	GetBlueprint(ctx echo.Context) error
 
 	// List Repos
@@ -396,7 +410,7 @@ type ServerInterface interface {
 	CreateResource(ctx echo.Context) error
 
 	// Get resource
-	// (GET /core/resources/{id})
+	// (GET /core/resources/{stack_id})
 	GetResource(ctx echo.Context) error
 
 	// List stacks
@@ -416,7 +430,7 @@ type ServerInterface interface {
 	CreateWorkload(ctx echo.Context) error
 
 	// Get workload
-	// (GET /core/workloads/{id})
+	// (GET /core/workloads/)
 	GetWorkload(ctx echo.Context) error
 
 	// SecurityHandler returns the underlying Security Wrapper
@@ -449,12 +463,12 @@ func (w *ServerInterfaceWrapper) CreateBlueprint(ctx echo.Context) error {
 
 func (w *ServerInterfaceWrapper) GetBlueprint(ctx echo.Context) error {
 	var err error
-	// ------------- Path parameter "id" -------------
-	var id string
+	// ------------- Path parameter "stack_id" -------------
+	var stackId string
 
-	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
+	err = runtime.BindStyledParameterWithLocation("simple", false, "stack_id", runtime.ParamLocationPath, ctx.Param("stack_id"), &stackId)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter stack_id: %s", err))
 	}
 
 	ctx.Set(BearerAuthScopes, []string{""})
@@ -548,12 +562,12 @@ func (w *ServerInterfaceWrapper) CreateResource(ctx echo.Context) error {
 
 func (w *ServerInterfaceWrapper) GetResource(ctx echo.Context) error {
 	var err error
-	// ------------- Path parameter "id" -------------
-	var id string
+	// ------------- Path parameter "stack_id" -------------
+	var stackId string
 
-	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
+	err = runtime.BindStyledParameterWithLocation("simple", false, "stack_id", runtime.ParamLocationPath, ctx.Param("stack_id"), &stackId)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter stack_id: %s", err))
 	}
 
 	ctx.Set(BearerAuthScopes, []string{""})
@@ -647,17 +661,26 @@ func (w *ServerInterfaceWrapper) CreateWorkload(ctx echo.Context) error {
 
 func (w *ServerInterfaceWrapper) GetWorkload(ctx echo.Context) error {
 	var err error
-	// ------------- Path parameter "id" -------------
-	var id string
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
-	}
 
 	ctx.Set(BearerAuthScopes, []string{""})
 
 	ctx.Set(APIKeyAuthScopes, []string{""})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetWorkloadParams
+	// ------------- Optional query parameter "repo_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "repo_id", ctx.QueryParams(), &params.RepoId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter repo_id: %s", err))
+	}
+
+	// ------------- Optional query parameter "stack_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "stack_id", ctx.QueryParams(), &params.StackId)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter stack_id: %s", err))
+	}
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GetWorkload
@@ -695,16 +718,16 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.POST(baseURL+"/core/blueprints", wrapper.CreateBlueprint)
-	router.GET(baseURL+"/core/blueprints/:id", wrapper.GetBlueprint)
+	router.GET(baseURL+"/core/blueprints/:stack_id", wrapper.GetBlueprint)
 	router.GET(baseURL+"/core/repos", wrapper.ListRepos)
 	router.POST(baseURL+"/core/repos", wrapper.CreateRepo)
 	router.GET(baseURL+"/core/repos/:id", wrapper.GetRepo)
 	router.POST(baseURL+"/core/resources", wrapper.CreateResource)
-	router.GET(baseURL+"/core/resources/:id", wrapper.GetResource)
+	router.GET(baseURL+"/core/resources/:stack_id", wrapper.GetResource)
 	router.GET(baseURL+"/core/stacks", wrapper.ListStacks)
 	router.POST(baseURL+"/core/stacks", wrapper.CreateStack)
 	router.GET(baseURL+"/core/stacks/:slug", wrapper.GetStack)
 	router.POST(baseURL+"/core/workloads", wrapper.CreateWorkload)
-	router.GET(baseURL+"/core/workloads/:id", wrapper.GetWorkload)
+	router.GET(baseURL+"/core/workloads/", wrapper.GetWorkload)
 
 }

@@ -27,7 +27,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /core/blueprints/{id}:
+  /core/blueprints/{stack_id}:
     get:
       summary: Get blueprint
       description: Get blueprint
@@ -38,9 +38,9 @@ paths:
       tags:
         - core
       parameters:
-        - name: id
+        - name: stack_id
           in: path
-          description: blueprints ID
+          description: Stack ID
           required: true
           schema:
             type: string
@@ -86,7 +86,8 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /core/workloads/{id}:
+  # Enforce user to provide either of the two query parameters
+  /core/workloads/:
     get:
       summary: Get workload
       description: Get workload
@@ -97,10 +98,16 @@ paths:
       tags:
         - core
       parameters:
-        - name: id
-          in: path
-          description: workload ID
-          required: true
+        - name: repo_id
+          in: query
+          description: Repo ID
+          schema:
+            type: string
+            format: uuid
+            x-go-type: string
+        - name: stack_id
+          in: query
+          description: Stack ID
           schema:
             type: string
             format: uuid
@@ -111,7 +118,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Workload'
+                oneOf:
+                  - $ref: '#/components/schemas/Workload'
+                  - $ref: '#/components/schemas/WorkloadListResponse'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -145,7 +154,7 @@ paths:
         '500':
           $ref: '#/components/responses/InternalServerError'
 
-  /core/resources/{id}:
+  /core/resources/{stack_id}:
     get:
       summary: Get resource
       description: Get resource
@@ -156,9 +165,9 @@ paths:
       tags:
         - core
       parameters:
-        - name: id
+        - name: stack_id
           in: path
-          description: Resource ID
+          description: Stack ID
           required: true
           schema:
             type: string
@@ -170,7 +179,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Resource'
+                $ref: '#/components/schemas/ResourceListResponse'
         '404':
           $ref: '#/components/responses/NotFound'
         '500':
@@ -351,14 +360,14 @@ components:
           format: uuid
           x-go-name: StackID
           x-go-type: gocql.UUID
-        roll_out_budget:
-          type: integer
+        rollout_budget:
+          type: string
         regions:
           $ref: '#/components/schemas/BluePrintRegions'
       required:
         - name
         - stack_id
-        - roll_out_budget
+        - rollout_budget
         - regions
 
     WorkloadCreateRequest:
@@ -393,6 +402,11 @@ components:
         - container
         - builder
 
+    WorkloadListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/Workload'
+
     ResourceCreateRequest:
       type: object
       properties:
@@ -403,21 +417,23 @@ components:
           format: uuid
           x-go-name: StackID
           x-go-type: gocql.UUID
-        repo_id:
-          type: string
-          format: uuid
-          x-go-name: RepoID
-          x-go-type: gocql.UUID
         provider:
           $ref: '#/components/schemas/CloudProvider'
+        driver:
+          type: string
         immutable:
           type: boolean
       required:
         - name
         - stack_id
-        - repo_id
         - provider
+        - driver
         - immutable
+
+    ResourceListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/Resource'
 
     StackCreateRequest:
       type: object
@@ -438,6 +454,8 @@ components:
     RepoCreateRequest:
       type: object
       properties:
+        name:
+          type: string
         stack_id:
           type: string
           format: uuid
@@ -453,6 +471,7 @@ components:
         is_monorepo:
           type: boolean
       required:
+        - name
         - stack_id
         - provider
         - provider_id
@@ -481,17 +500,10 @@ components:
           format: uuid
           x-go-name: StackID
           x-go-type: gocql.UUID
-        repo_id:
-          type: string
-          format: uuid
-          x-go-name: RepoID
-          x-go-type: gocql.UUID
-        repo_branch:
-          type: string
         regions:
           $ref: '#/components/schemas/BluePrintRegions'
-        roll_out_budget:
-          type: integer
+        rollout_budget:
+          type: string
         created_at:
           type: string
           format: date-time
@@ -503,9 +515,7 @@ components:
         - name
         - stack_id
         - regions
-        - roll_out_budget
-        - repo_id
-        - repo_branch
+        - rollout_budget
         - created_at
         - updated_at
 
@@ -577,11 +587,6 @@ components:
           format: uuid
           x-go-name: StackID
           x-go-type: gocql.UUID
-        repo_id:
-          type: string
-          format: uuid
-          x-go-name: RepoID
-          x-go-type: gocql.UUID
         driver:
           type: string
           description: 's3, sqs, sns, dynamodb, postfres, mysql etc'
@@ -600,6 +605,7 @@ components:
         - name
         - stack_id
         - repo_id
+        - driver
         - provider
         - created_at
         - updated_at
@@ -650,6 +656,8 @@ components:
       type: object
       x-breu-entity: repos
       properties:
+        name:
+          type: string
         id:
           type: string
           format: uuid
@@ -676,6 +684,7 @@ components:
           type: string
           format: date-time
       required:
+        - name
         - id
         - stack_id
         - provider

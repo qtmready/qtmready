@@ -43,27 +43,113 @@ func NewServerHandler(security echo.MiddlewareFunc) *ServerHandler {
 }
 
 func (s *ServerHandler) CreateBlueprint(ctx echo.Context) error {
-	return nil
+	request := &BlueprintCreateRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	blueprint := &Blueprint{
+		Name:          request.Name,
+		Regions:       request.Regions,
+		StackID:       request.StackID,
+		RolloutBudget: request.RolloutBudget,
+	}
+
+	if err := db.Save(blueprint); err != nil {
+		return ctx.JSON(http.StatusInternalServerError, err)
+	}
+	return ctx.JSON(http.StatusCreated, blueprint)
 }
 
 func (s *ServerHandler) GetBlueprint(ctx echo.Context) error {
-	return nil
+	blueprint := &Blueprint{}
+	params := db.QueryParams{"stack_id": ctx.Param("stack_id")}
+
+	if err := db.Get(blueprint, params); err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, err)
+	}
+
+	return ctx.JSON(http.StatusOK, blueprint)
 }
 
 func (s *ServerHandler) CreateWorkload(ctx echo.Context) error {
-	return nil
+
+	request := &WorkloadCreateRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	workload := &Workload{
+		Name:     request.Name,
+		Kind:     request.Kind,
+		RepoID:   request.RepoID,
+		RepoPath: request.RepoPath,
+		StackID:  request.StackID,
+	}
+
+	if err := db.Save(workload); err != nil {
+		return ctx.JSON(http.StatusInternalServerError, err)
+	}
+	return ctx.JSON(http.StatusCreated, workload)
 }
 
 func (s *ServerHandler) GetWorkload(ctx echo.Context) error {
-	return nil
+	stackid := ctx.QueryParam("stack_id")
+	repoid := ctx.QueryParam("repo_id")
+
+	if repoid != "" {
+		workload := &Workload{}
+		params := db.QueryParams{"repo_id": repoid}
+
+		if err := db.Get(workload, params); err != nil {
+			return echo.NewHTTPError(http.StatusNotFound, err)
+		}
+
+		return ctx.JSON(http.StatusOK, workload)
+	} else if stackid != "" {
+		workloads := make([]Workload, 0)
+		params := db.QueryParams{"stack_id": stackid}
+
+		if err := db.Filter(&Workload{}, &workloads, params); err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err)
+		}
+
+		return ctx.JSON(http.StatusOK, workloads)
+	}
+
+	return ctx.JSON(http.StatusBadRequest, "No query paramters provided")
 }
 
 func (s *ServerHandler) CreateResource(ctx echo.Context) error {
-	return nil
+	request := &ResourceCreateRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	resource := &Resource{
+		Name:        request.Name,
+		Provider:    request.Provider,
+		StackID:     request.StackID,
+		Driver:      request.Driver,
+		IsImmutable: &request.Immutable,
+	}
+
+	if err := db.Save(resource); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err)
+	}
+
+	return ctx.JSON(http.StatusCreated, resource)
 }
 
 func (s *ServerHandler) GetResource(ctx echo.Context) error {
-	return nil
+	resources := make([]Resource, 0)
+	params := db.QueryParams{"stack_id": ctx.Param("stack_id")}
+
+	if err := db.Filter(&Resource{}, &resources, params); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err)
+	}
+
+	return ctx.JSON(http.StatusOK, resources)
 }
 
 func (s *ServerHandler) CreateStack(ctx echo.Context) error {
@@ -128,6 +214,7 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 	}
 
 	repo := &Repo{
+		Name:          request.Name,
 		StackID:       request.StackID,
 		ProviderID:    request.ProviderID,
 		DefaultBranch: request.DefaultBranch,
