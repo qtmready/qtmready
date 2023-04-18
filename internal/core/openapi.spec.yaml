@@ -1,4 +1,190 @@
 paths:
+  /core/blueprints:
+    post:
+      summary: Create blueprint
+      description: Create blueprint
+      operationId: create-blueprint
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      requestBody:
+        description: blueprints
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlueprintCreateRequest'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blueprint'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /core/blueprints/{stack_id}:
+    get:
+      summary: Get blueprint
+      description: Get blueprint
+      operationId: get-blueprint
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      parameters:
+        - name: stack_id
+          in: path
+          description: Stack ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+            x-go-type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Blueprint'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /core/workloads:
+    post:
+      summary: Create workload
+      description: Create workload
+      operationId: create-workload
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      requestBody:
+        description: Workload
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkloadCreateRequest'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workload'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # Enforce user to provide either of the two query parameters
+  /core/workloads/:
+    get:
+      summary: Get workload
+      description: Get workload
+      operationId: get-workload
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      parameters:
+        - name: repo_id
+          in: query
+          description: Repo ID
+          schema:
+            type: string
+            format: uuid
+            x-go-type: string
+        - name: stack_id
+          in: query
+          description: Stack ID
+          schema:
+            type: string
+            format: uuid
+            x-go-type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Workload'
+                  - $ref: '#/components/schemas/WorkloadListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /core/resources:
+    post:
+      summary: Create resource
+      description: Create resource
+      operationId: create-resource
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      requestBody:
+        description: Resource
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResourceCreateRequest'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /core/resources/{stack_id}:
+    get:
+      summary: Get resource
+      description: Get resource
+      operationId: get-resource
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      parameters:
+        - name: stack_id
+          in: path
+          description: Stack ID
+          required: true
+          schema:
+            type: string
+            format: uuid
+            x-go-type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResourceListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
   /core/stacks:
     post:
       summary: Create stack
@@ -23,17 +209,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/Stack'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
+
     get:
       summary: List stacks
       description: List stacks
@@ -51,11 +230,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/StackListResponse'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
+
   /core/stacks/{slug}:
     get:
       summary: Get stack
@@ -82,17 +258,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/Stack'
         '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/NotFound'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
+
   /core/repos:
     post:
       summary: Create repo
@@ -117,17 +286,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Repo'
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/BadRequest'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
 
     get:
       summary: List Repos
@@ -146,17 +307,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/RepoListResponse'
         '404':
-          description: Not Found
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/NotFound'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/InternalServerError'
+
   /core/repos/{id}:
     get:
       summary: Get repo
@@ -184,18 +338,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/Repo'
         '404':
-          description: Not found
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+          $ref: '#/components/responses/NotFound'
         '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
-
+          $ref: '#/components/responses/InternalServerError'
 
 components:
   securitySchemes:
@@ -205,6 +350,91 @@ components:
       $ref: '../shared/openapi.spec.yaml#/components/securitySchemes/APIKeyAuth'
 
   schemas:
+    BlueprintCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        stack_id:
+          type: string
+          format: uuid
+          x-go-name: StackID
+          x-go-type: gocql.UUID
+        rollout_budget:
+          type: string
+        regions:
+          $ref: '#/components/schemas/BluePrintRegions'
+      required:
+        - name
+        - stack_id
+        - rollout_budget
+        - regions
+
+    WorkloadCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        stack_id:
+          type: string
+          format: uuid
+          x-go-name: StackID
+          x-go-type: gocql.UUID
+        repo_id:
+          type: string
+          format: uuid
+          x-go-name: RepoID
+          x-go-type: gocql.UUID
+        repo_path:
+          type: string
+        kind:
+          type: string
+        container:
+          type: string
+        builder:
+          type: string
+      required:
+        - name
+        - stack_id
+        - repo_id
+        - repo_path
+        - kind
+        - container
+        - builder
+
+    WorkloadListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/Workload'
+
+    ResourceCreateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        stack_id:
+          type: string
+          format: uuid
+          x-go-name: StackID
+          x-go-type: gocql.UUID
+        provider:
+          $ref: '#/components/schemas/CloudProvider'
+        driver:
+          type: string
+        immutable:
+          type: boolean
+      required:
+        - name
+        - stack_id
+        - provider
+        - driver
+        - immutable
+
+    ResourceListResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/Resource'
+
     StackCreateRequest:
       type: object
       properties:
@@ -224,6 +454,8 @@ components:
     RepoCreateRequest:
       type: object
       properties:
+        name:
+          type: string
         stack_id:
           type: string
           format: uuid
@@ -239,6 +471,7 @@ components:
         is_monorepo:
           type: boolean
       required:
+        - name
         - stack_id
         - provider
         - provider_id
@@ -249,6 +482,133 @@ components:
       type: array
       items:
         $ref: '#/components/schemas/Repo'
+
+    Blueprint:
+      type: object
+      x-breu-entity: blueprints
+      description: 'Blueprint contains a collection of Workload & Resource to define one single release'
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+        name:
+          type: string
+        stack_id:
+          type: string
+          format: uuid
+          x-go-name: StackID
+          x-go-type: gocql.UUID
+        regions:
+          $ref: '#/components/schemas/BluePrintRegions'
+        rollout_budget:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - stack_id
+        - regions
+        - rollout_budget
+        - created_at
+        - updated_at
+
+    Workload:
+      type: object
+      x-breu-entity: workloads
+      description: 'Workload defines a workload for the app'
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+        name:
+          type: string
+        stack_id:
+          type: string
+          format: uuid
+          x-go-name: StackID
+          x-go-type: gocql.UUID
+        repo_id:
+          type: string
+          format: uuid
+          x-go-name: RepoID
+          x-go-type: gocql.UUID
+        repo_path:
+          type: string
+        kind:
+          type: string
+          description: 'Default, worker, job, cronjob'
+        container:
+          type: string
+          description: 'json with keys: image, command, environment, dependencies'
+        builder:
+          type: string
+          description: 'json with keys: buildpack, dockerfile, script, external'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - stack_id
+        - repo_id
+        - repo_path
+        - kind
+        - container
+        - builder
+        - created_at
+        - updated_at
+
+    Resource:
+      type: object
+      x-breu-entity: resources
+      description: 'Resource defines the cloud provider resources for the app e.g. s3, sqs, etc'
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+        name:
+          type: string
+        stack_id:
+          type: string
+          format: uuid
+          x-go-name: StackID
+          x-go-type: gocql.UUID
+        driver:
+          type: string
+          description: 's3, sqs, sns, dynamodb, postgres, mysql etc'
+        is_immutable:
+          type: boolean
+        provider:
+          $ref: '#/components/schemas/CloudProvider'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - stack_id
+        - repo_id
+        - driver
+        - provider
+        - created_at
+        - updated_at
 
     Stack:
       type: object
@@ -296,6 +656,8 @@ components:
       type: object
       x-breu-entity: repos
       properties:
+        name:
+          type: string
         id:
           type: string
           format: uuid
@@ -322,6 +684,7 @@ components:
           type: string
           format: date-time
       required:
+        - name
         - id
         - stack_id
         - provider
@@ -337,3 +700,60 @@ components:
         - github
         - gitlab
         - bitbucket
+
+    CloudProvider:
+      type: string
+      description: 'aws, gcp, azure'
+      enum:
+        - AWS
+        - GCP
+        - Azure
+
+    BluePrintRegions:
+      type: object
+      description: BluePrintRegions sets the cloud regions where a blueprint can be deployed
+      properties:
+        gcp:
+          type: array
+          items:
+            type: string
+            x-go-name: GCP
+        aws:
+          type: array
+          items:
+            type: string
+            x-go-name: AWS
+        azure:
+          type: array
+          items:
+            type: string
+            x-go-name: AZURE
+        default:
+          type: array
+          items:
+            type: string
+      required:
+        - gcp
+        - aws
+        - azure
+        - default
+
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '../shared/openapi.spec.yaml#/components/schemas/APIError'

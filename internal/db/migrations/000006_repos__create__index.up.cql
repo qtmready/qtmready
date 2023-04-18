@@ -1,7 +1,7 @@
 create table if not exists repos
 (
   id                        uuid,
-  stack_id                    uuid,
+  stack_id                  uuid,
   repo_id                   uuid,
   default_branch            varchar,
   is_monorepo               boolean,
