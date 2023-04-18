@@ -206,7 +206,7 @@ func (rs *RolloutState) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
 }
 
 func (rp RepoProvider) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
-	return json.Marshal(rp)
+	return gocql.Marshal(info, rp.String())
 }
 
 func (rp *RepoProvider) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
