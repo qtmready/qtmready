@@ -75,12 +75,21 @@ func CreateTestNetwork(ctx context.Context) (testcontainers.Network, error) {
 func StartDBContainer(ctx context.Context) (*Container, error) {
 	env := ContainerEnvironment{
 		"CASSANDRA_CLUSTER_NAME": "ctrlplane_test",
+		"JVM_EXTRA_OPTS":         "-Dcassandra.skip_wait_for_gossip_to_settle=0",
 	}
+
+	_, caller, _, _ := runtime.Caller(0)
+	pkgroot := path.Join(path.Dir(caller), "..", "..")
+	cassandrayaml := path.Join(pkgroot, "deploy", "cassandra", "cassandra.yaml")
 
 	mounts := testcontainers.ContainerMounts{
 		testcontainers.ContainerMount{
 			Source: testcontainers.GenericVolumeMountSource{Name: "test-db"},
 			Target: "/var/lib/cassandra",
+		},
+		testcontainers.ContainerMount{
+			Source: testcontainers.GenericBindMountSource{HostPath: cassandrayaml},
+			Target: "/etc/cassandra/cassandra.yaml",
 		},
 	}
 
@@ -116,10 +125,11 @@ func StartTemporalContainer(ctx context.Context) (*Container, error) {
 	}
 
 	_, caller, _, _ := runtime.Caller(0)
-	hostpath := path.Join(path.Dir(caller), "..", "..", "deploy", "temporal", "dynamicconfig")
+	pkgroot := path.Join(path.Dir(caller), "..", "..")
+	dynamicconfigpath := path.Join(pkgroot, "deploy", "temporal", "dynamicconfig")
 	mounts := testcontainers.ContainerMounts{
 		testcontainers.ContainerMount{
-			Source: testcontainers.GenericBindMountSource{HostPath: hostpath},
+			Source: testcontainers.GenericBindMountSource{HostPath: dynamicconfigpath},
 			Target: "/etc/temporal/config/dynamicconfig",
 		},
 	}

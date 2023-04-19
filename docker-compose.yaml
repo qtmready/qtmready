@@ -26,8 +26,10 @@ services:
       - '9042:9042'
     environment:
       - CASSNDRA_CLUSTER_NAME=ctrlplane
+      - JVM_EXTRA_OPTS=-Dcassandra.skip_wait_for_gossip_to_settle=0
     volumes:
       - db-data:/var/lib/cassandra
+      - ./deploy/cassandra/cassandra.yaml:/etc/cassandra/cassandra.yaml
     networks:
       - ctrlplane
 
@@ -38,7 +40,7 @@ services:
       - database
     volumes:
       - ./deploy/cassandra/keyspace.cql:/keyspace.cql
-    command: /bin/bash -c "sleep 60 && echo loading database keyspace && cqlsh database -f /keyspace.cql"
+    command: /bin/bash -c "sleep 20 && echo loading database keyspace && cqlsh database -f /keyspace.cql"
     deploy:
       restart_policy:
         condition: on-failure
