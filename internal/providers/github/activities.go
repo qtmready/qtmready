@@ -115,6 +115,7 @@ func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*core.Repo, e
 	// TODO: add provider name in query
 	params := db.QueryParams{
 		"provider_id": "'" + strconv.FormatInt(repo.GithubID, 10) + "'",
+		"provider":    "'github'",
 	}
 
 	if err := db.Get(r, params); err != nil {

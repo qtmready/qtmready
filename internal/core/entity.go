@@ -210,5 +210,7 @@ func (rp RepoProvider) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
 }
 
 func (rp *RepoProvider) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
-	return json.Unmarshal(data, rp)
+	str := string(data[:])
+	*rp = RepoProviderMap[str]
+	return nil
 }
