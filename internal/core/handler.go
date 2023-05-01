@@ -242,7 +242,7 @@ func (s *ServerHandler) ListRepos(ctx echo.Context) error {
 
 func (s *ServerHandler) GetRepo(ctx echo.Context) error {
 	repo := &Repo{}
-	params := db.QueryParams{"id": "'" + ctx.Param("id") + "'", "team_id": ctx.Get("team_id").(string)}
+	params := db.QueryParams{"id": ctx.Param("id")}
 
 	if err := db.Get(repo, params); err != nil {
 		return echo.NewHTTPError(http.StatusNotFound, err)
