@@ -13,4 +13,5 @@ const (
 	WorkflowSignalAssetsRetrieved     shared.WorkflowSignal = "assets_retreived"
 	WorkflowSignalInfraProvisioned    shared.WorkflowSignal = "infra_created"
 	WorkflowSignalDeploymentCompleted shared.WorkflowSignal = "deployment_completed"
+	WorkflowSignalManaulOverride      shared.WorkflowSignal = "manual_override"
 )

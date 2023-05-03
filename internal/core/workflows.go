@@ -109,12 +109,14 @@ func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string) 
 	assetsChannel := workflow.GetSignalChannel(ctx, WorkflowSignalAssetsRetrieved.String())
 	infrachannel := workflow.GetSignalChannel(ctx, WorkflowSignalInfraProvisioned.String())
 	deploymentchannel := workflow.GetSignalChannel(ctx, WorkflowSignalDeploymentCompleted.String())
+	manualOverrideChannel := workflow.GetSignalChannel(ctx, WorkflowSignalManaulOverride.String())
 
 	selector := workflow.NewSelector(ctx)
 	selector.AddReceive(prChannel, onPRSignal(ctx, stackID, deploymentDataMap))
 	selector.AddReceive(assetsChannel, onAssetsRetreivedSignal(ctx, stackID, deploymentDataMap))
 	selector.AddReceive(infrachannel, onInfraProvisionedSignal(ctx, stackID, deploymentDataMap))
-	selector.AddReceive(deploymentchannel, OnDeploymentCompletedSignal(ctx, stackID, deploymentDataMap))
+	selector.AddReceive(deploymentchannel, onDeploymentCompletedSignal(ctx, stackID, deploymentDataMap))
+	selector.AddReceive(manualOverrideChannel, onManualOverrideSignal(ctx, stackID, deploymentDataMap))
 
 	for {
 		// return continue as new if this workflow has processed signals upto a limit
@@ -125,6 +127,15 @@ func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string) 
 			logger.Info("waiting for signals ....")
 			selector.Select(ctx)
 		}
+	}
+}
+
+func onManualOverrideSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDataMap) shared.ChannelHandler {
+	logger := workflow.GetLogger(ctx)
+	var prID int64
+	return func(channel workflow.ReceiveChannel, more bool) {
+		channel.Receive(ctx, prID)
+		logger.Info("manual override for", "PR ID", prID)
 	}
 }
 
@@ -198,11 +209,10 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 		logger.Info("GetBluePrint activity complete")
 	})
 
+	// TODO: come up with a better logic for this
 	for i := 0; i < 4; i++ {
 		selector.Select(ctx)
 	}
-
-	logger.Info("")
 
 	// TODO: create changeset id, for now making changeset id = pr id
 	stackUUID, _ := gocql.ParseUUID(stackID)
@@ -323,12 +333,16 @@ func (w *Workflows) DeploymentWorkflow(ctx workflow.Context, stackID string, mut
 	return nil
 }
 
-func OnDeploymentCompletedSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDataMap) shared.ChannelHandler {
+func onDeploymentCompletedSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDataMap) shared.ChannelHandler {
 
 	logger := workflow.GetLogger(ctx)
 	return func(channel workflow.ReceiveChannel, more bool) {
 		assets := &Assets{}
 		channel.Receive(ctx, assets)
-		logger.Info("Deployment complete for PR ID: ", assets.prID)
+		logger.Info("Deployment complete for", "PR ID", assets.prID)
+		delete(deploymentMap, assets.prID)
+
+		logger.Info("Deleted deployment data for", "PR ID", assets.prID)
+
 	}
 }
