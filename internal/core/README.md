@@ -44,7 +44,6 @@ sequenceDiagram
     actor u as user
     participant api as API
     participant cwfpr as core::workflow::OnPullRequest
-    participant asm as core::activity::startMutexWorkflow
     participant mwf as core::workflow::MutexWorkflow
 
   activate u
@@ -52,8 +51,7 @@ sequenceDiagram
     api ->>+ cwfpr: start
     api ->>- u: return
 
-    cwfpr ->> asm: start mutex workflow
-    asm ->>+ mwf: start
+    cwfpr ->> mwf: start child workflow
     deactivate cwfpr
-    deactivate mwf
+    <!-- deactivate mwf -->
 ```

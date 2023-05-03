@@ -18,11 +18,9 @@
 package core
 
 import (
-	"context"
 	"time"
 
 	"go.breu.io/ctrlplane/internal/shared"
-	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -47,18 +45,30 @@ func NewMutex(currentWorkflowID string, resourceID string, unlockTimeout time.Du
 	}
 }
 
-// Init executes mutex workflow
+// Init starts a mutex workflow for the given resourceID.
+// The input parameter resourceID is the ID of the resource to be locked and
+// unlockTimeout is the timeout after which the resource will be released automatically
 func (m *Mutex) Init(ctx workflow.Context) error {
 
-	activityCtx := workflow.WithActivityOptions(ctx, workflow.ActivityOptions{
-		ScheduleToCloseTimeout: time.Hour * 6, //TODO: should we set this? is 6 hours enough?
-		StartToCloseTimeout:    time.Minute,
-	})
+	w := &Workflows{}
 
+	logger := workflow.GetLogger(ctx)
+	opts := shared.Temporal.Queues[shared.CoreQueue].GetChildWorkflowOptions("mutex", m.resourceID)
+	ctx = workflow.WithChildOptions(ctx, opts)
+
+	// execute child workflow and wait for it to spawn
 	var execution workflow.Execution
-	err := workflow.ExecuteActivity(activityCtx, activities.StartMutexWorkflowActivity, m.resourceID, unLockTimeOutStackMutex).Get(ctx, &execution)
-	m.mutexWorkflowID = execution.ID
+	err := workflow.
+		ExecuteChildWorkflow(ctx, w.MutexWorkflow, m.resourceID, m.unlockTimeout).
+		GetChildWorkflowExecution().Get(ctx, execution)
 
+	if err != nil {
+		logger.Error("Parent execution received child execution failure.", "Error", err)
+		return err
+	}
+
+	m.mutexWorkflowID = execution.ID
+	logger.Info("Started Child Mutex Workflow", "ID", execution.ID, "RunID", execution.RunID, "Error:", err)
 	return err
 }
 
@@ -83,25 +93,6 @@ func (m *Mutex) Lock(ctx workflow.Context) (UnlockFunc, error) {
 		return workflow.SignalExternalWorkflow(ctx, m.mutexWorkflowID, "", WorkflowSignalReleaseLock.String(), m.currentWorkflowID).Get(ctx, nil)
 	}
 	return unlockFunc, nil
-}
-
-// StartMutexWorkflowActivity starts a mutex workflow for the given resourceID.
-// The input parameter resourceID is the ID of the resource to be locked and
-// unlockTimeout is the timeout after which the resource will be released automatically
-func (a *Activities) StartMutexWorkflowActivity(ctx context.Context, resourceID string, unlockTimeout time.Duration) (*workflow.Execution, error) {
-
-	w := &Workflows{}
-	opts := shared.Temporal.Queues[shared.CoreQueue].
-		GetWorkflowOptions(
-			"mutex",
-			resourceID,
-		)
-
-	println("Execute mutex workflow ")
-	wr, err := shared.Temporal.Client.ExecuteWorkflow(ctx, opts, w.MutexWorkflow, resourceID, unlockTimeout)
-
-	activity.GetLogger(ctx).Info("Started Workflow", "WorkflowID", wr.GetID(), "RunID", wr.GetRunID(), "Error:", err)
-	return &workflow.Execution{ID: wr.GetID(), RunID: wr.GetRunID()}, err
 }
 
 // MutexWorkflow will lock a resource specified by resourceId. The resource wil be automatically released after unlockTimeout.

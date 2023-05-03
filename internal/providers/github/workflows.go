@@ -43,9 +43,6 @@ type (
 	PullRequestWorkflowStatus struct {
 		Complete bool
 	}
-
-	FutureHandler  func(workflow.Future)               // FutureHandler is the signature of the future handler function.
-	ChannelHandler func(workflow.ReceiveChannel, bool) // ChannelHandler is the signature of the channel handler function.
 )
 
 // OnInstallationEvent workflow is executed when we initiate the installation of GitHub core.
@@ -180,6 +177,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	signalPayload := &shared.PullRequestSignal{
 		RepoID:           coreRepo.ID,
 		SenderWorkflowID: workflow.GetInfo(ctx).WorkflowExecution.ID,
+		PullRequestID:    payload.PullRequest.ID,
 	}
 
 	// signal core stack workflow
@@ -245,13 +243,13 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 }
 
 // onCreateOrUpdateRepoActivityFuture handles post-processing after a repository is saved against an installation.
-func onCreateOrUpdateRepoActivityFuture(ctx workflow.Context, payload *Repo) FutureHandler {
+func onCreateOrUpdateRepoActivityFuture(ctx workflow.Context, payload *Repo) shared.FutureHandler {
 	logger := workflow.GetLogger(ctx)
 	return func(f workflow.Future) { logger.Info("repository saved ...", "repo", payload.GithubID) }
 }
 
 // onInstallationWebhookSignal handles webhook events for installation that is in progress.
-func onInstallationWebhookSignal(ctx workflow.Context, installation *InstallationEvent, status *InstallationWorkflowStatus) ChannelHandler {
+func onInstallationWebhookSignal(ctx workflow.Context, installation *InstallationEvent, status *InstallationWorkflowStatus) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
@@ -272,7 +270,7 @@ func onInstallationWebhookSignal(ctx workflow.Context, installation *Installatio
 }
 
 // onRequestSignal handles new http requests on an installation in progress.
-func onRequestSignal(ctx workflow.Context, installation *CompleteInstallationSignal, status *InstallationWorkflowStatus) ChannelHandler {
+func onRequestSignal(ctx workflow.Context, installation *CompleteInstallationSignal, status *InstallationWorkflowStatus) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
@@ -284,7 +282,7 @@ func onRequestSignal(ctx workflow.Context, installation *CompleteInstallationSig
 }
 
 // onPRSignal handles incoming signals on open PR.
-func onPRSignal(ctx workflow.Context, pr *PullRequestEvent, status *PullRequestWorkflowStatus) ChannelHandler {
+func onPRSignal(ctx workflow.Context, pr *PullRequestEvent, status *PullRequestWorkflowStatus) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {

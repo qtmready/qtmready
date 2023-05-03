@@ -24,6 +24,7 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/workflow"
 )
 
 var (
@@ -51,6 +52,9 @@ type (
 
 		// GetName gets the name of the queue as string.
 		GetName() string
+
+		// GetChildWorkflowOptions gets the child workflow options
+		GetChildWorkflowOptions(sender string, args ...string) workflow.ChildWorkflowOptions
 	}
 
 	Queues map[QueueName]Queue
@@ -115,6 +119,12 @@ func (q *queue) GetWorkflowOptions(sender string, args ...string) client.StartWo
 		ID:        q.CreateWorkflowID(sender, args...),
 		TaskQueue: q.GetName(),
 		// WorkflowIDReusePolicy: 3, // client.WorkflowIDReusePolicyRejectDuplicate
+	}
+}
+
+func (q *queue) GetChildWorkflowOptions(sender string, args ...string) workflow.ChildWorkflowOptions {
+	return workflow.ChildWorkflowOptions{
+		WorkflowID: q.CreateWorkflowID(sender, args...),
 	}
 }
 

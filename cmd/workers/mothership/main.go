@@ -78,6 +78,10 @@ func main() {
 	// core workflows
 	coreWrkr.RegisterWorkflow(cwfs.OnPullRequestWorkflow)
 	coreWrkr.RegisterWorkflow(cwfs.MutexWorkflow)
+	coreWrkr.RegisterWorkflow(cwfs.DeploymentWorkflow)
+	coreWrkr.RegisterWorkflow(cwfs.GetAssetsWorkflow)
+	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfraWorkflow)
+	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfraWorkflow)
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.Activities{})
