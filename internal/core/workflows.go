@@ -160,7 +160,7 @@ func onPRSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDa
 			GetChildWorkflowExecution().Get(ctx, execution)
 
 		if err != nil {
-			logger.Info("TODO: Handle error")
+			logger.Info("TODO: Handle error", "error", err)
 		}
 
 		// create and save deployment data
@@ -185,29 +185,32 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 	future := workflow.ExecuteActivity(act, activities.GetResources, stackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		future.Get(ctx, assets.resources)
-		logger.Info("GetResources activity complete")
+		logger.Info("GetResources activity complete", "resources", assets.resources)
 	})
 
 	// get workloads for stack
 	future = workflow.ExecuteActivity(act, activities.GetWorkloads, stackID)
 	selector.AddFuture(future, func(f workflow.Future) {
-		future.Get(ctx, assets.workloads)
-		logger.Info("GetWorkloads activity complete")
+		var wl []Workload
+		future.Get(ctx, wl)
+		logger.Info("GetWorkloads activity complete", "workloads", wl)
 	})
 
 	// get repos for stack
 	future = workflow.ExecuteActivity(act, activities.GetRepos, stackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		future.Get(ctx, assets.repos)
-		logger.Info("GetRepos activity complete")
+		logger.Info("GetRepos activity complete", "repos", assets.repos)
 	})
 
 	// get blueprint for stack
 	future = workflow.ExecuteActivity(act, activities.GetBluePrint, stackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		future.Get(ctx, assets.blueprint)
-		logger.Info("GetBluePrint activity complete")
+		logger.Info("GetBluePrint activity complete", "blueprint", assets.blueprint)
 	})
+
+	logger.Info("Assets retreived", "Assets", assets)
 
 	// TODO: come up with a better logic for this
 	for i := 0; i < 4; i++ {
@@ -227,10 +230,10 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 	assets.prID = prID
 
 	// signal parent workflow
-	PRWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
-	workflow.
-		SignalExternalWorkflow(ctx, PRWorkflowID, "", WorkflowSignalAssetsRetrieved.String(), assets).
-		Get(ctx, nil)
+	// PRWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
+	// workflow.
+	// 	SignalExternalWorkflow(ctx, PRWorkflowID, "", WorkflowSignalAssetsRetrieved.String(), assets).
+	// 	Get(ctx, nil)
 
 	return nil
 }
@@ -242,15 +245,16 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deploymentMap
 	w := &Workflows{}
 
 	return func(channel workflow.ReceiveChannel, more bool) {
+		logger.Info("received Assets")
 		assets := &Assets{}
 		channel.Receive(ctx, assets)
-		logger.Info("received Assets")
 
 		// update deployment state
 		deploymentData := deploymentMap[assets.prID]
 		deploymentData.deploymentState = GotAssets
 
 		// execute provision infra workflow
+		logger.Info("Executing provision Infra workflow")
 		var execution workflow.Execution
 		opts := shared.Temporal.Queues[shared.CoreQueue].GetChildWorkflowOptions("provisionInfra", "stack", stackID)
 		ctx = workflow.WithChildOptions(ctx, opts)
@@ -261,7 +265,7 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deploymentMap
 		if err != nil {
 			logger.Info("TODO: Handle error")
 		}
-
+		logger.Info("Executed provision Infra workflow")
 		deploymentData.deploymentState = ProvisioningInfra
 		deploymentData.WorkflowIds.provisionInfraWorkflowID = execution.ID
 	}

@@ -21,6 +21,7 @@ import (
 	"context"
 
 	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 type Activities struct{}
@@ -34,19 +35,21 @@ func (a *Activities) GetResources(ctx context.Context, stackID string) ([]Resour
 		return nil, err
 	}
 
+	shared.Logger.Debug("GetResources", "resources", resources)
 	return resources, nil
 }
 
 // GetWorkloads gets workloads from DB against a stack
 func (a *Activities) GetWorkloads(ctx context.Context, stackID string) ([]Workload, error) {
-
-	workloads := make([]Workload, 0)
+	wl := make([]Workload, 0)
 	params := db.QueryParams{"stack_id": stackID}
-	if err := db.Filter(&Resource{}, &workloads, params); err != nil {
+	if err := db.Filter(&Workload{}, &wl, params); err != nil {
 		return nil, err
 	}
 
-	return workloads, nil
+	shared.Logger.Debug("GetWorkloads", "workloads", wl)
+
+	return wl, nil
 }
 
 // GetWorkloads gets workloads from DB against a stack
@@ -54,9 +57,10 @@ func (a *Activities) GetRepos(ctx context.Context, stackID string) ([]Repo, erro
 
 	repos := make([]Repo, 0)
 	params := db.QueryParams{"stack_id": stackID}
-	if err := db.Filter(&Resource{}, &repos, params); err != nil {
+	if err := db.Filter(&Repo{}, &repos, params); err != nil {
 		return nil, err
 	}
+	shared.Logger.Debug("GetRepos", "repos", repos)
 
 	return repos, nil
 }
@@ -67,7 +71,7 @@ func (a *Activities) GetBluePrint(ctx context.Context, stackID string) (*Bluepri
 	if err := db.Get(blueprint, params); err != nil {
 		return nil, err
 	}
-
+	shared.Logger.Debug("GetBluePrint", "blueprint", blueprint)
 	return blueprint, nil
 }
 
