@@ -41,7 +41,7 @@ func init() {
 	defer waitgroup.Wait()
 	// Reading the configuration from the environment
 	shared.Service.ReadEnv()
-	shared.Service.InitLogger()
+	shared.Service.InitLogger(1)
 	shared.Service.InitValidator()
 	shared.EventStream.ReadEnv()
 	db.DB.ReadEnv()

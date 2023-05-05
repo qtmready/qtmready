@@ -34,9 +34,9 @@ type (
 	}
 )
 
-func NewZapAdapter(logger *zap.Logger) *ZapAdapter {
+func NewZapAdapter(logger *zap.Logger, skip int) *ZapAdapter {
 	return &ZapAdapter{
-		logger: logger.WithOptions(zap.AddCallerSkip(1)), // skip the caller of this function
+		logger: logger.WithOptions(zap.AddCallerSkip(skip)), // skip the caller of this function
 		core:   logger.Core(),
 	}
 }

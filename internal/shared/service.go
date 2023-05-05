@@ -140,7 +140,7 @@ func (s *service) ReadConfig() error {
 func (s *service) InitValidator() { InitValidator() }
 
 // InitLogger sets up global logger.
-func (s *service) InitLogger() {
+func (s *service) InitLogger(skip int) {
 	var zl *zap.Logger
 
 	if s.Debug {
@@ -155,7 +155,7 @@ func (s *service) InitLogger() {
 		zl, _ = config.Build()
 	}
 
-	Logger = logger.NewZapAdapter(zl)
+	Logger = logger.NewZapAdapter(zl, skip)
 }
 
 // InitCLI sets up ctrlplane-cli.
@@ -174,7 +174,7 @@ func (s *service) InitCLI() error {
 		s.CLI.BaseURL = "http://localhost:8080"
 	}
 
-	s.InitLogger()
+	s.InitLogger(1)
 
 	return nil
 }
@@ -202,6 +202,6 @@ func InitForTest() {
 		Debug:  true,
 	}
 
-	Service.InitLogger()
+	Service.InitLogger(1)
 	Service.InitValidator()
 }

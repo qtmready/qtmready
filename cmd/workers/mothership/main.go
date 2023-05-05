@@ -36,7 +36,7 @@ func init() {
 	defer waitgroup.Wait()
 
 	shared.Service.ReadEnv()
-	shared.Service.InitLogger()
+	shared.Service.InitLogger(2)
 	shared.EventStream.ReadEnv()
 	shared.Temporal.ReadEnv()
 	github.Github.ReadEnv()
