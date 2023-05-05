@@ -5,7 +5,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-// workflow types
+// workflow types.
 type (
 	WorkflowSignal string // WorkflowSignal is the name of a workflow signal.
 

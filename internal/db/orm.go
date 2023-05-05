@@ -103,11 +103,7 @@ func Filter(entity Entity, dest interface{}, params QueryParams) error {
 		Columns(entity.GetTable().Metadata().M.Columns...).
 		Where(clause...)
 
-	if err := DB.Session.Query(query.ToCql()).SelectRelease(dest); err != nil {
-		return err
-	}
-
-	return nil
+	return DB.Session.Query(query.ToCql()).SelectRelease(dest)
 }
 
 // Save saves the entity. If the entity has an ID, it will be updated. Otherwise,
@@ -145,11 +141,7 @@ func Create[T Entity](entity T) error {
 
 	query := DB.Session.Query(entity.GetTable().Insert()).BindStruct(entity)
 
-	if err := query.ExecRelease(); err != nil {
-		return err
-	}
-
-	return nil
+	return query.ExecRelease()
 }
 
 // Update updates the entity.
@@ -163,11 +155,7 @@ func Update[T Entity](entity T) error {
 	tbl := entity.GetTable()
 	columns := tbl.Metadata().M.Columns[1:] // Remove the first element. We are assuming it is the primary key.
 
-	if err := DB.Session.Query(tbl.Update(columns...)).BindStruct(entity).ExecRelease(); err != nil {
-		return err
-	}
-
-	return nil
+	return DB.Session.Query(tbl.Update(columns...)).BindStruct(entity).ExecRelease()
 }
 
 // gets the ID of the entity. The entity value is a pointer to the struct.

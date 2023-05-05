@@ -180,11 +180,7 @@ func (s *service) InitCLI() error {
 }
 
 func (ev *EchoValidator) Validate(i interface{}) error {
-	if err := ev.Validator.Struct(i); err != nil {
-		return err
-	}
-
-	return nil
+	return ev.Validator.Struct(i)
 }
 
 func InitValidator() {

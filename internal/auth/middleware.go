@@ -189,6 +189,6 @@ func KeyFn(next echo.HandlerFunc, ctx echo.Context, key string) error {
 }
 
 // SecretFn provides the secret for the JWT token.
-func SecretFn(t *jwt.Token) (interface{}, error) {
+func SecretFn(*jwt.Token) (interface{}, error) {
 	return []byte(shared.Service.Secret), nil
 }

@@ -31,7 +31,7 @@ func TestEntityGetTable(expect string, entity db.Entity) func(*testing.T) {
 	}
 }
 
-func TestEntityOps(entity db.Entity, tests TestFnMap) func(*testing.T) {
+func TestEntityOps(_ db.Entity, tests TestFnMap) func(*testing.T) {
 	return func(t *testing.T) {
 		for name, test := range tests {
 			t.Run(name, test.Run(test.Args, test.Want))

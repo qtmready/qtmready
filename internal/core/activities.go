@@ -20,60 +20,62 @@ package core
 import (
 	"context"
 
+	"go.temporal.io/sdk/activity"
+
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/shared"
 )
 
 type (
-	Activities     struct{}
-	ResourceResult struct {
-		Resources []Resource `json:"resources"`
-	}
+	Activities struct{}
 )
 
 // GetResources gets resources from DB against a stack.
-func (a *Activities) GetResources(ctx context.Context, stackID string) (*ResourceResult, error) {
+func (a *Activities) GetResources(ctx context.Context, stackID string) (*SlicedResult[Resource], error) {
+	log := activity.GetLogger(ctx)
 	resources := make([]Resource, 0)
 	params := db.QueryParams{"stack_id": stackID}
 
 	if err := db.Filter(&Resource{}, &resources, params); err != nil {
-		return &ResourceResult{Resources: resources}, err
+		return &SlicedResult[Resource]{Data: resources}, err
 	}
 
-	shared.Logger.Debug("GetResources", "resources", resources)
+	log.Debug("GetResources", "resources", resources)
 
-	return &ResourceResult{Resources: resources}, nil
+	return &SlicedResult[Resource]{Data: resources}, nil
 }
 
 // GetWorkloads gets workloads from DB against a stack.
-func (a *Activities) GetWorkloads(ctx context.Context, stackID string) ([]Workload, error) {
-	wl := make([]Workload, 0)
+func (a *Activities) GetWorkloads(ctx context.Context, stackID string) (*SlicedResult[Workload], error) {
+	log := activity.GetLogger(ctx)
+	workloads := make([]Workload, 0)
 	params := db.QueryParams{"stack_id": stackID}
 
-	if err := db.Filter(&Workload{}, &wl, params); err != nil {
-		return wl, err
+	if err := db.Filter(&Workload{}, &workloads, params); err != nil {
+		return &SlicedResult[Workload]{Data: workloads}, err
 	}
 
-	shared.Logger.Debug("GetWorkloads", "workloads", wl)
+	log.Debug("GetWorkloads", "workloads", workloads)
 
-	return wl, nil
+	return &SlicedResult[Workload]{Data: workloads}, nil
 }
 
 // GetWorkloads gets workloads from DB against a stack.
-func (a *Activities) GetRepos(ctx context.Context, stackID string) ([]Repo, error) {
+func (a *Activities) GetRepos(ctx context.Context, stackID string) (*SlicedResult[Repo], error) {
+	log := activity.GetLogger(ctx)
 	repos := make([]Repo, 0)
 	params := db.QueryParams{"stack_id": stackID}
 
 	if err := db.Filter(&Repo{}, &repos, params); err != nil {
-		return repos, err
+		return &SlicedResult[Repo]{Data: repos}, err
 	}
 
-	shared.Logger.Debug("GetRepos", "repos", repos)
+	log.Debug("GetRepos", "repos", repos)
 
-	return repos, nil
+	return &SlicedResult[Repo]{Data: repos}, nil
 }
 
 func (a *Activities) GetBluePrint(ctx context.Context, stackID string) (*Blueprint, error) {
+	log := activity.GetLogger(ctx)
 	blueprint := &Blueprint{}
 	params := db.QueryParams{"stack_id": stackID}
 
@@ -81,7 +83,7 @@ func (a *Activities) GetBluePrint(ctx context.Context, stackID string) (*Bluepri
 		return blueprint, err
 	}
 
-	shared.Logger.Debug("GetBluePrint", "blueprint", blueprint)
+	log.Debug("GetBluePrint", "blueprint", blueprint)
 
 	return blueprint, nil
 }

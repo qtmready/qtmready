@@ -35,6 +35,10 @@ type (
 	Workflows    struct{}
 	ResourceData struct{}
 
+	SlicedResult[T interface{}] struct {
+		Data []T `json:"data"`
+	}
+
 	// Assets contains all the assets fetched from DB against a stack.
 	Assets struct {
 		repos           []Repo
@@ -80,19 +84,17 @@ func (w *Workflows) ChangesetController(id string) error {
 	return nil
 }
 
-// DeProvisionInfraWorkflow de-provisions the infrastructure created for stack deployment
+// DeProvisionInfraWorkflow de-provisions the infrastructure created for stack deployment.
 func (w *Workflows) DeProvisionInfraWorkflow(ctx workflow.Context, stackID string, resourceData *ResourceData) error {
-
 	return nil
 }
 
 // OnPullRequestWorkflow runs indefinitely and controls and synchronizes all actions on stack
 // This workflow will start when createStack call is received. it will be the master workflow for all child stack workflows
-// like for tasks like creating infrastructure, doing deployment, apperture controller etc
+// like for tasks like creating infrastructure, doing deployment, apperture controller etc.
 //
-// The workflow waits for the signals from github workflows for pull requests. It consumes events for PR created, updated, merged etc
+// The workflow waits for the signals from github workflows for pull requests. It consumes events for PR created, updated, merged etc.
 func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string) error {
-
 	// deployment map is designed to be used in OnPullRequestWorkflow only
 	deploymentDataMap := make(DeploymentDataMap)
 	logger := workflow.GetLogger(ctx)
@@ -143,7 +145,7 @@ func onManualOverrideSignal(ctx workflow.Context, stackID string, deploymentMap 
 }
 
 // onPRSignal is the channel handler for PR channel
-// It will execute getAssetsWorkflow and update PR deployment state to "GettingAssets"
+// It will execute getAssetsWorkflow and update PR deployment state to "GettingAssets".
 func onPRSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDataMap) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 	w := &Workflows{}
@@ -176,56 +178,57 @@ func onPRSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDa
 	}
 }
 
-// GetAssetsWorkflow gets assests for stack including resources, workloads and blueprint
+// GetAssetsWorkflow gets assests for stack including resources, workloads and blueprint.
 func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID int64) error {
+	var future workflow.Future
+
 	logger := workflow.GetLogger(ctx)
 	assets := new(Assets)
-	// resources := make([]Resource, 0)
-	// var resources map[string]interface{}
-
-	var resources ResourceResult
+	resources := SlicedResult[Resource]{}
+	workloads := SlicedResult[Workload]{}
+	repos := SlicedResult[Repo]{}
+	blueprint := new(Blueprint)
 
 	selector := workflow.NewSelector(ctx)
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	act := workflow.WithActivityOptions(ctx, activityOpts)
 
 	// get resources for stack
-	future := workflow.ExecuteActivity(act, activities.GetResources, stackID)
+	future = workflow.ExecuteActivity(act, activities.GetResources, stackID)
 	selector.AddFuture(future, func(f workflow.Future) {
-		err := future.Get(ctx, &resources)
-		if err != nil {
+		if err := future.Get(ctx, &resources); err != nil {
 			logger.Error("GetResources activity failed", "error", err)
 		}
+
 		logger.Info("GetResources activity complete", "resources", resources)
 	})
 
-	// // get workloads for stack
-	// future = workflow.ExecuteActivity(act, activities.GetWorkloads, stackID)
-	// selector.AddFuture(future, func(f workflow.Future) {
-	// 	var wl []Workload
-	// 	if err := future.Get(ctx, wl); err != nil {
-	// 		logger.Error("GetWorkloads activity failed", "error", err)
-	// 	}
-	// 	logger.Info("GetWorkloads activity complete", "workloads", wl)
-	// })
+	// get workloads for stack
+	future = workflow.ExecuteActivity(act, activities.GetWorkloads, stackID)
+	selector.AddFuture(future, func(f workflow.Future) {
+		if err := future.Get(ctx, &workloads); err != nil {
+			logger.Error("GetWorkloads activity failed", "error", err)
+		}
+		logger.Info("GetWorkloads activity complete", "workloads", workloads)
+	})
 
-	// // get repos for stack
-	// future = workflow.ExecuteActivity(act, activities.GetRepos, stackID)
-	// selector.AddFuture(future, func(f workflow.Future) {
-	// 	if err := future.Get(ctx, assets.repos); err != nil {
-	// 		logger.Error("GetRepos activity failed", "error", err)
-	// 	}
-	// 	logger.Info("GetRepos activity complete", "repos", assets.repos)
-	// })
+	// get repos for stack
+	future = workflow.ExecuteActivity(act, activities.GetRepos, stackID)
+	selector.AddFuture(future, func(f workflow.Future) {
+		if err := future.Get(ctx, &repos); err != nil {
+			logger.Error("GetRepos activity failed", "error", err)
+		}
+		logger.Info("GetRepos activity complete", "repos", repos)
+	})
 
-	// // get blueprint for stack
-	// future = workflow.ExecuteActivity(act, activities.GetBluePrint, stackID)
-	// selector.AddFuture(future, func(f workflow.Future) {
-	// 	if err := future.Get(ctx, assets.blueprint); err != nil {
-	// 		logger.Error("GetBluePrint activity failed", "error", err)
-	// 	}
-	// 	logger.Info("GetBluePrint activity complete", "blueprint", assets.blueprint)
-	// })
+	// get blueprint for stack
+	future = workflow.ExecuteActivity(act, activities.GetBluePrint, stackID)
+	selector.AddFuture(future, func(f workflow.Future) {
+		if err := future.Get(ctx, &blueprint); err != nil {
+			logger.Error("GetBluePrint activity failed", "error", err)
+		}
+		logger.Info("GetBluePrint activity complete", "blueprint", blueprint)
+	})
 
 	// logger.Info("Assets retreived", "Assets", assets)
 
@@ -245,6 +248,7 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 		logger.Error("Error in creating changeset")
 	}
 
+	// TODO: Create Assets here!
 	assets.prID = prID
 
 	// signal parent workflow
@@ -256,9 +260,8 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 	return nil
 }
 
-// onAssetsRetreivedSignal will receive assets sent by GetAssetsWorkflow, update deployment state and execute provisionInfraWorkflow
+// onAssetsRetreivedSignal will receive assets sent by GetAssetsWorkflow, update deployment state and execute provisionInfraWorkflow.
 func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDataMap) shared.ChannelHandler {
-
 	logger := workflow.GetLogger(ctx)
 	w := &Workflows{}
 
@@ -294,7 +297,7 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deploymentMap
 	}
 }
 
-// ProvisionInfraWorkflow provisions the infrastructure required for stack deployment
+// ProvisionInfraWorkflow provisions the infrastructure required for stack deployment.
 func (w *Workflows) ProvisionInfraWorkflow(ctx workflow.Context, assets *Assets) error {
 	logger := workflow.GetLogger(ctx)
 	for _, resource := range assets.resources {
@@ -308,7 +311,6 @@ func (w *Workflows) ProvisionInfraWorkflow(ctx workflow.Context, assets *Assets)
 }
 
 func onInfraProvisionedSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDataMap) shared.ChannelHandler {
-
 	logger := workflow.GetLogger(ctx)
 	w := &Workflows{}
 
@@ -337,9 +339,8 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, deploymentMa
 	}
 }
 
-// DeploymentWorkflow deploys the stack
+// DeploymentWorkflow deploys the stack.
 func (w *Workflows) DeploymentWorkflow(ctx workflow.Context, stackID string, mutex *Mutex, assets *Assets) error {
-
 	logger := workflow.GetLogger(ctx)
 	// Acquire lock
 	logger.Info("Deployment initiated", "Stack ID", stackID)

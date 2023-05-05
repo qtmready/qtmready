@@ -28,7 +28,7 @@ import (
 type (
 	UnlockFunc func() error
 
-	// Mutex holds the informations for a specific mutex resource
+	// Mutex holds the informations for a specific mutex resource.
 	Mutex struct {
 		currentWorkflowID string
 		mutexWorkflowID   string
@@ -37,7 +37,7 @@ type (
 	}
 )
 
-// NewMutex creates a mutex
+// NewMutex creates a mutex.
 func NewMutex(currentWorkflowID string, resourceID string, unlockTimeout time.Duration) *Mutex {
 	return &Mutex{
 		currentWorkflowID: currentWorkflowID,
@@ -48,9 +48,8 @@ func NewMutex(currentWorkflowID string, resourceID string, unlockTimeout time.Du
 
 // Init starts a mutex workflow for the given resourceID.
 // The input parameter resourceID is the ID of the resource to be locked and
-// unlockTimeout is the timeout after which the resource will be released automatically
+// unlockTimeout is the timeout after which the resource will be released automatically.
 func (m *Mutex) Init(ctx workflow.Context) error {
-
 	w := &Workflows{}
 
 	logger := workflow.GetLogger(ctx)
@@ -75,9 +74,8 @@ func (m *Mutex) Init(ctx workflow.Context) error {
 }
 
 // Lock sends request lock signal to the mutex workflow and waits for acknowledgement.
-// It returns an unlock function that should be called to release the resource
+// It returns an unlock function that should be called to release the resource.
 func (m *Mutex) Lock(ctx workflow.Context) (UnlockFunc, error) {
-
 	// TODO: resource - mutex workflow id map?
 	logger := workflow.GetLogger(ctx)
 
@@ -103,7 +101,7 @@ func (m *Mutex) Lock(ctx workflow.Context) (UnlockFunc, error) {
 }
 
 // MutexWorkflow will lock a resource specified by resourceId. The resource wil be automatically released after unlockTimeout.
-// MutexWorkflow waits for a request lock signal, sends acknowledgement to the workflow requesting lock and then waits for release lock signal
+// MutexWorkflow waits for a request lock signal, sends acknowledgement to the workflow requesting lock and then waits for release lock signal.
 func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceID string, unlockTimeout time.Duration) error {
 	logger := workflow.GetLogger(ctx)
 	selector := workflow.NewSelector(ctx)
