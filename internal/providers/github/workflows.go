@@ -20,9 +20,10 @@ package github
 import (
 	"time"
 
+	"go.temporal.io/sdk/workflow"
+
 	"go.breu.io/ctrlplane/internal/core"
 	"go.breu.io/ctrlplane/internal/shared"
-	"go.temporal.io/sdk/workflow"
 )
 
 var (

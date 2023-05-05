@@ -24,27 +24,31 @@ import (
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
-type Activities struct{}
+type (
+	Activities struct{}
+)
 
-// GetResources gets resources from DB against a stack
+// GetResources gets resources from DB against a stack.
 func (a *Activities) GetResources(ctx context.Context, stackID string) ([]Resource, error) {
-
 	resources := make([]Resource, 0)
 	params := db.QueryParams{"stack_id": stackID}
+
 	if err := db.Filter(&Resource{}, &resources, params); err != nil {
-		return nil, err
+		return resources, err
 	}
 
 	shared.Logger.Debug("GetResources", "resources", resources)
+
 	return resources, nil
 }
 
-// GetWorkloads gets workloads from DB against a stack
+// GetWorkloads gets workloads from DB against a stack.
 func (a *Activities) GetWorkloads(ctx context.Context, stackID string) ([]Workload, error) {
 	wl := make([]Workload, 0)
 	params := db.QueryParams{"stack_id": stackID}
+
 	if err := db.Filter(&Workload{}, &wl, params); err != nil {
-		return nil, err
+		return wl, err
 	}
 
 	shared.Logger.Debug("GetWorkloads", "workloads", wl)
@@ -52,14 +56,15 @@ func (a *Activities) GetWorkloads(ctx context.Context, stackID string) ([]Worklo
 	return wl, nil
 }
 
-// GetWorkloads gets workloads from DB against a stack
+// GetWorkloads gets workloads from DB against a stack.
 func (a *Activities) GetRepos(ctx context.Context, stackID string) ([]Repo, error) {
-
 	repos := make([]Repo, 0)
 	params := db.QueryParams{"stack_id": stackID}
+
 	if err := db.Filter(&Repo{}, &repos, params); err != nil {
-		return nil, err
+		return repos, err
 	}
+
 	shared.Logger.Debug("GetRepos", "repos", repos)
 
 	return repos, nil
@@ -68,10 +73,13 @@ func (a *Activities) GetRepos(ctx context.Context, stackID string) ([]Repo, erro
 func (a *Activities) GetBluePrint(ctx context.Context, stackID string) (*Blueprint, error) {
 	blueprint := &Blueprint{}
 	params := db.QueryParams{"stack_id": stackID}
+
 	if err := db.Get(blueprint, params); err != nil {
-		return nil, err
+		return blueprint, err
 	}
+
 	shared.Logger.Debug("GetBluePrint", "blueprint", blueprint)
+
 	return blueprint, nil
 }
 

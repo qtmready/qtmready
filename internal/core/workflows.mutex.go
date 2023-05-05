@@ -20,8 +20,9 @@ package core
 import (
 	"time"
 
-	"go.breu.io/ctrlplane/internal/shared"
 	"go.temporal.io/sdk/workflow"
+
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 type (
@@ -69,6 +70,7 @@ func (m *Mutex) Init(ctx workflow.Context) error {
 
 	m.mutexWorkflowID = execution.ID
 	logger.Info("Started Child Mutex Workflow", "ID", execution.ID, "RunID", execution.RunID, "Error:", err)
+
 	return err
 }
 
@@ -81,7 +83,10 @@ func (m *Mutex) Lock(ctx workflow.Context) (UnlockFunc, error) {
 
 	// request mutex workflow to acquire lock
 	logger.Info("Lock: sending acquire lock signal")
-	workflow.SignalExternalWorkflow(ctx, m.mutexWorkflowID, "", WorkflowSignalRequestLock.String(), m.currentWorkflowID).Get(ctx, nil)
+	_ = workflow.
+		SignalExternalWorkflow(ctx, m.mutexWorkflowID, "", WorkflowSignalRequestLock.String(), m.currentWorkflowID).
+		Get(ctx, nil)
+
 	logger.Info("Lock: waiting to acquire lock")
 
 	// wait for the acknowledgement from mutex workflow that lock has been acquired
@@ -92,12 +97,13 @@ func (m *Mutex) Lock(ctx workflow.Context) (UnlockFunc, error) {
 		logger.Info("Lock: sending release lock signal")
 		return workflow.SignalExternalWorkflow(ctx, m.mutexWorkflowID, "", WorkflowSignalReleaseLock.String(), m.currentWorkflowID).Get(ctx, nil)
 	}
+
 	return unlockFunc, nil
 }
 
 // MutexWorkflow will lock a resource specified by resourceId. The resource wil be automatically released after unlockTimeout.
 // MutexWorkflow waits for a request lock signal, sends acknowledgement to the workflow requesting lock and then waits for release lock signal
-func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceId string, unlockTimeout time.Duration) error {
+func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceID string, unlockTimeout time.Duration) error {
 
 	logger := workflow.GetLogger(ctx)
 	selector := workflow.NewSelector(ctx)
@@ -106,7 +112,7 @@ func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceId string, unloc
 
 	// get lock request from workflows on request lock channel
 	var requestLockWorkflowID string
-	var releaseLockWorkflowID string = ""
+	releaseLockWorkflowID := ""
 	requestLockCh := workflow.GetSignalChannel(ctx, WorkflowSignalRequestLock.String())
 	releaseLockCh := workflow.GetSignalChannel(ctx, WorkflowSignalReleaseLock.String())
 
@@ -136,12 +142,15 @@ func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceId string, unloc
 
 		// wait for a release lock signal from the workflow that has acquired the lock
 		logger.Info("MutexWorkflow: wait for release lock signal")
+
 		for {
 			releaseLockCh.Receive(ctx, &releaseLockWorkflowID)
+
 			if releaseLockWorkflowID == requestLockWorkflowID {
 				logger.Info("MutexWorkflow: release lock signal received from workflow: " + releaseLockWorkflowID)
 				break
 			}
+
 			logger.Info("MutexWorkflow: release signal received from a workflow that is not holding the lock. sending workflow ID:", releaseLockWorkflowID)
 		}
 	}

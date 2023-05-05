@@ -58,6 +58,7 @@ func (s *ServerHandler) CreateBlueprint(ctx echo.Context) error {
 	if err := db.Save(blueprint); err != nil {
 		return ctx.JSON(http.StatusInternalServerError, err)
 	}
+
 	return ctx.JSON(http.StatusCreated, blueprint)
 }
 
@@ -73,7 +74,6 @@ func (s *ServerHandler) GetBlueprint(ctx echo.Context) error {
 }
 
 func (s *ServerHandler) CreateWorkload(ctx echo.Context) error {
-
 	request := &WorkloadCreateRequest{}
 	if err := ctx.Bind(request); err != nil {
 		return err
@@ -90,6 +90,7 @@ func (s *ServerHandler) CreateWorkload(ctx echo.Context) error {
 	if err := db.Save(workload); err != nil {
 		return ctx.JSON(http.StatusInternalServerError, err)
 	}
+
 	return ctx.JSON(http.StatusCreated, workload)
 }
 
