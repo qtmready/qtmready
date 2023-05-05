@@ -182,7 +182,8 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 	assets := new(Assets)
 	// resources := make([]Resource, 0)
 	// var resources map[string]interface{}
-	var resources interface{}
+
+	var resources ResourceResult
 
 	selector := workflow.NewSelector(ctx)
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
@@ -198,38 +199,38 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 		logger.Info("GetResources activity complete", "resources", resources)
 	})
 
-	// get workloads for stack
-	future = workflow.ExecuteActivity(act, activities.GetWorkloads, stackID)
-	selector.AddFuture(future, func(f workflow.Future) {
-		var wl []Workload
-		if err := future.Get(ctx, wl); err != nil {
-			logger.Error("GetWorkloads activity failed", "error", err)
-		}
-		logger.Info("GetWorkloads activity complete", "workloads", wl)
-	})
+	// // get workloads for stack
+	// future = workflow.ExecuteActivity(act, activities.GetWorkloads, stackID)
+	// selector.AddFuture(future, func(f workflow.Future) {
+	// 	var wl []Workload
+	// 	if err := future.Get(ctx, wl); err != nil {
+	// 		logger.Error("GetWorkloads activity failed", "error", err)
+	// 	}
+	// 	logger.Info("GetWorkloads activity complete", "workloads", wl)
+	// })
 
-	// get repos for stack
-	future = workflow.ExecuteActivity(act, activities.GetRepos, stackID)
-	selector.AddFuture(future, func(f workflow.Future) {
-		if err := future.Get(ctx, assets.repos); err != nil {
-			logger.Error("GetRepos activity failed", "error", err)
-		}
-		logger.Info("GetRepos activity complete", "repos", assets.repos)
-	})
+	// // get repos for stack
+	// future = workflow.ExecuteActivity(act, activities.GetRepos, stackID)
+	// selector.AddFuture(future, func(f workflow.Future) {
+	// 	if err := future.Get(ctx, assets.repos); err != nil {
+	// 		logger.Error("GetRepos activity failed", "error", err)
+	// 	}
+	// 	logger.Info("GetRepos activity complete", "repos", assets.repos)
+	// })
 
-	// get blueprint for stack
-	future = workflow.ExecuteActivity(act, activities.GetBluePrint, stackID)
-	selector.AddFuture(future, func(f workflow.Future) {
-		if err := future.Get(ctx, assets.blueprint); err != nil {
-			logger.Error("GetBluePrint activity failed", "error", err)
-		}
-		logger.Info("GetBluePrint activity complete", "blueprint", assets.blueprint)
-	})
+	// // get blueprint for stack
+	// future = workflow.ExecuteActivity(act, activities.GetBluePrint, stackID)
+	// selector.AddFuture(future, func(f workflow.Future) {
+	// 	if err := future.Get(ctx, assets.blueprint); err != nil {
+	// 		logger.Error("GetBluePrint activity failed", "error", err)
+	// 	}
+	// 	logger.Info("GetBluePrint activity complete", "blueprint", assets.blueprint)
+	// })
 
-	logger.Info("Assets retreived", "Assets", assets)
+	// logger.Info("Assets retreived", "Assets", assets)
 
 	// TODO: come up with a better logic for this
-	for i := 0; i < 4; i++ {
+	for i := 0; i < 1; i++ {
 		selector.Select(ctx)
 	}
 

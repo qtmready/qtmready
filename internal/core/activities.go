@@ -25,21 +25,24 @@ import (
 )
 
 type (
-	Activities struct{}
+	Activities     struct{}
+	ResourceResult struct {
+		Resources []Resource `json:"resources"`
+	}
 )
 
 // GetResources gets resources from DB against a stack.
-func (a *Activities) GetResources(ctx context.Context, stackID string) ([]Resource, error) {
+func (a *Activities) GetResources(ctx context.Context, stackID string) (*ResourceResult, error) {
 	resources := make([]Resource, 0)
 	params := db.QueryParams{"stack_id": stackID}
 
 	if err := db.Filter(&Resource{}, &resources, params); err != nil {
-		return resources, err
+		return &ResourceResult{Resources: resources}, err
 	}
 
 	shared.Logger.Debug("GetResources", "resources", resources)
 
-	return resources, nil
+	return &ResourceResult{Resources: resources}, nil
 }
 
 // GetWorkloads gets workloads from DB against a stack.
