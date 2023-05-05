@@ -6,7 +6,6 @@ import (
 )
 
 // workflow types
-
 type (
 	WorkflowSignal string // WorkflowSignal is the name of a workflow signal.
 
@@ -20,7 +19,7 @@ type (
 	ChannelHandler func(workflow.ReceiveChannel, bool) // ChannelHandler is the signature of the channel handler function.
 )
 
-// workflow signals
+// workflow signals.
 const (
 	WorkflowSignalPullRequest WorkflowSignal = "pull_request"
 )

@@ -74,11 +74,7 @@ func Get[T Entity](entity T, params QueryParams) error {
 		Columns(entity.GetTable().Metadata().M.Columns...).
 		Where(clause...)
 
-	if err := DB.Session.Query(query.ToCql()).GetRelease(entity); err != nil {
-		return err
-	}
-
-	return nil
+	return DB.Session.Query(query.ToCql()).GetRelease(entity)
 }
 
 // Filter the entity by given query params.

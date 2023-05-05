@@ -133,11 +133,7 @@ func (s *service) ReadConfig() error {
 		return err
 	}
 
-	if err := cleanenv.ReadConfig(conf, s); err != nil {
-		return err
-	}
-
-	return nil
+	return cleanenv.ReadConfig(conf, s)
 }
 
 // InitValidator sets up global validator.

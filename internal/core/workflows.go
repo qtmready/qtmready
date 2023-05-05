@@ -35,7 +35,7 @@ type (
 	Workflows    struct{}
 	ResourceData struct{}
 
-	// Assets contains all the assets fetched from DB against a stack
+	// Assets contains all the assets fetched from DB against a stack.
 	Assets struct {
 		repos           []Repo
 		resources       []Resource

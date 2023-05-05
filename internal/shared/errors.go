@@ -27,9 +27,9 @@ import (
 )
 
 var (
-	ErrInternalServerError       = errors.New("internal server error")
-	ErrValidation                = errors.New("validation error")
-	ErrInvalidRolloutState error = errors.New("invalid rollout state")
+	ErrInternalServerError = errors.New("internal server error")
+	ErrValidation          = errors.New("validation error")
+	ErrInvalidRolloutState = errors.New("invalid rollout state")
 )
 
 type (

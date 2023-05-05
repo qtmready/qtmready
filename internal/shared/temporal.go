@@ -53,7 +53,7 @@ type (
 		// GetName gets the name of the queue as string.
 		GetName() string
 
-		// GetChildWorkflowOptions gets the child workflow options
+		// GetChildWorkflowOptions gets the child workflow options.
 		GetChildWorkflowOptions(sender string, args ...string) workflow.ChildWorkflowOptions
 	}
 
@@ -77,7 +77,7 @@ type (
 		Prefix string    // The prefix to create the workflow ID.
 	}
 
-	// workflowTools holds the helper methods for ctrlplane workflows. TODO: See how it evolves and comeup with a better solution
+	// workflowTools holds the helper methods for ctrlplane workflows. TODO: See how it evolves and comeup with a better solution.
 	workflowTools struct{}
 
 	// temporal holds the temporal server host and port, the client and all the available queues.
