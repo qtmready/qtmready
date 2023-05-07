@@ -29,7 +29,7 @@ import (
 )
 
 // Context prints the contents of a context.
-func Context(ctx interface{}, inner bool) {
+func Context(ctx any, inner bool) {
 	contextValues := reflect.ValueOf(ctx).Elem()
 	contextKeys := reflect.TypeOf(ctx).Elem()
 

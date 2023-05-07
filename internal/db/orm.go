@@ -91,7 +91,7 @@ func Get[T Entity](entity T, params QueryParams) error {
 //		 params := db.QueryParams{"email": "email@example.com"}
 //	   users := make([]User, 0)
 //		 err := db.Filter(&User{}, &users, params)
-func Filter(entity Entity, dest interface{}, params QueryParams) error {
+func Filter(entity Entity, dest any, params QueryParams) error {
 	clause := make([]qb.Cmp, 0)
 
 	for key, value := range params {
@@ -164,7 +164,7 @@ func getID(entity Entity) gocql.UUID {
 }
 
 // Set the value of the field of the entity. The entity value is a pointer to the struct.
-func setval(entity Entity, name string, val interface{}) {
+func setval(entity Entity, name string, val any) {
 	elem := reflect.ValueOf(entity).Elem()
 	elem.FieldByName(name).Set(reflect.ValueOf(val))
 }

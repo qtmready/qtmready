@@ -142,6 +142,7 @@ services:
     image: cosmtrek/air:v1.42.0
     environment:
       SERVICE_NAME: web::api
+      DEBUG: true
     env_file:
       - ./.env
     ports:
@@ -163,6 +164,7 @@ services:
     image: cosmtrek/air:v1.42.0
     environment:
       SERVICE_NAME: worker::mothership
+      DEBUG: true
     env_file:
       - ./.env
     volumes:

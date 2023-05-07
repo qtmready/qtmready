@@ -33,47 +33,42 @@ type (
 func (a *Activities) GetResources(ctx context.Context, stackID string) (*SlicedResult[Resource], error) {
 	log := activity.GetLogger(ctx)
 	resources := make([]Resource, 0)
-	params := db.QueryParams{"stack_id": stackID}
+	err := db.Filter(&Resource{}, &resources, db.QueryParams{"stack_id": stackID})
 
-	if err := db.Filter(&Resource{}, &resources, params); err != nil {
-		return &SlicedResult[Resource]{Data: resources}, err
+	if err != nil {
+		log.Error("GetResources Error", "error", err)
 	}
 
-	log.Debug("GetResources", "resources", resources)
-
-	return &SlicedResult[Resource]{Data: resources}, nil
+	return &SlicedResult[Resource]{Data: resources}, err
 }
 
 // GetWorkloads gets workloads from DB against a stack.
 func (a *Activities) GetWorkloads(ctx context.Context, stackID string) (*SlicedResult[Workload], error) {
 	log := activity.GetLogger(ctx)
 	workloads := make([]Workload, 0)
-	params := db.QueryParams{"stack_id": stackID}
+	err := db.Filter(&Workload{}, &workloads, db.QueryParams{"stack_id": stackID})
 
-	if err := db.Filter(&Workload{}, &workloads, params); err != nil {
-		return &SlicedResult[Workload]{Data: workloads}, err
+	if err != nil {
+		log.Error("GetWorkloads Error", "error", err)
 	}
 
-	log.Debug("GetWorkloads", "workloads", workloads)
-
-	return &SlicedResult[Workload]{Data: workloads}, nil
+	return &SlicedResult[Workload]{Data: workloads}, err
 }
 
 // GetWorkloads gets workloads from DB against a stack.
 func (a *Activities) GetRepos(ctx context.Context, stackID string) (*SlicedResult[Repo], error) {
 	log := activity.GetLogger(ctx)
 	repos := make([]Repo, 0)
-	params := db.QueryParams{"stack_id": stackID}
+	err := db.Filter(&Repo{}, &repos, db.QueryParams{"stack_id": stackID})
 
-	if err := db.Filter(&Repo{}, &repos, params); err != nil {
-		return &SlicedResult[Repo]{Data: repos}, err
+	if err != nil {
+		log.Error("GetRepos Error", "error", err)
 	}
 
-	log.Debug("GetRepos", "repos", repos)
-
-	return &SlicedResult[Repo]{Data: repos}, nil
+	return &SlicedResult[Repo]{Data: repos}, err
 }
 
+// GetBluePrint gets blueprint from DB against a stack.
 func (a *Activities) GetBluePrint(ctx context.Context, stackID string) (*Blueprint, error) {
 	log := activity.GetLogger(ctx)
 	blueprint := &Blueprint{}

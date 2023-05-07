@@ -59,7 +59,7 @@ func New(url string, key string) *Client {
 //	reply := &Reply{}
 //
 //	err := c.request("GET", url, reply, data)
-func (c *Client) request(method, url string, reply, data interface{}) error {
+func (c *Client) request(method, url string, reply, data any) error {
 	var (
 		err     error
 		request *http.Request

@@ -86,7 +86,7 @@ func TestUserGuard(t *testing.T) {
 	t.Run("EntityOps", testutils.TestEntityOps(guard, opsTest))
 }
 
-func testTeamGuardName(args interface{}, want interface{}) func(*testing.T) {
+func testTeamGuardName(args, want any) func(*testing.T) {
 	arg := args.(*guardnkey)
 
 	return func(t *testing.T) {
@@ -96,7 +96,7 @@ func testTeamGuardName(args interface{}, want interface{}) func(*testing.T) {
 	}
 }
 
-func testUserGuardName(args interface{}, want interface{}) func(*testing.T) {
+func testUserGuardName(args, want any) func(*testing.T) {
 	arg := args.(*guardnkey)
 
 	return func(t *testing.T) {
@@ -106,7 +106,7 @@ func testUserGuardName(args interface{}, want interface{}) func(*testing.T) {
 	}
 }
 
-func testSave(args interface{}, want interface{}) func(*testing.T) {
+func testSave(args, want any) func(*testing.T) {
 	arg := args.(*guardnkey)
 
 	return func(t *testing.T) {
@@ -134,7 +134,7 @@ func testSave(args interface{}, want interface{}) func(*testing.T) {
 	}
 }
 
-func testVerifyAPIKey(args interface{}, want interface{}) func(*testing.T) {
+func testVerifyAPIKey(args, want any) func(*testing.T) {
 	arg := args.(*guardnkey)
 
 	return func(t *testing.T) {

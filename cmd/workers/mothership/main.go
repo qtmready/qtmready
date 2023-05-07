@@ -32,11 +32,11 @@ import (
 )
 
 func init() {
-	waitgroup := conc.WaitGroup{}
+	waitgroup := conc.NewWaitGroup()
 	defer waitgroup.Wait()
 
 	shared.Service.ReadEnv()
-	shared.Service.InitLogger(2)
+	shared.Service.InitLogger(3)
 	shared.EventStream.ReadEnv()
 	shared.Temporal.ReadEnv()
 	github.Github.ReadEnv()
@@ -92,6 +92,7 @@ func main() {
 		exitcode = 1
 		return
 	}
+
 	defer wrkr.Stop()
 
 	// start worker for core queue
@@ -103,11 +104,11 @@ func main() {
 
 	defer coreWrkr.Stop()
 
-	// wait on signals to exit process
-	quit := make(chan os.Signal, 1)                                       // create a channel to listen for quit signals.
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL) // listen for quit signals.
-	<-quit                                                                // wait for quit signal.
+	quit := make(chan os.Signal, 1)                      // create a channel to listen to quit signals.
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // setting up the signals to listen to.
+	<-quit                                               // wait for quit signal.
 
 	shared.Logger.Info("Exiting....")
+
 	exitcode = 1
 }

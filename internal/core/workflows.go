@@ -35,32 +35,32 @@ type (
 	Workflows    struct{}
 	ResourceData struct{}
 
-	SlicedResult[T interface{}] struct {
+	SlicedResult[T any] struct {
 		Data []T `json:"data"`
 	}
 
 	// Assets contains all the assets fetched from DB against a stack.
 	Assets struct {
-		repos           []Repo
-		resources       []Resource
-		workloads       []Workload
-		blueprint       Blueprint
-		resourcesConfig []ResourceData
-		prID            int64
-		changesetID     gocql.UUID
+		Repos           []Repo
+		Resources       []Resource
+		Workloads       []Workload
+		Blueprint       Blueprint
+		ResourcesConfig []ResourceData
+		PRID            int64
+		ChangesetID     gocql.UUID
 	}
 
 	ChildWorkflowIDs struct {
-		getAssetsWorkflowID      string
-		provisionInfraWorkflowID string
-		deploymentWorkflowID     string
+		GetAssets      string
+		ProvisionInfra string
+		Deployment     string
 	}
 
 	State int64
 
 	DeploymentData struct {
-		deploymentState State
-		WorkflowIds     ChildWorkflowIDs
+		State       State
+		WorkflowIDs ChildWorkflowIDs
 	}
 
 	DeploymentDataMap map[int64]*DeploymentData
@@ -173,8 +173,8 @@ func onPRSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDa
 		// create and save deployment data
 		deploymentData := &DeploymentData{}
 		deploymentMap[payload.PullRequestID] = deploymentData
-		deploymentData.deploymentState = GettingAssets
-		deploymentData.WorkflowIds.getAssetsWorkflowID = execution.ID
+		deploymentData.State = GettingAssets
+		deploymentData.WorkflowIDs.GetAssets = execution.ID
 	}
 }
 
@@ -249,7 +249,7 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 	}
 
 	// TODO: Create Assets here!
-	assets.prID = prID
+	assets.PRID = prID
 
 	// signal parent workflow
 	// PRWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
@@ -272,8 +272,8 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deploymentMap
 		channel.Receive(ctx, assets)
 
 		// update deployment state
-		deploymentData := deploymentMap[assets.prID]
-		deploymentData.deploymentState = GotAssets
+		deploymentData := deploymentMap[assets.PRID]
+		deploymentData.State = GotAssets
 
 		// execute provision infra workflow
 		logger.Info("Executing provision Infra workflow")
@@ -292,15 +292,15 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deploymentMap
 
 		logger.Info("Executed provision Infra workflow")
 
-		deploymentData.deploymentState = ProvisioningInfra
-		deploymentData.WorkflowIds.provisionInfraWorkflowID = execution.ID
+		deploymentData.State = ProvisioningInfra
+		deploymentData.WorkflowIDs.ProvisionInfra = execution.ID
 	}
 }
 
 // ProvisionInfraWorkflow provisions the infrastructure required for stack deployment.
 func (w *Workflows) ProvisionInfraWorkflow(ctx workflow.Context, assets *Assets) error {
 	logger := workflow.GetLogger(ctx)
-	for _, resource := range assets.resources {
+	for _, resource := range assets.Resources {
 		logger.Info("Creating resource", resource.Name)
 	}
 
@@ -319,8 +319,8 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, deploymentMa
 		channel.Receive(ctx, assets)
 		logger.Info("Infra provisioned")
 
-		deploymentData := deploymentMap[assets.prID]
-		deploymentData.deploymentState = InfraProvisioned
+		deploymentData := deploymentMap[assets.PRID]
+		deploymentData.State = InfraProvisioned
 
 		var execution workflow.Execution
 
@@ -334,8 +334,8 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, deploymentMa
 			logger.Info("TODO: Handle error")
 		}
 
-		deploymentData.deploymentState = CreatingDeployment
-		deploymentData.WorkflowIds.provisionInfraWorkflowID = execution.ID
+		deploymentData.State = CreatingDeployment
+		deploymentData.WorkflowIDs.ProvisionInfra = execution.ID
 	}
 }
 
@@ -368,9 +368,9 @@ func onDeploymentCompletedSignal(ctx workflow.Context, stackID string, deploymen
 	return func(channel workflow.ReceiveChannel, more bool) {
 		assets := &Assets{}
 		channel.Receive(ctx, assets)
-		logger.Info("Deployment complete for", "PR ID", assets.prID)
-		delete(deploymentMap, assets.prID)
+		logger.Info("Deployment complete for", "PR ID", assets.PRID)
+		delete(deploymentMap, assets.PRID)
 
-		logger.Info("Deleted deployment data for", "PR ID", assets.prID)
+		logger.Info("Deleted deployment data for", "PR ID", assets.PRID)
 	}
 }
