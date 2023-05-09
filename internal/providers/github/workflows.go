@@ -182,8 +182,12 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	}
 
 	// signal core stack workflow
-	_ = workflow.SignalExternalWorkflow(ctx, corePRWfID, "", shared.WorkflowSignalPullRequest.String(), signalPayload).Get(ctx, nil)
-	logger.Debug("Signaled workflow", "ID", signalPayload.SenderWorkflowID, " core repo ID: ", signalPayload.RepoID.String())
+	err = workflow.SignalExternalWorkflow(ctx, corePRWfID, "", shared.WorkflowSignalPullRequest.String(), signalPayload).Get(ctx, nil)
+	logger.Debug("Signaled workflow", "ID", signalPayload.SenderWorkflowID, " core repo ID: ", signalPayload.RepoID.String(), "error", err)
+
+	if err != nil {
+		//TODO: handle this. if stack workflow is not running then the signal will be lost. does temporal deliver pending signal when the workflow starts?
+	}
 
 	// workflow.GetSignalChannel(ctx, WorkflowSignalPullRequestProcessed.String()).Receive(ctx, &status)
 

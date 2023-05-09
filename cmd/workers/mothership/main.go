@@ -41,11 +41,16 @@ func init() {
 	shared.Temporal.ReadEnv()
 	github.Github.ReadEnv()
 	db.DB.ReadEnv()
+
+	// shared.Temporal.ServerHost = "127.0.0.1"
+	// db.DB.Hosts = append(db.DB.Hosts, "127.0.0.1")
 	waitgroup.Go(db.DB.InitSession)
-	waitgroup.Go(shared.EventStream.InitConnection)
+	// waitgroup.Go(shared.EventStream.InitConnection)
 	waitgroup.Go(shared.Temporal.InitClient)
 
 	shared.Logger.Info("initialized", "version", shared.Service.Version())
+
+	core.Core.Init()
 }
 
 func main() {
@@ -53,8 +58,10 @@ func main() {
 	exitcode := 0
 	defer func() { os.Exit(exitcode) }()
 	defer func() { _ = shared.Logger.Sync() }()
-	defer func() { _ = shared.EventStream.Drain() }()
+	// defer func() { _ = shared.EventStream.Drain() }()
 	defer shared.Temporal.Client.Close()
+
+	core.Core.ProvidersMap[core.RepoProviderGithub] = github.Github
 
 	queue := shared.Temporal.Queues[shared.ProvidersQueue].GetName()
 	coreQueue := shared.Temporal.Queues[shared.CoreQueue].GetName()
@@ -74,6 +81,7 @@ func main() {
 
 	// provider activities
 	wrkr.RegisterActivity(&github.Activities{})
+	wrkr.RegisterActivity(github.Github.GetLatestCommitforRepo)
 
 	// core workflows
 	coreWrkr.RegisterWorkflow(cwfs.OnPullRequestWorkflow)

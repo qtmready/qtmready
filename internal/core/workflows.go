@@ -188,6 +188,7 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 	workloads := SlicedResult[Workload]{}
 	repos := SlicedResult[Repo]{}
 	blueprint := new(Blueprint)
+	var err error = nil
 
 	selector := workflow.NewSelector(ctx)
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
@@ -196,45 +197,57 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 	// get resources for stack
 	future = workflow.ExecuteActivity(act, activities.GetResources, stackID)
 	selector.AddFuture(future, func(f workflow.Future) {
-		if err := future.Get(ctx, &resources); err != nil {
+		if err = future.Get(ctx, &resources); err != nil {
 			logger.Error("GetResources activity failed", "error", err)
+			return
 		}
-
-		logger.Info("GetResources activity complete", "resources", resources)
+		assets.resources = resources.Data
+		logger.Debug("GetResources activity complete", "resources", resources)
 	})
 
 	// get workloads for stack
 	future = workflow.ExecuteActivity(act, activities.GetWorkloads, stackID)
 	selector.AddFuture(future, func(f workflow.Future) {
-		if err := future.Get(ctx, &workloads); err != nil {
+		if err = future.Get(ctx, &workloads); err != nil {
 			logger.Error("GetWorkloads activity failed", "error", err)
+			return
 		}
-		logger.Info("GetWorkloads activity complete", "workloads", workloads)
+
+		assets.workloads = workloads.Data
+		logger.Debug("GetWorkloads activity complete", "workloads", assets.workloads)
 	})
 
 	// get repos for stack
 	future = workflow.ExecuteActivity(act, activities.GetRepos, stackID)
 	selector.AddFuture(future, func(f workflow.Future) {
-		if err := future.Get(ctx, &repos); err != nil {
+		if err = future.Get(ctx, &repos); err != nil {
 			logger.Error("GetRepos activity failed", "error", err)
+			return
 		}
-		logger.Info("GetRepos activity complete", "repos", repos)
+		assets.repos = repos.Data
+		logger.Debug("GetRepos activity complete", "repos", assets.repos)
 	})
 
 	// get blueprint for stack
 	future = workflow.ExecuteActivity(act, activities.GetBluePrint, stackID)
 	selector.AddFuture(future, func(f workflow.Future) {
-		if err := future.Get(ctx, &blueprint); err != nil {
+		if err = future.Get(ctx, &blueprint); err != nil {
 			logger.Error("GetBluePrint activity failed", "error", err)
+			return
 		}
-		logger.Info("GetBluePrint activity complete", "blueprint", blueprint)
+		assets.blueprint = *blueprint
+		logger.Debug("GetBluePrint activity complete", "blueprint", blueprint)
 	})
 
-	// logger.Info("Assets retreived", "Assets", assets)
+	logger.Info("Assets retreived", "Assets", assets)
 
 	// TODO: come up with a better logic for this
 	for i := 0; i < 1; i++ {
 		selector.Select(ctx)
+		// return if activity failed. TODO: handle race conditions as the variable is shared among all activities
+		if err != nil {
+			return err
+		}
 	}
 
 	// TODO: create changeset id, for now making changeset id = pr id
@@ -243,7 +256,8 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 		StackID: stackUUID,
 	}
 
-	err := workflow.ExecuteActivity(act, activities.CreateChangeset, changeset).Get(ctx, nil)
+	// get commits against the repos
+	err = workflow.ExecuteActivity(act, activities.CreateChangeset, changeset).Get(ctx, nil)
 	if err != nil {
 		logger.Error("Error in creating changeset")
 	}
