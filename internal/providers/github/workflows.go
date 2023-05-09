@@ -18,6 +18,7 @@
 package github
 
 import (
+	"context"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -165,12 +166,10 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	repo := &Repo{GithubID: payload.Repository.ID}
 	coreRepo := &core.Repo{}
 	err := workflow.ExecuteActivity(act, activities.GetCoreRepo, repo).Get(ctx, coreRepo)
-
 	if err != nil {
 		logger.Error("error getting core repo", "error", err)
 		return err
 	}
-
 	logger.Debug("Got core repo")
 
 	// get core workflow ID for this stack
@@ -184,12 +183,14 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	}
 
 	// signal core stack workflow
-	err = workflow.SignalExternalWorkflow(ctx, corePRWfID, "", shared.WorkflowSignalPullRequest.String(), signalPayload).Get(ctx, nil)
-	logger.Debug("Signaled workflow", "ID", signalPayload.SenderWorkflowID, " core repo ID: ", signalPayload.RepoID.String(), "error", err)
+	logger.Info("core workflow id", "ID", corePRWfID)
+	options := shared.Temporal.Queues[shared.CoreQueue].
+		GetWorkflowOptions("stack", coreRepo.StackID.String())
 
-	if err != nil {
-		//TODO: handle this. if stack workflow is not running then the signal will be lost. does temporal deliver pending signal when the workflow starts?
-	}
+	cw := &core.Workflows{}
+	shared.Temporal.Client.SignalWithStartWorkflow(context.Background(), corePRWfID, shared.WorkflowSignalPullRequest.String(), signalPayload, options, cw.OnPullRequestWorkflow, coreRepo.StackID.String())
+	// workflow.SignalExternalWorkflow(ctx, corePRWfID, "", shared.WorkflowSignalPullRequest.String(), signalPayload).Get(ctx, nil)
+	logger.Debug("Signaled workflow", "ID", signalPayload.SenderWorkflowID, " core repo ID: ", signalPayload.RepoID.String())
 
 	// workflow.GetSignalChannel(ctx, WorkflowSignalPullRequestProcessed.String()).Receive(ctx, &status)
 

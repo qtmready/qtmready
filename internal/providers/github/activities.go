@@ -20,6 +20,7 @@ package github
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	"go.temporal.io/sdk/activity"
 
@@ -137,4 +138,33 @@ func (a *Activities) GetStack(ctx context.Context, repo *core.Repo) (*core.Stack
 	}
 
 	return s, nil
+}
+
+// GetLatestCommitforRepo gets latest commit for default branch of the provided repo
+func (g *github) GetLatestCommitforRepo(ctx context.Context, providerID string, branch string) (*string, error) {
+	logger := activity.GetLogger(ctx)
+	logger.Debug("GetLatestCommitforRepo")
+	prepo := &Repo{}
+	params := db.QueryParams{"github_id": "'" + providerID + "'"}
+	if err := db.Get(prepo, params); err != nil {
+		return nil, err
+	}
+
+	logger.Debug("get github client")
+	client, err := Github.GetClientForInstallation(prepo.InstallationID)
+
+	logger.Debug("get github branch")
+	gb, _, err := client.Repositories.GetBranch(context.Background(), strings.Split(prepo.FullName, "/")[0], prepo.Name, branch, false)
+
+	if err != nil {
+		logger.Info("Error in getting branch", "error", err)
+	} else {
+		logger.Info("branch", "Name", gb.Name, "Last commit", gb.Commit.SHA)
+	}
+
+	if err != nil {
+		logger.Error("Error in getting github client", "err", err)
+	}
+
+	return gb.Commit.SHA, nil
 }

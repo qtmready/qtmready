@@ -40,8 +40,13 @@ type (
 		ClientID      string `env:"GITHUB_CLIENT_ID"`
 		WebhookSecret string `env:"GITHUB_WEBHOOK_SECRET"`
 		PrivateKey    string `env:"GITHUB_PRIVATE_KEY"`
+		Activity      Activities
 	}
 )
+
+func (g *github) GetActivities() *Activities {
+	return &g.Activity
+}
 
 func (g *github) ReadEnv() {
 	if err := cleanenv.ReadEnv(g); err != nil {

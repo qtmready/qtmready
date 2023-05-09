@@ -39,6 +39,7 @@ func (a *Activities) GetResources(ctx context.Context, stackID string) (*SlicedR
 		log.Error("GetResources Error", "error", err)
 	}
 
+	log.Debug("GetResources", "resources", resources)
 	return &SlicedResult[Resource]{Data: resources}, err
 }
 
@@ -52,6 +53,7 @@ func (a *Activities) GetWorkloads(ctx context.Context, stackID string) (*SlicedR
 		log.Error("GetWorkloads Error", "error", err)
 	}
 
+	// log.Debug("Get worklaods", "workloads", workloads)
 	return &SlicedResult[Workload]{Data: workloads}, err
 }
 
@@ -75,10 +77,9 @@ func (a *Activities) GetBluePrint(ctx context.Context, stackID string) (*Bluepri
 	params := db.QueryParams{"stack_id": stackID}
 
 	if err := db.Get(blueprint, params); err != nil {
+		log.Error("GetBlueprint Error", "error", err)
 		return blueprint, err
 	}
-
-	log.Debug("GetBluePrint", "blueprint", blueprint)
 
 	return blueprint, nil
 }

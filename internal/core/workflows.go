@@ -160,6 +160,8 @@ func onPRSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDa
 		var execution workflow.Execution
 
 		opts := shared.Temporal.Queues[shared.CoreQueue].GetChildWorkflowOptions("get_assets", "stack", stackID)
+		// retryPolicy := &temporal.RetryPolicy{MaximumAttempts: 0}
+		// opts.RetryPolicy = retryPolicy
 		ctx = workflow.WithChildOptions(ctx, opts)
 		err := workflow.
 			ExecuteChildWorkflow(ctx, w.GetAssetsWorkflow, stackID).
@@ -184,8 +186,8 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 
 	logger := workflow.GetLogger(ctx)
 	assets := new(Assets)
-	resources := SlicedResult[Resource]{}
 	workloads := SlicedResult[Workload]{}
+	resources := SlicedResult[Resource]{}
 	repos := SlicedResult[Repo]{}
 	blueprint := new(Blueprint)
 	var err error = nil
@@ -201,7 +203,7 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 			logger.Error("GetResources activity failed", "error", err)
 			return
 		}
-		assets.resources = resources.Data
+		// assets.Resources = resources.Data
 		logger.Debug("GetResources activity complete", "resources", resources)
 	})
 
@@ -213,8 +215,8 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 			return
 		}
 
-		assets.workloads = workloads.Data
-		logger.Debug("GetWorkloads activity complete", "workloads", assets.workloads)
+		// assets.Workloads = workloads.Data
+		logger.Debug("GetWorkloads activity complete", "workloads", workloads)
 	})
 
 	// get repos for stack
@@ -224,8 +226,8 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 			logger.Error("GetRepos activity failed", "error", err)
 			return
 		}
-		assets.repos = repos.Data
-		logger.Debug("GetRepos activity complete", "repos", assets.repos)
+		// assets.Repos = repos.Data
+		logger.Debug("GetRepos activity complete", "repos", repos)
 	})
 
 	// get blueprint for stack
@@ -235,20 +237,34 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 			logger.Error("GetBluePrint activity failed", "error", err)
 			return
 		}
-		assets.blueprint = *blueprint
+		assets.Blueprint = *blueprint
 		logger.Debug("GetBluePrint activity complete", "blueprint", blueprint)
 	})
 
 	logger.Info("Assets retreived", "Assets", assets)
 
 	// TODO: come up with a better logic for this
-	for i := 0; i < 1; i++ {
+	for i := 0; i < 3; i++ {
 		selector.Select(ctx)
 		// return if activity failed. TODO: handle race conditions as the variable is shared among all activities
 		if err != nil {
+			logger.Error("Exiting due to activity failure")
 			return err
 		}
 	}
+
+	logger.Info("starting loop on res")
+	// for _, rep := range assets.Repos {
+	// 	p := Core.ProvidersMap[rep.Provider] // get the specific provider
+	// 	var commitID string
+	// 	shared.Logger.Debug("", "prov", p)
+	// 	err := workflow.ExecuteActivity(act, p.GetLatestCommitforRepo, rep.ProviderID, rep.DefaultBranch).Get(ctx, &commitID)
+	// 	if err != nil {
+	// 		logger.Error("Error in getting latest commit ID", "repo", rep.Name, "provider", rep.Provider)
+	// 	} else {
+	// 		logger.Info("Latest commit id for", "repo", rep.Name, "commit ID", commitID)
+	// 	}
+	// }
 
 	// TODO: create changeset id, for now making changeset id = pr id
 	stackUUID, _ := gocql.ParseUUID(stackID)
