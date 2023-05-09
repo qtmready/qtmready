@@ -78,4 +78,4 @@ func (g *github) SignPayload(payload []byte) string {
 	return result
 }
 
-func (g *github) CloneRepo(repo string, branch string, ref string) {}
+// func (g *github) CloneRepo(repo string, branch string, ref string) {}

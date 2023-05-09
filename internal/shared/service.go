@@ -179,7 +179,7 @@ func (s *service) InitCLI() error {
 	return nil
 }
 
-func (ev *EchoValidator) Validate(i interface{}) error {
+func (ev *EchoValidator) Validate(i any) error {
 	return ev.Validator.Struct(i)
 }
 

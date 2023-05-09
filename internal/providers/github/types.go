@@ -145,7 +145,7 @@ const (
 
 func (e WebhookEvent) String() string { return string(e) }
 
-// Workflow signal types
+// Workflow signal types.
 const (
 	WorkflowSignalInstallationEvent    shared.WorkflowSignal = "installation_event"
 	WorkflowSignalCompleteInstallation shared.WorkflowSignal = "complete_installation"

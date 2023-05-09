@@ -42,7 +42,7 @@ func TestUser(t *testing.T) {
 	t.Run("EntityOps", testutils.TestEntityOps(user, opsTests))
 }
 
-func testUserSetPassword(args interface{}, want interface{}) func(*testing.T) {
+func testUserSetPassword(args, want any) func(*testing.T) {
 	user := args.(*auth.User)
 
 	return func(t *testing.T) {
@@ -52,7 +52,7 @@ func testUserSetPassword(args interface{}, want interface{}) func(*testing.T) {
 	}
 }
 
-func testUserVerifyPassword(args interface{}, want interface{}) func(*testing.T) {
+func testUserVerifyPassword(args, want any) func(*testing.T) {
 	v := args.(*auth.User)
 
 	return func(t *testing.T) {

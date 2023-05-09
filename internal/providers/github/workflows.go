@@ -165,10 +165,12 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	repo := &Repo{GithubID: payload.Repository.ID}
 	coreRepo := &core.Repo{}
 	err := workflow.ExecuteActivity(act, activities.GetCoreRepo, repo).Get(ctx, coreRepo)
+
 	if err != nil {
 		logger.Error("error getting core repo", "error", err)
 		return err
 	}
+
 	logger.Debug("Got core repo")
 
 	// get core workflow ID for this stack

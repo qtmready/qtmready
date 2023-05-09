@@ -23,9 +23,9 @@ import (
 
 type (
 	TestFn struct {
-		Args interface{} // Can be nil
-		Want interface{} // Can be nil
-		Run  func(provide interface{}, want interface{}) func(*testing.T)
+		Args any // Can be nil
+		Want any // Can be nil
+		Run  func(provide any, want any) func(*testing.T)
 	}
 
 	TestFnMap map[string]TestFn
