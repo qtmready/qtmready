@@ -199,7 +199,7 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 	// get resources for stack
 	future = workflow.ExecuteActivity(act, activities.GetResources, stackID)
 	selector.AddFuture(future, func(f workflow.Future) {
-		if err = future.Get(ctx, &resources); err != nil {
+		if err = f.Get(ctx, &resources); err != nil {
 			logger.Error("GetResources activity failed", "error", err)
 			return
 		}
@@ -210,7 +210,7 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 	// get workloads for stack
 	future = workflow.ExecuteActivity(act, activities.GetWorkloads, stackID)
 	selector.AddFuture(future, func(f workflow.Future) {
-		if err = future.Get(ctx, &workloads); err != nil {
+		if err = f.Get(ctx, &workloads); err != nil {
 			logger.Error("GetWorkloads activity failed", "error", err)
 			return
 		}
@@ -222,7 +222,7 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 	// get repos for stack
 	future = workflow.ExecuteActivity(act, activities.GetRepos, stackID)
 	selector.AddFuture(future, func(f workflow.Future) {
-		if err = future.Get(ctx, &repos); err != nil {
+		if err = f.Get(ctx, &repos); err != nil {
 			logger.Error("GetRepos activity failed", "error", err)
 			return
 		}
@@ -233,7 +233,7 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 	// get blueprint for stack
 	future = workflow.ExecuteActivity(act, activities.GetBluePrint, stackID)
 	selector.AddFuture(future, func(f workflow.Future) {
-		if err = future.Get(ctx, &blueprint); err != nil {
+		if err = f.Get(ctx, &blueprint); err != nil {
 			logger.Error("GetBluePrint activity failed", "error", err)
 			return
 		}
@@ -244,7 +244,7 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 	logger.Info("Assets retreived", "Assets", assets)
 
 	// TODO: come up with a better logic for this
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 4; i++ {
 		selector.Select(ctx)
 		// return if activity failed. TODO: handle race conditions as the variable is shared among all activities
 		if err != nil {
