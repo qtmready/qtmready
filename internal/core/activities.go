@@ -39,7 +39,6 @@ func (a *Activities) GetResources(ctx context.Context, stackID string) (*SlicedR
 		log.Error("GetResources Error", "error", err)
 	}
 
-	log.Debug("GetResources", "resources", resources)
 	return &SlicedResult[Resource]{Data: resources}, err
 }
 
@@ -53,7 +52,6 @@ func (a *Activities) GetWorkloads(ctx context.Context, stackID string) (*SlicedR
 		log.Error("GetWorkloads Error", "error", err)
 	}
 
-	// log.Debug("Get worklaods", "workloads", workloads)
 	return &SlicedResult[Workload]{Data: workloads}, err
 }
 

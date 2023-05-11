@@ -16,7 +16,7 @@ type (
 
 type (
 	Provider interface {
-		GetLatestCommitforRepo(ctx context.Context, providerID string, branch string) (*string, error)
+		GetLatestCommitforRepo(ctx context.Context, providerID string, branch string) (string, error)
 	}
 	providersMap map[RepoProvider]Provider
 )

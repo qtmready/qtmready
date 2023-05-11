@@ -1,6 +1,7 @@
 package core
 
 import (
+	"github.com/gocql/gocql"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -17,3 +18,54 @@ const (
 	WorkflowSignalDeploymentCompleted shared.WorkflowSignal = "deployment_completed"
 	WorkflowSignalManaulOverride      shared.WorkflowSignal = "manual_override"
 )
+
+const (
+	GettingAssets State = iota
+	GotAssets
+	ProvisioningInfra
+	InfraProvisioned
+	CreatingDeployment
+)
+
+type (
+	SlicedResult[T any] struct {
+		Data []T `json:"data"`
+	}
+
+	ResourceData struct{}
+
+	ChildWorkflowIDs struct {
+		GetAssets      string
+		ProvisionInfra string
+		Deployment     string
+	}
+
+	State int64
+
+	DeploymentData struct {
+		State       State
+		WorkflowIDs ChildWorkflowIDs
+	}
+
+	DeploymentDataMap map[int64]*DeploymentData
+	AssetsMap         map[int64]*Assets
+
+	// Assets contains all the assets fetched from DB against a stack.
+	Assets struct {
+		Repos           []Repo
+		Resources       []Resource
+		Workloads       []Workload
+		Blueprint       Blueprint
+		ResourcesConfig []ResourceData
+		PRID            int64
+		ChangesetID     gocql.UUID
+	}
+)
+
+func (a *Assets) Create() {
+	a.Repos = make([]Repo, 0)
+	a.Resources = make([]Resource, 0)
+	a.Workloads = make([]Workload, 0)
+	a.ResourcesConfig = make([]ResourceData, 0)
+
+}

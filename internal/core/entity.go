@@ -127,6 +127,7 @@ type (
 	ChangeSetRepoMarker struct {
 		Provider   string `json:"provider"`
 		CommitID   string `json:"commit_id"`
+		RepoID     string `json:"repo_id"`
 		HasChanged bool   `json:"changed"`
 	}
 

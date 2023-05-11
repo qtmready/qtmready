@@ -18,6 +18,8 @@
 package core
 
 import (
+	"errors"
+	"fmt"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -32,47 +34,12 @@ const (
 )
 
 type (
-	Workflows    struct{}
-	ResourceData struct{}
-
-	SlicedResult[T any] struct {
-		Data []T `json:"data"`
+	Workflows                struct{}
+	GetAssetsWorkflowPayload struct {
+		StackID string
+		PRID    int64
+		RepoID  gocql.UUID
 	}
-
-	// Assets contains all the assets fetched from DB against a stack.
-	Assets struct {
-		Repos           []Repo
-		Resources       []Resource
-		Workloads       []Workload
-		Blueprint       Blueprint
-		ResourcesConfig []ResourceData
-		PRID            int64
-		ChangesetID     gocql.UUID
-	}
-
-	ChildWorkflowIDs struct {
-		GetAssets      string
-		ProvisionInfra string
-		Deployment     string
-	}
-
-	State int64
-
-	DeploymentData struct {
-		State       State
-		WorkflowIDs ChildWorkflowIDs
-	}
-
-	DeploymentDataMap map[int64]*DeploymentData
-	AssetsMap         map[int64]*Assets
-)
-
-const (
-	GettingAssets State = iota
-	GotAssets
-	ProvisioningInfra
-	InfraProvisioned
-	CreatingDeployment
 )
 
 var (
@@ -107,6 +74,7 @@ func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string) 
 	mutex := NewMutex(currentWorkflowID, resourceID, unLockTimeOutStackMutex)
 	_ = mutex.Init(ctx)
 
+	logger.Warn("debug", "mutex", mutex)
 	// var prSignalsCounter int = 0
 
 	prChannel := workflow.GetSignalChannel(ctx, shared.WorkflowSignalPullRequest.String())
@@ -118,7 +86,7 @@ func (w *Workflows) OnPullRequestWorkflow(ctx workflow.Context, stackID string) 
 	selector := workflow.NewSelector(ctx)
 	selector.AddReceive(prChannel, onPRSignal(ctx, stackID, deploymentDataMap))
 	selector.AddReceive(assetsChannel, onAssetsRetreivedSignal(ctx, stackID, deploymentDataMap))
-	selector.AddReceive(infrachannel, onInfraProvisionedSignal(ctx, stackID, deploymentDataMap))
+	selector.AddReceive(infrachannel, onInfraProvisionedSignal(ctx, stackID, mutex, deploymentDataMap))
 	selector.AddReceive(deploymentchannel, onDeploymentCompletedSignal(ctx, stackID, deploymentDataMap))
 	selector.AddReceive(manualOverrideChannel, onManualOverrideSignal(ctx, stackID, deploymentDataMap))
 
@@ -162,14 +130,15 @@ func onPRSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDa
 		opts := shared.Temporal.Queues[shared.CoreQueue].GetChildWorkflowOptions("get_assets", "stack", stackID)
 		// retryPolicy := &temporal.RetryPolicy{MaximumAttempts: 0}
 		// opts.RetryPolicy = retryPolicy
+		getAssetsPayload := &GetAssetsWorkflowPayload{StackID: stackID, PRID: payload.PullRequestID, RepoID: payload.RepoID}
 		ctx = workflow.WithChildOptions(ctx, opts)
 		err := workflow.
-			ExecuteChildWorkflow(ctx, w.GetAssetsWorkflow, stackID).
+			ExecuteChildWorkflow(ctx, w.GetAssetsWorkflow, getAssetsPayload).
 			GetChildWorkflowExecution().
 			Get(ctx, &execution)
 
 		if err != nil {
-			logger.Info("TODO: Handle error", "error", err)
+			logger.Error("TODO: Error in executing getAssetsWorkflow", "Error", err)
 		}
 
 		// create and save deployment data
@@ -181,9 +150,9 @@ func onPRSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDa
 }
 
 // GetAssetsWorkflow gets assests for stack including resources, workloads and blueprint.
-func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID int64) error {
-	var future workflow.Future
+func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, payload *GetAssetsWorkflowPayload) error {
 
+	var future workflow.Future
 	logger := workflow.GetLogger(ctx)
 	assets := new(Assets)
 	workloads := SlicedResult[Workload]{}
@@ -192,84 +161,89 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 	blueprint := new(Blueprint)
 	var err error = nil
 
+	assets.Create()
 	selector := workflow.NewSelector(ctx)
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	act := workflow.WithActivityOptions(ctx, activityOpts)
+	providerActivityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second, TaskQueue: shared.Temporal.Queues[shared.ProvidersQueue].GetName()}
+	providerAct := workflow.WithActivityOptions(ctx, providerActivityOpts)
 
 	// get resources for stack
-	future = workflow.ExecuteActivity(act, activities.GetResources, stackID)
+	future = workflow.ExecuteActivity(act, activities.GetResources, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &resources); err != nil {
 			logger.Error("GetResources activity failed", "error", err)
 			return
 		}
-		// assets.Resources = resources.Data
-		logger.Debug("GetResources activity complete", "resources", resources)
+		assets.Resources = append(assets.Resources, resources.Data...)
 	})
 
 	// get workloads for stack
-	future = workflow.ExecuteActivity(act, activities.GetWorkloads, stackID)
+	future = workflow.ExecuteActivity(act, activities.GetWorkloads, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &workloads); err != nil {
 			logger.Error("GetWorkloads activity failed", "error", err)
 			return
 		}
 
-		// assets.Workloads = workloads.Data
-		logger.Debug("GetWorkloads activity complete", "workloads", workloads)
+		assets.Workloads = append(assets.Workloads, workloads.Data...)
 	})
 
 	// get repos for stack
-	future = workflow.ExecuteActivity(act, activities.GetRepos, stackID)
+	future = workflow.ExecuteActivity(act, activities.GetRepos, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &repos); err != nil {
 			logger.Error("GetRepos activity failed", "error", err)
 			return
 		}
-		// assets.Repos = repos.Data
-		logger.Debug("GetRepos activity complete", "repos", repos)
+		assets.Repos = append(assets.Repos, repos.Data...)
 	})
 
 	// get blueprint for stack
-	future = workflow.ExecuteActivity(act, activities.GetBluePrint, stackID)
+	future = workflow.ExecuteActivity(act, activities.GetBluePrint, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &blueprint); err != nil {
 			logger.Error("GetBluePrint activity failed", "error", err)
 			return
 		}
 		assets.Blueprint = *blueprint
-		logger.Debug("GetBluePrint activity complete", "blueprint", blueprint)
 	})
-
-	logger.Info("Assets retreived", "Assets", assets)
 
 	// TODO: come up with a better logic for this
 	for i := 0; i < 4; i++ {
 		selector.Select(ctx)
-		// return if activity failed. TODO: handle race conditions as the variable is shared among all activities
+		// return if activity failed. TODO: handle race conditions as the 'err' variable is shared among all activities
 		if err != nil {
 			logger.Error("Exiting due to activity failure")
 			return err
 		}
 	}
 
-	logger.Info("starting loop on res")
-	// for _, rep := range assets.Repos {
-	// 	p := Core.ProvidersMap[rep.Provider] // get the specific provider
-	// 	var commitID string
-	// 	shared.Logger.Debug("", "prov", p)
-	// 	err := workflow.ExecuteActivity(act, p.GetLatestCommitforRepo, rep.ProviderID, rep.DefaultBranch).Get(ctx, &commitID)
-	// 	if err != nil {
-	// 		logger.Error("Error in getting latest commit ID", "repo", rep.Name, "provider", rep.Provider)
-	// 	} else {
-	// 		logger.Info("Latest commit id for", "repo", rep.Name, "commit ID", commitID)
-	// 	}
-	// }
-
-	// TODO: create changeset id, for now making changeset id = pr id
-	stackUUID, _ := gocql.ParseUUID(stackID)
+	// logger.Info("Assets retreived", "Assets", assets)
+	stackID, _ := gocql.ParseUUID(payload.StackID)
+	repoMarker := make([]ChangeSetRepoMarker, len(assets.Repos))
 	changeset := &ChangeSet{
-		StackID: stackUUID,
+		StackID:     stackID,
+		Calver:      "0.0.0",
+		RepoMarkers: repoMarker,
+	}
+
+	for i := 0; i < len(assets.Repos); i++ {
+		rep := &assets.Repos[i]
+		marker := &repoMarker[i]
+		p := Core.ProvidersMap[rep.Provider] // get the specific provider
+		var commitID string
+		err := workflow.ExecuteActivity(providerAct, p.GetLatestCommitforRepo, rep.ProviderID, rep.DefaultBranch).Get(ctx, &commitID)
+		if err != nil {
+			logger.Error("Error in getting latest commit ID", "repo", rep.Name, "provider", rep.Provider)
+			return errors.New(fmt.Sprintf("Error in getting latest commit ID repo:%s, provider:%s", rep.Name, rep.Provider.String()))
+		}
+
+		marker.CommitID = commitID
+		marker.HasChanged = rep.ID == payload.RepoID
+		marker.Provider = rep.Provider.String()
+		marker.RepoID = rep.ID.String()
+		// logger.Debug("Repo", "Name", rep.Name, "Repo marker", marker)
 	}
 
 	// get commits against the repos
@@ -279,13 +253,13 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, stackID string, prID
 	}
 
 	// TODO: Create Assets here!
-	assets.PRID = prID
+	assets.PRID = payload.PRID
 
 	// signal parent workflow
-	// PRWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
-	// workflow.
-	// 	SignalExternalWorkflow(ctx, PRWorkflowID, "", WorkflowSignalAssetsRetrieved.String(), assets).
-	// 	Get(ctx, nil)
+	PRWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
+	workflow.
+		SignalExternalWorkflow(ctx, PRWorkflowID, "", WorkflowSignalAssetsRetrieved.String(), assets).
+		Get(ctx, nil)
 
 	return nil
 }
@@ -317,7 +291,7 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deploymentMap
 			GetChildWorkflowExecution().Get(ctx, execution)
 
 		if err != nil {
-			logger.Info("TODO: Handle error")
+			logger.Error("TODO: Error in executing ProvisionInfraWorkflow", "Error", err)
 		}
 
 		logger.Info("Executed provision Infra workflow")
@@ -331,23 +305,22 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deploymentMap
 func (w *Workflows) ProvisionInfraWorkflow(ctx workflow.Context, assets *Assets) error {
 	logger := workflow.GetLogger(ctx)
 	for _, resource := range assets.Resources {
-		logger.Info("Creating resource", resource.Name)
+		logger.Info("Creating resource", "Name", resource.Name)
 	}
 
 	PRWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
-	workflow.SignalExternalWorkflow(ctx, PRWorkflowID, "", WorkflowSignalInfraProvisioned.String(), assets)
-
+	workflow.SignalExternalWorkflow(ctx, PRWorkflowID, "", WorkflowSignalInfraProvisioned.String(), assets).Get(ctx, nil)
 	return nil
 }
 
-func onInfraProvisionedSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDataMap) shared.ChannelHandler {
+func onInfraProvisionedSignal(ctx workflow.Context, stackID string, mutex *Mutex, deploymentMap DeploymentDataMap) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 	w := &Workflows{}
 
 	return func(channel workflow.ReceiveChannel, more bool) {
 		assets := &Assets{}
 		channel.Receive(ctx, assets)
-		logger.Info("Infra provisioned")
+		logger.Info("Infra provisioned", "mutex", mutex)
 
 		deploymentData := deploymentMap[assets.PRID]
 		deploymentData.State = InfraProvisioned
@@ -357,11 +330,11 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, deploymentMa
 		opts := shared.Temporal.Queues[shared.CoreQueue].GetChildWorkflowOptions("Deployment", "stack", stackID)
 		ctx = workflow.WithChildOptions(ctx, opts)
 		err := workflow.
-			ExecuteChildWorkflow(ctx, w.DeploymentWorkflow, assets).
+			ExecuteChildWorkflow(ctx, w.DeploymentWorkflow, stackID, mutex, assets).
 			GetChildWorkflowExecution().Get(ctx, execution)
 
 		if err != nil {
-			logger.Info("TODO: Handle error")
+			logger.Error("Error in Executing deployment workflow", "Error", err)
 		}
 
 		deploymentData.State = CreatingDeployment
@@ -377,7 +350,7 @@ func (w *Workflows) DeploymentWorkflow(ctx workflow.Context, stackID string, mut
 
 	unlockFunc, err := mutex.Lock(ctx)
 	if err != nil {
-		logger.Info("Error in acquiring lock", err)
+		logger.Error("Error in acquiring lock", "Error", err)
 	}
 
 	// simulate critical section
