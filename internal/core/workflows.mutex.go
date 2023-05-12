@@ -30,19 +30,17 @@ type (
 
 	// Mutex holds the informations for a specific mutex resource.
 	Mutex struct {
-		CurrentWorkflowID string
-		MutexWorkflowID   string
-		ResourceID        string
-		UnlockTimeout     time.Duration
+		MutexWorkflowID string
+		ResourceID      string
+		UnlockTimeout   time.Duration
 	}
 )
 
 // NewMutex creates a mutex.
 func NewMutex(currentWorkflowID string, resourceID string, unlockTimeout time.Duration) *Mutex {
 	return &Mutex{
-		CurrentWorkflowID: currentWorkflowID,
-		ResourceID:        resourceID,
-		UnlockTimeout:     unlockTimeout,
+		ResourceID:    resourceID,
+		UnlockTimeout: unlockTimeout,
 	}
 }
 
@@ -60,7 +58,7 @@ func (m *Mutex) Init(ctx workflow.Context) error {
 	var execution workflow.Execution
 	err := workflow.
 		ExecuteChildWorkflow(ctx, w.MutexWorkflow, m.ResourceID, m.UnlockTimeout).
-		GetChildWorkflowExecution().Get(ctx, execution)
+		GetChildWorkflowExecution().Get(ctx, &execution)
 
 	if err != nil {
 		logger.Error("Parent execution received child execution failure.", "Error", err)
@@ -68,7 +66,7 @@ func (m *Mutex) Init(ctx workflow.Context) error {
 	}
 
 	m.MutexWorkflowID = execution.ID
-	logger.Info("Started Child Mutex Workflow", "ID", execution.ID, "RunID", execution.RunID, "Error:", err)
+	logger.Info("Started Child Mutex Workflow", "ID", execution.ID, "RunID", execution.RunID)
 
 	return err
 }
@@ -79,12 +77,18 @@ func (m *Mutex) Lock(ctx workflow.Context) (UnlockFunc, error) {
 	// TODO: resource - mutex workflow id map?
 	logger := workflow.GetLogger(ctx)
 
+	sendingWorkflowID := workflow.GetInfo(ctx).WorkflowExecution.ID
 	// request mutex workflow to acquire lock
-	logger.Info("Lock: sending acquire lock signal")
+	logger.Info("Lock: sending acquire lock signal", "mutex", m.MutexWorkflowID)
 
-	_ = workflow.
-		SignalExternalWorkflow(ctx, m.MutexWorkflowID, "", WorkflowSignalRequestLock.String(), m.CurrentWorkflowID).
+	err := workflow.
+		SignalExternalWorkflow(ctx, m.MutexWorkflowID, "", WorkflowSignalRequestLock.String(), sendingWorkflowID).
 		Get(ctx, nil)
+
+	if err != nil {
+		logger.Error("Error in signaling external workflow", "Workflow", m.MutexWorkflowID, "Error", err)
+		return nil, err
+	}
 
 	logger.Info("Lock: waiting to acquire lock")
 
@@ -94,7 +98,7 @@ func (m *Mutex) Lock(ctx workflow.Context) (UnlockFunc, error) {
 
 	unlockFunc := func() error {
 		logger.Info("Lock: sending release lock signal")
-		return workflow.SignalExternalWorkflow(ctx, m.MutexWorkflowID, "", WorkflowSignalReleaseLock.String(), m.CurrentWorkflowID).Get(ctx, nil)
+		return workflow.SignalExternalWorkflow(ctx, m.MutexWorkflowID, "", WorkflowSignalReleaseLock.String(), sendingWorkflowID).Get(ctx, nil)
 	}
 
 	return unlockFunc, nil

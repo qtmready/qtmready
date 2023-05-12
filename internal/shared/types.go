@@ -12,7 +12,7 @@ type (
 	PullRequestSignal struct {
 		RepoID           gocql.UUID
 		SenderWorkflowID string
-		PullRequestID    int64
+		TriggerID        int64
 	}
 
 	FutureHandler  func(workflow.Future)               // FutureHandler is the signature of the future handler function.

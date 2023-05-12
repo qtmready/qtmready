@@ -179,7 +179,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	signalPayload := &shared.PullRequestSignal{
 		RepoID:           coreRepo.ID,
 		SenderWorkflowID: workflow.GetInfo(ctx).WorkflowExecution.ID,
-		PullRequestID:    payload.PullRequest.ID,
+		TriggerID:        payload.PullRequest.ID,
 	}
 
 	// signal core stack workflow

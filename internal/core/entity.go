@@ -41,7 +41,6 @@ var (
 	changesetColums = []string{
 		"id",
 		"stack_id",
-		"calver",
 		"repo_markers",
 		"created_by",
 		"created_at",
@@ -83,7 +82,6 @@ type (
 	ChangeSet struct {
 		ID          gocql.UUID           `json:"id" cql:"id"`
 		StackID     gocql.UUID           `json:"stack_id" cql:"stack_id"`
-		Calver      string               `json:"calver" cql:"calver"`
 		RepoMarkers ChangeSetRepoMarkers `json:"repo_markers" cql:"repo_markers"`
 		CreatedBy   string               `json:"created_by" cql:"created_by"`
 		CreatedAt   time.Time            `json:"created_at"`

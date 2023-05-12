@@ -20,9 +20,14 @@ package core
 import (
 	"context"
 
+	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/ctrlplane/internal/db"
+)
+
+var (
+	activities *Activities
 )
 
 type (
@@ -82,7 +87,16 @@ func (a *Activities) GetBluePrint(ctx context.Context, stackID string) (*Bluepri
 	return blueprint, nil
 }
 
-func (a *Activities) CreateChangeset(ctx context.Context, changeSet *ChangeSet) error {
-	err := db.Save(changeSet)
+func (a *Activities) CreateChangeset(ctx context.Context, changeSet *ChangeSet, ID gocql.UUID) error {
+	err := db.CreateWithID(changeSet, ID)
 	return err
+}
+
+func (a *Activities) GetChangeset(ctx context.Context, changeSetID gocql.UUID) (*ChangeSet, error) {
+	c := new(ChangeSet)
+	if err := db.Get(c, db.QueryParams{"id": changeSetID.String()}); err != nil {
+		return c, err
+	}
+
+	return c, nil
 }

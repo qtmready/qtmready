@@ -47,7 +47,7 @@ type (
 		WorkflowIDs ChildWorkflowIDs
 	}
 
-	DeploymentDataMap map[int64]*DeploymentData
+	DeploymentDataMap map[gocql.UUID]*DeploymentData // changesetID and deploymentData map
 	AssetsMap         map[int64]*Assets
 
 	// Assets contains all the assets fetched from DB against a stack.
@@ -57,7 +57,6 @@ type (
 		Workloads       []Workload
 		Blueprint       Blueprint
 		ResourcesConfig []ResourceData
-		PRID            int64
 		ChangesetID     gocql.UUID
 	}
 )

@@ -129,6 +129,11 @@ func Save[T Entity](entity T) error {
 // Create creates the entity. The entity value is a pointer to the struct.
 func Create[T Entity](entity T) error {
 	pk, _ := gocql.RandomUUID()
+	return CreateWithID(entity, pk)
+}
+
+// Create creates the entity. The entity value is a pointer to the struct.
+func CreateWithID[T Entity](entity T, pk gocql.UUID) error {
 	now := time.Now()
 
 	setval(entity, "ID", pk)
