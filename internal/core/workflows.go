@@ -130,8 +130,6 @@ func onPRSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDa
 		opts := shared.Temporal.Queues[shared.CoreQueue].
 			GetChildWorkflowOptions("get_assets", "stack", stackID, "changeset", changesetID.String(),
 				"trigger", strconv.FormatInt(payload.TriggerID, 10))
-		// retryPolicy := &temporal.RetryPolicy{MaximumAttempts: 0}
-		// opts.RetryPolicy = retryPolicy
 
 		getAssetsPayload := &GetAssetsWorkflowPayload{
 			StackID:     stackID,
@@ -259,6 +257,7 @@ func (w *Workflows) GetAssetsWorkflow(ctx workflow.Context, payload *GetAssetsWo
 
 	// create assets
 	assets.Create()
+	assets.ChangesetID = payload.ChangeSetID
 	assets.Blueprint = *blueprint
 	assets.Repos = append(assets.Repos, repos.Data...)
 	assets.Resources = append(assets.Resources, resources.Data...)
@@ -324,6 +323,7 @@ func (w *Workflows) ProvisionInfraWorkflow(ctx workflow.Context, assets *Assets)
 	return nil
 }
 
+// onInfraProvisionedSignal will receive assets by provisionInfraWorkflow, update deployment state and execute DeploymentWorkflow.
 func onInfraProvisionedSignal(ctx workflow.Context, stackID string, mutex *Mutex, deploymentMap DeploymentDataMap) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 	w := &Workflows{}
@@ -377,6 +377,7 @@ func (w *Workflows) DeploymentWorkflow(ctx workflow.Context, stackID string, mut
 	return nil
 }
 
+// onDeploymentCompletedSignal will conclude the deployment
 func onDeploymentCompletedSignal(ctx workflow.Context, stackID string, deploymentMap DeploymentDataMap) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 

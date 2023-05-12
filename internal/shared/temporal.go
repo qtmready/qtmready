@@ -25,6 +25,8 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/workflow"
+
+	tmp "go.temporal.io/sdk/temporal"
 )
 
 var (
@@ -115,17 +117,24 @@ func (q *queue) CreateWorkflowID(sender string, args ...string) string {
 }
 
 func (q *queue) GetWorkflowOptions(sender string, args ...string) client.StartWorkflowOptions {
-	return client.StartWorkflowOptions{
+	opts := client.StartWorkflowOptions{
 		ID:        q.CreateWorkflowID(sender, args...),
 		TaskQueue: q.GetName(),
 		// WorkflowIDReusePolicy: 3, // client.WorkflowIDReusePolicyRejectDuplicate
 	}
+	retryPolicy := &tmp.RetryPolicy{MaximumAttempts: WorkflowMaxAttempts}
+	opts.RetryPolicy = retryPolicy
+	return opts
 }
 
 func (q *queue) GetChildWorkflowOptions(sender string, args ...string) workflow.ChildWorkflowOptions {
-	return workflow.ChildWorkflowOptions{
+	opts := workflow.ChildWorkflowOptions{
 		WorkflowID: q.CreateWorkflowID(sender, args...),
 	}
+
+	retryPolicy := &tmp.RetryPolicy{MaximumAttempts: WorkflowMaxAttempts}
+	opts.RetryPolicy = retryPolicy
+	return opts
 }
 
 func (t *temporal) ReadEnv() {

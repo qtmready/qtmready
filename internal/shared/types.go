@@ -22,6 +22,8 @@ type (
 // workflow signals.
 const (
 	WorkflowSignalPullRequest WorkflowSignal = "pull_request"
+
+	WorkflowMaxAttempts = 10
 )
 
 /*
