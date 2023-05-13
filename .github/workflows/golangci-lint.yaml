@@ -12,11 +12,11 @@ jobs:
       GO111MODULE: off
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v3
+
       - uses: actions/setup-go@v4
         with:
-          go-version-file: "go.mod"
-
-      - uses: actions/checkout@v3
+          go-version-file: go.mod
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
