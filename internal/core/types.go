@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/gocql/gocql"
+
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -66,5 +67,4 @@ func (a *Assets) Create() {
 	a.Resources = make([]Resource, 0)
 	a.Workloads = make([]Workload, 0)
 	a.ResourcesConfig = make([]ResourceData, 0)
-
 }

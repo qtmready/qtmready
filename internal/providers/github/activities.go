@@ -140,7 +140,7 @@ func (a *Activities) GetStack(ctx context.Context, repo *core.Repo) (*core.Stack
 	return s, nil
 }
 
-// GetLatestCommitforRepo gets latest commit for default branch of the provided repo
+// GetLatestCommitforRepo gets latest commit for default branch of the provided repo.
 func (g *github) GetLatestCommitforRepo(ctx context.Context, providerID string, branch string) (string, error) {
 	logger := activity.GetLogger(ctx)
 	prepo := &Repo{}
@@ -162,5 +162,6 @@ func (g *github) GetLatestCommitforRepo(ctx context.Context, providerID string, 
 	}
 
 	logger.Debug("Repo", "Name", prepo.FullName, "Branch name", gb.Name, "Last commit", gb.Commit.SHA)
+
 	return *gb.Commit.SHA, nil
 }

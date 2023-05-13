@@ -91,10 +91,10 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 	}
 
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	act := workflow.WithActivityOptions(ctx, activityOpts)
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
 	err := workflow.
-		ExecuteActivity(act, activities.CreateOrUpdateInstallation, installation).
-		Get(act, installation)
+		ExecuteActivity(actx, activities.CreateOrUpdateInstallation, installation).
+		Get(actx, installation)
 
 	if err != nil {
 		logger.Error("error saving installation", "error", err)
@@ -118,7 +118,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 				TeamID:         installation.TeamID,
 			}
 
-			future := workflow.ExecuteActivity(act, activities.CreateOrUpdateGithubRepo, repo)
+			future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateGithubRepo, repo)
 			selector.AddFuture(future, onCreateOrUpdateRepoActivityFuture(ctx, repo))
 		}
 
@@ -160,16 +160,18 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 
 	// setting activity options
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	act := workflow.WithActivityOptions(ctx, activityOpts)
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
 	// get core repo
 	repo := &Repo{GithubID: payload.Repository.ID}
 	coreRepo := &core.Repo{}
-	err := workflow.ExecuteActivity(act, activities.GetCoreRepo, repo).Get(ctx, coreRepo)
+
+	err := workflow.ExecuteActivity(actx, activities.GetCoreRepo, repo).Get(ctx, coreRepo)
 	if err != nil {
 		logger.Error("error getting core repo", "error", err)
 		return err
 	}
+
 	logger.Debug("Got core repo")
 
 	// get core workflow ID for this stack
@@ -184,11 +186,20 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 
 	// signal core stack workflow
 	logger.Info("core workflow id", "ID", corePRWfID)
+
 	options := shared.Temporal.Queues[shared.CoreQueue].
 		GetWorkflowOptions("stack", coreRepo.StackID.String())
 
 	cw := &core.Workflows{}
-	shared.Temporal.Client.SignalWithStartWorkflow(context.Background(), corePRWfID, shared.WorkflowSignalPullRequest.String(), signalPayload, options, cw.OnPullRequestWorkflow, coreRepo.StackID.String())
+	_, _ = shared.Temporal.Client.SignalWithStartWorkflow(
+		context.Background(),
+		corePRWfID,
+		shared.WorkflowSignalPullRequest.String(),
+		signalPayload,
+		options,
+		cw.OnPullRequestWorkflow,
+		coreRepo.StackID.String(),
+	)
 	// workflow.SignalExternalWorkflow(ctx, corePRWfID, "", shared.WorkflowSignalPullRequest.String(), signalPayload).Get(ctx, nil)
 	logger.Debug("Signaled workflow", "ID", signalPayload.SenderWorkflowID, " core repo ID: ", signalPayload.RepoID.String())
 
@@ -216,11 +227,11 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 
 	installation := &Installation{}
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	act := workflow.WithActivityOptions(ctx, activityOpts)
-	err := workflow.
-		ExecuteActivity(act, activities.GetInstallation, payload.Installation.ID).
-		Get(ctx, installation)
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
+	err := workflow.
+		ExecuteActivity(actx, activities.GetInstallation, payload.Installation.ID).
+		Get(ctx, installation)
 	if err != nil {
 		logger.Error("error getting installation", "error", err)
 		return err
@@ -238,7 +249,7 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 			TeamID:         installation.TeamID,
 		}
 
-		future := workflow.ExecuteActivity(act, activities.CreateOrUpdateGithubRepo, repo)
+		future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateGithubRepo, repo)
 		selector.AddFuture(future, onCreateOrUpdateRepoActivityFuture(ctx, repo))
 	}
 
@@ -257,7 +268,9 @@ func onCreateOrUpdateRepoActivityFuture(ctx workflow.Context, payload *Repo) sha
 }
 
 // onInstallationWebhookSignal handles webhook events for installation that is in progress.
-func onInstallationWebhookSignal(ctx workflow.Context, installation *InstallationEvent, status *InstallationWorkflowStatus) shared.ChannelHandler {
+func onInstallationWebhookSignal(
+	ctx workflow.Context, installation *InstallationEvent, status *InstallationWorkflowStatus,
+) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
@@ -278,7 +291,9 @@ func onInstallationWebhookSignal(ctx workflow.Context, installation *Installatio
 }
 
 // onRequestSignal handles new http requests on an installation in progress.
-func onRequestSignal(ctx workflow.Context, installation *CompleteInstallationSignal, status *InstallationWorkflowStatus) shared.ChannelHandler {
+func onRequestSignal(
+	ctx workflow.Context, installation *CompleteInstallationSignal, status *InstallationWorkflowStatus,
+) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
