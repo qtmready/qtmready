@@ -10,10 +10,15 @@
 package core
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	itable "github.com/Guilospanck/igocqlx/table"
@@ -21,7 +26,6 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/scylladb/gocqlx/v2/table"
-	"go.breu.io/ctrlplane/internal/shared"
 	externalRef1 "go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -63,7 +67,6 @@ func (v CloudProvider) MarshalJSON() ([]byte, error) { return json.Marshal(v.Str
 func (v *CloudProvider) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
-    shared.Logger.Error("Failed to unmarshal CloudProvider", "error", err)
 		return err
 	}
 
@@ -219,7 +222,7 @@ type RepoProvider string
 type Resource struct {
 	CreatedAt time.Time `cql:"created_at" json:"created_at"`
 
-	// Driver s3, sqs, sns, dynamodb, postfres, mysql etc
+	// Driver s3, sqs, sns, dynamodb, postgres, mysql etc
 	Driver      string     `cql:"driver" json:"driver"`
 	ID          gocql.UUID `cql:"id" json:"id"`
 	IsImmutable *bool      `cql:"is_immutable" json:"is_immutable,omitempty"`
@@ -384,6 +387,1785 @@ type CreateStackJSONRequestBody = StackCreateRequest
 
 // CreateWorkloadJSONRequestBody defines body for CreateWorkload for application/json ContentType.
 type CreateWorkloadJSONRequestBody = WorkloadCreateRequest
+
+// RequestEditorFn  is the function signature for the RequestEditor callback function
+type RequestEditorFn func(ctx context.Context, req *http.Request) error
+
+// Doer performs HTTP requests.
+//
+// The standard http.Client implements this interface.
+type HttpRequestDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// Client which conforms to the OpenAPI3 specification for this service.
+type Client struct {
+	// The endpoint of the server conforming to this interface, with scheme,
+	// https://api.deepmap.com for example. This can contain a path relative
+	// to the server, such as https://api.deepmap.com/dev-test, and all the
+	// paths in the swagger spec will be appended to the server.
+	Server string
+
+	// Doer for performing requests, typically a *http.Client with any
+	// customized settings, such as certificate chains.
+	Client HttpRequestDoer
+
+	// A list of callbacks for modifying requests which are generated before sending over
+	// the network.
+	RequestEditors []RequestEditorFn
+}
+
+// ClientOption allows setting custom parameters during construction
+type ClientOption func(*Client) error
+
+// Creates a new Client, with reasonable defaults
+func NewClient(server string, opts ...ClientOption) (*Client, error) {
+	// create a client with sane default values
+	client := Client{
+		Server: server,
+	}
+	// mutate client and add all optional params
+	for _, o := range opts {
+		if err := o(&client); err != nil {
+			return nil, err
+		}
+	}
+	// ensure the server URL always has a trailing slash
+	if !strings.HasSuffix(client.Server, "/") {
+		client.Server += "/"
+	}
+	// create httpClient, if not already present
+	if client.Client == nil {
+		client.Client = &http.Client{}
+	}
+	return &client, nil
+}
+
+// WithHTTPClient allows overriding the default Doer, which is
+// automatically created using http.Client. This is useful for tests.
+func WithHTTPClient(doer HttpRequestDoer) ClientOption {
+	return func(c *Client) error {
+		c.Client = doer
+		return nil
+	}
+}
+
+// WithRequestEditorFn allows setting up a callback function, which will be
+// called right before sending the request. This can be used to mutate the request.
+func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
+	return func(c *Client) error {
+		c.RequestEditors = append(c.RequestEditors, fn)
+		return nil
+	}
+}
+
+// The interface specification for the client above.
+type ClientInterface interface {
+	// CreateBlueprint request with any body
+	CreateBlueprintWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateBlueprint(ctx context.Context, body CreateBlueprintJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetBlueprint request
+	GetBlueprint(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListRepos request
+	ListRepos(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateRepo request with any body
+	CreateRepoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateRepo(ctx context.Context, body CreateRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetRepo request
+	GetRepo(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateResource request with any body
+	CreateResourceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateResource(ctx context.Context, body CreateResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetResource request
+	GetResource(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// ListStacks request
+	ListStacks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateStack request with any body
+	CreateStackWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateStack(ctx context.Context, body CreateStackJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetStack request
+	GetStack(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateWorkload request with any body
+	CreateWorkloadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateWorkload(ctx context.Context, body CreateWorkloadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetWorkload request
+	GetWorkload(ctx context.Context, params *GetWorkloadParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) CreateBlueprintWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateBlueprintRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateBlueprint(ctx context.Context, body CreateBlueprintJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateBlueprintRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetBlueprint(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetBlueprintRequest(c.Server, stackId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListRepos(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListReposRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateRepoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateRepoRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateRepo(ctx context.Context, body CreateRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateRepoRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetRepo(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetRepoRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateResourceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateResourceRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateResource(ctx context.Context, body CreateResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateResourceRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetResource(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetResourceRequest(c.Server, stackId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ListStacks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListStacksRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateStackWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateStackRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateStack(ctx context.Context, body CreateStackJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateStackRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetStack(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStackRequest(c.Server, slug)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateWorkloadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateWorkloadRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateWorkload(ctx context.Context, body CreateWorkloadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateWorkloadRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetWorkload(ctx context.Context, params *GetWorkloadParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetWorkloadRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// NewCreateBlueprintRequest calls the generic CreateBlueprint builder with application/json body
+func NewCreateBlueprintRequest(server string, body CreateBlueprintJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateBlueprintRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateBlueprintRequestWithBody generates requests for CreateBlueprint with any type of body
+func NewCreateBlueprintRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/blueprints")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetBlueprintRequest generates requests for GetBlueprint
+func NewGetBlueprintRequest(server string, stackId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "stack_id", runtime.ParamLocationPath, stackId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/blueprints/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListReposRequest generates requests for ListRepos
+func NewListReposRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/repos")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateRepoRequest calls the generic CreateRepo builder with application/json body
+func NewCreateRepoRequest(server string, body CreateRepoJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateRepoRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateRepoRequestWithBody generates requests for CreateRepo with any type of body
+func NewCreateRepoRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/repos")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetRepoRequest generates requests for GetRepo
+func NewGetRepoRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/repos/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateResourceRequest calls the generic CreateResource builder with application/json body
+func NewCreateResourceRequest(server string, body CreateResourceJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateResourceRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateResourceRequestWithBody generates requests for CreateResource with any type of body
+func NewCreateResourceRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/resources")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetResourceRequest generates requests for GetResource
+func NewGetResourceRequest(server string, stackId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "stack_id", runtime.ParamLocationPath, stackId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/resources/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewListStacksRequest generates requests for ListStacks
+func NewListStacksRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/stacks")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateStackRequest calls the generic CreateStack builder with application/json body
+func NewCreateStackRequest(server string, body CreateStackJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateStackRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateStackRequestWithBody generates requests for CreateStack with any type of body
+func NewCreateStackRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/stacks")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetStackRequest generates requests for GetStack
+func NewGetStackRequest(server string, slug string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "slug", runtime.ParamLocationPath, slug)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/stacks/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewCreateWorkloadRequest calls the generic CreateWorkload builder with application/json body
+func NewCreateWorkloadRequest(server string, body CreateWorkloadJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateWorkloadRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateWorkloadRequestWithBody generates requests for CreateWorkload with any type of body
+func NewCreateWorkloadRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/workloads")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGetWorkloadRequest generates requests for GetWorkload
+func NewGetWorkloadRequest(server string, params *GetWorkloadParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/workloads/")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	queryValues := queryURL.Query()
+
+	if params.RepoId != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "repo_id", runtime.ParamLocationQuery, *params.RepoId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	if params.StackId != nil {
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "stack_id", runtime.ParamLocationQuery, *params.StackId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+	}
+
+	queryURL.RawQuery = queryValues.Encode()
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
+	for _, r := range c.RequestEditors {
+		if err := r(ctx, req); err != nil {
+			return err
+		}
+	}
+	for _, r := range additionalEditors {
+		if err := r(ctx, req); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ClientWithResponses builds on ClientInterface to offer response payloads
+type ClientWithResponses struct {
+	ClientInterface
+}
+
+// NewClientWithResponses creates a new ClientWithResponses, which wraps
+// Client with return type handling
+func NewClientWithResponses(server string, opts ...ClientOption) (*ClientWithResponses, error) {
+	client, err := NewClient(server, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &ClientWithResponses{client}, nil
+}
+
+// WithBaseURL overrides the baseURL.
+func WithBaseURL(baseURL string) ClientOption {
+	return func(c *Client) error {
+		newBaseURL, err := url.Parse(baseURL)
+		if err != nil {
+			return err
+		}
+		c.Server = newBaseURL.String()
+		return nil
+	}
+}
+
+// ClientWithResponsesInterface is the interface specification for the client with responses above.
+type ClientWithResponsesInterface interface {
+	// CreateBlueprint request with any body
+	CreateBlueprintWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBlueprintResponse, error)
+
+	CreateBlueprintWithResponse(ctx context.Context, body CreateBlueprintJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateBlueprintResponse, error)
+
+	// GetBlueprint request
+	GetBlueprintWithResponse(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*GetBlueprintResponse, error)
+
+	// ListRepos request
+	ListReposWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListReposResponse, error)
+
+	// CreateRepo request with any body
+	CreateRepoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRepoResponse, error)
+
+	CreateRepoWithResponse(ctx context.Context, body CreateRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRepoResponse, error)
+
+	// GetRepo request
+	GetRepoWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetRepoResponse, error)
+
+	// CreateResource request with any body
+	CreateResourceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateResourceResponse, error)
+
+	CreateResourceWithResponse(ctx context.Context, body CreateResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateResourceResponse, error)
+
+	// GetResource request
+	GetResourceWithResponse(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*GetResourceResponse, error)
+
+	// ListStacks request
+	ListStacksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListStacksResponse, error)
+
+	// CreateStack request with any body
+	CreateStackWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateStackResponse, error)
+
+	CreateStackWithResponse(ctx context.Context, body CreateStackJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateStackResponse, error)
+
+	// GetStack request
+	GetStackWithResponse(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*GetStackResponse, error)
+
+	// CreateWorkload request with any body
+	CreateWorkloadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWorkloadResponse, error)
+
+	CreateWorkloadWithResponse(ctx context.Context, body CreateWorkloadJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWorkloadResponse, error)
+
+	// GetWorkload request
+	GetWorkloadWithResponse(ctx context.Context, params *GetWorkloadParams, reqEditors ...RequestEditorFn) (*GetWorkloadResponse, error)
+}
+
+type CreateBlueprintResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *Blueprint
+	JSON400      *externalRef1.APIError
+	JSON500      *externalRef1.APIError
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateBlueprintResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateBlueprintResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetBlueprintResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Blueprint
+	JSON404      *externalRef1.APIError
+	JSON500      *externalRef1.APIError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetBlueprintResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetBlueprintResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListReposResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *RepoListResponse
+	JSON404      *externalRef1.APIError
+	JSON500      *externalRef1.APIError
+}
+
+// Status returns HTTPResponse.Status
+func (r ListReposResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListReposResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateRepoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *Repo
+	JSON400      *externalRef1.APIError
+	JSON500      *externalRef1.APIError
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateRepoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateRepoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetRepoResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Repo
+	JSON404      *externalRef1.APIError
+	JSON500      *externalRef1.APIError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetRepoResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetRepoResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateResourceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *Resource
+	JSON400      *externalRef1.APIError
+	JSON500      *externalRef1.APIError
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateResourceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateResourceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetResourceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ResourceListResponse
+	JSON404      *externalRef1.APIError
+	JSON500      *externalRef1.APIError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetResourceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetResourceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type ListStacksResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *StackListResponse
+	JSON500      *externalRef1.APIError
+}
+
+// Status returns HTTPResponse.Status
+func (r ListStacksResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ListStacksResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateStackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *Stack
+	JSON400      *externalRef1.APIError
+	JSON500      *externalRef1.APIError
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateStackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateStackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetStackResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Stack
+	JSON404      *externalRef1.APIError
+	JSON500      *externalRef1.APIError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetStackResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetStackResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateWorkloadResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *Workload
+	JSON400      *externalRef1.APIError
+	JSON500      *externalRef1.APIError
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateWorkloadResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateWorkloadResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GetWorkloadResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *struct {
+		union json.RawMessage
+	}
+	JSON404 *externalRef1.APIError
+	JSON500 *externalRef1.APIError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetWorkloadResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetWorkloadResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// CreateBlueprintWithBodyWithResponse request with arbitrary body returning *CreateBlueprintResponse
+func (c *ClientWithResponses) CreateBlueprintWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBlueprintResponse, error) {
+	rsp, err := c.CreateBlueprintWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateBlueprintResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateBlueprintWithResponse(ctx context.Context, body CreateBlueprintJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateBlueprintResponse, error) {
+	rsp, err := c.CreateBlueprint(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateBlueprintResponse(rsp)
+}
+
+// GetBlueprintWithResponse request returning *GetBlueprintResponse
+func (c *ClientWithResponses) GetBlueprintWithResponse(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*GetBlueprintResponse, error) {
+	rsp, err := c.GetBlueprint(ctx, stackId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetBlueprintResponse(rsp)
+}
+
+// ListReposWithResponse request returning *ListReposResponse
+func (c *ClientWithResponses) ListReposWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListReposResponse, error) {
+	rsp, err := c.ListRepos(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListReposResponse(rsp)
+}
+
+// CreateRepoWithBodyWithResponse request with arbitrary body returning *CreateRepoResponse
+func (c *ClientWithResponses) CreateRepoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRepoResponse, error) {
+	rsp, err := c.CreateRepoWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateRepoResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateRepoWithResponse(ctx context.Context, body CreateRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRepoResponse, error) {
+	rsp, err := c.CreateRepo(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateRepoResponse(rsp)
+}
+
+// GetRepoWithResponse request returning *GetRepoResponse
+func (c *ClientWithResponses) GetRepoWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetRepoResponse, error) {
+	rsp, err := c.GetRepo(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetRepoResponse(rsp)
+}
+
+// CreateResourceWithBodyWithResponse request with arbitrary body returning *CreateResourceResponse
+func (c *ClientWithResponses) CreateResourceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateResourceResponse, error) {
+	rsp, err := c.CreateResourceWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateResourceResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateResourceWithResponse(ctx context.Context, body CreateResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateResourceResponse, error) {
+	rsp, err := c.CreateResource(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateResourceResponse(rsp)
+}
+
+// GetResourceWithResponse request returning *GetResourceResponse
+func (c *ClientWithResponses) GetResourceWithResponse(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*GetResourceResponse, error) {
+	rsp, err := c.GetResource(ctx, stackId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetResourceResponse(rsp)
+}
+
+// ListStacksWithResponse request returning *ListStacksResponse
+func (c *ClientWithResponses) ListStacksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListStacksResponse, error) {
+	rsp, err := c.ListStacks(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseListStacksResponse(rsp)
+}
+
+// CreateStackWithBodyWithResponse request with arbitrary body returning *CreateStackResponse
+func (c *ClientWithResponses) CreateStackWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateStackResponse, error) {
+	rsp, err := c.CreateStackWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateStackResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateStackWithResponse(ctx context.Context, body CreateStackJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateStackResponse, error) {
+	rsp, err := c.CreateStack(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateStackResponse(rsp)
+}
+
+// GetStackWithResponse request returning *GetStackResponse
+func (c *ClientWithResponses) GetStackWithResponse(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*GetStackResponse, error) {
+	rsp, err := c.GetStack(ctx, slug, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetStackResponse(rsp)
+}
+
+// CreateWorkloadWithBodyWithResponse request with arbitrary body returning *CreateWorkloadResponse
+func (c *ClientWithResponses) CreateWorkloadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWorkloadResponse, error) {
+	rsp, err := c.CreateWorkloadWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateWorkloadResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateWorkloadWithResponse(ctx context.Context, body CreateWorkloadJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWorkloadResponse, error) {
+	rsp, err := c.CreateWorkload(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateWorkloadResponse(rsp)
+}
+
+// GetWorkloadWithResponse request returning *GetWorkloadResponse
+func (c *ClientWithResponses) GetWorkloadWithResponse(ctx context.Context, params *GetWorkloadParams, reqEditors ...RequestEditorFn) (*GetWorkloadResponse, error) {
+	rsp, err := c.GetWorkload(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetWorkloadResponse(rsp)
+}
+
+// ParseCreateBlueprintResponse parses an HTTP response from a CreateBlueprintWithResponse call
+func ParseCreateBlueprintResponse(rsp *http.Response) (*CreateBlueprintResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateBlueprintResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Blueprint
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetBlueprintResponse parses an HTTP response from a GetBlueprintWithResponse call
+func ParseGetBlueprintResponse(rsp *http.Response) (*GetBlueprintResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetBlueprintResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Blueprint
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListReposResponse parses an HTTP response from a ListReposWithResponse call
+func ParseListReposResponse(rsp *http.Response) (*ListReposResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListReposResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest RepoListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateRepoResponse parses an HTTP response from a CreateRepoWithResponse call
+func ParseCreateRepoResponse(rsp *http.Response) (*CreateRepoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateRepoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Repo
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetRepoResponse parses an HTTP response from a GetRepoWithResponse call
+func ParseGetRepoResponse(rsp *http.Response) (*GetRepoResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetRepoResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Repo
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateResourceResponse parses an HTTP response from a CreateResourceWithResponse call
+func ParseCreateResourceResponse(rsp *http.Response) (*CreateResourceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateResourceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Resource
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetResourceResponse parses an HTTP response from a GetResourceWithResponse call
+func ParseGetResourceResponse(rsp *http.Response) (*GetResourceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetResourceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResourceListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseListStacksResponse parses an HTTP response from a ListStacksWithResponse call
+func ParseListStacksResponse(rsp *http.Response) (*ListStacksResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ListStacksResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest StackListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateStackResponse parses an HTTP response from a CreateStackWithResponse call
+func ParseCreateStackResponse(rsp *http.Response) (*CreateStackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateStackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Stack
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetStackResponse parses an HTTP response from a GetStackWithResponse call
+func ParseGetStackResponse(rsp *http.Response) (*GetStackResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetStackResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Stack
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateWorkloadResponse parses an HTTP response from a CreateWorkloadWithResponse call
+func ParseCreateWorkloadResponse(rsp *http.Response) (*CreateWorkloadResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateWorkloadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Workload
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGetWorkloadResponse parses an HTTP response from a GetWorkloadWithResponse call
+func ParseGetWorkloadResponse(rsp *http.Response) (*GetWorkloadResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetWorkloadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest struct {
+			union json.RawMessage
+		}
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.APIError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
