@@ -49,7 +49,7 @@ type (
 	}
 
 	DeploymentsData map[gocql.UUID]*DeploymentData // changesetID and deploymentData map
-	AssetsMap       map[int64]*Assets
+	AssetsMap       map[gocql.UUID]*Assets         // changesetID and assets map
 
 	// Assets contains all the assets fetched from DB against a stack.
 	Assets struct {
