@@ -137,7 +137,7 @@ func onTriggerSignal(ctx workflow.Context, stackID string, deployments Deploymen
 
 		// execute GetAssets and wait until spawned
 		var execution workflow.Execution
-		cctx = workflow.WithChildOptions(cctx, opts)
+		cctx := workflow.WithChildOptions(ctx, opts)
 		err := workflow.
 			ExecuteChildWorkflow(cctx, w.GetAssets, getAssetsPayload).
 			GetChildWorkflowExecution().
