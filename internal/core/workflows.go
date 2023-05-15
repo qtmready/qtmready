@@ -292,14 +292,12 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 		logger.Info("Executing provision Infra workflow")
 
 		var execution workflow.Execution
-
 		opts := shared.Temporal.Queues[shared.CoreQueue].
 			GetChildWorkflowOptions("provisionInfra", "stack", stackID, "changeset", assets.ChangesetID.String())
 
 		cctx := workflow.WithChildOptions(ctx, opts)
-
 		err := workflow.
-			ExecuteChildWorkflow(ctx, w.ProvisionInfra, assets).
+			ExecuteChildWorkflow(cctx, w.ProvisionInfra, assets).
 			GetChildWorkflowExecution().Get(cctx, &execution)
 
 		if err != nil {

@@ -304,33 +304,33 @@ func onRequestSignal(
 	}
 }
 
-// onPRSignal handles incoming signals on open PR.
-func onPRSignal(ctx workflow.Context, pr *PullRequestEvent, status *PullRequestWorkflowStatus) shared.ChannelHandler {
-	logger := workflow.GetLogger(ctx)
+// // onPRSignal handles incoming signals on open PR.
+// func onPRSignal(ctx workflow.Context, pr *PullRequestEvent, status *PullRequestWorkflowStatus) shared.ChannelHandler {
+// 	logger := workflow.GetLogger(ctx)
 
-	return func(channel workflow.ReceiveChannel, more bool) {
-		channel.Receive(ctx, pr)
+// 	return func(channel workflow.ReceiveChannel, more bool) {
+// 		channel.Receive(ctx, pr)
 
-		switch pr.Action {
-		case "closed":
-			logger.Info("PR closed: scheduling aperture to be abandoned.", "action", pr.Action)
+// 		switch pr.Action {
+// 		case "closed":
+// 			logger.Info("PR closed: scheduling aperture to be abandoned.", "action", pr.Action)
 
-			if pr.PullRequest.Merged {
-				logger.Info("PR merged: scheduling aperture to finish with conclusion.")
+// 			if pr.PullRequest.Merged {
+// 				logger.Info("PR merged: scheduling aperture to finish with conclusion.")
 
-				// TODO: send the signal to the aperture workflow to finish with conclusion.
-				status.Complete = true
-			} else {
-				logger.Info("PR closed: abort aperture.")
+// 				// TODO: send the signal to the aperture workflow to finish with conclusion.
+// 				status.Complete = true
+// 			} else {
+// 				logger.Info("PR closed: abort aperture.")
 
-				status.Complete = true
-			}
-		case "synchronize":
-			logger.Info("PR updated: checking the status of the environment ...", "action", pr.Action)
-			// TODO: here we need to check the app associated with repo & get the `release` branch. If the PR branch is not
-			// the default branch, then we update in place, otherwise, we queue a new rollout.
-		default:
-			logger.Info("PR: no action required, skipping ...", "action", pr.Action)
-		}
-	}
+// 				status.Complete = true
+// 			}
+// 		case "synchronize":
+// 			logger.Info("PR updated: checking the status of the environment ...", "action", pr.Action)
+// 			// TODO: here we need to check the app associated with repo & get the `release` branch. If the PR branch is not
+// 			// the default branch, then we update in place, otherwise, we queue a new rollout.
+// 		default:
+// 			logger.Info("PR: no action required, skipping ...", "action", pr.Action)
+// 		}
+// 	}
 }
