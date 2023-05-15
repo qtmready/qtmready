@@ -34,19 +34,19 @@ type (
 	}
 )
 
-func NewZapAdapter(logger *zap.Logger) *ZapAdapter {
+func NewZapAdapter(logger *zap.Logger, skip int) *ZapAdapter {
 	return &ZapAdapter{
-		logger: logger.WithOptions(zap.AddCallerSkip(1)), // skip the caller of this function
+		logger: logger.WithOptions(zap.AddCallerSkip(skip)), // skip the caller of this function
 		core:   logger.Core(),
 	}
 }
 
-func (adapter *ZapAdapter) Trace(msg string, fields ...interface{}) {
+func (adapter *ZapAdapter) Trace(msg string, fields ...any) {
 	// TODO: Implement OpenTelemetry compatible Trace
 	adapter.logger.Debug(msg, adapter.fields(fields)...)
 }
 
-func (adapter *ZapAdapter) Debug(msg string, fields ...interface{}) {
+func (adapter *ZapAdapter) Debug(msg string, fields ...any) {
 	if !adapter.core.Enabled(zapcore.DebugLevel) {
 		return
 	}
@@ -54,7 +54,7 @@ func (adapter *ZapAdapter) Debug(msg string, fields ...interface{}) {
 	adapter.logger.Debug(msg, adapter.fields(fields)...)
 }
 
-func (adapter *ZapAdapter) Info(msg string, fields ...interface{}) {
+func (adapter *ZapAdapter) Info(msg string, fields ...any) {
 	if !adapter.core.Enabled(zapcore.InfoLevel) {
 		return
 	}
@@ -62,7 +62,7 @@ func (adapter *ZapAdapter) Info(msg string, fields ...interface{}) {
 	adapter.logger.Info(msg, adapter.fields(fields)...)
 }
 
-func (adapter *ZapAdapter) Warn(msg string, fields ...interface{}) {
+func (adapter *ZapAdapter) Warn(msg string, fields ...any) {
 	if !adapter.core.Enabled(zapcore.WarnLevel) {
 		return
 	}
@@ -70,7 +70,7 @@ func (adapter *ZapAdapter) Warn(msg string, fields ...interface{}) {
 	adapter.logger.Warn(msg, adapter.fields(fields)...)
 }
 
-func (adapter *ZapAdapter) Error(msg string, fields ...interface{}) {
+func (adapter *ZapAdapter) Error(msg string, fields ...any) {
 	if !adapter.core.Enabled(zapcore.ErrorLevel) {
 		return
 	}
@@ -78,7 +78,7 @@ func (adapter *ZapAdapter) Error(msg string, fields ...interface{}) {
 	adapter.logger.Error(msg, adapter.fields(fields)...)
 }
 
-func (adapter *ZapAdapter) Printf(msg string, fields ...interface{}) {
+func (adapter *ZapAdapter) Printf(msg string, fields ...any) {
 	adapter.logger.Sugar().Infof(msg, fields...)
 }
 
@@ -86,27 +86,27 @@ func (adapter *ZapAdapter) Sync() error {
 	return adapter.logger.Sync()
 }
 
-func (adapter *ZapAdapter) TraceContext(_ context.Context, msg string, fields ...interface{}) {
+func (adapter *ZapAdapter) TraceContext(_ context.Context, msg string, fields ...any) {
 	adapter.Trace(msg, fields...)
 }
 
-func (adapter *ZapAdapter) DebugContext(_ context.Context, msg string, fields ...interface{}) {
+func (adapter *ZapAdapter) DebugContext(_ context.Context, msg string, fields ...any) {
 	adapter.Debug(msg, fields...)
 }
 
-func (adapter *ZapAdapter) InfoContext(_ context.Context, msg string, fields ...interface{}) {
+func (adapter *ZapAdapter) InfoContext(_ context.Context, msg string, fields ...any) {
 	adapter.Info(msg, fields...)
 }
 
-func (adapter *ZapAdapter) WarnContext(_ context.Context, msg string, fields ...interface{}) {
+func (adapter *ZapAdapter) WarnContext(_ context.Context, msg string, fields ...any) {
 	adapter.Warn(msg, fields...)
 }
 
-func (adapter *ZapAdapter) ErrorContext(_ context.Context, msg string, fields ...interface{}) {
+func (adapter *ZapAdapter) ErrorContext(_ context.Context, msg string, fields ...any) {
 	adapter.Error(msg, fields...)
 }
 
-func (adapter *ZapAdapter) fields(kv []interface{}) []zap.Field {
+func (adapter *ZapAdapter) fields(kv []any) []zap.Field {
 	var fields []zap.Field
 
 	if len(kv)%2 != 0 {

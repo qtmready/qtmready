@@ -20,6 +20,7 @@ package github
 import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
+
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -144,7 +145,7 @@ const (
 
 func (e WebhookEvent) String() string { return string(e) }
 
-// Workflow signal types
+// Workflow signal types.
 const (
 	WorkflowSignalInstallationEvent    shared.WorkflowSignal = "installation_event"
 	WorkflowSignalCompleteInstallation shared.WorkflowSignal = "complete_installation"

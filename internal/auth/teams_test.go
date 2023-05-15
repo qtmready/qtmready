@@ -40,7 +40,7 @@ func TestTeam(t *testing.T) {
 	t.Run("EntityOps", testutils.TestEntityOps(team, opsTests))
 }
 
-func testTeamSlug(args interface{}, want interface{}) func(*testing.T) {
+func testTeamSlug(args, want any) func(*testing.T) {
 	team := args.(*auth.Team)
 	sluglen := len(slug.Make(team.Name)) + 1 + 22
 

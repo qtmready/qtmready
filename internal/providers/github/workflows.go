@@ -18,11 +18,13 @@
 package github
 
 import (
+	"context"
 	"time"
+
+	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/ctrlplane/internal/core"
 	"go.breu.io/ctrlplane/internal/shared"
-	"go.temporal.io/sdk/workflow"
 )
 
 var (
@@ -43,9 +45,6 @@ type (
 	PullRequestWorkflowStatus struct {
 		Complete bool
 	}
-
-	FutureHandler  func(workflow.Future)               // FutureHandler is the signature of the future handler function.
-	ChannelHandler func(workflow.ReceiveChannel, bool) // ChannelHandler is the signature of the channel handler function.
 )
 
 // OnInstallationEvent workflow is executed when we initiate the installation of GitHub core.
@@ -92,10 +91,10 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 	}
 
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	act := workflow.WithActivityOptions(ctx, activityOpts)
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
 	err := workflow.
-		ExecuteActivity(act, activities.CreateOrUpdateInstallation, installation).
-		Get(act, installation)
+		ExecuteActivity(actx, activities.CreateOrUpdateInstallation, installation).
+		Get(actx, installation)
 
 	if err != nil {
 		logger.Error("error saving installation", "error", err)
@@ -119,7 +118,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 				TeamID:         installation.TeamID,
 			}
 
-			future := workflow.ExecuteActivity(act, activities.CreateOrUpdateGithubRepo, repo)
+			future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateGithubRepo, repo)
 			selector.AddFuture(future, onCreateOrUpdateRepoActivityFuture(ctx, repo))
 		}
 
@@ -161,16 +160,18 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 
 	// setting activity options
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	act := workflow.WithActivityOptions(ctx, activityOpts)
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
 	// get core repo
 	repo := &Repo{GithubID: payload.Repository.ID}
 	coreRepo := &core.Repo{}
-	err := workflow.ExecuteActivity(act, activities.GetCoreRepo, repo).Get(ctx, coreRepo)
+
+	err := workflow.ExecuteActivity(actx, activities.GetCoreRepo, repo).Get(ctx, coreRepo)
 	if err != nil {
 		logger.Error("error getting core repo", "error", err)
 		return err
 	}
+
 	logger.Debug("Got core repo")
 
 	// get core workflow ID for this stack
@@ -180,11 +181,27 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	signalPayload := &shared.PullRequestSignal{
 		RepoID:           coreRepo.ID,
 		SenderWorkflowID: workflow.GetInfo(ctx).WorkflowExecution.ID,
+		TriggerID:        payload.PullRequest.ID,
 	}
 
 	// signal core stack workflow
-	workflow.SignalExternalWorkflow(ctx, corePRWfID, "", shared.WorkflowSignalPullRequest.String(), signalPayload).Get(ctx, nil)
-	logger.Debug("Signaled workflow", "ID"+signalPayload.SenderWorkflowID+" core repo ID: "+signalPayload.RepoID.String())
+	logger.Info("core workflow id", "ID", corePRWfID)
+
+	options := shared.Temporal.Queues[shared.CoreQueue].
+		GetWorkflowOptions("stack", coreRepo.StackID.String())
+
+	cw := &core.Workflows{}
+	_, _ = shared.Temporal.Client.SignalWithStartWorkflow(
+		context.Background(),
+		corePRWfID,
+		shared.WorkflowSignalTriggerDeployment.String(),
+		signalPayload,
+		options,
+		cw.StackController,
+		coreRepo.StackID.String(),
+	)
+	// workflow.SignalExternalWorkflow(ctx, corePRWfID, "", shared.WorkflowSignalPullRequest.String(), signalPayload).Get(ctx, nil)
+	logger.Debug("Signaled workflow", "ID", signalPayload.SenderWorkflowID, " core repo ID: ", signalPayload.RepoID.String())
 
 	// workflow.GetSignalChannel(ctx, WorkflowSignalPullRequestProcessed.String()).Receive(ctx, &status)
 
@@ -210,11 +227,11 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 
 	installation := &Installation{}
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	act := workflow.WithActivityOptions(ctx, activityOpts)
-	err := workflow.
-		ExecuteActivity(act, activities.GetInstallation, payload.Installation.ID).
-		Get(ctx, installation)
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
+	err := workflow.
+		ExecuteActivity(actx, activities.GetInstallation, payload.Installation.ID).
+		Get(ctx, installation)
 	if err != nil {
 		logger.Error("error getting installation", "error", err)
 		return err
@@ -232,7 +249,7 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 			TeamID:         installation.TeamID,
 		}
 
-		future := workflow.ExecuteActivity(act, activities.CreateOrUpdateGithubRepo, repo)
+		future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateGithubRepo, repo)
 		selector.AddFuture(future, onCreateOrUpdateRepoActivityFuture(ctx, repo))
 	}
 
@@ -245,13 +262,15 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 }
 
 // onCreateOrUpdateRepoActivityFuture handles post-processing after a repository is saved against an installation.
-func onCreateOrUpdateRepoActivityFuture(ctx workflow.Context, payload *Repo) FutureHandler {
+func onCreateOrUpdateRepoActivityFuture(ctx workflow.Context, payload *Repo) shared.FutureHandler {
 	logger := workflow.GetLogger(ctx)
 	return func(f workflow.Future) { logger.Info("repository saved ...", "repo", payload.GithubID) }
 }
 
 // onInstallationWebhookSignal handles webhook events for installation that is in progress.
-func onInstallationWebhookSignal(ctx workflow.Context, installation *InstallationEvent, status *InstallationWorkflowStatus) ChannelHandler {
+func onInstallationWebhookSignal(
+	ctx workflow.Context, installation *InstallationEvent, status *InstallationWorkflowStatus,
+) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
@@ -272,7 +291,9 @@ func onInstallationWebhookSignal(ctx workflow.Context, installation *Installatio
 }
 
 // onRequestSignal handles new http requests on an installation in progress.
-func onRequestSignal(ctx workflow.Context, installation *CompleteInstallationSignal, status *InstallationWorkflowStatus) ChannelHandler {
+func onRequestSignal(
+	ctx workflow.Context, installation *CompleteInstallationSignal, status *InstallationWorkflowStatus,
+) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
@@ -283,33 +304,33 @@ func onRequestSignal(ctx workflow.Context, installation *CompleteInstallationSig
 	}
 }
 
-// onPRSignal handles incoming signals on open PR.
-func onPRSignal(ctx workflow.Context, pr *PullRequestEvent, status *PullRequestWorkflowStatus) ChannelHandler {
-	logger := workflow.GetLogger(ctx)
+// // onPRSignal handles incoming signals on open PR.
+// func onPRSignal(ctx workflow.Context, pr *PullRequestEvent, status *PullRequestWorkflowStatus) shared.ChannelHandler {
+// 	logger := workflow.GetLogger(ctx)
 
-	return func(channel workflow.ReceiveChannel, more bool) {
-		channel.Receive(ctx, pr)
+// 	return func(channel workflow.ReceiveChannel, more bool) {
+// 		channel.Receive(ctx, pr)
 
-		switch pr.Action {
-		case "closed":
-			logger.Info("PR closed: scheduling aperture to be abandoned.", "action", pr.Action)
+// 		switch pr.Action {
+// 		case "closed":
+// 			logger.Info("PR closed: scheduling aperture to be abandoned.", "action", pr.Action)
 
-			if pr.PullRequest.Merged {
-				logger.Info("PR merged: scheduling aperture to finish with conclusion.")
+// 			if pr.PullRequest.Merged {
+// 				logger.Info("PR merged: scheduling aperture to finish with conclusion.")
 
-				// TODO: send the signal to the aperture workflow to finish with conclusion.
-				status.Complete = true
-			} else {
-				logger.Info("PR closed: abort aperture.")
+// 				// TODO: send the signal to the aperture workflow to finish with conclusion.
+// 				status.Complete = true
+// 			} else {
+// 				logger.Info("PR closed: abort aperture.")
 
-				status.Complete = true
-			}
-		case "synchronize":
-			logger.Info("PR updated: checking the status of the environment ...", "action", pr.Action)
-			// TODO: here we need to check the app associated with repo & get the `release` branch. If the PR branch is not
-			// the default branch, then we update in place, otherwise, we queue a new rollout.
-		default:
-			logger.Info("PR: no action required, skipping ...", "action", pr.Action)
-		}
-	}
+// 				status.Complete = true
+// 			}
+// 		case "synchronize":
+// 			logger.Info("PR updated: checking the status of the environment ...", "action", pr.Action)
+// 			// TODO: here we need to check the app associated with repo & get the `release` branch. If the PR branch is not
+// 			// the default branch, then we update in place, otherwise, we queue a new rollout.
+// 		default:
+// 			logger.Info("PR: no action required, skipping ...", "action", pr.Action)
+// 		}
+// 	}
 }

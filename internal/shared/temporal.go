@@ -24,6 +24,8 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.temporal.io/sdk/client"
+	tmp "go.temporal.io/sdk/temporal"
+	"go.temporal.io/sdk/workflow"
 )
 
 var (
@@ -51,6 +53,9 @@ type (
 
 		// GetName gets the name of the queue as string.
 		GetName() string
+
+		// GetChildWorkflowOptions gets the child workflow options.
+		GetChildWorkflowOptions(sender string, args ...string) workflow.ChildWorkflowOptions
 	}
 
 	Queues map[QueueName]Queue
@@ -73,7 +78,7 @@ type (
 		Prefix string    // The prefix to create the workflow ID.
 	}
 
-	// workflowTools holds the helper methods for ctrlplane workflows. TODO: See how it evolves and comeup with a better solution
+	// workflowTools holds the helper methods for ctrlplane workflows. TODO: See how it evolves and comeup with a better solution.
 	workflowTools struct{}
 
 	// temporal holds the temporal server host and port, the client and all the available queues.
@@ -111,11 +116,26 @@ func (q *queue) CreateWorkflowID(sender string, args ...string) string {
 }
 
 func (q *queue) GetWorkflowOptions(sender string, args ...string) client.StartWorkflowOptions {
-	return client.StartWorkflowOptions{
+	opts := client.StartWorkflowOptions{
 		ID:        q.CreateWorkflowID(sender, args...),
 		TaskQueue: q.GetName(),
 		// WorkflowIDReusePolicy: 3, // client.WorkflowIDReusePolicyRejectDuplicate
 	}
+	retryPolicy := &tmp.RetryPolicy{MaximumAttempts: WorkflowMaxAttempts}
+	opts.RetryPolicy = retryPolicy
+
+	return opts
+}
+
+func (q *queue) GetChildWorkflowOptions(sender string, args ...string) workflow.ChildWorkflowOptions {
+	opts := workflow.ChildWorkflowOptions{
+		WorkflowID: q.CreateWorkflowID(sender, args...),
+	}
+
+	retryPolicy := &tmp.RetryPolicy{MaximumAttempts: WorkflowMaxAttempts}
+	opts.RetryPolicy = retryPolicy
+
+	return opts
 }
 
 func (t *temporal) ReadEnv() {

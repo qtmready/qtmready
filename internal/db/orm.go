@@ -74,11 +74,7 @@ func Get[T Entity](entity T, params QueryParams) error {
 		Columns(entity.GetTable().Metadata().M.Columns...).
 		Where(clause...)
 
-	if err := DB.Session.Query(query.ToCql()).GetRelease(entity); err != nil {
-		return err
-	}
-
-	return nil
+	return DB.Session.Query(query.ToCql()).GetRelease(entity)
 }
 
 // Filter the entity by given query params.
@@ -95,7 +91,7 @@ func Get[T Entity](entity T, params QueryParams) error {
 //		 params := db.QueryParams{"email": "email@example.com"}
 //	   users := make([]User, 0)
 //		 err := db.Filter(&User{}, &users, params)
-func Filter(entity Entity, dest interface{}, params QueryParams) error {
+func Filter(entity Entity, dest any, params QueryParams) error {
 	clause := make([]qb.Cmp, 0)
 
 	for key, value := range params {
@@ -107,11 +103,7 @@ func Filter(entity Entity, dest interface{}, params QueryParams) error {
 		Columns(entity.GetTable().Metadata().M.Columns...).
 		Where(clause...)
 
-	if err := DB.Session.Query(query.ToCql()).SelectRelease(dest); err != nil {
-		return err
-	}
-
-	return nil
+	return DB.Session.Query(query.ToCql()).SelectRelease(dest)
 }
 
 // Save saves the entity. If the entity has an ID, it will be updated. Otherwise,
@@ -137,6 +129,11 @@ func Save[T Entity](entity T) error {
 // Create creates the entity. The entity value is a pointer to the struct.
 func Create[T Entity](entity T) error {
 	pk, _ := gocql.RandomUUID()
+	return CreateWithID(entity, pk)
+}
+
+// CreateWithID forces the ID while creating. The entity value is a pointer to the struct.
+func CreateWithID[T Entity](entity T, pk gocql.UUID) error {
 	now := time.Now()
 
 	setval(entity, "ID", pk)
@@ -149,11 +146,7 @@ func Create[T Entity](entity T) error {
 
 	query := DB.Session.Query(entity.GetTable().Insert()).BindStruct(entity)
 
-	if err := query.ExecRelease(); err != nil {
-		return err
-	}
-
-	return nil
+	return query.ExecRelease()
 }
 
 // Update updates the entity.
@@ -167,11 +160,7 @@ func Update[T Entity](entity T) error {
 	tbl := entity.GetTable()
 	columns := tbl.Metadata().M.Columns[1:] // Remove the first element. We are assuming it is the primary key.
 
-	if err := DB.Session.Query(tbl.Update(columns...)).BindStruct(entity).ExecRelease(); err != nil {
-		return err
-	}
-
-	return nil
+	return DB.Session.Query(tbl.Update(columns...)).BindStruct(entity).ExecRelease()
 }
 
 // gets the ID of the entity. The entity value is a pointer to the struct.
@@ -180,7 +169,7 @@ func getID(entity Entity) gocql.UUID {
 }
 
 // Set the value of the field of the entity. The entity value is a pointer to the struct.
-func setval(entity Entity, name string, val interface{}) {
+func setval(entity Entity, name string, val any) {
 	elem := reflect.ValueOf(entity).Elem()
 	elem.FieldByName(name).Set(reflect.ValueOf(val))
 }

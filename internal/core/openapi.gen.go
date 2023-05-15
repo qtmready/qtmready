@@ -21,6 +21,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/scylladb/gocqlx/v2/table"
+	"go.breu.io/ctrlplane/internal/shared"
 	externalRef1 "go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -62,6 +63,7 @@ func (v CloudProvider) MarshalJSON() ([]byte, error) { return json.Marshal(v.Str
 func (v *CloudProvider) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
+    shared.Logger.Error("Failed to unmarshal CloudProvider", "error", err)
 		return err
 	}
 

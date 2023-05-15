@@ -65,7 +65,7 @@ type (
 	}
 )
 
-func (m *mlog) Printf(format string, v ...interface{}) {
+func (m *mlog) Printf(format string, v ...any) {
 	format = fmt.Sprintf("db: [external/migrate] %s", format)
 	shared.Logger.Debug(fmt.Sprintf(format, v...))
 }

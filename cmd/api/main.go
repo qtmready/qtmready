@@ -37,11 +37,11 @@ import (
 )
 
 func init() {
-	waitgroup := conc.WaitGroup{}
+	waitgroup := conc.NewWaitGroup()
 	defer waitgroup.Wait()
 	// Reading the configuration from the environment
 	shared.Service.ReadEnv()
-	shared.Service.InitLogger()
+	shared.Service.InitLogger(1)
 	shared.Service.InitValidator()
 	shared.EventStream.ReadEnv()
 	db.DB.ReadEnv()
@@ -107,9 +107,9 @@ func main() {
 		}
 	}()
 
-	quit := make(chan os.Signal, 1)                                       // create a channel to listen for quit signals.
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL) // listen for quit signals.
-	<-quit                                                                // wait for quit signal.
+	quit := make(chan os.Signal, 1)                      // create a channel to listen to quit signals.
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // setting up the signals to listen to.
+	<-quit                                               // wait for quit signal.
 
 	if err := e.Shutdown(context.Background()); err != nil {
 		exitcode = 1

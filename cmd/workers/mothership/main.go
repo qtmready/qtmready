@@ -32,20 +32,25 @@ import (
 )
 
 func init() {
-	waitgroup := conc.WaitGroup{}
+	waitgroup := conc.NewWaitGroup()
 	defer waitgroup.Wait()
 
 	shared.Service.ReadEnv()
-	shared.Service.InitLogger()
+	shared.Service.InitLogger(3)
 	shared.EventStream.ReadEnv()
 	shared.Temporal.ReadEnv()
 	github.Github.ReadEnv()
 	db.DB.ReadEnv()
+
+	// shared.Temporal.ServerHost = "127.0.0.1"
+	// db.DB.Hosts = append(db.DB.Hosts, "127.0.0.1")
 	waitgroup.Go(db.DB.InitSession)
-	waitgroup.Go(shared.EventStream.InitConnection)
+	// waitgroup.Go(shared.EventStream.InitConnection)
 	waitgroup.Go(shared.Temporal.InitClient)
 
 	shared.Logger.Info("initialized", "version", shared.Service.Version())
+
+	core.Core.Init()
 }
 
 func main() {
@@ -53,8 +58,10 @@ func main() {
 	exitcode := 0
 	defer func() { os.Exit(exitcode) }()
 	defer func() { _ = shared.Logger.Sync() }()
-	defer func() { _ = shared.EventStream.Drain() }()
+	// defer func() { _ = shared.EventStream.Drain() }()
 	defer shared.Temporal.Client.Close()
+
+	core.Core.Providers[core.RepoProviderGithub] = github.Github
 
 	queue := shared.Temporal.Queues[shared.ProvidersQueue].GetName()
 	coreQueue := shared.Temporal.Queues[shared.CoreQueue].GetName()
@@ -74,10 +81,15 @@ func main() {
 
 	// provider activities
 	wrkr.RegisterActivity(&github.Activities{})
+	wrkr.RegisterActivity(github.Github.GetLatestCommitforRepo)
 
 	// core workflows
-	coreWrkr.RegisterWorkflow(cwfs.OnPullRequestWorkflow)
+	coreWrkr.RegisterWorkflow(cwfs.StackController)
 	coreWrkr.RegisterWorkflow(cwfs.MutexWorkflow)
+	coreWrkr.RegisterWorkflow(cwfs.Deploy)
+	coreWrkr.RegisterWorkflow(cwfs.GetAssets)
+	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)
+	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.Activities{})
@@ -88,6 +100,7 @@ func main() {
 		exitcode = 1
 		return
 	}
+
 	defer wrkr.Stop()
 
 	// start worker for core queue
@@ -99,11 +112,11 @@ func main() {
 
 	defer coreWrkr.Stop()
 
-	// wait on signals to exit process
-	quit := make(chan os.Signal, 1)                                       // create a channel to listen for quit signals.
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGKILL) // listen for quit signals.
-	<-quit                                                                // wait for quit signal.
+	quit := make(chan os.Signal, 1)                      // create a channel to listen to quit signals.
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // setting up the signals to listen to.
+	<-quit                                               // wait for quit signal.
 
 	shared.Logger.Info("Exiting....")
+
 	exitcode = 1
 }

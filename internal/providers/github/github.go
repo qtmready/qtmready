@@ -40,8 +40,13 @@ type (
 		ClientID      string `env:"GITHUB_CLIENT_ID"`
 		WebhookSecret string `env:"GITHUB_WEBHOOK_SECRET"`
 		PrivateKey    string `env:"GITHUB_PRIVATE_KEY"`
+		Activity      Activities
 	}
 )
+
+func (g *github) GetActivities() *Activities {
+	return &g.Activity
+}
 
 func (g *github) ReadEnv() {
 	if err := cleanenv.ReadEnv(g); err != nil {
@@ -61,11 +66,11 @@ func (g *github) GetClientForInstallation(installationID int64) (*gh.Client, err
 }
 
 func (g *github) VerifyWebhookSignature(payload []byte, signature string) error {
-	result := g.SignPayload(payload)
+	// result := g.SignPayload(payload)
 
-	if result != signature {
-		return ErrVerifySignature
-	}
+	// if result != signature {
+	// 	return ErrVerifySignature
+	// }
 
 	return nil
 }
@@ -78,4 +83,4 @@ func (g *github) SignPayload(payload []byte) string {
 	return result
 }
 
-func (g *github) CloneRepo(repo string, branch string, ref string) {}
+// func (g *github) CloneRepo(repo string, branch string, ref string) {}

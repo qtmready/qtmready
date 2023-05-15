@@ -1,0 +1,63 @@
+@startuml GitOps
+
+participant "Workflow::PR" as pr #DC674E
+participant "func::OnPRSignal" as spr
+participant "Workflow::GetAsset" as ga #D0F090
+participant "func::onGetAssetsSignal" as sga
+participant "Workflow::ProvisionInfra" as pi #99FF99
+participant "func::onInfraProvisionedSignal" as sip
+participant "Workflow::Deployment" as d #99FF99
+participant "Workflow::Mutex" as mw
+participant "func::onDeploymentCompleteSignal" as sdc
+
+
+pr -> mw: start child workflow
+note over pr: waiting for signals
+
+pr-> spr: handle signal (stackID, deploymentMap)
+spr->spr: receive signal payload(PR ID)
+spr->spr: create and save deploymentData
+spr->ga: execute child workflow(stackID, PR ID)
+spr->spr: update deployment state to gettingAssets
+spr -> pr: return
+note over pr: waiting for signals
+
+ga-> ga: get resources, blueprint, \nworkloads and repos from DB
+ga->ga: create and save changeset
+ga->pr: signal external workflow(assets)
+
+pr->sga: handle signal(stackID, deploymentData)
+sga->sga: receive signal data(assets)
+sga->pi: execute child workflow
+sga->sga: update deployment state to ProvisioningInfra
+sga->pr :return
+note over pr: waiting for signals
+
+loop resources 
+    pi -> pi: create resource in activity
+    end
+pi->pr: signal external workflow(assets)
+
+pr->sip: handle signal(stackID, deploymentMap)
+sip-> sip: receive signal data(assets)
+sip->d: execute child workflow
+sip->sip: update deployment state to CreatingDeployment
+sip->pr: return
+note over pr: waiting for signals
+
+d-> mw: request lock
+mw->d: lock acquired
+d->d: deploy
+d->pr: signal external workflow(assets)
+
+pr->sdc: handle signal
+
+
+
+
+
+
+
+
+@enduml
+

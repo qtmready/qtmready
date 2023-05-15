@@ -29,7 +29,7 @@ func main() {
 	defer waitgroup.Wait()
 	// Reading the configuration from the environment
 	shared.Service.ReadEnv()
-	shared.Service.InitLogger()
+	shared.Service.InitLogger(1)
 	db.DB.ReadEnv()
 	// Reading the configuration from the environment ... Done
 
