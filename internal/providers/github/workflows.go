@@ -188,7 +188,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 		GetWorkflowOptions("stack", coreRepo.StackID.String())
 
 	cw := &core.Workflows{}
-	shared.Temporal.Client.SignalWithStartWorkflow(context.Background(), corePRWfID, shared.WorkflowSignalPullRequest.String(), signalPayload, options, cw.OnPullRequestWorkflow, coreRepo.StackID.String())
+	shared.Temporal.Client.SignalWithStartWorkflow(context.Background(), corePRWfID, shared.WorkflowSignalTriggerDeployment.String(), signalPayload, options, cw.StackController, coreRepo.StackID.String())
 	// workflow.SignalExternalWorkflow(ctx, corePRWfID, "", shared.WorkflowSignalPullRequest.String(), signalPayload).Get(ctx, nil)
 	logger.Debug("Signaled workflow", "ID", signalPayload.SenderWorkflowID, " core repo ID: ", signalPayload.RepoID.String())
 

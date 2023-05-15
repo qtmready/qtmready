@@ -61,7 +61,7 @@ func main() {
 	// defer func() { _ = shared.EventStream.Drain() }()
 	defer shared.Temporal.Client.Close()
 
-	core.Core.ProvidersMap[core.RepoProviderGithub] = github.Github
+	core.Core.Providers[core.RepoProviderGithub] = github.Github
 
 	queue := shared.Temporal.Queues[shared.ProvidersQueue].GetName()
 	coreQueue := shared.Temporal.Queues[shared.CoreQueue].GetName()
@@ -84,12 +84,12 @@ func main() {
 	wrkr.RegisterActivity(github.Github.GetLatestCommitforRepo)
 
 	// core workflows
-	coreWrkr.RegisterWorkflow(cwfs.OnPullRequestWorkflow)
+	coreWrkr.RegisterWorkflow(cwfs.StackController)
 	coreWrkr.RegisterWorkflow(cwfs.MutexWorkflow)
-	coreWrkr.RegisterWorkflow(cwfs.DeploymentWorkflow)
-	coreWrkr.RegisterWorkflow(cwfs.GetAssetsWorkflow)
-	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfraWorkflow)
-	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfraWorkflow)
+	coreWrkr.RegisterWorkflow(cwfs.Deploy)
+	coreWrkr.RegisterWorkflow(cwfs.GetAssets)
+	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)
+	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.Activities{})

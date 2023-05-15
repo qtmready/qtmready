@@ -37,7 +37,7 @@ type (
 )
 
 // NewMutex creates a mutex.
-func NewMutex(currentWorkflowID string, resourceID string, unlockTimeout time.Duration) *Mutex {
+func NewMutex(resourceID string, unlockTimeout time.Duration) *Mutex {
 	return &Mutex{
 		ResourceID:    resourceID,
 		UnlockTimeout: unlockTimeout,
@@ -77,12 +77,12 @@ func (m *Mutex) Lock(ctx workflow.Context) (UnlockFunc, error) {
 	// TODO: resource - mutex workflow id map?
 	logger := workflow.GetLogger(ctx)
 
-	sendingWorkflowID := workflow.GetInfo(ctx).WorkflowExecution.ID
+	sender := workflow.GetInfo(ctx).WorkflowExecution.ID
 	// request mutex workflow to acquire lock
 	logger.Info("Lock: sending acquire lock signal", "mutex", m.MutexWorkflowID)
 
 	err := workflow.
-		SignalExternalWorkflow(ctx, m.MutexWorkflowID, "", WorkflowSignalRequestLock.String(), sendingWorkflowID).
+		SignalExternalWorkflow(ctx, m.MutexWorkflowID, "", WorkflowSignalRequestLock.String(), sender).
 		Get(ctx, nil)
 
 	if err != nil {
@@ -98,7 +98,7 @@ func (m *Mutex) Lock(ctx workflow.Context) (UnlockFunc, error) {
 
 	unlockFunc := func() error {
 		logger.Info("Lock: sending release lock signal")
-		return workflow.SignalExternalWorkflow(ctx, m.MutexWorkflowID, "", WorkflowSignalReleaseLock.String(), sendingWorkflowID).Get(ctx, nil)
+		return workflow.SignalExternalWorkflow(ctx, m.MutexWorkflowID, "", WorkflowSignalReleaseLock.String(), sender).Get(ctx, nil)
 	}
 
 	return unlockFunc, nil
@@ -113,21 +113,21 @@ func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceID string, unloc
 	logger.Info("MutexWorkflow: started", "currentWorkflowID:", workflow.GetInfo(ctx).WorkflowExecution.ID)
 
 	// get lock request from workflows on request lock channel
-	var requestLockWorkflowID string
+	var lockedResource string
 
-	releaseLockWorkflowID := ""
+	UnlockingResource := ""
 	requestLockCh := workflow.GetSignalChannel(ctx, WorkflowSignalRequestLock.String())
 	releaseLockCh := workflow.GetSignalChannel(ctx, WorkflowSignalReleaseLock.String())
 
 	for {
 		// wait for the acquire lock signal
 		logger.Info("Waiting for acquire lock request")
-		requestLockCh.Receive(ctx, &requestLockWorkflowID)
+		requestLockCh.Receive(ctx, &lockedResource)
 
-		logger.Info("Aquire lock request received from workflow ID: " + requestLockWorkflowID)
+		logger.Info("Aquire lock request received from workflow ID: " + lockedResource)
 
 		// send lock acquired ack to sender workflow
-		err := workflow.SignalExternalWorkflow(ctx, requestLockWorkflowID, "", WorkflowSignalLockAcquired.String(), nil).Get(ctx, nil)
+		err := workflow.SignalExternalWorkflow(ctx, lockedResource, "", WorkflowSignalLockAcquired.String(), nil).Get(ctx, nil)
 
 		if err != nil {
 			// .Get(ctx, nil) blocks until the signal is sent.
@@ -147,14 +147,14 @@ func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceID string, unloc
 		logger.Info("MutexWorkflow: wait for release lock signal")
 
 		for {
-			releaseLockCh.Receive(ctx, &releaseLockWorkflowID)
+			releaseLockCh.Receive(ctx, &UnlockingResource)
 
-			if releaseLockWorkflowID == requestLockWorkflowID {
-				logger.Info("MutexWorkflow: release lock signal received from workflow: " + releaseLockWorkflowID)
+			if UnlockingResource == lockedResource {
+				logger.Info("MutexWorkflow: release lock signal received from workflow: " + UnlockingResource)
 				break
 			}
 
-			logger.Info("MutexWorkflow: release signal received from a workflow that is not holding the lock. sending workflow ID:", releaseLockWorkflowID)
+			logger.Info("MutexWorkflow: release signal received from a workflow that is not holding the lock. sending workflow ID:", UnlockingResource)
 		}
 	}
 }

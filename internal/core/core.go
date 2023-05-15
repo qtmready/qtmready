@@ -8,9 +8,9 @@ var (
 
 type (
 	core struct {
-		Activity     Activities
-		Workflow     Workflows
-		ProvidersMap providersMap
+		Activity  Activities
+		Workflow  Workflows
+		Providers providers
 	}
 )
 
@@ -18,9 +18,9 @@ type (
 	Provider interface {
 		GetLatestCommitforRepo(ctx context.Context, providerID string, branch string) (string, error)
 	}
-	providersMap map[RepoProvider]Provider
+	providers map[RepoProvider]Provider
 )
 
 func (c *core) Init() {
-	c.ProvidersMap = make(providersMap)
+	c.Providers = make(providers)
 }

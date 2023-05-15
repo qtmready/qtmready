@@ -47,8 +47,8 @@ type (
 		WorkflowIDs ChildWorkflowIDs
 	}
 
-	DeploymentDataMap map[gocql.UUID]*DeploymentData // changesetID and deploymentData map
-	AssetsMap         map[int64]*Assets
+	DeploymentsData map[gocql.UUID]*DeploymentData // changesetID and deploymentData map
+	AssetsMap       map[int64]*Assets
 
 	// Assets contains all the assets fetched from DB against a stack.
 	Assets struct {
