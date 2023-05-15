@@ -132,7 +132,7 @@ func Create[T Entity](entity T) error {
 	return CreateWithID(entity, pk)
 }
 
-// Create creates the entity. The entity value is a pointer to the struct.
+// CreateWithID forces the ID while creating. The entity value is a pointer to the struct.
 func CreateWithID[T Entity](entity T, pk gocql.UUID) error {
 	now := time.Now()
 

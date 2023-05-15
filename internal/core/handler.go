@@ -177,7 +177,8 @@ func (s *ServerHandler) CreateStack(ctx echo.Context) error {
 
 	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.StackController, stack.ID.String())
 	if err != nil {
-		// TODO: remove stack if workflow not started? or always start this workflow with signal so it can be started on pull request (if not already running)
+		// TODO: remove stack if workflow not started? or always start this workflow with signal so it can be started on pull request
+		// (if not already running)
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 

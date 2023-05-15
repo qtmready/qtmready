@@ -209,7 +209,7 @@ func StartMothershipContainer(ctx context.Context, secret string) (*Container, e
 }
 
 // StartAirContainer sets up comsmtrek/air to quickly compile different containers for services written in go.
-func StartAirContainer(ctx context.Context, name string, secret string, workdir string, config string, port string, waiting wait.Strategy) (*Container, error) {
+func StartAirContainer(ctx context.Context, name, secret, workdir, config, port string, waiting wait.Strategy) (*Container, error) {
 	env := ContainerEnvironment{
 		"DEBUG":              "true",
 		"SECRET":             secret,
@@ -276,7 +276,11 @@ func (d *Container) RunCQL(stmt string) error {
 
 // CreateKeyspace creates a keyspace in the Cassandra container.
 func (d *Container) CreateKeyspace(keyspace string) error {
-	stmt := fmt.Sprintf("create keyspace if not exists %s with replication = {'class': 'SimpleStrategy', 'replication_factor': 1};", keyspace)
+	stmt := fmt.Sprintf(
+		"create keyspace if not exists %s with replication = {'class': 'SimpleStrategy', 'replication_factor': 1};",
+		keyspace,
+	)
+
 	return d.RunCQL(stmt)
 }
 

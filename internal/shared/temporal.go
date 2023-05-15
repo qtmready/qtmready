@@ -24,9 +24,8 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/workflow"
-
 	tmp "go.temporal.io/sdk/temporal"
+	"go.temporal.io/sdk/workflow"
 )
 
 var (
@@ -124,6 +123,7 @@ func (q *queue) GetWorkflowOptions(sender string, args ...string) client.StartWo
 	}
 	retryPolicy := &tmp.RetryPolicy{MaximumAttempts: WorkflowMaxAttempts}
 	opts.RetryPolicy = retryPolicy
+
 	return opts
 }
 
@@ -134,6 +134,7 @@ func (q *queue) GetChildWorkflowOptions(sender string, args ...string) workflow.
 
 	retryPolicy := &tmp.RetryPolicy{MaximumAttempts: WorkflowMaxAttempts}
 	opts.RetryPolicy = retryPolicy
+
 	return opts
 }
 

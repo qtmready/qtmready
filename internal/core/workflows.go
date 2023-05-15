@@ -18,7 +18,6 @@
 package core
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -30,7 +29,7 @@ import (
 )
 
 const (
-	unLockTimeOutStackMutex             time.Duration = time.Minute * 30 //TODO: adjust this
+	unLockTimeOutStackMutex             time.Duration = time.Minute * 30 // TODO: adjust this
 	OnPullRequestWorkflowPRSignalsLimit               = 1000             // TODO: adjust this
 )
 
@@ -138,11 +137,11 @@ func onTriggerSignal(ctx workflow.Context, stackID string, deployments Deploymen
 
 		// execute GetAssets and wait until spawned
 		var execution workflow.Execution
-		ctx = workflow.WithChildOptions(ctx, opts)
+		cctx = workflow.WithChildOptions(cctx, opts)
 		err := workflow.
-			ExecuteChildWorkflow(ctx, w.GetAssets, getAssetsPayload).
+			ExecuteChildWorkflow(cctx, w.GetAssets, getAssetsPayload).
 			GetChildWorkflowExecution().
-			Get(ctx, &execution)
+			Get(cctx, &execution)
 
 		if err != nil {
 			logger.Error("TODO: Error in executing GetAssets", "Error", err)
@@ -158,24 +157,27 @@ func onTriggerSignal(ctx workflow.Context, stackID string, deployments Deploymen
 
 // GetAssets gets assests for stack including resources, workloads and blueprint.
 func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) error {
+	var (
+		future workflow.Future
+		err    error = nil
+	)
 
-	var future workflow.Future
 	logger := workflow.GetLogger(ctx)
 	assets := new(Assets)
 	workloads := SlicedResult[Workload]{}
 	resources := SlicedResult[Resource]{}
 	repos := SlicedResult[Repo]{}
 	blueprint := new(Blueprint)
-	var err error = nil
 
 	selector := workflow.NewSelector(ctx)
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	act := workflow.WithActivityOptions(ctx, activityOpts)
-	providerActivityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second, TaskQueue: shared.Temporal.Queues[shared.ProvidersQueue].GetName()}
-	providerAct := workflow.WithActivityOptions(ctx, providerActivityOpts)
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
+	providerActivityOpts := workflow.
+		ActivityOptions{StartToCloseTimeout: 60 * time.Second, TaskQueue: shared.Temporal.Queues[shared.ProvidersQueue].GetName()}
+	pctx := workflow.WithActivityOptions(ctx, providerActivityOpts)
 
 	// get resources for stack
-	future = workflow.ExecuteActivity(act, activities.GetResources, payload.StackID)
+	future = workflow.ExecuteActivity(actx, activities.GetResources, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &resources); err != nil {
 			logger.Error("GetResources activity failed", "error", err)
@@ -184,7 +186,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	})
 
 	// get workloads for stack
-	future = workflow.ExecuteActivity(act, activities.GetWorkloads, payload.StackID)
+	future = workflow.ExecuteActivity(actx, activities.GetWorkloads, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &workloads); err != nil {
 			logger.Error("GetWorkloads activity failed", "error", err)
@@ -193,7 +195,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	})
 
 	// get repos for stack
-	future = workflow.ExecuteActivity(act, activities.GetRepos, payload.StackID)
+	future = workflow.ExecuteActivity(actx, activities.GetRepos, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &repos); err != nil {
 			logger.Error("GetRepos activity failed", "error", err)
@@ -202,7 +204,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	})
 
 	// get blueprint for stack
-	future = workflow.ExecuteActivity(act, activities.GetBluePrint, payload.StackID)
+	future = workflow.ExecuteActivity(actx, activities.GetBluePrint, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &blueprint); err != nil {
 			logger.Error("GetBluePrint activity failed", "error", err)
@@ -228,10 +230,10 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 		marker := &repoMarker[i]
 		p := Core.Providers[rep.Provider] // get the specific provider
 		var commitID string
-		err := workflow.ExecuteActivity(providerAct, p.GetLatestCommitforRepo, rep.ProviderID, rep.DefaultBranch).Get(ctx, &commitID)
-		if err != nil {
+		if err := workflow.ExecuteActivity(pctx, p.GetLatestCommitforRepo, rep.ProviderID, rep.DefaultBranch).
+			Get(ctx, &commitID); err != nil {
 			logger.Error("Error in getting latest commit ID", "repo", rep.Name, "provider", rep.Provider)
-			return errors.New(fmt.Sprintf("Error in getting latest commit ID repo:%s, provider:%s", rep.Name, rep.Provider.String()))
+			return fmt.Errorf("Error in getting latest commit ID repo:%s, provider:%s", rep.Name, rep.Provider.String())
 		}
 
 		marker.CommitID = commitID
@@ -249,7 +251,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 		StackID:     stackID,
 	}
 
-	err = workflow.ExecuteActivity(act, activities.CreateChangeset, changeset, payload.ChangeSetID).Get(ctx, nil)
+	err = workflow.ExecuteActivity(actx, activities.CreateChangeset, changeset, payload.ChangeSetID).Get(ctx, nil)
 	if err != nil {
 		logger.Error("Error in creating changeset")
 	}
@@ -265,7 +267,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 
 	// signal parent workflow
 	PRWorkflow := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
-	workflow.
+	_ = workflow.
 		SignalExternalWorkflow(ctx, PRWorkflow, "", WorkflowSignalAssetsRetrieved.String(), assets).
 		Get(ctx, nil)
 
@@ -278,7 +280,6 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 	w := &Workflows{}
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-
 		assets := &Assets{}
 		channel.Receive(ctx, assets)
 		logger.Info("received Assets", "changeset", assets.ChangesetID)
@@ -291,13 +292,15 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 		logger.Info("Executing provision Infra workflow")
 
 		var execution workflow.Execution
+
 		opts := shared.Temporal.Queues[shared.CoreQueue].
 			GetChildWorkflowOptions("provisionInfra", "stack", stackID, "changeset", assets.ChangesetID.String())
-		ctx = workflow.WithChildOptions(ctx, opts)
+
+		cctx := workflow.WithChildOptions(ctx, opts)
 
 		err := workflow.
 			ExecuteChildWorkflow(ctx, w.ProvisionInfra, assets).
-			GetChildWorkflowExecution().Get(ctx, &execution)
+			GetChildWorkflowExecution().Get(cctx, &execution)
 
 		if err != nil {
 			logger.Error("TODO: Error in executing ProvisionInfra", "Error", err)
@@ -317,8 +320,9 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 		logger.Info("Creating resource", "Name", resource.Name)
 	}
 
-	PRWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
-	workflow.SignalExternalWorkflow(ctx, PRWorkflowID, "", WorkflowSignalInfraProvisioned.String(), assets).Get(ctx, nil)
+	prWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
+	_ = workflow.SignalExternalWorkflow(ctx, prWorkflowID, "", WorkflowSignalInfraProvisioned.String(), assets).Get(ctx, nil)
+
 	return nil
 }
 
@@ -337,12 +341,13 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, mutex *Mutex
 
 		var execution workflow.Execution
 
-		opts := shared.Temporal.Queues[shared.CoreQueue].GetChildWorkflowOptions("Deployment", "stack", stackID, "changeset", assets.ChangesetID.String())
-		ctx = workflow.WithChildOptions(ctx, opts)
-		err := workflow.
-			ExecuteChildWorkflow(ctx, w.Deploy, stackID, mutex, assets).
-			GetChildWorkflowExecution().Get(ctx, &execution)
+		opts := shared.Temporal.Queues[shared.CoreQueue].
+			GetChildWorkflowOptions("Deployment", "stack", stackID, "changeset", assets.ChangesetID.String())
+		cctx := workflow.WithChildOptions(ctx, opts)
 
+		err := workflow.
+			ExecuteChildWorkflow(cctx, w.Deploy, stackID, mutex, assets).
+			GetChildWorkflowExecution().Get(cctx, &execution)
 		if err != nil {
 			logger.Error("Error in Executing deployment workflow", "Error", err)
 		}
@@ -370,13 +375,13 @@ func (w *Workflows) Deploy(ctx workflow.Context, stackID string, mutex *Mutex, a
 	// release lock
 	_ = unlockFunc()
 
-	PRWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
-	workflow.SignalExternalWorkflow(ctx, PRWorkflowID, "", WorkflowSignalDeploymentCompleted.String(), assets)
+	prWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
+	workflow.SignalExternalWorkflow(ctx, prWorkflowID, "", WorkflowSignalDeploymentCompleted.String(), assets)
 
 	return nil
 }
 
-// onDeploymentCompletedSignal will conclude the deployment
+// onDeploymentCompletedSignal will conclude the deployment.
 func onDeploymentCompletedSignal(ctx workflow.Context, stackID string, deployments DeploymentsData) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 

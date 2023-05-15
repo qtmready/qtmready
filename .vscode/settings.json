@@ -4,6 +4,7 @@
   "gopls": {
     "ui.semanticTokens": true
   },
+  "editor.rulers": [80, 140],
   "go.lintTool": "golangci-lint",
   "go.lintOnSave": "package",
   "go.lintFlags": ["--fast"],

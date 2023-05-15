@@ -87,8 +87,8 @@ func (a *Activities) GetBluePrint(ctx context.Context, stackID string) (*Bluepri
 	return blueprint, nil
 }
 
-// CreateChangeset create changeset entity with provided ID
-func (a *Activities) CreateChangeset(ctx context.Context, changeSet *ChangeSet, ID gocql.UUID) error {
-	err := db.CreateWithID(changeSet, ID)
+// CreateChangeset create changeset entity with provided ID.
+func (a *Activities) CreateChangeset(ctx context.Context, changeSet *ChangeSet, id gocql.UUID) error {
+	err := db.CreateWithID(changeSet, id)
 	return err
 }

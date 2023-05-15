@@ -98,14 +98,22 @@ func (m *Mutex) Lock(ctx workflow.Context) (UnlockFunc, error) {
 
 	unlockFunc := func() error {
 		logger.Info("Lock: sending release lock signal")
-		return workflow.SignalExternalWorkflow(ctx, m.MutexWorkflowID, "", WorkflowSignalReleaseLock.String(), sender).Get(ctx, nil)
+
+		return workflow.SignalExternalWorkflow(
+			ctx,
+			m.MutexWorkflowID,
+			"",
+			WorkflowSignalReleaseLock.String(),
+			sender,
+		).Get(ctx, nil)
 	}
 
 	return unlockFunc, nil
 }
 
 // MutexWorkflow will lock a resource specified by resourceId. The resource wil be automatically released after unlockTimeout.
-// MutexWorkflow waits for a request lock signal, sends acknowledgement to the workflow requesting lock and then waits for release lock signal.
+// It waits for a request lock signal, sends acknowledgement to the workflow requesting lock and then waits for the
+// release lock signal.
 func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceID string, unlockTimeout time.Duration) error {
 	logger := workflow.GetLogger(ctx)
 	selector := workflow.NewSelector(ctx)
@@ -124,15 +132,16 @@ func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceID string, unloc
 		logger.Info("Waiting for acquire lock request")
 		requestLockCh.Receive(ctx, &lockedResource)
 
-		logger.Info("Aquire lock request received from workflow ID: " + lockedResource)
+		logger.Info("Aquire lock request received", "requested by", lockedResource)
 
 		// send lock acquired ack to sender workflow
 		err := workflow.SignalExternalWorkflow(ctx, lockedResource, "", WorkflowSignalLockAcquired.String(), nil).Get(ctx, nil)
 
 		if err != nil {
 			// .Get(ctx, nil) blocks until the signal is sent.
-			// If the senderWorkflowID is closed (terminated/canceled/timeouted/completed/etc), this would return error. In this case we release the lock
-			// immediately instead of failing the mutex workflow. Mutex workflow failing would lead to all workflows that have sent requestLock will be waiting.
+			// If the senderWorkflowID is closed (terminated/canceled/timeouted/completed/etc), this would return error. In this case we
+			// release the lock immediately instead of failing the mutex workflow. Mutex workflow failing would lead to all workflows
+			// that have sent requestLock will be waiting.
 			logger.Info("SignalExternalWorkflow error", "Error", err)
 			continue
 		}
@@ -154,7 +163,7 @@ func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceID string, unloc
 				break
 			}
 
-			logger.Info("MutexWorkflow: release signal received from a workflow that is not holding the lock. sending workflow ID:", UnlockingResource)
+			logger.Info("MutexWorkflow: release signal received. sending workflow ID:", UnlockingResource, "locked workflow", lockedResource)
 		}
 	}
 }
