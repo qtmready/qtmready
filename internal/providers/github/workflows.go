@@ -333,4 +333,4 @@ func onRequestSignal(
 // 			logger.Info("PR: no action required, skipping ...", "action", pr.Action)
 // 		}
 // 	}
-}
+// }
