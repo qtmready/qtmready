@@ -163,7 +163,7 @@ func (w *Workflows) MutexWorkflow(ctx workflow.Context, resourceID string, unloc
 				break
 			}
 
-			logger.Info("MutexWorkflow: release signal received. sending workflow ID:", UnlockingResource, "locked workflow", lockedResource)
+			logger.Info("MutexWorkflow: release signal received", "sending workflow ID:", UnlockingResource, "locked workflow", lockedResource)
 		}
 	}
 }
