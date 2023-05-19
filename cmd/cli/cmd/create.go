@@ -21,20 +21,16 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
-	"go.breu.io/ctrlplane/internal/shared"
 )
 
-var ()
-
-func NewCmdVersion() *cobra.Command {
+func NewCmdCreate() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "version",
-		Short: "Show the current ctrlplane version.",
-		Long:  `Show the current ctrlplane version.`,
+		Use:   "create",
+		Short: "command for creating a resource",
+		Long:  `command for interactivily creating a resource`,
+
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("cmd: version")
-			fmt.Println(shared.Service.Version()) // TODO: integrate versioning
+			fmt.Println("cmd: create")
 		},
 	}
 

@@ -15,28 +15,27 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package cmd
+package user
 
 import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-
-	"go.breu.io/ctrlplane/internal/shared"
 )
 
-var ()
-
-func NewCmdVersion() *cobra.Command {
+func NewCmdUser() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "version",
-		Short: "Show the current ctrlplane version.",
-		Long:  `Show the current ctrlplane version.`,
+		Use:   "user",
+		Short: "command for user operations.",
+		Long:  `command for user operations`,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("cmd: version")
-			fmt.Println(shared.Service.Version()) // TODO: integrate versioning
+			fmt.Print("error: must specify a resource")
+			fmt.Printf("cmd: user, args: %v", args)
 		},
 	}
+
+	cmd.AddCommand(NewCmdUserRegister())
+	cmd.AddCommand(NewCmdUserLogin())
 
 	return cmd
 }

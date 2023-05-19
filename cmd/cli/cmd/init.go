@@ -37,20 +37,22 @@ const (
 
 var (
 	ErrInvalidLength = errors.New("must be no more than 63 characters")
+)
 
-	initCmd = &cobra.Command{
+func NewCmdInit() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "init",
 		Short: "Create a new ctrlplane project",
 		Long: `
 Creates a new ctrlplane project in the current directory. This will create .ctrlplane file for
 configuration management and .ctrlplane/ directory for state management
   `,
-		Run: initRun,
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("cmd: Run")
+		},
 	}
-)
 
-func init() {
-	rootCmd.AddCommand(initCmd)
+	return cmd
 }
 
 func initRun(cmd *cobra.Command, args []string) {

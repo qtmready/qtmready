@@ -171,7 +171,7 @@ func (s *service) InitCLI() error {
 		println("Warning: You are using a development version of the CLI. Please use the stable version.")
 
 		s.Debug = true
-		s.CLI.BaseURL = "http://localhost:8080"
+		s.CLI.BaseURL = "http://localhost:8000"
 	}
 
 	s.InitLogger(1)

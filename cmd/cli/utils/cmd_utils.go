@@ -15,28 +15,12 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package cmd
+package utils
 
-import (
-	"fmt"
+import "github.com/spf13/cobra"
 
-	"github.com/spf13/cobra"
-
-	"go.breu.io/ctrlplane/internal/shared"
-)
-
-var ()
-
-func NewCmdVersion() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "version",
-		Short: "Show the current ctrlplane version.",
-		Long:  `Show the current ctrlplane version.`,
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("cmd: version")
-			fmt.Println(shared.Service.Version()) // TODO: integrate versioning
-		},
+func AddRequiredFlags(cmd *cobra.Command, flags ...string) {
+	for _, f := range flags {
+		cmd.MarkFlagRequired(f)
 	}
-
-	return cmd
 }

@@ -22,6 +22,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	client "go.breu.io/ctrlplane/cmd/cli/apiClient"
+	"go.breu.io/ctrlplane/cmd/cli/cmd/user"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -45,14 +47,25 @@ To learn more, visit https://breu.io/ctrlplane.
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	rootCmd.AddCommand(NewCmdInit())
+	rootCmd.AddCommand(user.NewCmdUser())
+	rootCmd.AddCommand(NewCmdVersion())
+	rootCmd.AddCommand(NewCmdCDelete())
+	rootCmd.AddCommand(NewCmdCGet())
+	rootCmd.AddCommand(NewCmdCreate())
+	rootCmd.AddCommand(NewCmdEdit())
+	rootCmd.AddCommand(NewCmdList())
+
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
 	}
+
 }
 
 func init() {
 	if err := shared.Service.InitCLI(); err != nil {
 		println("ctrlplane not initialized, please do ctrlplane init")
 	}
+	client.Client.Init()
 }
