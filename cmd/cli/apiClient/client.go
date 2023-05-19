@@ -1,8 +1,10 @@
 package client
 
 import (
+	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/core"
@@ -16,12 +18,26 @@ type client struct {
 	CoreClient *core.Client
 }
 
-func checkHttpError(r *http.Response, successCodes ...int) {
-	for c := range successCodes {
-		if r.StatusCode != c {
-
-			os.Exit(3)
+func (c *client) CheckStatus(r *http.Response, successCodes ...int) {
+	pass := false
+	for _, c := range successCodes {
+		if r.StatusCode == c {
+			pass = true
 		}
+	}
+	if pass == false {
+		fmt.Printf("Command failed with status code: %d\r\n", r.StatusCode)
+	}
+}
+
+func (c *client) CheckError(err error) {
+	if err != nil {
+		if strings.Contains(err.Error(), "No connection") {
+			fmt.Print("Quantum server is not running\n")
+		} else {
+			fmt.Printf("Command failed: %v", err.Error())
+		}
+		os.Exit(1)
 	}
 }
 
