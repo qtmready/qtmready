@@ -81,7 +81,7 @@ func (c *Containers) shutdown(ctx context.Context) {
 }
 
 func (s *ServerHandlerTestSuite) SetupSuite() {
-	shared.InitForTest()
+	shared.InitServiceForTest()
 
 	s.context = context.Background()
 	s.SetupContainers()

@@ -26,13 +26,30 @@ import (
 )
 
 type (
-
 	// ZapAdapter is a wrapper around zap.Logger. Makes it compatible with the logger.Logger interface.
 	ZapAdapter struct {
 		logger *zap.Logger
 		core   zapcore.Core
 	}
 )
+
+func NewZapLogger(debug bool, skip int) *zap.Logger {
+	var config zap.Config
+	if debug {
+		config = zap.NewDevelopmentConfig()
+	} else {
+		config = zap.NewProductionConfig()
+	}
+
+	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	config.EncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+	config.EncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
+	config.EncoderConfig.CallerKey = "func"
+
+	zl, _ := config.Build(zap.AddCallerSkip(skip))
+
+	return zl
+}
 
 func NewZapAdapter(logger *zap.Logger, skip int) *ZapAdapter {
 	return &ZapAdapter{

@@ -67,6 +67,7 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	logger.Info("Creating mutex workflow")
 
 	mutex := NewMutex(resourceID, unLockTimeOutStackMutex)
+
 	err := mutex.Init(ctx)
 	if err != nil {
 		logger.Error("Error in creating mutex for stack", "stack ID", stackID, "Error", err)
@@ -137,6 +138,7 @@ func onTriggerSignal(ctx workflow.Context, stackID string, deployments Deploymen
 
 		// execute GetAssets and wait until spawned
 		var execution workflow.Execution
+
 		cctx := workflow.WithChildOptions(ctx, opts)
 		err := workflow.
 			ExecuteChildWorkflow(cctx, w.GetAssets, getAssetsPayload).
@@ -225,22 +227,22 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	// get commits against the repos
 	repoMarker := make([]ChangeSetRepoMarker, len(repos.Data))
 
-	for i := 0; i < len(repos.Data); i++ {
-		rep := &repos.Data[i]
-		marker := &repoMarker[i]
-		p := Core.Providers[rep.Provider] // get the specific provider
-		var commitID string
-		if err := workflow.ExecuteActivity(pctx, p.GetLatestCommitforRepo, rep.ProviderID, rep.DefaultBranch).
+	for idx, repo := range repos.Data {
+		marker := &repoMarker[idx]
+		p := Core.Providers[repo.Provider] // get the specific provider
+		commitID := ""
+
+		if err := workflow.ExecuteActivity(pctx, p.GetLatestCommitforRepo, repo.ProviderID, repo.DefaultBranch).
 			Get(ctx, &commitID); err != nil {
-			logger.Error("Error in getting latest commit ID", "repo", rep.Name, "provider", rep.Provider)
-			return fmt.Errorf("Error in getting latest commit ID repo:%s, provider:%s", rep.Name, rep.Provider.String())
+			logger.Error("Error in getting latest commit ID", "repo", repo.Name, "provider", repo.Provider)
+			return fmt.Errorf("Error in getting latest commit ID repo:%s, provider:%s", repo.Name, repo.Provider.String())
 		}
 
 		marker.CommitID = commitID
-		marker.HasChanged = rep.ID == payload.RepoID
-		marker.Provider = rep.Provider.String()
-		marker.RepoID = rep.ID.String()
-		logger.Debug("Repo", "Name", rep.Name, "Repo marker", marker)
+		marker.HasChanged = repo.ID == payload.RepoID
+		marker.Provider = repo.Provider.String()
+		marker.RepoID = repo.ID.String()
+		logger.Debug("Repo", "Name", repo.Name, "Repo marker", marker)
 	}
 
 	// save changeset
@@ -292,6 +294,7 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 		logger.Info("Executing provision Infra workflow")
 
 		var execution workflow.Execution
+
 		opts := shared.Temporal.Queues[shared.CoreQueue].
 			GetChildWorkflowOptions("provisionInfra", "stack", stackID, "changeset", assets.ChangesetID.String())
 

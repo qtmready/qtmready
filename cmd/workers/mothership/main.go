@@ -48,7 +48,7 @@ func init() {
 	// waitgroup.Go(shared.EventStream.InitConnection)
 	waitgroup.Go(shared.Temporal.InitClient)
 
-	shared.Logger.Info("initialized", "version", shared.Service.Version())
+	shared.Logger.Info("initialized", "version", shared.Service.Version)
 
 	core.Core.Init()
 }
