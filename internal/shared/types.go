@@ -18,17 +18,18 @@
 package shared
 
 import (
+	"github.com/go-playground/validator/v10"
 	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/ctrlplane/internal/shared/queue"
 )
 
-// workflow types.
+// workflow related shared types and contants.
 type (
-	Queue          = queue.Name
 	WorkflowSignal string // WorkflowSignal is the name of a workflow signal.
 
+	// PullRequestSignal is the sent to PR workflows to trigger a deployment.
 	PullRequestSignal struct {
 		RepoID           gocql.UUID
 		SenderWorkflowID string
@@ -39,13 +40,14 @@ type (
 	ChannelHandler func(workflow.ReceiveChannel, bool) // ChannelHandler is the signature of the channel handler function.
 )
 
+// queue definitions.
 const (
-	CoreQueue      Queue = "core"      // core queue
-	ProvidersQueue Queue = "providers" // messaging related to providers
-	MutexQueue     Queue = "mutex"     // mutex workflow queue
+	CoreQueue      queue.Name = "core"      // core queue
+	ProvidersQueue queue.Name = "providers" // messaging related to providers
+	MutexQueue     queue.Name = "mutex"     // mutex workflow queue
 )
 
-// workflow signals.
+// workflow signal definitions.
 const (
 	WorkflowSignalTriggerDeployment WorkflowSignal = "deployment_trigger"
 )
@@ -54,3 +56,14 @@ const (
  * Methods for WorkflowSignal.
  */
 func (w WorkflowSignal) String() string { return string(w) }
+
+type (
+	// EchoValidator is a wrapper for the instantiated validator.
+	EchoValidator struct {
+		Validator *validator.Validate
+	}
+)
+
+func (ev *EchoValidator) Validate(i any) error {
+	return ev.Validator.Struct(i)
+}

@@ -12,5 +12,6 @@
   "go.useLanguageServer": true,
   "go.editorContextMenuCommands": {
     "generateTestForPackage": true
-  }
+  },
+  "ansible.python.interpreterPath": "/Users/jay/.pyenv/versions/3.10.3/bin/python"
 }

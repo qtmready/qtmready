@@ -21,18 +21,72 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"net/http"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	gh "github.com/google/go-github/v50/github"
 	"github.com/ilyakaznacheev/cleanenv"
-
-	"go.breu.io/ctrlplane/internal/shared"
 )
 
 var (
-	Github = &github{}
+	Github *github
 )
+
+func NewGithub(options ...GithubOption) *github {
+	g := &github{}
+
+	for _, option := range options {
+		option(g)
+	}
+
+	return g
+}
+
+func WithAppID(id int64) GithubOption {
+	return func(g *github) {
+		g.AppID = id
+	}
+}
+
+func WithClientID(id string) GithubOption {
+	return func(g *github) {
+		g.ClientID = id
+	}
+}
+
+func WithWebhookSecret(secret string) GithubOption {
+	return func(g *github) {
+		g.WebhookSecret = secret
+	}
+}
+
+func WithPrivateKey(key string) GithubOption {
+	return func(g *github) {
+		g.PrivateKey = key
+	}
+}
+
+func WithActivities(activities *Activities) GithubOption {
+	return func(g *github) {
+		g.Activities = activities
+	}
+}
+
+func WithConfigFromEnv() GithubOption {
+	return func(g *github) {
+		if err := cleanenv.ReadEnv(g); err != nil {
+			panic(fmt.Errorf("failed to read environment variables: %w", err))
+		}
+	}
+}
+
+func InitGithub() {
+	Github = NewGithub(
+		WithConfigFromEnv(),
+		WithActivities(&Activities{}),
+	)
+}
 
 type (
 	github struct {
@@ -40,18 +94,14 @@ type (
 		ClientID      string `env:"GITHUB_CLIENT_ID"`
 		WebhookSecret string `env:"GITHUB_WEBHOOK_SECRET"`
 		PrivateKey    string `env:"GITHUB_PRIVATE_KEY"`
-		Activity      Activities
+		Activities    *Activities
 	}
+
+	GithubOption func(*github)
 )
 
 func (g *github) GetActivities() *Activities {
-	return &g.Activity
-}
-
-func (g *github) ReadEnv() {
-	if err := cleanenv.ReadEnv(g); err != nil {
-		shared.Logger.Error("Failed to read environment variables ...", "error", err)
-	}
+	return g.Activities
 }
 
 func (g *github) GetClientForInstallation(installationID int64) (*gh.Client, error) {

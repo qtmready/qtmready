@@ -39,23 +39,17 @@ import (
 func init() {
 	waitgroup := conc.NewWaitGroup()
 	defer waitgroup.Wait()
-	// Reading the configuration from the environment
-	shared.Service.ReadEnv()
-	shared.Service.InitLogger(1)
-	shared.Service.InitValidator()
-	shared.EventStream.ReadEnv()
+
+	shared.InitService()
+	shared.InitLogger(shared.Service.Debug, 1)
+	shared.InitValidator()
 	db.DB.ReadEnv()
 	db.DB.RegisterValidations()
-	shared.Temporal.ReadEnv()
-	github.Github.ReadEnv()
-	// Reading the configuration from the environment ... Done
 
-	// Initializing reference to adapters
-	shared.Logger.Info("initializing ...")
+	shared.Logger.Info("initializing connections to services ...")
+	waitgroup.Go(shared.InitTemporal)
 	waitgroup.Go(db.DB.InitSession)
-	waitgroup.Go(shared.EventStream.InitConnection)
-	waitgroup.Go(shared.Temporal.InitClient)
-	shared.Logger.Info("initialized", "version", shared.Service.Version())
+	shared.Logger.Info("initialized", "version", shared.Service.Version)
 }
 
 func main() {
@@ -66,8 +60,7 @@ func main() {
 		shared.Logger.Debug("exiting ...")
 		os.Exit(exitcode)
 	}() // all connections are closed, exit with the right code.
-	defer func() { _ = shared.Logger.Sync() }()       // flush log buffer.
-	defer func() { _ = shared.EventStream.Drain() }() // process events in the buffer before closing connection.
+	defer func() { _ = shared.Logger.Sync() }() // flush log buffer.
 	defer db.DB.Session.Close()
 	defer shared.Temporal.Client.Close()
 
