@@ -49,19 +49,19 @@ type (
 // GenerateAccessToken generates a short lived JWT token for the given user.
 func GenerateAccessToken(userID, teamID string) (string, error) {
 	expires := time.Now().Add(time.Minute * 15)
-	if shared.Service.Debug {
+	if shared.Service().GetDebug() {
 		expires = time.Now().Add(time.Hour * 24)
 	}
 
 	claims := &JWTClaims{
 		UserID:           userID,
 		TeamID:           teamID,
-		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(expires), Issuer: shared.Service.Name},
+		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(expires), Issuer: shared.Service().GetName()},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	return token.SignedString([]byte(shared.Service.Secret))
+	return token.SignedString([]byte(shared.Service().GetSecret()))
 }
 
 // GenerateRefreshToken generates a long lived JWT token for the given user.
@@ -69,19 +69,19 @@ func GenerateAccessToken(userID, teamID string) (string, error) {
 // TODO: Implement the logic for refreshing tokens using the refresh token.
 func GenerateRefreshToken(userID, teamID string) (string, error) {
 	expires := time.Now().Add(time.Minute * 60)
-	if shared.Service.Debug {
+	if shared.Service().GetDebug() {
 		expires = time.Now().Add(time.Hour * 24 * 30)
 	}
 
 	claims := &JWTClaims{
 		UserID:           userID,
 		TeamID:           teamID,
-		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(expires), Issuer: shared.Service.Name},
+		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(expires), Issuer: shared.Service().GetName()},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	return token.SignedString([]byte(shared.Service.Secret))
+	return token.SignedString([]byte(shared.Service().GetSecret()))
 }
 
 // Middleware to provide JWT & API Key authentication.
@@ -93,17 +93,17 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 		keyScopes, requiresKey := ctx.Get(APIKeyAuthScopes).([]string)
 		bearerScopes, requiresBearer := ctx.Get(BearerAuthScopes).([]string)
 
-		shared.Logger.Debug("requires bearer", "bearer", requiresBearer, "scopes", bearerScopes)
-		shared.Logger.Debug("requires key", "key", requiresKey, "scopes", keyScopes)
+		shared.Logger().Debug("requires bearer", "bearer", requiresBearer, "scopes", bearerScopes)
+		shared.Logger().Debug("requires key", "key", requiresKey, "scopes", keyScopes)
 		// if requiredKey and requiresBearer are both false, then we don't need to do any auth
 		if !requiresKey && !requiresBearer {
-			shared.Logger.Debug("no auth required")
+			shared.Logger().Debug("no auth required")
 			return next(ctx)
 		}
 
 		// do bearer authentication
 		if requiresBearer && len(bearerScopes) > -1 {
-			shared.Logger.Debug("Authenticate with Bearer Token")
+			shared.Logger().Debug("Authenticate with Bearer Token")
 
 			header := ctx.Request().Header.Get(BearerHeaderName)
 			if header == "" {
@@ -128,7 +128,7 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 		// do api key authentication
 		if requiresKey && len(keyScopes) > -1 {
-			shared.Logger.Debug("Authenticate with API Key")
+			shared.Logger().Debug("Authenticate with API Key")
 
 			key := ctx.Request().Header.Get(APIKeyHeaderName)
 			if key == "" {
@@ -190,5 +190,5 @@ func KeyFn(next echo.HandlerFunc, ctx echo.Context, key string) error {
 
 // SecretFn provides the secret for the JWT token.
 func SecretFn(*jwt.Token) (any, error) {
-	return []byte(shared.Service.Secret), nil
+	return []byte(shared.Service().GetSecret()), nil
 }

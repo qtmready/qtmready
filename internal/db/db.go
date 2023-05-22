@@ -67,7 +67,7 @@ type (
 
 func (m *mlog) Printf(format string, v ...any) {
 	format = fmt.Sprintf("db: [external/migrate] %s", format)
-	shared.Logger.Debug(fmt.Sprintf(format, v...))
+	shared.Logger().Debug(fmt.Sprintf(format, v...))
 }
 
 func (m *mlog) Verbose() bool {
@@ -89,17 +89,17 @@ func (d *db) InitSession() {
 	cluster.Keyspace = d.Keyspace
 	cluster.Timeout = d.Timeout
 	createSession := func() error {
-		shared.Logger.Info("db: connecting ...", "hosts", d.Hosts, "keyspace", d.Keyspace)
+		shared.Logger().Info("db: connecting ...", "hosts", d.Hosts, "keyspace", d.Keyspace)
 
 		session, err := igocqlx.WrapSession(cluster.CreateSession())
 		if err != nil {
-			shared.Logger.Error("db: failed to connect", "error", err)
+			shared.Logger().Error("db: failed to connect", "error", err)
 			return err
 		}
 
 		d.Session = session
 
-		shared.Logger.Info("db: connected")
+		shared.Logger().Info("db: connected")
 
 		return nil
 	}
@@ -109,50 +109,50 @@ func (d *db) InitSession() {
 		retry.Attempts(15),
 		retry.Delay(6*time.Second),
 	); err != nil {
-		shared.Logger.Error("db: aborting ....", "error", err)
+		shared.Logger().Error("db: aborting ....", "error", err)
 	}
 }
 
 // RunMigrations runs database migrations if any.
 func (d *db) RunMigrations() {
-	logger := &mlog{verbose: shared.Service.Debug}
+	logger := &mlog{verbose: shared.Service().GetDebug()}
 
-	shared.Logger.Info("db: running migrations ...", "source", d.MigrationSourceURL)
+	shared.Logger().Info("db: running migrations ...", "source", d.MigrationSourceURL)
 
 	config := &cassandra.Config{KeyspaceName: d.Keyspace, MultiStatementEnabled: true}
 	driver, err := cassandra.WithInstance(d.Session.Session().S.Session, config)
 
 	if err != nil {
-		shared.Logger.Error("db: failed to initialize driver for migrations ...", "error", err)
+		shared.Logger().Error("db: failed to initialize driver for migrations ...", "error", err)
 	}
 
 	migrations, err := migrate.NewWithDatabaseInstance(d.MigrationSourceURL, "cassandra", driver)
 	if err != nil {
-		shared.Logger.Error("db: failed to initialize migrations ...", "error", err)
+		shared.Logger().Error("db: failed to initialize migrations ...", "error", err)
 	}
 
 	migrations.Log = logger
 
 	version, dirty, err := migrations.Version()
 	if err == migrate.ErrNilVersion {
-		shared.Logger.Info("db: no migrations have been run, initializing keyspace ...")
+		shared.Logger().Info("db: no migrations have been run, initializing keyspace ...")
 	} else if err != nil {
-		shared.Logger.Error("db: failed to get migration version ...", "error", err)
+		shared.Logger().Error("db: failed to get migration version ...", "error", err)
 		return
 	}
 
-	shared.Logger.Info("db: migrations version ...", "version", version, "dirty", dirty)
+	shared.Logger().Info("db: migrations version ...", "version", version, "dirty", dirty)
 
 	err = migrations.Up()
 	if err != nil && err != migrate.ErrNoChange {
-		shared.Logger.Warn("db: failed to run migrations ...", "error", err)
+		shared.Logger().Warn("db: failed to run migrations ...", "error", err)
 	}
 
 	if err == migrate.ErrNoChange {
-		shared.Logger.Info("db: no new migrations to run")
+		shared.Logger().Info("db: no new migrations to run")
 	}
 
-	shared.Logger.Info("db: migrations done")
+	shared.Logger().Info("db: migrations done")
 }
 
 // InitSessionWithMigrations is a shorthand for initializing the database along with running migrations.
@@ -163,7 +163,7 @@ func (d *db) InitSessionWithMigrations() {
 
 // RegisterValidations registers any field or entity related validators.
 func (d *db) RegisterValidations() {
-	_ = shared.Validator.RegisterValidation("db_unique", UniqueField)
+	_ = shared.Validator().RegisterValidation("db_unique", UniqueField)
 }
 
 // InitMockSession initializes the session with the provided mock session.

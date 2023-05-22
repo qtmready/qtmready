@@ -187,11 +187,12 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	// signal core stack workflow
 	logger.Info("core workflow id", "ID", corePRWfID)
 
-	options := shared.Temporal.Queues[shared.CoreQueue].
+	options := shared.Temporal().
+		Queue(shared.CoreQueue).
 		GetWorkflowOptions("stack", coreRepo.StackID.String())
 
 	cw := &core.Workflows{}
-	_, _ = shared.Temporal.Client.SignalWithStartWorkflow(
+	_, _ = shared.Temporal().Client().SignalWithStartWorkflow(
 		context.Background(),
 		corePRWfID,
 		shared.WorkflowSignalTriggerDeployment.String(),

@@ -51,7 +51,9 @@ func (m *Mutex) Init(ctx workflow.Context) error {
 	w := &Workflows{}
 
 	logger := workflow.GetLogger(ctx)
-	opts := shared.Temporal.Queues[shared.CoreQueue].GetChildWorkflowOptions("mutex", m.ResourceID)
+	opts := shared.Temporal().
+		Queue(shared.CoreQueue).
+		GetChildWorkflowOptions("mutex", m.ResourceID)
 	ctx = workflow.WithChildOptions(ctx, opts)
 
 	// execute child workflow and wait for it to spawn

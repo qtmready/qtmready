@@ -19,6 +19,7 @@ package temporal
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -27,6 +28,10 @@ import (
 	"go.temporal.io/sdk/log"
 
 	"go.breu.io/ctrlplane/internal/shared/queue"
+)
+
+var (
+	once sync.Once
 )
 
 type (
@@ -42,9 +47,9 @@ type (
 	Temporal struct {
 		ServerHost string `env:"TEMPORAL_HOST" env-default:"temporal"`
 		ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
-		Client     client.Client
-		Queues     queue.Queues
-		Logger     log.Logger
+		client     client.Client
+		queues     queue.Queues
+		logger     log.Logger
 	}
 
 	TemporalOption func(*Temporal)
@@ -54,17 +59,55 @@ func (t *Temporal) GetConnectionString() string {
 	return fmt.Sprintf("%s:%s", t.ServerHost, t.ServerPort)
 }
 
+func (t *Temporal) Queue(name queue.Name) queue.Queue {
+	return t.queues[name]
+}
+
+func (t *Temporal) Client() client.Client {
+	if t.client == nil {
+		once.Do(func() {
+			t.logger.Info("temporal instantiating ....")
+			options := client.Options{HostPort: t.GetConnectionString(), Logger: t.logger}
+			retryTemporal := func() error {
+				clt, err := client.Dial(options)
+				if err != nil {
+					return err
+				}
+
+				t.client = clt
+
+				t.logger.Info("temporal: connected")
+
+				return nil
+			}
+
+			if err := retry.Do(
+				retryTemporal,
+				retry.Attempts(10),
+				retry.Delay(1*time.Second),
+				retry.OnRetry(func(n uint, err error) {
+					t.logger.Info("temporal: failed to connect. retrying connection ...", "attempt", n, "error", err)
+				}),
+			); err != nil {
+				panic(fmt.Errorf("failed to connect to temporal: %w", err))
+			}
+		})
+	}
+
+	return t.client
+}
+
 // WithQueue adds a new queue to the Temporal.
 func WithQueue(name queue.Name) TemporalOption {
 	return func(t *Temporal) {
-		t.Queues[name] = queue.NewQueue(queue.WithName(name))
+		t.queues[name] = queue.NewQueue(queue.WithName(name))
 	}
 }
 
 // WithLogger sets the logger for the Temporal.
 func WithLogger(logger log.Logger) TemporalOption {
 	return func(t *Temporal) {
-		t.Logger = logger
+		t.logger = logger
 	}
 }
 
@@ -80,18 +123,18 @@ func WithConfigFromEnv() TemporalOption {
 // WithClientConnection initializes the Temporal client.
 func WithClientConnection() TemporalOption {
 	return func(t *Temporal) {
-		t.Logger.Info("temporal: connecting ...", "host", t.ServerHost, "port", t.ServerPort)
+		t.logger.Info("temporal: connecting ...", "host", t.ServerHost, "port", t.ServerPort)
 
-		options := client.Options{HostPort: t.GetConnectionString(), Logger: t.Logger}
+		options := client.Options{HostPort: t.GetConnectionString(), Logger: t.logger}
 		retryTemporal := func() error {
 			clt, err := client.Dial(options)
 			if err != nil {
 				return err
 			}
 
-			t.Client = clt
+			t.client = clt
 
-			t.Logger.Info("temporal: connected")
+			t.logger.Info("temporal: connected")
 
 			return nil
 		}
@@ -101,7 +144,7 @@ func WithClientConnection() TemporalOption {
 			retry.Attempts(10),
 			retry.Delay(1*time.Second),
 			retry.OnRetry(func(n uint, err error) {
-				t.Logger.Info("temporal: failed to connect. retrying connection ...", "attempt", n, "error", err)
+				t.logger.Info("temporal: failed to connect. retrying connection ...", "attempt", n, "error", err)
 			}),
 		); err != nil {
 			panic(fmt.Errorf("failed to connect to temporal: %w", err))
@@ -111,7 +154,7 @@ func WithClientConnection() TemporalOption {
 
 // NewTemporal creates a new Temporal instance.
 func NewTemporal(opts ...TemporalOption) *Temporal {
-	t := &Temporal{Queues: make(queue.Queues)}
+	t := &Temporal{queues: make(queue.Queues)}
 	for _, opt := range opts {
 		opt(t)
 	}

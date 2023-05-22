@@ -144,7 +144,7 @@ func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
 	key := guard.NewForTeam(id)
 
 	if err := guard.Save(); err != nil {
-		shared.Logger.Error("error saving guard", "error", err)
+		shared.Logger().Error("error saving guard", "error", err)
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
@@ -168,7 +168,7 @@ func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 	key := guard.NewForUser(*request.Name, id)
 
 	if err := guard.Save(); err != nil {
-		shared.Logger.Error("error saving guard", "error", err)
+		shared.Logger().Error("error saving guard", "error", err)
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 

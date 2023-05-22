@@ -40,7 +40,7 @@ func init() {
 	waitgroup := conc.NewWaitGroup()
 	defer waitgroup.Wait()
 
-	shared.InitService()
+	shared.Service()
 	shared.InitLogger(shared.Service.Debug, 1)
 	shared.InitValidator()
 	db.DB.ReadEnv()

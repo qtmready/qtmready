@@ -126,7 +126,8 @@ func onTriggerSignal(ctx workflow.Context, stackID string, deployments Deploymen
 		changesetID, _ := gocql.RandomUUID()
 
 		// Set childworkflow options
-		opts := shared.Temporal.Queues[shared.CoreQueue].
+		opts := shared.Temporal().
+			Queue(shared.CoreQueue).
 			GetChildWorkflowOptions("get_assets", "stack", stackID, "changeset", changesetID.String(),
 				"trigger", strconv.FormatInt(payload.TriggerID, 10))
 
@@ -175,7 +176,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
 	providerActivityOpts := workflow.
-		ActivityOptions{StartToCloseTimeout: 60 * time.Second, TaskQueue: shared.Temporal.Queues[shared.ProvidersQueue].GetName()}
+		ActivityOptions{StartToCloseTimeout: 60 * time.Second, TaskQueue: shared.Temporal().Queue(shared.ProvidersQueue).GetName()}
 	pctx := workflow.WithActivityOptions(ctx, providerActivityOpts)
 
 	// get resources for stack
@@ -295,7 +296,8 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 
 		var execution workflow.Execution
 
-		opts := shared.Temporal.Queues[shared.CoreQueue].
+		opts := shared.Temporal().
+			Queue(shared.CoreQueue).
 			GetChildWorkflowOptions("provisionInfra", "stack", stackID, "changeset", assets.ChangesetID.String())
 
 		cctx := workflow.WithChildOptions(ctx, opts)
@@ -342,7 +344,8 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, mutex *Mutex
 
 		var execution workflow.Execution
 
-		opts := shared.Temporal.Queues[shared.CoreQueue].
+		opts := shared.Temporal().
+			Queue(shared.CoreQueue).
 			GetChildWorkflowOptions("Deployment", "stack", stackID, "changeset", assets.ChangesetID.String())
 		cctx := workflow.WithChildOptions(ctx, opts)
 
