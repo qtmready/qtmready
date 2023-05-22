@@ -40,7 +40,7 @@ var (
 	vld     *validator.Validate // Global validator instance.
 	vldOnce sync.Once           // Global validator instance initializer
 
-	tmprl     *temporal.Temporal
+	tmprl     temporal.Temporal
 	tmprlOnce sync.Once
 )
 
@@ -87,7 +87,7 @@ func Validator() *validator.Validate {
 	return vld
 }
 
-func Temporal() *temporal.Temporal {
+func Temporal() temporal.Temporal {
 	if tmprl == nil {
 		tmprlOnce.Do(func() {
 			tmprl = temporal.NewTemporal(

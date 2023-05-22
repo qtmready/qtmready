@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	gh "github.com/google/go-github/v50/github"
@@ -30,11 +31,12 @@ import (
 )
 
 var (
-	Github *github
+	instance *Config
+	once     sync.Once
 )
 
-func NewGithub(options ...GithubOption) *github {
-	g := &github{}
+func NewGithub(options ...ConfigOption) *Config {
+	g := &Config{}
 
 	for _, option := range options {
 		option(g)
@@ -43,53 +45,59 @@ func NewGithub(options ...GithubOption) *github {
 	return g
 }
 
-func WithAppID(id int64) GithubOption {
-	return func(g *github) {
+func WithAppID(id int64) ConfigOption {
+	return func(g *Config) {
 		g.AppID = id
 	}
 }
 
-func WithClientID(id string) GithubOption {
-	return func(g *github) {
+func WithClientID(id string) ConfigOption {
+	return func(g *Config) {
 		g.ClientID = id
 	}
 }
 
-func WithWebhookSecret(secret string) GithubOption {
-	return func(g *github) {
+func WithWebhookSecret(secret string) ConfigOption {
+	return func(g *Config) {
 		g.WebhookSecret = secret
 	}
 }
 
-func WithPrivateKey(key string) GithubOption {
-	return func(g *github) {
+func WithPrivateKey(key string) ConfigOption {
+	return func(g *Config) {
 		g.PrivateKey = key
 	}
 }
 
-func WithActivities(activities *Activities) GithubOption {
-	return func(g *github) {
+func WithActivities(activities *Activities) ConfigOption {
+	return func(g *Config) {
 		g.Activities = activities
 	}
 }
 
-func WithConfigFromEnv() GithubOption {
-	return func(g *github) {
+func WithConfigFromEnv() ConfigOption {
+	return func(g *Config) {
 		if err := cleanenv.ReadEnv(g); err != nil {
 			panic(fmt.Errorf("failed to read environment variables: %w", err))
 		}
 	}
 }
 
-func InitGithub() {
-	Github = NewGithub(
-		WithConfigFromEnv(),
-		WithActivities(&Activities{}),
-	)
+func Instance() *Config {
+	if instance == nil {
+		once.Do(func() {
+			instance = NewGithub(
+				WithConfigFromEnv(),
+				WithActivities(&Activities{}),
+			)
+		})
+	}
+
+	return instance
 }
 
 type (
-	github struct {
+	Config struct {
 		AppID         int64  `env:"GITHUB_APP_ID"`
 		ClientID      string `env:"GITHUB_CLIENT_ID"`
 		WebhookSecret string `env:"GITHUB_WEBHOOK_SECRET"`
@@ -97,14 +105,14 @@ type (
 		Activities    *Activities
 	}
 
-	GithubOption func(*github)
+	ConfigOption func(*Config)
 )
 
-func (g *github) GetActivities() *Activities {
+func (g *Config) GetActivities() *Activities {
 	return g.Activities
 }
 
-func (g *github) GetClientForInstallation(installationID int64) (*gh.Client, error) {
+func (g *Config) GetClientForInstallation(installationID int64) (*gh.Client, error) {
 	transport, err := ghinstallation.New(http.DefaultTransport, g.AppID, installationID, []byte(g.PrivateKey))
 	if err != nil {
 		return nil, err
@@ -115,7 +123,7 @@ func (g *github) GetClientForInstallation(installationID int64) (*gh.Client, err
 	return client, nil
 }
 
-func (g *github) VerifyWebhookSignature(payload []byte, signature string) error {
+func (g *Config) VerifyWebhookSignature(payload []byte, signature string) error {
 	// result := g.SignPayload(payload)
 
 	// if result != signature {
@@ -125,7 +133,7 @@ func (g *github) VerifyWebhookSignature(payload []byte, signature string) error 
 	return nil
 }
 
-func (g *github) SignPayload(payload []byte) string {
+func (g *Config) SignPayload(payload []byte) string {
 	key := hmac.New(sha256.New, []byte(g.WebhookSecret))
 	key.Write(payload)
 	result := "sha256=" + hex.EncodeToString(key.Sum(nil))

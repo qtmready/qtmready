@@ -22,53 +22,29 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/sourcegraph/conc"
 	"go.temporal.io/sdk/worker"
 
 	"go.breu.io/ctrlplane/internal/core"
-	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/providers/github"
 	"go.breu.io/ctrlplane/internal/shared"
 )
-
-func init() {
-	waitgroup := conc.NewWaitGroup()
-	defer waitgroup.Wait()
-
-	shared.Service.ReadEnv()
-	shared.Service.InitLogger(3)
-	shared.EventStream.ReadEnv()
-	shared.Temporal.ReadEnv()
-	github.Github.ReadEnv()
-	db.DB.ReadEnv()
-
-	// shared.Temporal.ServerHost = "127.0.0.1"
-	// db.DB.Hosts = append(db.DB.Hosts, "127.0.0.1")
-	waitgroup.Go(db.DB.InitSession)
-	// waitgroup.Go(shared.EventStream.InitConnection)
-	waitgroup.Go(shared.Temporal.InitClient)
-
-	shared.Logger.Info("initialized", "version", shared.Service.Version)
-
-	core.Core.Init()
-}
 
 func main() {
 	// graceful shutdown. see https://stackoverflow.com/a/46255965/228697.
 	exitcode := 0
 	defer func() { os.Exit(exitcode) }()
-	defer func() { _ = shared.Logger.Sync() }()
+	defer func() { _ = shared.Logger().Sync() }()
 	// defer func() { _ = shared.EventStream.Drain() }()
-	defer shared.Temporal.Client.Close()
+	defer shared.Temporal().Client().Close()
 
-	core.Core.Providers[core.RepoProviderGithub] = github.Github
+	core.Core.Providers[core.RepoProviderGithub] = github.Instance()
 
-	queue := shared.Temporal.Queues[shared.ProvidersQueue].GetName()
-	coreQueue := shared.Temporal.Queues[shared.CoreQueue].GetName()
+	queue := shared.Temporal().Queue(shared.ProvidersQueue).GetName()
+	coreQueue := shared.Temporal().Queue(shared.CoreQueue).GetName()
 
-	options := worker.Options{OnFatalError: func(err error) { shared.Logger.Error("Fatal error during worker execution", err) }}
-	wrkr := worker.New(shared.Temporal.Client, queue, options)
-	coreWrkr := worker.New(shared.Temporal.Client, coreQueue, options)
+	options := worker.Options{OnFatalError: func(err error) { shared.Logger().Error("Fatal error during worker execution", err) }}
+	wrkr := worker.New(shared.Temporal().Client(), queue, options)
+	coreWrkr := worker.New(shared.Temporal().Client(), coreQueue, options)
 
 	ghwfs := &github.Workflows{}
 	cwfs := &core.Workflows{}
@@ -81,7 +57,7 @@ func main() {
 
 	// provider activities
 	wrkr.RegisterActivity(&github.Activities{})
-	wrkr.RegisterActivity(github.Github.GetLatestCommitforRepo)
+	wrkr.RegisterActivity(github.Instance().GetLatestCommitforRepo)
 
 	// core workflows
 	coreWrkr.RegisterWorkflow(cwfs.StackController)
@@ -116,7 +92,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // setting up the signals to listen to.
 	<-quit                                               // wait for quit signal.
 
-	shared.Logger.Info("Exiting....")
+	shared.Logger().Info("Exiting....")
 
 	exitcode = 1
 }

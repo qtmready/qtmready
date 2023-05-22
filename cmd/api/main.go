@@ -27,7 +27,6 @@ import (
 	"github.com/labstack/echo-contrib/prometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/sourcegraph/conc"
 
 	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/core"
@@ -36,35 +35,19 @@ import (
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
-func init() {
-	waitgroup := conc.NewWaitGroup()
-	defer waitgroup.Wait()
-
-	shared.Service()
-	shared.InitLogger(shared.Service.Debug, 1)
-	shared.InitValidator()
-	db.DB.ReadEnv()
-	db.DB.RegisterValidations()
-
-	shared.Logger.Info("initializing connections to services ...")
-	waitgroup.Go(shared.InitTemporal)
-	waitgroup.Go(db.DB.InitSession)
-	shared.Logger.Info("initialized", "version", shared.Service.Version)
-}
-
 func main() {
 	// graceful shutdown.
 	// LINK: https://stackoverflow.com/a/46255965/228697.
 	exitcode := 0
 	defer func() {
-		shared.Logger.Debug("exiting ...")
+		shared.Logger().Debug("exiting ...")
 		os.Exit(exitcode)
 	}() // all connections are closed, exit with the right code.
-	defer func() { _ = shared.Logger.Sync() }() // flush log buffer.
-	defer db.DB.Session.Close()
-	defer shared.Temporal.Client.Close()
+	defer func() { _ = shared.Logger().Sync() }() // flush log buffer.
+	defer db.DB().Session.Close()
+	defer shared.Temporal().Client().Close()
 
-	shared.Logger.Debug("starting ...")
+	shared.Logger().Debug("starting ...")
 	// web server based on echo
 	e := echo.New()
 
@@ -79,11 +62,11 @@ func main() {
 	// }))
 
 	// adding prometheus metrics
-	prom := prometheus.NewPrometheus(shared.Service.Name, nil)
+	prom := prometheus.NewPrometheus(shared.Service().GetName(), nil)
 	prom.Use(e)
 
 	// override the defaults
-	e.Validator = &shared.EchoValidator{Validator: shared.Validator}
+	e.Validator = &shared.EchoValidator{Validator: shared.Validator()}
 	e.HTTPErrorHandler = shared.EchoAPIErrorHandler
 
 	// register handlers

@@ -142,7 +142,7 @@ func (a *Activities) GetStack(ctx context.Context, repo *core.Repo) (*core.Stack
 }
 
 // GetLatestCommitforRepo gets latest commit for default branch of the provided repo.
-func (g *github) GetLatestCommitforRepo(ctx context.Context, providerID string, branch string) (string, error) {
+func (g *Config) GetLatestCommitforRepo(ctx context.Context, providerID string, branch string) (string, error) {
 	logger := activity.GetLogger(ctx)
 	prepo := &Repo{}
 
@@ -150,7 +150,7 @@ func (g *github) GetLatestCommitforRepo(ctx context.Context, providerID string, 
 		return "", err
 	}
 
-	client, err := Github.GetClientForInstallation(prepo.InstallationID)
+	client, err := Instance().GetClientForInstallation(prepo.InstallationID)
 	if err != nil {
 		logger.Error("GetClientForInstallation failed", "Error", err)
 		return "", err

@@ -76,7 +76,7 @@ func (c *Containers) shutdown(ctx context.Context) {
 	_ = c.db.ShutdownCassandra()
 	_ = c.network.Remove(ctx)
 
-	db.DB.Session.Close()
+	db.DB().Session.Close()
 	shared.Logger().Info("graceful shutdown complete.")
 }
 
@@ -116,13 +116,9 @@ func (s *ServerHandlerTestSuite) SetupContainers() {
 		s.T().Fatalf("failed to get mapped db port: %v", err)
 	}
 
-	_ = db.DB.InitSessionForTests(port.Int(), "file://../db/migrations")
+	db.NewE2ESession(port.Int(), "file://../db/migrations")
 
-	if db.DB.Session.Session().S == nil {
-		s.T().Fatal("session is nil")
-	}
-
-	db.DB.RunMigrations()
+	// _ = db.DB.InitSessionForTests(port.Int(), "file://../db/migrations")
 
 	temporalctr, err := testutils.StartTemporalContainer(s.context)
 	if err != nil {

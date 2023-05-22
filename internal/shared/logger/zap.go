@@ -39,12 +39,14 @@ type (
 		TraceContext(context.Context, string, ...any)
 		Warn(string, ...any)
 		WarnContext(context.Context, string, ...any)
+		Verbose() bool
 	}
 
 	// zapadapter is a wrapper around zap.Logger. Makes it compatible with the logger.Logger interface.
 	zapadapter struct {
-		logger *zap.Logger
-		core   zapcore.Core
+		logger  *zap.Logger
+		core    zapcore.Core
+		verbose bool
 	}
 )
 
@@ -70,8 +72,9 @@ func NewZapAdapter(debug bool, skip int) Logger {
 	logger := NewZapLogger(debug, skip)
 
 	return &zapadapter{
-		logger: logger, // skip the caller of this function
-		core:   logger.Core(),
+		logger:  logger, // skip the caller of this function
+		core:    logger.Core(),
+		verbose: debug,
 	}
 }
 
@@ -138,6 +141,10 @@ func (a *zapadapter) WarnContext(_ context.Context, msg string, fields ...any) {
 
 func (a *zapadapter) ErrorContext(_ context.Context, msg string, fields ...any) {
 	a.Error(msg, fields...)
+}
+
+func (a *zapadapter) Verbose() bool {
+	return a.verbose
 }
 
 func (a *zapadapter) fields(kv []any) []zap.Field {

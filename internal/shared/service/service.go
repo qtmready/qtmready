@@ -28,7 +28,7 @@ import (
 )
 
 type (
-	service struct {
+	config struct {
 		Name       string `env:"SERVICE_NAME" env-default:"service"`
 		Debug      bool   `env:"DEBUG" env-default:"false"`
 		Secret     string `env:"SECRET" env-default:""`
@@ -47,48 +47,48 @@ type (
 	ServiceOption func(Service)
 )
 
-func (s *service) GetName() string {
+func (s *config) GetName() string {
 	return s.Name
 }
 
-func (s *service) GetVersion() string {
+func (s *config) GetVersion() string {
 	return s.Version
 }
 
-func (s *service) GetSecret() string {
+func (s *config) GetSecret() string {
 	return s.Secret
 }
 
-func (s *service) GetDebug() bool {
+func (s *config) GetDebug() bool {
 	return s.Debug
 }
 
-func (s *service) GetLogSkipper() int {
+func (s *config) GetLogSkipper() int {
 	return s.LogSkipper
 }
 
 // WithName sets the service name.
 func WithName(name string) ServiceOption {
-	return func(s Service) { s.(*service).Name = name }
+	return func(s Service) { s.(*config).Name = name }
 }
 
 // WithDebug sets the debug flag.
 func WithDebug(debug bool) ServiceOption {
-	return func(s Service) { s.(*service).Debug = debug }
+	return func(s Service) { s.(*config).Debug = debug }
 }
 
 // WithSecret sets the secret. Secret is used to sign JWT and API keys.
 func WithSecret(secret string) ServiceOption {
-	return func(s Service) { s.(*service).Secret = secret }
+	return func(s Service) { s.(*config).Secret = secret }
 }
 
 // WithVersion sets the version.
 func WithVersion(version string) ServiceOption {
-	return func(s Service) { s.(*service).Version = version }
+	return func(s Service) { s.(*config).Version = version }
 }
 
 func WithLogSkipper(skipper int) ServiceOption {
-	return func(s Service) { s.(*service).LogSkipper = skipper }
+	return func(s Service) { s.(*config).LogSkipper = skipper }
 }
 
 // WithVersionFromBuildInfo sets the version from the build info.
@@ -126,7 +126,7 @@ func WithVersionFromBuildInfo() ServiceOption {
 				version += "-dev"
 			}
 
-			s.(*service).Version = version
+			s.(*config).Version = version
 		}
 	}
 }
@@ -134,7 +134,7 @@ func WithVersionFromBuildInfo() ServiceOption {
 // WithConfigFromEnv reads the environment variables and sets the config.
 func WithConfigFromEnv() ServiceOption {
 	return func(s Service) {
-		if err := cleanenv.ReadEnv(s.(*service)); err != nil {
+		if err := cleanenv.ReadEnv(s.(*config)); err != nil {
 			panic(fmt.Errorf("failed to read environment variables: %w", err))
 		}
 	}
@@ -143,7 +143,7 @@ func WithConfigFromEnv() ServiceOption {
 // WithConfig reads the config from the given path.
 func WithConfig(path string) ServiceOption {
 	return func(s Service) {
-		if err := cleanenv.ReadConfig(path, s.(*service)); err != nil {
+		if err := cleanenv.ReadConfig(path, s.(*config)); err != nil {
 			panic(fmt.Errorf("failed to read config: %w", err))
 		}
 	}
@@ -161,7 +161,7 @@ func DefaultConfigFile() string {
 
 // NewService creates a new instance of the service.
 func NewService(opts ...ServiceOption) Service {
-	s := &service{}
+	s := &config{}
 	for _, opt := range opts {
 		opt(s)
 	}

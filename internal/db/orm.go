@@ -74,7 +74,7 @@ func Get[T Entity](entity T, params QueryParams) error {
 		Columns(entity.GetTable().Metadata().M.Columns...).
 		Where(clause...)
 
-	return DB.Session.Query(query.ToCql()).GetRelease(entity)
+	return DB().Session.Query(query.ToCql()).GetRelease(entity)
 }
 
 // Filter the entity by given query params.
@@ -103,7 +103,7 @@ func Filter(entity Entity, dest any, params QueryParams) error {
 		Columns(entity.GetTable().Metadata().M.Columns...).
 		Where(clause...)
 
-	return DB.Session.Query(query.ToCql()).SelectRelease(dest)
+	return DB().Session.Query(query.ToCql()).SelectRelease(dest)
 }
 
 // Save saves the entity. If the entity has an ID, it will be updated. Otherwise,
@@ -144,7 +144,7 @@ func CreateWithID[T Entity](entity T, pk gocql.UUID) error {
 		return err
 	}
 
-	query := DB.Session.Query(entity.GetTable().Insert()).BindStruct(entity)
+	query := DB().Session.Query(entity.GetTable().Insert()).BindStruct(entity)
 
 	return query.ExecRelease()
 }
@@ -160,7 +160,7 @@ func Update[T Entity](entity T) error {
 	tbl := entity.GetTable()
 	columns := tbl.Metadata().M.Columns[1:] // Remove the first element. We are assuming it is the primary key.
 
-	return DB.Session.Query(tbl.Update(columns...)).BindStruct(entity).ExecRelease()
+	return DB().Session.Query(tbl.Update(columns...)).BindStruct(entity).ExecRelease()
 }
 
 // gets the ID of the entity. The entity value is a pointer to the struct.

@@ -35,7 +35,13 @@ var (
 )
 
 type (
-	// Temporal holds the temporal server host and port, the client and all the available queues.
+	Temporal interface {
+		GetConnectionString() string
+		Queue(queue.Name) queue.Queue
+		Client() client.Client
+	}
+
+	// Config holds the temporal server host and port, the client and all the available queues.
 	//
 	// TODO: The current design is not be ideal for a central multi-tenant solution due to the lack of strong isolation
 	// for each tenant. For complaince, e.g. GDPR, SOC2, ISO27001, HIPAA, etc. we require strong tennant isolation. As
@@ -44,7 +50,7 @@ type (
 	// be added to the temporal struct to instantiate and return the appropriate client for a specific tenant. For
 	// subsequent requests, the already instantiated client should be returned. This would allow for separate clients to
 	// be created for each tenant, providing strong isolation and meeting compliance requirements.
-	Temporal struct {
+	Config struct {
 		ServerHost string `env:"TEMPORAL_HOST" env-default:"temporal"`
 		ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
 		client     client.Client
@@ -52,18 +58,18 @@ type (
 		logger     log.Logger
 	}
 
-	TemporalOption func(*Temporal)
+	ConfigOption func(*Config)
 )
 
-func (t *Temporal) GetConnectionString() string {
+func (t *Config) GetConnectionString() string {
 	return fmt.Sprintf("%s:%s", t.ServerHost, t.ServerPort)
 }
 
-func (t *Temporal) Queue(name queue.Name) queue.Queue {
+func (t *Config) Queue(name queue.Name) queue.Queue {
 	return t.queues[name]
 }
 
-func (t *Temporal) Client() client.Client {
+func (t *Config) Client() client.Client {
 	if t.client == nil {
 		once.Do(func() {
 			t.logger.Info("temporal instantiating ....")
@@ -98,22 +104,22 @@ func (t *Temporal) Client() client.Client {
 }
 
 // WithQueue adds a new queue to the Temporal.
-func WithQueue(name queue.Name) TemporalOption {
-	return func(t *Temporal) {
+func WithQueue(name queue.Name) ConfigOption {
+	return func(t *Config) {
 		t.queues[name] = queue.NewQueue(queue.WithName(name))
 	}
 }
 
 // WithLogger sets the logger for the Temporal.
-func WithLogger(logger log.Logger) TemporalOption {
-	return func(t *Temporal) {
+func WithLogger(logger log.Logger) ConfigOption {
+	return func(t *Config) {
 		t.logger = logger
 	}
 }
 
 // WithConfigFromEnv reads the environment variables.
-func WithConfigFromEnv() TemporalOption {
-	return func(t *Temporal) {
+func WithConfigFromEnv() ConfigOption {
+	return func(t *Config) {
 		if err := cleanenv.ReadEnv(t); err != nil {
 			panic(fmt.Errorf("failed to read environment variables: %w", err))
 		}
@@ -121,8 +127,8 @@ func WithConfigFromEnv() TemporalOption {
 }
 
 // WithClientConnection initializes the Temporal client.
-func WithClientConnection() TemporalOption {
-	return func(t *Temporal) {
+func WithClientConnection() ConfigOption {
+	return func(t *Config) {
 		t.logger.Info("temporal: connecting ...", "host", t.ServerHost, "port", t.ServerPort)
 
 		options := client.Options{HostPort: t.GetConnectionString(), Logger: t.logger}
@@ -153,8 +159,8 @@ func WithClientConnection() TemporalOption {
 }
 
 // NewTemporal creates a new Temporal instance.
-func NewTemporal(opts ...TemporalOption) *Temporal {
-	t := &Temporal{queues: make(queue.Queues)}
+func NewTemporal(opts ...ConfigOption) Temporal {
+	t := &Config{queues: make(queue.Queues)}
 	for _, opt := range opts {
 		opt(t)
 	}

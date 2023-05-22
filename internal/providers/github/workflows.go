@@ -175,7 +175,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	logger.Debug("Got core repo")
 
 	// get core workflow ID for this stack
-	corePRWfID := shared.Temporal.WorkflowTools.GetStackWorkflowName(coreRepo.StackID.String())
+	corePRWfID := shared.StackWorkflowID(coreRepo.StackID.String())
 
 	// payload for core stack workflow
 	signalPayload := &shared.PullRequestSignal{

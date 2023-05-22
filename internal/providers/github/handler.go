@@ -115,7 +115,7 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 	body, _ := io.ReadAll(ctx.Request().Body)
 	ctx.Request().Body = io.NopCloser(bytes.NewBuffer(body))
 
-	if err := Github.VerifyWebhookSignature(body, signature); err != nil {
+	if err := Instance().VerifyWebhookSignature(body, signature); err != nil {
 		return shared.NewAPIError(http.StatusUnauthorized, err)
 	}
 
