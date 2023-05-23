@@ -51,7 +51,7 @@ func Service() service.Service {
 	if svc == nil {
 		svcOnce.Do(func() {
 			svc = service.NewService(
-				service.WithConfigFromEnv(),
+				service.FromEnvironment(),
 				service.WithVersionFromBuildInfo(),
 			)
 		})
@@ -91,7 +91,7 @@ func Temporal() temporal.Temporal {
 	if tmprl == nil {
 		tmprlOnce.Do(func() {
 			tmprl = temporal.NewTemporal(
-				temporal.WithConfigFromEnv(),
+				temporal.FromEnvironment(),
 				temporal.WithLogger(Logger()),
 				temporal.WithQueue(CoreQueue),
 				temporal.WithQueue(ProvidersQueue),

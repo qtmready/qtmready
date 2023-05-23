@@ -23,8 +23,8 @@ import (
 
 func main() {
 	db.NewSession(
-		db.WithConfigFromEnv(),
-		db.WithSession(),
+		db.FromEnvironment(),
+		db.WithSessionCreation(),
 		db.WithMigrations(),
 	)
 }

@@ -131,8 +131,8 @@ func WithVersionFromBuildInfo() ServiceOption {
 	}
 }
 
-// WithConfigFromEnv reads the environment variables and sets the config.
-func WithConfigFromEnv() ServiceOption {
+// FromEnvironment reads the environment variables and sets the config.
+func FromEnvironment() ServiceOption {
 	return func(s Service) {
 		if err := cleanenv.ReadEnv(s.(*config)); err != nil {
 			panic(fmt.Errorf("failed to read environment variables: %w", err))
@@ -140,8 +140,8 @@ func WithConfigFromEnv() ServiceOption {
 	}
 }
 
-// WithConfig reads the config from the given path.
-func WithConfig(path string) ServiceOption {
+// FromFile reads the config from the given path.
+func FromFile(path string) ServiceOption {
 	return func(s Service) {
 		if err := cleanenv.ReadConfig(path, s.(*config)); err != nil {
 			panic(fmt.Errorf("failed to read config: %w", err))

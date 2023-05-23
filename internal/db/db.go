@@ -94,8 +94,8 @@ func WithTimeout(timeout time.Duration) ConfigOption {
 	return func(c *Config) { c.Timeout = timeout }
 }
 
-// WithConfigFromEnv reads the configuration from the environment.
-func WithConfigFromEnv() ConfigOption {
+// FromEnvironment reads the configuration from the environment.
+func FromEnvironment() ConfigOption {
 	return func(c *Config) {
 		if err := cleanenv.ReadEnv(c); err != nil {
 			panic(fmt.Errorf("db: unable to read environment variables, %v", err))
@@ -103,8 +103,8 @@ func WithConfigFromEnv() ConfigOption {
 	}
 }
 
-// WithSession initializes the session.
-func WithSession() ConfigOption {
+// WithSessionCreation initializes the session.
+func WithSessionCreation() ConfigOption {
 	return func(c *Config) {
 		if c.Hosts == nil || c.Keyspace == "" {
 			panic(fmt.Errorf("db: hosts & keyspace not set, please set them before initializing session"))
@@ -256,7 +256,7 @@ func NewMockSession(session *gocqlxmock.SessionxMock) {
 func DB() *Config {
 	if db == nil {
 		once.Do(func() {
-			db = NewSession(WithConfigFromEnv(), WithSession())
+			db = NewSession(FromEnvironment(), WithSessionCreation())
 		})
 	}
 

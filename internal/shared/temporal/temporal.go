@@ -117,8 +117,8 @@ func WithLogger(logger log.Logger) ConfigOption {
 	}
 }
 
-// WithConfigFromEnv reads the environment variables.
-func WithConfigFromEnv() ConfigOption {
+// FromEnvironment reads the environment variables.
+func FromEnvironment() ConfigOption {
 	return func(t *Config) {
 		if err := cleanenv.ReadEnv(t); err != nil {
 			panic(fmt.Errorf("failed to read environment variables: %w", err))
@@ -126,8 +126,8 @@ func WithConfigFromEnv() ConfigOption {
 	}
 }
 
-// WithClientConnection initializes the Temporal client.
-func WithClientConnection() ConfigOption {
+// WithClientCreation initializes the Temporal client.
+func WithClientCreation() ConfigOption {
 	return func(t *Config) {
 		t.logger.Info("temporal: connecting ...", "host", t.ServerHost, "port", t.ServerPort)
 
