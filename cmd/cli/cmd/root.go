@@ -21,8 +21,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-
-	"go.breu.io/ctrlplane/internal/shared"
 )
 
 var (
@@ -52,7 +50,4 @@ func Execute() {
 }
 
 func init() {
-	if err := shared.Service.InitCLI(); err != nil {
-		println("ctrlplane not initialized, please do ctrlplane init")
-	}
 }
