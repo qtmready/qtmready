@@ -230,10 +230,11 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 
 	for idx, repo := range repos.Data {
 		marker := &repoMarker[idx]
-		p := Core.Providers[repo.Provider] // get the specific provider
+		// p := Instance().Provider(repo.Provider) // get the specific provider
+		p := Instance().RepoProvider(repo.Provider) // get the specific provider
 		commitID := ""
 
-		if err := workflow.ExecuteActivity(pctx, p.GetLatestCommitforRepo, repo.ProviderID, repo.DefaultBranch).
+		if err := workflow.ExecuteActivity(pctx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).
 			Get(ctx, &commitID); err != nil {
 			logger.Error("Error in getting latest commit ID", "repo", repo.Name, "provider", repo.Provider)
 			return fmt.Errorf("Error in getting latest commit ID repo:%s, provider:%s", repo.Name, repo.Provider.String())

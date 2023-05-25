@@ -255,6 +255,7 @@ func NewMockSession(session *gocqlxmock.SessionxMock) {
 // DB returns the singleton database session.
 func DB() *Config {
 	if db == nil {
+		shared.Logger().Info("db: creating new session")
 		once.Do(func() {
 			db = NewSession(FromEnvironment(), WithSessionCreation())
 		})

@@ -141,8 +141,8 @@ func (a *Activities) GetStack(ctx context.Context, repo *core.Repo) (*core.Stack
 	return s, nil
 }
 
-// GetLatestCommitforRepo gets latest commit for default branch of the provided repo.
-func (g *Config) GetLatestCommitforRepo(ctx context.Context, providerID string, branch string) (string, error) {
+// GetLatestCommit gets latest commit for default branch of the provided repo.
+func (a *Activities) GetLatestCommit(ctx context.Context, providerID string, branch string) (string, error) {
 	logger := activity.GetLogger(ctx)
 	prepo := &Repo{}
 

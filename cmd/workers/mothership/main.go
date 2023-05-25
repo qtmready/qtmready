@@ -25,6 +25,7 @@ import (
 	"go.temporal.io/sdk/worker"
 
 	"go.breu.io/ctrlplane/internal/core"
+	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/providers/github"
 	"go.breu.io/ctrlplane/internal/shared"
 )
@@ -34,30 +35,31 @@ func main() {
 	exitcode := 0
 	defer func() { os.Exit(exitcode) }()
 	defer func() { _ = shared.Logger().Sync() }()
-	// defer func() { _ = shared.EventStream.Drain() }()
 	defer shared.Temporal().Client().Close()
+	defer db.DB().Session.Close()
 
-	core.Core.Providers[core.RepoProviderGithub] = github.Instance()
+	core.Instance(
+		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
+	)
 
-	queue := shared.Temporal().Queue(shared.ProvidersQueue).GetName()
+	providerQueue := shared.Temporal().Queue(shared.ProvidersQueue).GetName()
 	coreQueue := shared.Temporal().Queue(shared.CoreQueue).GetName()
 
 	options := worker.Options{OnFatalError: func(err error) { shared.Logger().Error("Fatal error during worker execution", err) }}
-	wrkr := worker.New(shared.Temporal().Client(), queue, options)
+	providerWrkr := worker.New(shared.Temporal().Client(), providerQueue, options)
 	coreWrkr := worker.New(shared.Temporal().Client(), coreQueue, options)
 
 	ghwfs := &github.Workflows{}
 	cwfs := &core.Workflows{}
 
 	// provider workflows
-	wrkr.RegisterWorkflow(ghwfs.OnInstallationEvent)
-	wrkr.RegisterWorkflow(ghwfs.OnInstallationRepositoriesEvent)
-	wrkr.RegisterWorkflow(ghwfs.OnPushEvent)
-	wrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
+	providerWrkr.RegisterWorkflow(ghwfs.OnInstallationEvent)
+	providerWrkr.RegisterWorkflow(ghwfs.OnInstallationRepositoriesEvent)
+	providerWrkr.RegisterWorkflow(ghwfs.OnPushEvent)
+	providerWrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
 
 	// provider activities
-	wrkr.RegisterActivity(&github.Activities{})
-	wrkr.RegisterActivity(github.Instance().GetLatestCommitforRepo)
+	providerWrkr.RegisterActivity(&github.Activities{})
 
 	// core workflows
 	coreWrkr.RegisterWorkflow(cwfs.StackController)
@@ -71,13 +73,13 @@ func main() {
 	coreWrkr.RegisterActivity(&core.Activities{})
 
 	// start worker for provider queue
-	err := wrkr.Start()
+	err := providerWrkr.Start()
 	if err != nil {
 		exitcode = 1
 		return
 	}
 
-	defer wrkr.Stop()
+	defer providerWrkr.Stop()
 
 	// start worker for core queue
 	err = coreWrkr.Start()
