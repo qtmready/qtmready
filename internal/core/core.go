@@ -36,17 +36,17 @@ type (
 	// NOTE: This is not an ideal design, because it only registers activities for the providers. It does not register
 	// workflows. We may need to revisit this design in the future.
 	Core interface {
-		RegisterRepoProvider(name RepoProvider, provider RepoProviderActivities)
-		RegisterCloudProvider(name CloudProvider, provider CloudProviderActivities)
+		RegisterRepoProvider(RepoProvider, RepoProviderActivities)
+		RegisterCloudProvider(CloudProvider, CloudProviderActivities)
 
-		RepoProvider(name RepoProvider) RepoProviderActivities
-		CloudProvider(name CloudProvider) CloudProviderActivities
+		RepoProvider(RepoProvider) RepoProviderActivities
+		CloudProvider(CloudProvider) CloudProviderActivities
 	}
 
 	CoreOption func(Core)
 
 	RepoProviderActivities interface {
-		GetLatestCommit(ctx context.Context, providerID string, branch string) (string, error)
+		GetLatestCommit(context.Context, string, string) (string, error)
 	}
 
 	CloudProviderActivities interface {
@@ -63,12 +63,12 @@ type (
 	}
 )
 
-func (c *core) RegisterRepoProvider(name RepoProvider, provider RepoProviderActivities) {
-	c.activity.repos[name] = provider
+func (c *core) RegisterRepoProvider(provider RepoProvider, activities RepoProviderActivities) {
+	c.activity.repos[provider] = activities
 }
 
-func (c *core) RegisterCloudProvider(name CloudProvider, provider CloudProviderActivities) {
-	c.activity.cloud[name] = provider
+func (c *core) RegisterCloudProvider(provider CloudProvider, activities CloudProviderActivities) {
+	c.activity.cloud[provider] = activities
 }
 
 func (c *core) RepoProvider(name RepoProvider) RepoProviderActivities {
