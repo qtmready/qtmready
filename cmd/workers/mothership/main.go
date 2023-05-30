@@ -25,6 +25,7 @@ import (
 	"go.temporal.io/sdk/worker"
 
 	"go.breu.io/ctrlplane/internal/core"
+	"go.breu.io/ctrlplane/internal/core/mutex"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/providers/github"
 	"go.breu.io/ctrlplane/internal/shared"
@@ -61,9 +62,11 @@ func main() {
 	// provider activities
 	providerWrkr.RegisterActivity(&github.Activities{})
 
+	// mutex workflow
+	coreWrkr.RegisterWorkflow(mutex.Workflow)
+
 	// core workflows
 	coreWrkr.RegisterWorkflow(cwfs.StackController)
-	coreWrkr.RegisterWorkflow(cwfs.MutexWorkflow)
 	coreWrkr.RegisterWorkflow(cwfs.Deploy)
 	coreWrkr.RegisterWorkflow(cwfs.GetAssets)
 	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)

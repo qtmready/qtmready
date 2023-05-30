@@ -243,12 +243,12 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 }
 
 // Deploy deploys the stack.
-func (w *Workflows) Deploy(ctx workflow.Context, stackID string, mutex *Mutex, assets *Assets) error {
+func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock mutex.Mutex, assets *Assets) error {
 	logger := workflow.GetLogger(ctx)
 	// Acquire lock
 	logger.Info("Deployment initiated", "changeset", assets.ChangesetID)
 
-	release, err := mutex.Lock(ctx)
+	err := lock.Acquire()
 	if err != nil {
 		logger.Error("Error in acquiring lock", "Error", err)
 		return err
@@ -258,7 +258,7 @@ func (w *Workflows) Deploy(ctx workflow.Context, stackID string, mutex *Mutex, a
 	_ = workflow.Sleep(ctx, 60*time.Second)
 
 	// release lock
-	_ = release()
+	_ = lock.Release()
 
 	prWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
 	workflow.SignalExternalWorkflow(ctx, prWorkflowID, "", WorkflowSignalDeploymentCompleted.String(), assets)
