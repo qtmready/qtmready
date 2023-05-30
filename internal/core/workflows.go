@@ -25,6 +25,7 @@ import (
 	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/ctrlplane/internal/core/mutex"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -56,17 +57,25 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	// deployment map is designed to be used in OnPullRequestWorkflow only
 	deployments := make(Deployments)
 	logger := workflow.GetLogger(ctx)
-	mutexID := "stack." + stackID // stack.<stack id>
+	lockID := "stack." + stackID // stack.<stack id>
 
 	// create and initialize mutex, initializing mutex will start a mutex workflow
 	logger.Info("creating mutex for stack", "stack", stackID)
 
-	mutex := NewMutex(mutexID, unLockTimeOutStackMutex)
+	// mutex := NewMutex(mutexID, unLockTimeOutStackMutex)
+	lock := mutex.New(
+		mutex.WithCallerContext(ctx),
+		mutex.WithID(lockID),
+	)
 
-	err := mutex.Init(ctx)
-	if err != nil {
-		logger.Error("Error in creating mutex for stack", "stack ID", stackID, "Error", err)
+	if err := lock.Start(); err != nil {
+		logger.Debug("unable to start mutex workflow", "error", err)
 	}
+
+	// err := mutex.Init(ctx)
+	// if err != nil {
+	// 	logger.Error("Error in creating mutex for stack", "stack ID", stackID, "Error", err)
+	// }
 
 	// var prSignalsCounter int = 0
 
@@ -79,7 +88,7 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	selector := workflow.NewSelector(ctx)
 	selector.AddReceive(triggerChannel, onDeploymentStartedSignal(ctx, stackID, deployments))
 	selector.AddReceive(assetsChannel, onAssetsRetreivedSignal(ctx, stackID, deployments))
-	selector.AddReceive(infrachannel, onInfraProvisionedSignal(ctx, stackID, mutex, deployments))
+	selector.AddReceive(infrachannel, onInfraProvisionedSignal(ctx, stackID, lock, deployments))
 	selector.AddReceive(deploymentchannel, onDeploymentCompletedSignal(ctx, stackID, deployments))
 	selector.AddReceive(manualOverrideChannel, onManualOverrideSignal(ctx, stackID, deployments))
 
@@ -363,7 +372,7 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 }
 
 // onInfraProvisionedSignal will receive assets by ProvisionInfra, update deployment state and execute Deploy.
-func onInfraProvisionedSignal(ctx workflow.Context, stackID string, mutex *Mutex, deployments Deployments) shared.ChannelHandler {
+func onInfraProvisionedSignal(ctx workflow.Context, stackID string, lock mutex.Mutex, deployments Deployments) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 	w := &Workflows{}
 
@@ -387,7 +396,7 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, mutex *Mutex
 		cctx := workflow.WithChildOptions(ctx, opts)
 
 		err := workflow.
-			ExecuteChildWorkflow(cctx, w.Deploy, stackID, mutex, assets).
+			ExecuteChildWorkflow(cctx, w.Deploy, stackID, lock, assets).
 			GetChildWorkflowExecution().Get(cctx, &execution)
 		if err != nil {
 			logger.Error("Error in Executing deployment workflow", "Error", err)
