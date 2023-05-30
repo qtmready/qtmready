@@ -80,7 +80,7 @@ func (m *mutex) Start() error {
 
 	var exe workflow.Execution
 	if err := workflow.
-		ExecuteChildWorkflow(ctx, Workflow, m.id, m.timeout).
+		ExecuteChildWorkflow(ctx, Workflow, m.timeout).
 		GetChildWorkflowExecution().
 		Get(ctx, &exe); err != nil {
 		logger.Error("mutex: unable to start.", "error", err)

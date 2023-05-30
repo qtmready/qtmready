@@ -60,16 +60,6 @@ services:
     networks:
       - ctrlplane
 
-  # nats.io
-  event-stream:
-    container_name: event-stream
-    image: nats:2.8.4
-    ports:
-      - '4222:4222'
-    command: --cluster_name ctrlplane
-    networks:
-      - ctrlplane
-
   # temporal.io
   temporal:
     container_name: temporal
@@ -78,7 +68,7 @@ services:
     environment:
       - CASSANDRA_SEEDS=database
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-cass.yaml
-    image: temporalio/auto-setup:1.20.0
+    image: temporalio/auto-setup:1.20.2
     ports:
       - '7233:7233'
     volumes:
@@ -92,7 +82,7 @@ services:
       - temporal
     environment:
       - TEMPORAL_CLI_ADDRESS=temporal:7233
-    image: temporalio/admin-tools:1.20.0
+    image: temporalio/admin-tools:1.20.2
     stdin_open: true
     tty: true
     networks:
@@ -105,7 +95,7 @@ services:
     environment:
       TEMPORAL_ADDRESS: temporal:7233
       TEMPORAL_CORS_ORIGINS: http://localhost:3000
-    image: temporalio/ui:2.10.3
+    image: temporalio/ui:2.15.0
     ports:
       - 8080:8080
     networks:
