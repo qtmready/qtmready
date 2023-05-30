@@ -49,7 +49,7 @@ const (
 
 // workflow signal definitions.
 const (
-	WorkflowSignalTriggerDeployment WorkflowSignal = "deployment_trigger"
+	WorkflowSignalDeploymentStarted WorkflowSignal = "deployment_trigger"
 )
 
 /*

@@ -15,22 +15,13 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package core
+package mutex
 
 import (
-	"fmt"
+	"errors"
 )
 
-type (
-	providerNotFoundError struct {
-		name string
-	}
+var (
+	ErrNilContext   = errors.New("contexts not initialized")
+	ErrNoResourceID = errors.New("no resource ID provided")
 )
-
-func (e *providerNotFoundError) Error() string {
-	return fmt.Sprintf("provider %s not found. plese register your providers first.", e.name)
-}
-
-func ErrProviderNotFound(name string) error {
-	return &providerNotFoundError{name}
-}

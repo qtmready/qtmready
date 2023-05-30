@@ -77,13 +77,11 @@ func handlePushEvent(ctx echo.Context) error {
 	opts := shared.Temporal().
 		Queue(shared.ProvidersQueue).
 		GetWorkflowOptions(
-			"github",
-			strconv.FormatInt(payload.Installation.ID, 10),
-			"repo",
-			strconv.FormatInt(payload.Repository.ID, 10),
-			WebhookEventPush.String(),
-			"ref",
-			payload.After)
+			"github", strconv.FormatInt(payload.Installation.ID, 10),
+			"repo", strconv.FormatInt(payload.Repository.ID, 10),
+			WebhookEventPush.String(), "ref",
+			payload.After,
+		)
 
 	exe, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPushEvent, payload)
 	if err != nil {
@@ -105,12 +103,9 @@ func handlePullRequestEvent(ctx echo.Context) error {
 	opts := shared.Temporal().
 		Queue(shared.ProvidersQueue).
 		GetWorkflowOptions(
-			"github",
-			strconv.FormatInt(payload.Installation.ID, 10),
-			"repo",
-			strconv.FormatInt(payload.Repository.ID, 10),
-			WebhookEventPullRequest.String(),
-			strconv.FormatInt(payload.PullRequest.ID, 10),
+			"github", strconv.FormatInt(payload.Installation.ID, 10),
+			"repo", strconv.FormatInt(payload.Repository.ID, 10),
+			WebhookEventPullRequest.String(), strconv.FormatInt(payload.PullRequest.ID, 10),
 		)
 
 	switch payload.Action {
@@ -132,6 +127,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 	}
 }
 
+// handleInstallationRepositoriesEvent handles GitHub installation repositories event.
 func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 	payload := &InstallationRepositoriesEvent{}
 	if err := ctx.Bind(payload); err != nil {

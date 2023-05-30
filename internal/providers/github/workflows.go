@@ -195,7 +195,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	_, _ = shared.Temporal().Client().SignalWithStartWorkflow(
 		context.Background(),
 		corePRWfID,
-		shared.WorkflowSignalTriggerDeployment.String(),
+		shared.WorkflowSignalDeploymentStarted.String(),
 		signalPayload,
 		options,
 		cw.StackController,

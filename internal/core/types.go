@@ -50,23 +50,23 @@ type (
 		Data []T `json:"data"`
 	}
 
-	ResourceData struct{}
+	ResourceConfig struct{}
 
-	ChildWorkflowIDs struct {
+	ChildWorkflows struct {
 		GetAssets      string
 		ProvisionInfra string
-		Deployment     string
+		Deploy         string
 	}
 
 	State int64
 
-	DeploymentData struct {
-		State       State
-		WorkflowIDs ChildWorkflowIDs
+	Deployment struct {
+		state     State
+		workflows ChildWorkflows
 	}
 
-	DeploymentsData map[gocql.UUID]*DeploymentData // changesetID and deploymentData map
-	AssetsMap       map[gocql.UUID]*Assets         // changesetID and assets map
+	Deployments map[gocql.UUID]*Deployment // deployments against a changesetID.
+	AssetsMap   map[gocql.UUID]*Assets     // assets against a changesetID.
 
 	// Assets contains all the assets fetched from DB against a stack.
 	Assets struct {
@@ -74,7 +74,7 @@ type (
 		Resources       []Resource
 		Workloads       []Workload
 		Blueprint       Blueprint
-		ResourcesConfig []ResourceData
+		ResourcesConfig []ResourceConfig
 		ChangesetID     gocql.UUID
 	}
 )
@@ -83,5 +83,5 @@ func (a *Assets) Create() {
 	a.Repos = make([]Repo, 0)
 	a.Resources = make([]Resource, 0)
 	a.Workloads = make([]Workload, 0)
-	a.ResourcesConfig = make([]ResourceData, 0)
+	a.ResourcesConfig = make([]ResourceConfig, 0)
 }

@@ -26,13 +26,13 @@ import (
 )
 
 type (
-	UnlockFunc func() error
+	ReleaseLock func() error
 
 	// Mutex holds the informations for a specific mutex resource.
 	Mutex struct {
-		MutexWorkflowID string
-		ResourceID      string
-		UnlockTimeout   time.Duration
+		WorkflowID    string
+		ResourceID    string
+		UnlockTimeout time.Duration
 	}
 )
 
@@ -54,41 +54,40 @@ func (m *Mutex) Init(ctx workflow.Context) error {
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
 		GetChildWorkflowOptions("mutex", m.ResourceID)
-	ctx = workflow.WithChildOptions(ctx, opts)
+	cctx := workflow.WithChildOptions(ctx, opts)
 
 	// execute child workflow and wait for it to spawn
 	var execution workflow.Execution
 	err := workflow.
-		ExecuteChildWorkflow(ctx, w.MutexWorkflow, m.ResourceID, m.UnlockTimeout).
-		GetChildWorkflowExecution().Get(ctx, &execution)
+		ExecuteChildWorkflow(cctx, w.MutexWorkflow, m.ResourceID, m.UnlockTimeout).
+		GetChildWorkflowExecution().Get(cctx, &execution)
 
 	if err != nil {
 		logger.Error("Parent execution received child execution failure.", "Error", err)
 		return err
 	}
 
-	m.MutexWorkflowID = execution.ID
+	m.WorkflowID = execution.ID
 	logger.Info("Started Child Mutex Workflow", "ID", execution.ID, "RunID", execution.RunID)
 
 	return err
 }
 
 // Lock sends request lock signal to the mutex workflow and waits for acknowledgement.
-// It returns an unlock function that should be called to release the resource.
-func (m *Mutex) Lock(ctx workflow.Context) (UnlockFunc, error) {
+// It returns an callback function to release the lock. The callback acts as a destructor for the mutex.
+func (m *Mutex) Lock(ctx workflow.Context) (ReleaseLock, error) {
 	// TODO: resource - mutex workflow id map?
 	logger := workflow.GetLogger(ctx)
-
 	sender := workflow.GetInfo(ctx).WorkflowExecution.ID
 	// request mutex workflow to acquire lock
-	logger.Info("Lock: sending acquire lock signal", "mutex", m.MutexWorkflowID)
+	logger.Info("Lock: sending acquire lock signal", "mutex", m.WorkflowID)
 
 	err := workflow.
-		SignalExternalWorkflow(ctx, m.MutexWorkflowID, "", WorkflowSignalRequestLock.String(), sender).
+		SignalExternalWorkflow(ctx, m.WorkflowID, "", WorkflowSignalRequestLock.String(), sender).
 		Get(ctx, nil)
 
 	if err != nil {
-		logger.Error("Error in signaling external workflow", "Workflow", m.MutexWorkflowID, "Error", err)
+		logger.Error("Error in signaling external workflow", "Workflow", m.WorkflowID, "Error", err)
 		return nil, err
 	}
 
@@ -98,19 +97,19 @@ func (m *Mutex) Lock(ctx workflow.Context) (UnlockFunc, error) {
 	workflow.GetSignalChannel(ctx, WorkflowSignalLockAcquired.String()).Receive(ctx, nil)
 	logger.Info("Lock: lock acquired")
 
-	unlockFunc := func() error {
+	release := func() error {
 		logger.Info("Lock: sending release lock signal")
 
 		return workflow.SignalExternalWorkflow(
 			ctx,
-			m.MutexWorkflowID,
+			m.WorkflowID,
 			"",
 			WorkflowSignalReleaseLock.String(),
 			sender,
 		).Get(ctx, nil)
 	}
 
-	return unlockFunc, nil
+	return release, nil
 }
 
 // MutexWorkflow will lock a resource specified by resourceId. The resource wil be automatically released after unlockTimeout.
