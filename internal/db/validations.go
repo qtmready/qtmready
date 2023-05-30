@@ -31,6 +31,8 @@ type (
 	GetPlaceholder struct {
 		ID gocql.UUID `json:"id" cql:"id"`
 	}
+
+	ValidatorFn func(fl validator.FieldLevel) bool
 )
 
 func NewGetPlaceholder() *GetPlaceholder {

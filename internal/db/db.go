@@ -25,6 +25,7 @@ import (
 	"github.com/Guilospanck/gocqlxmock"
 	"github.com/Guilospanck/igocqlx"
 	"github.com/avast/retry-go/v4"
+	"github.com/go-playground/validator/v10"
 	"github.com/gocql/gocql"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/cassandra"
@@ -224,6 +225,14 @@ func WithMigrations() ConfigOption {
 	}
 }
 
+func WithValidator(name string, validator validator.Func) ConfigOption {
+	return func(c *Config) {
+		if err := shared.Validator().RegisterValidation(name, validator); err != nil {
+			panic(fmt.Errorf("db: failed to register validator, %v", err))
+		}
+	}
+}
+
 // NewSession creates a new session with the given options.
 func NewSession(opts ...ConfigOption) *Config {
 	db = &Config{}
@@ -244,6 +253,7 @@ func NewE2ESession(port int, migrationPath string) {
 		WithTimeout(10*time.Minute),
 		WithE2ESession(),
 		WithMigrations(),
+		WithValidator("db_unique", UniqueField),
 	)
 }
 
@@ -257,7 +267,11 @@ func DB() *Config {
 	if db == nil {
 		shared.Logger().Info("db: creating new session")
 		once.Do(func() {
-			db = NewSession(FromEnvironment(), WithSessionCreation())
+			db = NewSession(
+				FromEnvironment(),
+				WithSessionCreation(),
+				WithValidator("db_unique", UniqueField),
+			)
 		})
 	}
 

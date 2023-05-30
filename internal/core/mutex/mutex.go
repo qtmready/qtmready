@@ -25,7 +25,7 @@ import (
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
-var (
+const (
 	DefaultTimeout = 30 * time.Minute
 )
 
@@ -190,7 +190,7 @@ func WithTimeout(timeout time.Duration) MutexOption {
 //
 //		m := mutex.New(
 //			mutex.WithCallerContext(ctx),
-//			mutex.WithResource("resource-id"),
+//			mutex.WithID("resource-type.resource-id"),
 //			mutex.WithTimeout(30*time.Minute),
 //		)
 //	 if err := m.Start(); err != nil {/*handle error*/}
