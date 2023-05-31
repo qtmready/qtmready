@@ -8,7 +8,7 @@ ADD . .
 
 RUN go build -o /app/main /app/cmd/api/main.go
 
-FROM alpine:3.16
+FROM alpine:3
 
 WORKDIR /app
 
