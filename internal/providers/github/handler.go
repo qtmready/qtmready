@@ -57,18 +57,20 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 	payload := &CompleteInstallationSignal{request.InstallationId, request.SetupAction, teamID}
 
 	workflows := &Workflows{}
-	opts := shared.Temporal.
-		Queues[shared.ProvidersQueue].
+	opts := shared.Temporal().
+		Queue(shared.ProvidersQueue).
 		GetWorkflowOptions("github", strconv.Itoa(int(payload.InstallationID)), WebhookEventInstallation.String())
 
-	exe, err := shared.Temporal.Client.SignalWithStartWorkflow(
-		ctx.Request().Context(),
-		opts.ID,
-		WorkflowSignalCompleteInstallation.String(),
-		payload,
-		opts,
-		workflows.OnInstallationEvent,
-	)
+	exe, err := shared.Temporal().
+		Client().
+		SignalWithStartWorkflow(
+			ctx.Request().Context(),
+			opts.ID,
+			WorkflowSignalCompleteInstallation.String(),
+			payload,
+			opts,
+			workflows.OnInstallationEvent,
+		)
 	if err != nil {
 		return err
 	}
@@ -113,7 +115,7 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 	body, _ := io.ReadAll(ctx.Request().Body)
 	ctx.Request().Body = io.NopCloser(bytes.NewBuffer(body))
 
-	if err := Github.VerifyWebhookSignature(body, signature); err != nil {
+	if err := Instance().VerifyWebhookSignature(body, signature); err != nil {
 		return shared.NewAPIError(http.StatusUnauthorized, err)
 	}
 
@@ -122,7 +124,7 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
 	}
 
-	shared.Logger.Debug("headerEvent", "headerEvent", headerEvent)
+	shared.Logger().Debug("headerEvent", "headerEvent", headerEvent)
 
 	event := WebhookEvent(headerEvent)
 	handlers := WebhookEventHandlers{

@@ -34,7 +34,7 @@ func Context(ctx any, inner bool) {
 	contextKeys := reflect.TypeOf(ctx).Elem()
 
 	if !inner {
-		shared.Logger.Debug("Fields For:", contextKeys.PkgPath(), contextKeys.Name())
+		shared.Logger().Debug("Fields For:", contextKeys.PkgPath(), contextKeys.Name())
 	}
 
 	if contextKeys.Kind() == reflect.Struct {
@@ -47,23 +47,23 @@ func Context(ctx any, inner bool) {
 			if reflectField.Name == "Context" {
 				Context(reflectValue.Interface(), true)
 			} else {
-				shared.Logger.Debug("context", "name", reflectField.Name, "value", reflectValue.Interface())
+				shared.Logger().Debug("context", "name", reflectField.Name, "value", reflectValue.Interface())
 			}
 		}
 	} else {
-		shared.Logger.Debug("context is empty (int)\n")
+		shared.Logger().Debug("context is empty (int)\n")
 	}
 }
 
 // EchoHeaders prints the headers of an echo context.
 func EchoHeaders(ctx echo.Context) {
-	shared.Logger.Debug("--- Headers ---")
+	shared.Logger().Debug("--- Headers ---")
 
 	for k, v := range ctx.Request().Header {
 		for _, vv := range v {
-			shared.Logger.Debug(k, "val", vv)
+			shared.Logger().Debug(k, "val", vv)
 		}
 	}
 
-	shared.Logger.Debug("--- End Headers ---")
+	shared.Logger().Debug("--- End Headers ---")
 }

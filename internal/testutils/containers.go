@@ -106,7 +106,7 @@ func StartDBContainer(ctx context.Context) (*Container, error) {
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
-		Logger:           shared.Logger,
+		Logger:           shared.Logger(),
 		Started:          true,
 		Reuse:            true,
 	})
@@ -147,7 +147,7 @@ func StartTemporalContainer(ctx context.Context) (*Container, error) {
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
-		Logger:           shared.Logger,
+		Logger:           shared.Logger(),
 		Started:          true,
 		Reuse:            true,
 	})
@@ -171,7 +171,7 @@ func StartNatsIOContainer(ctx context.Context) (*Container, error) {
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
-		Logger:           shared.Logger,
+		Logger:           shared.Logger(),
 		Started:          true,
 		Reuse:            true,
 	})
@@ -255,7 +255,7 @@ func StartAirContainer(ctx context.Context, name, secret, workdir, config, port 
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
-		Logger:           shared.Logger,
+		Logger:           shared.Logger(),
 		Started:          true,
 		Reuse:            true,
 	})

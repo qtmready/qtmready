@@ -21,10 +21,8 @@ require (
 	github.com/labstack/echo/v4 v4.10.2
 	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/manifoldco/promptui v0.9.0
-	github.com/nats-io/nats.go v1.25.0
 	github.com/scylladb/gocqlx/v2 v2.8.0
 	github.com/sethvargo/go-password v0.2.0
-	github.com/sourcegraph/conc v0.3.0
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.2
 	github.com/testcontainers/testcontainers-go v0.19.0
@@ -96,9 +94,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
-	github.com/nats-io/nats-server/v2 v2.8.4 // indirect
-	github.com/nats-io/nkeys v0.4.4 // indirect
-	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc2 // indirect
 	github.com/opencontainers/runc v1.1.3 // indirect

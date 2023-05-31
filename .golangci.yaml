@@ -62,6 +62,8 @@ linters-settings:
     # Checks assignments with too many blank identifiers.
     # Default: 2
     max-blank-identifiers: 3
+  interfacebloat:
+    max: 15
   revive:
     confidence: 0.8
     rules:

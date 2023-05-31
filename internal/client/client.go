@@ -105,7 +105,7 @@ func (c *Client) request(method, url string, reply, data any) error {
 
 // headers sets the headers for the request.
 func (c *Client) headers(request *http.Request) {
-	request.Header.Set("User-Agent", shared.Service.Name+"/"+shared.Service.Version())
+	request.Header.Set("User-Agent", shared.Service().GetName()+"/"+shared.Service().GetVersion())
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Authorization", auth.APIKeyHeaderName+" "+c.APIKEY)
 }

@@ -63,7 +63,7 @@ func (v CloudProvider) MarshalJSON() ([]byte, error) { return json.Marshal(v.Str
 func (v *CloudProvider) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
-    shared.Logger.Error("Failed to unmarshal CloudProvider", "error", err)
+    shared.Logger().Error("Failed to unmarshal CloudProvider", "error", err)
 		return err
 	}
 

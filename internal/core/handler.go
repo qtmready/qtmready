@@ -172,17 +172,18 @@ func (s *ServerHandler) CreateStack(ctx echo.Context) error {
 		temporal guideline which state that workflow ids should not be resued
 	*/
 	w := &Workflows{}
-	opts := shared.Temporal.Queues[shared.CoreQueue].
+	opts := shared.Temporal().
+		Queue(shared.CoreQueue).
 		GetWorkflowOptions("stack", stack.ID.String())
 
-	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.StackController, stack.ID.String())
+	exe, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.StackController, stack.ID.String())
 	if err != nil {
 		// TODO: remove stack if workflow not started? or always start this workflow with signal so it can be started on pull request
 		// (if not already running)
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	shared.Logger.Info("started workflow: ", opts.ID, " run ID: ", exe.GetRunID())
+	shared.Logger().Info("started workflow: ", opts.ID, " run ID: ", exe.GetRunID())
 
 	return ctx.JSON(http.StatusCreated, stack)
 }

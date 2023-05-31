@@ -26,87 +26,128 @@ import (
 )
 
 type (
+	Logger interface {
+		Debug(string, ...any)
+		DebugContext(context.Context, string, ...any)
+		Error(string, ...any)
+		ErrorContext(context.Context, string, ...any)
+		Info(string, ...any)
+		InfoContext(context.Context, string, ...any)
+		Printf(string, ...any)
+		Sync() error
+		Trace(string, ...any)
+		TraceContext(context.Context, string, ...any)
+		Warn(string, ...any)
+		WarnContext(context.Context, string, ...any)
+		Verbose() bool
+	}
 
-	// ZapAdapter is a wrapper around zap.Logger. Makes it compatible with the logger.Logger interface.
-	ZapAdapter struct {
-		logger *zap.Logger
-		core   zapcore.Core
+	// zapadapter is a wrapper around zap.Logger. Makes it compatible with the logger.Logger interface.
+	zapadapter struct {
+		logger  *zap.Logger
+		core    zapcore.Core
+		verbose bool
 	}
 )
 
-func NewZapAdapter(logger *zap.Logger, skip int) *ZapAdapter {
-	return &ZapAdapter{
-		logger: logger.WithOptions(zap.AddCallerSkip(skip)), // skip the caller of this function
-		core:   logger.Core(),
+func NewZapLogger(debug bool, skip int) *zap.Logger {
+	var config zap.Config
+	if debug {
+		config = zap.NewDevelopmentConfig()
+	} else {
+		config = zap.NewProductionConfig()
+	}
+
+	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	config.EncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
+	config.EncoderConfig.EncodeCaller = zapcore.ShortCallerEncoder
+	config.EncoderConfig.CallerKey = "func"
+
+	zl, _ := config.Build(zap.AddCallerSkip(skip))
+
+	return zl
+}
+
+func NewZapAdapter(debug bool, skip int) Logger {
+	logger := NewZapLogger(debug, skip)
+
+	return &zapadapter{
+		logger:  logger, // skip the caller of this function
+		core:    logger.Core(),
+		verbose: debug,
 	}
 }
 
-func (adapter *ZapAdapter) Trace(msg string, fields ...any) {
+func (a *zapadapter) Trace(msg string, fields ...any) {
 	// TODO: Implement OpenTelemetry compatible Trace
-	adapter.logger.Debug(msg, adapter.fields(fields)...)
+	a.logger.Debug(msg, a.fields(fields)...)
 }
 
-func (adapter *ZapAdapter) Debug(msg string, fields ...any) {
-	if !adapter.core.Enabled(zapcore.DebugLevel) {
+func (a *zapadapter) Debug(msg string, fields ...any) {
+	if !a.core.Enabled(zapcore.DebugLevel) {
 		return
 	}
 
-	adapter.logger.Debug(msg, adapter.fields(fields)...)
+	a.logger.Debug(msg, a.fields(fields)...)
 }
 
-func (adapter *ZapAdapter) Info(msg string, fields ...any) {
-	if !adapter.core.Enabled(zapcore.InfoLevel) {
+func (a *zapadapter) Info(msg string, fields ...any) {
+	if !a.core.Enabled(zapcore.InfoLevel) {
 		return
 	}
 
-	adapter.logger.Info(msg, adapter.fields(fields)...)
+	a.logger.Info(msg, a.fields(fields)...)
 }
 
-func (adapter *ZapAdapter) Warn(msg string, fields ...any) {
-	if !adapter.core.Enabled(zapcore.WarnLevel) {
+func (a *zapadapter) Warn(msg string, fields ...any) {
+	if !a.core.Enabled(zapcore.WarnLevel) {
 		return
 	}
 
-	adapter.logger.Warn(msg, adapter.fields(fields)...)
+	a.logger.Warn(msg, a.fields(fields)...)
 }
 
-func (adapter *ZapAdapter) Error(msg string, fields ...any) {
-	if !adapter.core.Enabled(zapcore.ErrorLevel) {
+func (a *zapadapter) Error(msg string, fields ...any) {
+	if !a.core.Enabled(zapcore.ErrorLevel) {
 		return
 	}
 
-	adapter.logger.Error(msg, adapter.fields(fields)...)
+	a.logger.Error(msg, a.fields(fields)...)
 }
 
-func (adapter *ZapAdapter) Printf(msg string, fields ...any) {
-	adapter.logger.Sugar().Infof(msg, fields...)
+func (a *zapadapter) Printf(msg string, fields ...any) {
+	a.logger.Sugar().Infof(msg, fields...)
 }
 
-func (adapter *ZapAdapter) Sync() error {
-	return adapter.logger.Sync()
+func (a *zapadapter) Sync() error {
+	return a.logger.Sync()
 }
 
-func (adapter *ZapAdapter) TraceContext(_ context.Context, msg string, fields ...any) {
-	adapter.Trace(msg, fields...)
+func (a *zapadapter) TraceContext(_ context.Context, msg string, fields ...any) {
+	a.Trace(msg, fields...)
 }
 
-func (adapter *ZapAdapter) DebugContext(_ context.Context, msg string, fields ...any) {
-	adapter.Debug(msg, fields...)
+func (a *zapadapter) DebugContext(_ context.Context, msg string, fields ...any) {
+	a.Debug(msg, fields...)
 }
 
-func (adapter *ZapAdapter) InfoContext(_ context.Context, msg string, fields ...any) {
-	adapter.Info(msg, fields...)
+func (a *zapadapter) InfoContext(_ context.Context, msg string, fields ...any) {
+	a.Info(msg, fields...)
 }
 
-func (adapter *ZapAdapter) WarnContext(_ context.Context, msg string, fields ...any) {
-	adapter.Warn(msg, fields...)
+func (a *zapadapter) WarnContext(_ context.Context, msg string, fields ...any) {
+	a.Warn(msg, fields...)
 }
 
-func (adapter *ZapAdapter) ErrorContext(_ context.Context, msg string, fields ...any) {
-	adapter.Error(msg, fields...)
+func (a *zapadapter) ErrorContext(_ context.Context, msg string, fields ...any) {
+	a.Error(msg, fields...)
 }
 
-func (adapter *ZapAdapter) fields(kv []any) []zap.Field {
+func (a *zapadapter) Verbose() bool {
+	return a.verbose
+}
+
+func (a *zapadapter) fields(kv []any) []zap.Field {
 	var fields []zap.Field
 
 	if len(kv)%2 != 0 {

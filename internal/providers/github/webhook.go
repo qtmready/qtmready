@@ -35,14 +35,14 @@ func handleInstallationEvent(ctx echo.Context) error {
 		return err
 	}
 
-	shared.Logger.Info("installation event received ...")
+	shared.Logger().Info("installation event received ...")
 
 	workflows := &Workflows{}
-	opts := shared.Temporal.
-		Queues[shared.ProvidersQueue].
+	opts := shared.Temporal().
+		Queue(shared.ProvidersQueue).
 		GetWorkflowOptions("github", strconv.FormatInt(payload.Installation.ID, 10), WebhookEventInstallation.String())
 
-	exe, err := shared.Temporal.Client.SignalWithStartWorkflow(
+	exe, err := shared.Temporal().Client().SignalWithStartWorkflow(
 		ctx.Request().Context(),
 		opts.ID,
 		WorkflowSignalInstallationEvent.String(),
@@ -51,11 +51,11 @@ func handleInstallationEvent(ctx echo.Context) error {
 		workflows.OnInstallationEvent,
 	)
 	if err != nil {
-		shared.Logger.Error("unable to signal ...", "options", opts, "error", err)
+		shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
 		return nil
 	}
 
-	shared.Logger.Debug("installation event handled ...", "options", opts, "execution", exe.GetRunID())
+	shared.Logger().Debug("installation event handled ...", "options", opts, "execution", exe.GetRunID())
 
 	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
 }
@@ -64,7 +64,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 func handlePushEvent(ctx echo.Context) error {
 	payload := &PushEvent{}
 	if err := ctx.Bind(payload); err != nil {
-		shared.Logger.Error("unable to bind payload ...", "error", err)
+		shared.Logger().Error("unable to bind payload ...", "error", err)
 		return err
 	}
 
@@ -74,18 +74,16 @@ func handlePushEvent(ctx echo.Context) error {
 	}
 
 	w := &Workflows{}
-	opts := shared.Temporal.
-		Queues[shared.ProvidersQueue].
+	opts := shared.Temporal().
+		Queue(shared.ProvidersQueue).
 		GetWorkflowOptions(
-			"github",
-			strconv.FormatInt(payload.Installation.ID, 10),
-			"repo",
-			strconv.FormatInt(payload.Repository.ID, 10),
-			WebhookEventPush.String(),
-			"ref",
-			payload.After)
+			"github", strconv.FormatInt(payload.Installation.ID, 10),
+			"repo", strconv.FormatInt(payload.Repository.ID, 10),
+			WebhookEventPush.String(), "ref",
+			payload.After,
+		)
 
-	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPushEvent, payload)
+	exe, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPushEvent, payload)
 	if err != nil {
 		return err
 	}
@@ -97,34 +95,31 @@ func handlePushEvent(ctx echo.Context) error {
 func handlePullRequestEvent(ctx echo.Context) error {
 	payload := &PullRequestEvent{}
 	if err := ctx.Bind(payload); err != nil {
-		shared.Logger.Error("unable to bind payload ...", "error", err)
+		shared.Logger().Error("unable to bind payload ...", "error", err)
 		return err
 	}
 
 	w := &Workflows{}
-	opts := shared.Temporal.
-		Queues[shared.ProvidersQueue].
+	opts := shared.Temporal().
+		Queue(shared.ProvidersQueue).
 		GetWorkflowOptions(
-			"github",
-			strconv.FormatInt(payload.Installation.ID, 10),
-			"repo",
-			strconv.FormatInt(payload.Repository.ID, 10),
-			WebhookEventPullRequest.String(),
-			strconv.FormatInt(payload.PullRequest.ID, 10),
+			"github", strconv.FormatInt(payload.Installation.ID, 10),
+			"repo", strconv.FormatInt(payload.Repository.ID, 10),
+			WebhookEventPullRequest.String(), strconv.FormatInt(payload.PullRequest.ID, 10),
 		)
 
 	switch payload.Action {
 	case "opened":
-		exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnPullRequestEvent, payload)
+		exe, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPullRequestEvent, payload)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 
 		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
 	default:
-		err := shared.Temporal.Client.SignalWorkflow(context.Background(), opts.ID, "", WebhookEventPullRequest.String(), payload)
+		err := shared.Temporal().Client().SignalWorkflow(context.Background(), opts.ID, "", WebhookEventPullRequest.String(), payload)
 		if err != nil {
-			shared.Logger.Error("unable to signal ...", "options", opts, "error", err)
+			shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 
@@ -132,6 +127,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 	}
 }
 
+// handleInstallationRepositoriesEvent handles GitHub installation repositories event.
 func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 	payload := &InstallationRepositoriesEvent{}
 	if err := ctx.Bind(payload); err != nil {
@@ -139,15 +135,15 @@ func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 	}
 
 	w := &Workflows{}
-	opts := shared.Temporal.
-		Queues[shared.ProvidersQueue].
+	opts := shared.Temporal().
+		Queue(shared.ProvidersQueue).
 		GetWorkflowOptions(
 			"github",
 			strconv.FormatInt(payload.Installation.ID, 10),
 			WebhookEventInstallationRepositories.String(),
 		)
 
-	exe, err := shared.Temporal.Client.ExecuteWorkflow(context.Background(), opts, w.OnInstallationRepositoriesEvent, payload)
+	exe, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnInstallationRepositoriesEvent, payload)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}

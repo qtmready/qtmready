@@ -27,7 +27,6 @@ import (
 	"github.com/labstack/echo-contrib/prometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/sourcegraph/conc"
 
 	"go.breu.io/ctrlplane/internal/auth"
 	"go.breu.io/ctrlplane/internal/core"
@@ -36,42 +35,19 @@ import (
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
-func init() {
-	waitgroup := conc.NewWaitGroup()
-	defer waitgroup.Wait()
-	// Reading the configuration from the environment
-	shared.Service.ReadEnv()
-	shared.Service.InitLogger(1)
-	shared.Service.InitValidator()
-	shared.EventStream.ReadEnv()
-	db.DB.ReadEnv()
-	db.DB.RegisterValidations()
-	shared.Temporal.ReadEnv()
-	github.Github.ReadEnv()
-	// Reading the configuration from the environment ... Done
-
-	// Initializing reference to adapters
-	shared.Logger.Info("initializing ...")
-	waitgroup.Go(db.DB.InitSession)
-	waitgroup.Go(shared.EventStream.InitConnection)
-	waitgroup.Go(shared.Temporal.InitClient)
-	shared.Logger.Info("initialized", "version", shared.Service.Version())
-}
-
 func main() {
 	// graceful shutdown.
 	// LINK: https://stackoverflow.com/a/46255965/228697.
 	exitcode := 0
 	defer func() {
-		shared.Logger.Debug("exiting ...")
+		shared.Logger().Debug("exiting ...")
 		os.Exit(exitcode)
 	}() // all connections are closed, exit with the right code.
-	defer func() { _ = shared.Logger.Sync() }()       // flush log buffer.
-	defer func() { _ = shared.EventStream.Drain() }() // process events in the buffer before closing connection.
-	defer db.DB.Session.Close()
-	defer shared.Temporal.Client.Close()
+	defer func() { _ = shared.Logger().Sync() }() // flush log buffer.
+	defer db.DB().Session.Close()
+	defer shared.Temporal().Client().Close()
 
-	shared.Logger.Debug("starting ...")
+	shared.Logger().Debug("starting ...")
 	// web server based on echo
 	e := echo.New()
 
@@ -86,11 +62,11 @@ func main() {
 	// }))
 
 	// adding prometheus metrics
-	prom := prometheus.NewPrometheus(shared.Service.Name, nil)
+	prom := prometheus.NewPrometheus(shared.Service().GetName(), nil)
 	prom.Use(e)
 
 	// override the defaults
-	e.Validator = &shared.EchoValidator{Validator: shared.Validator}
+	e.Validator = &shared.EchoValidator{Validator: shared.Validator()}
 	e.HTTPErrorHandler = shared.EchoAPIErrorHandler
 
 	// register handlers

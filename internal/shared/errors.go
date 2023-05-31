@@ -100,7 +100,7 @@ func EchoAPIErrorHandler(err error, ctx echo.Context) {
 	if ok {
 		errs := ErrorMap{}
 		for _, fe := range validerr {
-			errs[fe.Field()] = TagMessage(fe.Tag())
+			errs[fe.Field()] = tagerr(fe.Tag())
 		}
 		// We set the error map to the APIError and set the error to ErrValidation.
 		apierr = NewAPIError(apierr.Code, ErrValidation).WithInternal(validerr)
@@ -119,7 +119,8 @@ func EchoAPIErrorHandler(err error, ctx echo.Context) {
 	}
 }
 
-func TagMessage(tag string) string {
+// tagerr returns the error message for a given tagerr.
+func tagerr(tag string) string {
 	switch tag {
 	case "required":
 		return "required"

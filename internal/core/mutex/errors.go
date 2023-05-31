@@ -15,41 +15,13 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package shared
+package mutex
 
 import (
-	"time"
-
-	"github.com/ilyakaznacheev/cleanenv"
-	"github.com/nats-io/nats.go"
+	"errors"
 )
 
 var (
-	EventStream = &eventstream{}
+	ErrNilContext   = errors.New("contexts not initialized")
+	ErrNoResourceID = errors.New("no resource ID provided")
 )
-
-type (
-	eventstream struct {
-		*nats.Conn
-		ServerURL string `env:"EVENTS_SERVERS_URL" env-default:"nats://event-stream:4222"`
-	}
-)
-
-func (e *eventstream) ReadEnv() {
-	if err := cleanenv.ReadEnv(e); err != nil {
-		Logger.Error("Failed to read environment variables", "error", err)
-	}
-}
-
-func (e *eventstream) InitConnection() {
-	Logger.Info("events: connecting ...", "url", e.ServerURL)
-	conn, err := nats.Connect(e.ServerURL, nats.MaxReconnects(5), nats.ReconnectWait(2*time.Second))
-
-	if err != nil {
-		Logger.Error("events: connection failed", "error", err)
-	}
-
-	e.Conn = conn
-
-	Logger.Info("events: connected")
-}

@@ -205,5 +205,5 @@ func (g *Guard) NewForTeam(id gocql.UUID) string {
 // Save saves the Guard to the database.
 func (g *Guard) Save() error {
 	_ = g.PreCreate()
-	return db.DB.Session.Query(guardTable.Insert()).BindStruct(g).ExecRelease()
+	return db.DB().Session.Query(guardTable.Insert()).BindStruct(g).ExecRelease()
 }

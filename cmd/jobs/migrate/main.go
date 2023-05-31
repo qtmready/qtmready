@@ -18,22 +18,13 @@
 package main
 
 import (
-	"github.com/sourcegraph/conc"
-
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/shared"
 )
 
 func main() {
-	waitgroup := conc.WaitGroup{}
-	defer waitgroup.Wait()
-	// Reading the configuration from the environment
-	shared.Service.ReadEnv()
-	shared.Service.InitLogger(1)
-	db.DB.ReadEnv()
-	// Reading the configuration from the environment ... Done
-
-	shared.Logger.Info("Running Migrations ...", "version", shared.Service.Version())
-	waitgroup.Go(db.DB.InitSessionWithMigrations)
-	shared.Logger.Info("Migrations Done", "version", shared.Service.Version())
+	db.NewSession(
+		db.FromEnvironment(),
+		db.WithSessionCreation(),
+		db.WithMigrations(),
+	)
 }

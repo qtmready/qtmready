@@ -66,7 +66,7 @@ type (
 )
 
 func (c *Containers) shutdown(ctx context.Context) {
-	shared.Logger.Info("graceful shutdown test environment ...")
+	shared.Logger().Info("graceful shutdown test environment ...")
 
 	_ = c.api.Shutdown()
 	_ = c.mothership.Shutdown()
@@ -76,12 +76,12 @@ func (c *Containers) shutdown(ctx context.Context) {
 	_ = c.db.ShutdownCassandra()
 	_ = c.network.Remove(ctx)
 
-	db.DB.Session.Close()
-	shared.Logger.Info("graceful shutdown complete.")
+	db.DB().Session.Close()
+	shared.Logger().Info("graceful shutdown complete.")
 }
 
 func (s *ServerHandlerTestSuite) SetupSuite() {
-	shared.InitForTest()
+	shared.InitServiceForTest()
 
 	s.context = context.Background()
 	s.SetupContainers()
@@ -95,7 +95,7 @@ func (s *ServerHandlerTestSuite) TearDownSuite() {
 }
 
 func (s *ServerHandlerTestSuite) SetupContainers() {
-	shared.Logger.Info("setting up test environment ...")
+	shared.Logger().Info("setting up test environment ...")
 
 	network, err := testutils.CreateTestNetwork(s.context)
 	if err != nil {
@@ -116,13 +116,9 @@ func (s *ServerHandlerTestSuite) SetupContainers() {
 		s.T().Fatalf("failed to get mapped db port: %v", err)
 	}
 
-	_ = db.DB.InitSessionForTests(port.Int(), "file://../db/migrations")
+	db.NewE2ESession(port.Int(), "file://../db/migrations")
 
-	if db.DB.Session.Session().S == nil {
-		s.T().Fatal("session is nil")
-	}
-
-	db.DB.RunMigrations()
+	// _ = db.DB.InitSessionForTests(port.Int(), "file://../db/migrations")
 
 	temporalctr, err := testutils.StartTemporalContainer(s.context)
 	if err != nil {
@@ -134,12 +130,12 @@ func (s *ServerHandlerTestSuite) SetupContainers() {
 		s.T().Fatalf("failed to start natsio container: %v", err)
 	}
 
-	apictr, err := testutils.StartAPIContainer(s.context, shared.Service.Secret)
+	apictr, err := testutils.StartAPIContainer(s.context, shared.Service().GetSecret())
 	if err != nil {
 		s.T().Fatalf("failed to start api container: %v", err)
 	}
 
-	mxctr, err := testutils.StartMothershipContainer(s.context, shared.Service.Secret)
+	mxctr, err := testutils.StartMothershipContainer(s.context, shared.Service().GetSecret())
 	if err != nil {
 		s.T().Fatalf("failed to start api container: %v", err)
 	}
@@ -150,7 +146,7 @@ func (s *ServerHandlerTestSuite) SetupContainers() {
 	apihost, _ := apictr.Container.ContainerIP(s.context)
 	mxhost, _ := mxctr.Container.ContainerIP(s.context)
 
-	shared.Logger.Info("hosts ...", "db", dbhost, "temporal", temporalhost, "nats", natshost, "api", apihost, "mothership", mxhost)
+	shared.Logger().Info("hosts ...", "db", dbhost, "temporal", temporalhost, "nats", natshost, "api", apihost, "mothership", mxhost)
 
 	s.ctrs = &Containers{
 		network:    network,

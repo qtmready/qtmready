@@ -31,6 +31,8 @@ type (
 	GetPlaceholder struct {
 		ID gocql.UUID `json:"id" cql:"id"`
 	}
+
+	ValidatorFn func(fl validator.FieldLevel) bool
 )
 
 func NewGetPlaceholder() *GetPlaceholder {
@@ -67,7 +69,8 @@ func UniqueField(fl validator.FieldLevel) bool {
 		Columns("id", fl.FieldName()).
 		Where(clause)
 
-	err := DB.Session.
+	err := DB().
+		Session.
 		Query(query.ToCql()).
 		Iter().
 		Unsafe().
