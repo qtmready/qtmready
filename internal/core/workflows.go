@@ -117,17 +117,19 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	)
 
 	logger := workflow.GetLogger(ctx)
-	assets := new(Assets)
+	assets := NewAssets()
 	workloads := SlicedResult[Workload]{}
 	resources := SlicedResult[Resource]{}
 	repos := SlicedResult[Repo]{}
-	blueprint := new(Blueprint)
+	blueprint := Blueprint{}
 
 	selector := workflow.NewSelector(ctx)
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
-	providerActivityOpts := workflow.
-		ActivityOptions{StartToCloseTimeout: 60 * time.Second, TaskQueue: shared.Temporal().Queue(shared.ProvidersQueue).GetName()}
+	providerActivityOpts := workflow.ActivityOptions{
+		StartToCloseTimeout: 60 * time.Second,
+		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).GetName(),
+	}
 	pctx := workflow.WithActivityOptions(ctx, providerActivityOpts)
 
 	// get resources for stack
@@ -185,7 +187,8 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 		p := Instance().RepoProvider(repo.Provider) // get the specific provider
 		commitID := ""
 
-		if err := workflow.ExecuteActivity(pctx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).
+		if err := workflow.
+			ExecuteActivity(pctx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).
 			Get(ctx, &commitID); err != nil {
 			logger.Error("Error in getting latest commit ID", "repo", repo.Name, "provider", repo.Provider)
 			return fmt.Errorf("Error in getting latest commit ID repo:%s, provider:%s", repo.Name, repo.Provider.String())
@@ -211,10 +214,8 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 		logger.Error("Error in creating changeset")
 	}
 
-	// create assets
-	assets.Create()
 	assets.ChangesetID = payload.ChangeSetID
-	assets.Blueprint = *blueprint
+	assets.Blueprint = blueprint
 	assets.Repos = append(assets.Repos, repos.Data...)
 	assets.Resources = append(assets.Resources, resources.Data...)
 	assets.Workloads = append(assets.Workloads, workloads.Data...)
@@ -334,7 +335,7 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 	w := &Workflows{}
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		assets := &Assets{}
+		assets := NewAssets()
 		channel.Receive(ctx, assets)
 		logger.Info("received Assets", "changeset", assets.ChangesetID)
 
