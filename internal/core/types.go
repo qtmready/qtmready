@@ -65,8 +65,8 @@ type (
 		workflows ChildWorkflows
 	}
 
-	Deployments map[gocql.UUID]*Deployment // deployments against a changesetID.
-	AssetsMap   map[gocql.UUID]*Assets     // assets against a changesetID.
+	Deployments     map[gocql.UUID]*Deployment // deployments against a changesetID.
+	ChangesetAssets map[gocql.UUID]*Assets     // assets against a changesetID.
 
 	// Assets contains all the assets fetched from DB against a stack.
 	Assets struct {
@@ -79,9 +79,11 @@ type (
 	}
 )
 
-func (a *Assets) Create() {
-	a.Repos = make([]Repo, 0)
-	a.Resources = make([]Resource, 0)
-	a.Workloads = make([]Workload, 0)
-	a.ResourcesConfig = make([]ResourceConfig, 0)
+func NewAssets() *Assets {
+	return &Assets{
+		Repos:           make([]Repo, 0),
+		Resources:       make([]Resource, 0),
+		Workloads:       make([]Workload, 0),
+		ResourcesConfig: make([]ResourceConfig, 0),
+	}
 }

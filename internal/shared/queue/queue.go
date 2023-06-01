@@ -33,6 +33,13 @@ type (
 	Queue interface {
 		// CreateWorkflowID creates an idempotency key. Sometimes we need to signal the workflow from a completely disconnected part of the
 		// application. For us, it is important to arrive at the same workflow ID regardless of the conditions.
+		// We try to follow the block, element, modifier pattern popularized by advocates of mantainable CSS. For more info,
+		// https://getbem.com.
+		//
+		// Example:
+		// For the block github with installation id 123, the element being the repository with id 456, and the modifier being the
+		// pull request with id 789, we would call
+		//   GetWorkflowOptions("github", "123", "repository", "456", "pullrequest", "789")
 		CreateWorkflowID(sender string, args ...string) string
 
 		// GetWorkflowOptions returns the workflow options for the queue.
@@ -43,13 +50,6 @@ type (
 		GetName() string
 
 		// GetChildWorkflowOptions gets the child workflow options.
-		// We try to follow the block, element, modifier pattern popularized by advocates of mantainable CSS. For more info,
-		// https://getbem.com.
-		//
-		// Example:
-		// For the block github with installation id 123, the element being the repository with id 456, and the modifier being the
-		// pull request with id 789, we would call
-		//   GetChildWorkflowOptions("github", "123", "repository", "456", "pullrequest", "789")
 		GetChildWorkflowOptions(sender string, args ...string) workflow.ChildWorkflowOptions
 	}
 
