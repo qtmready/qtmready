@@ -18,5 +18,10 @@
 package shared
 
 func StackWorkflowID(id string) string {
-	return Temporal().Queue(CoreQueue).CreateWorkflowID("stack", id)
+	return Temporal().
+		Queue(CoreQueue).
+		WorkflowID(
+			WithWorkflowIDBlock("stack"),
+			WithWorkflowIDBlockID(id),
+		)
 }

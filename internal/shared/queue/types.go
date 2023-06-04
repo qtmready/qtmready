@@ -16,29 +16,21 @@ type (
 
 	// Queue defines the common interface for utilizing the Temporal queue.
 	Queue interface {
-		// CreateWorkflowID creates an idempotency key. Sometimes we need to signal the workflow from a completely disconnected part of the
-		// application. For us, it is important to arrive at the same workflow ID regardless of the conditions.
-		// We try to follow the block, element, modifier pattern popularized by advocates of mantainable CSS. For more info,
-		// https://getbem.com.
-		//
-		// Example:
-		// For the block github with installation id 123, the element being the repository with id 456, and the modifier being the
-		// pull request with id 789, we would call
-		//   GetWorkflowOptions("github", "123", "repository", "456", "pullrequest", "789")
-		CreateWorkflowID(string, ...string) string
-
 		// Name gets the name of the queue as string.
 		Name() string
 
 		// Prefix gets the prefix of the queue as string.
 		Prefix() string
 
-		// GetWorkflowOptions returns the workflow options for the queue.
-		// GetWorkflowOptions takes the same arguments as CreateWorkflowID.
-		GetWorkflowOptions(string, ...string) client.StartWorkflowOptions
+		// WorkflowID gets the workflow id given the options. In most cases, the workflow id is called via GetWorkflowOptions
+		// or GetChildWorkflowOptions. However, when we need to signal a workflow, this method comes in handy.
+		WorkflowID(options ...WorkflowIDOption) string
 
-		// GetChildWorkflowOptions gets the child workflow options.
-		GetChildWorkflowOptions(string, ...string) workflow.ChildWorkflowOptions
+		// CreateWorkflowOptions creates the workflow options for the queue given WorkflowIDOptions.
+		CreateWorkflowOptions(options ...WorkflowIDOption) client.StartWorkflowOptions
+
+		// CreateChildWorkflowOptions creates the child workflow options for the queue given WorkflowIDOptions.
+		CreateChildWorkflowOptions(options ...WorkflowIDOption) workflow.ChildWorkflowOptions
 	}
 
 	// QueueOption is the option for a queue.

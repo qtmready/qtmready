@@ -53,29 +53,17 @@ func (q *queue) WorkflowID(options ...WorkflowIDOption) string {
 	return id.String(nil)
 }
 
-// CreateWorkflowID creates the unique workflow ID from the workflow sender and appropriate arguments.
-func (q *queue) CreateWorkflowID(sender string, args ...string) string {
-	prepend := format(q.prefix, sender)
-	return format(append([]string{prepend}, args...)...)
-}
-
-// GetWorkflowOptions returns the workflow options for the queue.
-func (q *queue) GetWorkflowOptions(sender string, args ...string) client.StartWorkflowOptions {
-	opts := client.StartWorkflowOptions{
-		ID:        q.CreateWorkflowID(sender, args...),
-		TaskQueue: q.Name(),
-		// WorkflowIDReusePolicy: 3, // client.WorkflowIDReusePolicyRejectDuplicate
+func (q *queue) CreateWorkflowOptions(options ...WorkflowIDOption) client.StartWorkflowOptions {
+	return client.StartWorkflowOptions{
+		ID:          q.WorkflowID(options...),
+		TaskQueue:   q.Name(),
+		RetryPolicy: &sdktemporal.RetryPolicy{MaximumAttempts: q.workflowMaxAttempts},
 	}
-	retryPolicy := &sdktemporal.RetryPolicy{MaximumAttempts: q.workflowMaxAttempts}
-	opts.RetryPolicy = retryPolicy
-
-	return opts
 }
 
-// GetChildWorkflowOptions gets the child workflow options.
-func (q *queue) GetChildWorkflowOptions(sender string, args ...string) workflow.ChildWorkflowOptions {
+func (q *queue) CreateChildWorkflowOptions(options ...WorkflowIDOption) workflow.ChildWorkflowOptions {
 	return workflow.ChildWorkflowOptions{
-		WorkflowID:  q.CreateWorkflowID(sender, args...),
+		WorkflowID:  q.WorkflowID(options...),
 		RetryPolicy: &sdktemporal.RetryPolicy{MaximumAttempts: q.workflowMaxAttempts},
 	}
 }

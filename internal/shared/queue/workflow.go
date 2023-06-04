@@ -23,18 +23,18 @@ type (
 	}
 )
 
-// WithWorkflowParent sets the parent workflow context.
-func WithWorkflowParent(parent workflow.Context) WorkflowIDOption {
+// WithWorkflowIDParent sets the parent workflow context.
+func WithWorkflowIDParent(parent workflow.Context) WorkflowIDOption {
 	return func(w WorkflowID) { w.(*id).parent = parent }
 }
 
-// WithWorkflowBlock sets the block name.
-func WithWorkflowBlock(block string) WorkflowIDOption {
+// WithWorkflowIDBlock sets the block name.
+func WithWorkflowIDBlock(block string) WorkflowIDOption {
 	return func(w WorkflowID) { w.(*id).block = block }
 }
 
-// WithWorkflowBlockID sets the block id.
-func WithWorkflowBlockID(blockID string) WorkflowIDOption {
+// WithWorkflowIDBlockID sets the block id.
+func WithWorkflowIDBlockID(blockID string) WorkflowIDOption {
 	return func(w WorkflowID) { w.(*id).blockID = blockID }
 }
 
@@ -48,13 +48,13 @@ func WithWorkflowElementID(elementID string) WorkflowIDOption {
 	return func(w WorkflowID) { w.(*id).elmID = elementID }
 }
 
-// WithWorkflowModifier sets the modifier name.
-func WithWorkflowModifier(modifier string) WorkflowIDOption {
+// WithWorkflowIDModifier sets the modifier name.
+func WithWorkflowIDModifier(modifier string) WorkflowIDOption {
 	return func(w WorkflowID) { w.(*id).mod = modifier }
 }
 
-// WithWorkflowModifierID sets the modifier id.
-func WithWorkflowModifierID(modifierID string) WorkflowIDOption {
+// WithWorkflowIDModifierID sets the modifier id.
+func WithWorkflowIDModifierID(modifierID string) WorkflowIDOption {
 	return func(w WorkflowID) { w.(*id).modID = modifierID }
 }
 
@@ -70,6 +70,7 @@ func (w *id) IsChild() bool {
 	return w.parent != nil
 }
 
+// String omits the empty parts and returns the formatted workflow id.
 func (w *id) String(queue Queue) string {
 	if w.parent == nil && queue == nil {
 		panic("parent workflow context and queue cannot both be nil")
@@ -87,18 +88,34 @@ func (w *id) String(queue Queue) string {
 		parts = append(parts, key, w.props[key])
 	}
 
-	cleaned := make([]string, 0)
+	sanitized := make([]string, 0)
 
 	for _, part := range parts {
 		if strings.TrimSpace(part) != "" {
-			cleaned = append(cleaned, part)
+			sanitized = append(sanitized, part)
 		}
 	}
 
-	return strings.Join(parts, ".")
+	return strings.Join(sanitized, ".")
 }
 
-// NewWorkflowIDCreator creates a new WorkflowID.
+// NewWorkflowIDCreator  creates an idempotency key. Sometimes we need to signal the workflow from a completely disconnected
+// part of the application. For us, it is important to arrive at the same workflow ID regardless of the conditions.
+// We try to follow the block, element, modifier pattern popularized by advocates of mantainable CSS. For more info,
+// https://getbem.com.
+//
+// Example:
+// For the block github with installation id 123, the element being the repository with id 456, and the modifier being the
+// pull request with id 789, we would call
+//
+//	id := NewWorkflowIDCreator(
+//	  WithWorkflowBlock("github"),
+//	  WithWorkflowBlockID("123"),
+//	  WithWorkflowElement("repository"),
+//	  WithWorkflowElementID("123"),
+//	  WithWorkflowModifier("repository"),
+//	  WithWorkflowModifierID("123"),
+//	)
 func NewWorkflowIDCreator(options ...WorkflowIDOption) WorkflowID {
 	w := &id{
 		props:     make(idprops),
@@ -110,8 +127,4 @@ func NewWorkflowIDCreator(options ...WorkflowIDOption) WorkflowID {
 	}
 
 	return w
-}
-
-func format(args ...string) string {
-	return strings.Join(args, ".")
 }

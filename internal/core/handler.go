@@ -174,7 +174,10 @@ func (s *ServerHandler) CreateStack(ctx echo.Context) error {
 	w := &Workflows{}
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
-		GetWorkflowOptions("stack", stack.ID.String())
+		CreateWorkflowOptions(
+			shared.WithWorkflowIDBlock("stack"),
+			shared.WithWorkflowIDBlockID(stack.ID.String()),
+		)
 
 	exe, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.StackController, stack.ID.String())
 	if err != nil {

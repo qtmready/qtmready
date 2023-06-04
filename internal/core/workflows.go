@@ -295,11 +295,11 @@ func onDeploymentStartedSignal(ctx workflow.Context, stackID string, deployments
 		// Set childworkflow options
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
-			GetChildWorkflowOptions(
-				"stack", stackID,
-				"changeset", changesetID.String(),
-				"get_assets",
-				"trigger", strconv.FormatInt(payload.TriggerID, 10),
+			CreateChildWorkflowOptions(
+				shared.WithWorkflowIDParent(ctx),
+				shared.WithWorkflowIDElement("get_assets"),
+				shared.WithWorkflowIDModifier("trigger"),
+				shared.WithWorkflowIDModifierID(strconv.FormatInt(payload.TriggerID, 10)),
 			)
 
 		getAssetsPayload := &GetAssetsPayload{
@@ -350,11 +350,17 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
-			GetChildWorkflowOptions(
-				"stack", stackID,
-				"changeset", assets.ChangesetID.String(),
-				"provision_infra",
+			CreateChildWorkflowOptions(
+				shared.WithWorkflowIDParent(ctx),
+				shared.WithWorkflowIDBlock("changeset"), // TODO: shouldn't this be part of the changeset controller?
+				shared.WithWorkflowIDBlockID(assets.ChangesetID.String()),
+				shared.WithWorkflowIDElement("provision_infra"),
 			)
+			// GetChildWorkflowOptions(
+			// 	"stack", stackID,
+			// 	"changeset", assets.ChangesetID.String(),
+			// 	"provision_infra",
+			// )
 
 		cctx := workflow.WithChildOptions(ctx, opts)
 		err := workflow.
@@ -389,10 +395,11 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, lock mutex.M
 
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
-			GetChildWorkflowOptions(
-				"stack", stackID,
-				"changeset", assets.ChangesetID.String(),
-				"deploy",
+			CreateChildWorkflowOptions(
+				shared.WithWorkflowIDParent(ctx),
+				shared.WithWorkflowIDBlock("changeset"), // TODO: shouldn't this be part of the changeset controller?
+				shared.WithWorkflowIDBlockID(assets.ChangesetID.String()),
+				shared.WithWorkflowIDElement("deploy"),
 			)
 		cctx := workflow.WithChildOptions(ctx, opts)
 
