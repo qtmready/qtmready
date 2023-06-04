@@ -26,11 +26,11 @@ type (
 		// or GetChildWorkflowOptions. However, when we need to signal a workflow, this method comes in handy.
 		WorkflowID(options ...WorkflowIDOption) string
 
-		// CreateWorkflowOptions creates the workflow options for the queue given WorkflowIDOptions.
-		CreateWorkflowOptions(options ...WorkflowIDOption) client.StartWorkflowOptions
+		// WorkflowOptions creates the workflow options for the queue given WorkflowIDOptions.
+		WorkflowOptions(options ...WorkflowIDOption) client.StartWorkflowOptions
 
-		// CreateChildWorkflowOptions creates the child workflow options for the queue given WorkflowIDOptions.
-		CreateChildWorkflowOptions(options ...WorkflowIDOption) workflow.ChildWorkflowOptions
+		// ChildWorkflowOptions creates the child workflow options for the queue given WorkflowIDOptions.
+		ChildWorkflowOptions(options ...WorkflowIDOption) workflow.ChildWorkflowOptions
 	}
 
 	// QueueOption is the option for a queue.

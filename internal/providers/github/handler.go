@@ -60,7 +60,7 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 	opts := shared.Temporal().
 		Queue(shared.ProvidersQueue).
 		// GetWorkflowOptions("github", strconv.Itoa(int(payload.InstallationID)), WebhookEventInstallation.String())
-		CreateWorkflowOptions(
+		WorkflowOptions(
 			shared.WithWorkflowIDBlock("github"),
 			shared.WithWorkflowIDBlock(strconv.Itoa(int(payload.InstallationID))),
 			shared.WithWorkflowIDElement(WebhookEventInstallation.String()),

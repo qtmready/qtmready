@@ -295,7 +295,7 @@ func onDeploymentStartedSignal(ctx workflow.Context, stackID string, deployments
 		// Set childworkflow options
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
-			CreateChildWorkflowOptions(
+			ChildWorkflowOptions(
 				shared.WithWorkflowIDParent(ctx),
 				shared.WithWorkflowIDElement("get_assets"),
 				shared.WithWorkflowIDModifier("trigger"),
@@ -350,7 +350,7 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
-			CreateChildWorkflowOptions(
+			ChildWorkflowOptions(
 				shared.WithWorkflowIDParent(ctx),
 				shared.WithWorkflowIDBlock("changeset"), // TODO: shouldn't this be part of the changeset controller?
 				shared.WithWorkflowIDBlockID(assets.ChangesetID.String()),
@@ -395,7 +395,7 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, lock mutex.M
 
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
-			CreateChildWorkflowOptions(
+			ChildWorkflowOptions(
 				shared.WithWorkflowIDParent(ctx),
 				shared.WithWorkflowIDBlock("changeset"), // TODO: shouldn't this be part of the changeset controller?
 				shared.WithWorkflowIDBlockID(assets.ChangesetID.String()),

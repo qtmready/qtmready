@@ -53,7 +53,7 @@ func (q *queue) WorkflowID(options ...WorkflowIDOption) string {
 	return id.String(nil)
 }
 
-func (q *queue) CreateWorkflowOptions(options ...WorkflowIDOption) client.StartWorkflowOptions {
+func (q *queue) WorkflowOptions(options ...WorkflowIDOption) client.StartWorkflowOptions {
 	return client.StartWorkflowOptions{
 		ID:          q.WorkflowID(options...),
 		TaskQueue:   q.Name(),
@@ -61,7 +61,7 @@ func (q *queue) CreateWorkflowOptions(options ...WorkflowIDOption) client.StartW
 	}
 }
 
-func (q *queue) CreateChildWorkflowOptions(options ...WorkflowIDOption) workflow.ChildWorkflowOptions {
+func (q *queue) ChildWorkflowOptions(options ...WorkflowIDOption) workflow.ChildWorkflowOptions {
 	return workflow.ChildWorkflowOptions{
 		WorkflowID:  q.WorkflowID(options...),
 		RetryPolicy: &sdktemporal.RetryPolicy{MaximumAttempts: q.workflowMaxAttempts},

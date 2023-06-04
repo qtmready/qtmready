@@ -189,7 +189,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 
 	options := shared.Temporal().
 		Queue(shared.CoreQueue).
-		CreateWorkflowOptions(
+		WorkflowOptions(
 			shared.WithWorkflowIDBlock("stack"),
 			shared.WithWorkflowIDBlockID(coreRepo.StackID.String()),
 		)
