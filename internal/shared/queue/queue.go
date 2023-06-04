@@ -32,12 +32,12 @@ type (
 	}
 )
 
-func (q Name) ToString() string {
+func (q Name) String() string {
 	return string(q)
 }
 
 func (q *queue) Name() string {
-	return q.name.ToString()
+	return q.name.String()
 }
 
 func (q *queue) Prefix() string {
@@ -72,7 +72,7 @@ func (q *queue) ChildWorkflowOptions(options ...WorkflowIDOption) workflow.Child
 func WithName(name Name) QueueOption {
 	return func(q Queue) {
 		q.(*queue).name = name
-		q.(*queue).prefix = DefaultPrefix + name.ToString()
+		q.(*queue).prefix = DefaultPrefix + name.String()
 	}
 }
 
