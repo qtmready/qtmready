@@ -26,8 +26,8 @@ import (
 // Workflow is the mutex workflow. It is responsible for controlling the access to a resource. It should always be started as
 // a child workflow.
 // It works by listening to two signals:
-//   - acquire: this signal is sent by the caller to acquire the lock.
-//   - release: this signal is sent by the caller to release the lock.
+//   - WorkflowSignalAcquire: this signal is sent by the caller to acquire the lock.
+//   - WorkflowSignalRelease: this signal is sent by the caller to release the lock.
 //
 // The workflow will block until the lock is acquired. Once acquired, it will block until the lock is released.
 func Workflow(ctx workflow.Context, timout time.Duration) error {

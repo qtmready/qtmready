@@ -61,7 +61,6 @@ type (
 		contexts *Contexts
 		id       string        // ID of the mutex. The format is `{resource type}.{resource ID}`.
 		timeout  time.Duration // Timeout for the mutex. After this timeout, the lock is automagically released.
-		release  Release       // Release function.
 	}
 )
 
@@ -84,7 +83,7 @@ func (m *mutex) Start() error {
 		GetChildWorkflowExecution().
 		Get(ctx, &exe); err != nil {
 		logger.Error("mutex: unable to start.", "error", err)
-		return err
+		return NewStartWorkflowError(m.contexts.caller)
 	}
 
 	m.SetContext(ctx)
@@ -118,7 +117,7 @@ func (m *mutex) Acquire() error {
 			caller.WorkflowExecution.ID,
 		).
 		Get(m.contexts.caller, nil); err != nil {
-		logger.Error("mutex: unable to acquire lock, failed to signal mutex workflow.", "error", err)
+		return NewAcquireLockError(m.contexts.mutex)
 	}
 
 	logger.Info("mutex: acquiring lock. signal sent successfully, waiting for lock ... ", "resource ID", m.id)
@@ -135,13 +134,17 @@ func (m *mutex) Release() error {
 	caller := workflow.GetInfo(m.contexts.caller)
 	mutex := workflow.GetInfo(m.contexts.mutex)
 
-	return workflow.SignalExternalWorkflow(
+	if err := workflow.SignalExternalWorkflow(
 		m.contexts.caller,
 		mutex.WorkflowExecution.ID,
 		"",
 		WorkflowSignalRelease.String(),
 		caller.WorkflowExecution.ID,
-	).Get(m.contexts.caller, nil)
+	).Get(m.contexts.caller, nil); err != nil {
+		return NewReleaseLockError(m.contexts.mutex)
+	}
+
+	return nil
 }
 
 func (m *mutex) SetContext(ctx workflow.Context) {
@@ -188,14 +191,14 @@ func WithTimeout(timeout time.Duration) MutexOption {
 //
 // Example:
 //
-//		m := mutex.New(
-//			mutex.WithCallerContext(ctx),
-//			mutex.WithID("resource-type.resource-id"),
-//			mutex.WithTimeout(30*time.Minute),
-//		)
-//	 if err := m.Start(); err != nil {/*handle error*/}
-//	 if err := m.Acquire(); err != nil {/*handle error*/}
-//	 if err := m.Release(); err != nil {/*handle error*/}
+//	m := mutex.New(
+//	  mutex.WithCallerContext(ctx),
+//	  mutex.WithID("resource-type.resource-id"),
+//	  mutex.WithTimeout(30*time.Minute),
+//	)
+//	if err := m.Start(); err != nil {/*handle error*/}
+//	if err := m.Acquire(); err != nil {/*handle error*/}
+//	if err := m.Release(); err != nil {/*handle error*/}
 func New(opts ...MutexOption) Mutex {
 	m := &mutex{timeout: DefaultTimeout, contexts: &Contexts{}}
 	for _, opt := range opts {

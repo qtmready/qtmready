@@ -18,8 +18,6 @@
 package queue
 
 import (
-	"strings"
-
 	"go.temporal.io/sdk/client"
 	sdktemporal "go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -40,17 +38,17 @@ type (
 		// For the block github with installation id 123, the element being the repository with id 456, and the modifier being the
 		// pull request with id 789, we would call
 		//   GetWorkflowOptions("github", "123", "repository", "456", "pullrequest", "789")
-		CreateWorkflowID(sender string, args ...string) string
+		CreateWorkflowID(string, ...string) string
 
 		// GetWorkflowOptions returns the workflow options for the queue.
 		// GetWorkflowOptions takes the same arguments as CreateWorkflowID.
-		GetWorkflowOptions(sender string, args ...string) client.StartWorkflowOptions
+		GetWorkflowOptions(string, ...string) client.StartWorkflowOptions
 
 		// GetName gets the name of the queue as string.
 		GetName() string
 
 		// GetChildWorkflowOptions gets the child workflow options.
-		GetChildWorkflowOptions(sender string, args ...string) workflow.ChildWorkflowOptions
+		GetChildWorkflowOptions(string, ...string) workflow.ChildWorkflowOptions
 	}
 
 	// QueueOption is the option for a queue.
@@ -83,7 +81,8 @@ func (q *queue) GetName() string {
 
 // CreateWorkflowID creates the unique workflow ID from the workflow sender and appropriate arguments.
 func (q *queue) CreateWorkflowID(sender string, args ...string) string {
-	return q.Prefix + "." + sender + "." + strings.Join(args, ".")
+	prepend := format(q.Prefix, sender)
+	return format(append([]string{prepend}, args...)...)
 }
 
 // GetWorkflowOptions returns the workflow options for the queue.
@@ -101,14 +100,10 @@ func (q *queue) GetWorkflowOptions(sender string, args ...string) client.StartWo
 
 // GetChildWorkflowOptions gets the child workflow options.
 func (q *queue) GetChildWorkflowOptions(sender string, args ...string) workflow.ChildWorkflowOptions {
-	opts := workflow.ChildWorkflowOptions{
-		WorkflowID: q.CreateWorkflowID(sender, args...),
+	return workflow.ChildWorkflowOptions{
+		WorkflowID:  q.CreateWorkflowID(sender, args...),
+		RetryPolicy: &sdktemporal.RetryPolicy{MaximumAttempts: q.WorkflowMaxAttempts},
 	}
-
-	retryPolicy := &sdktemporal.RetryPolicy{MaximumAttempts: q.WorkflowMaxAttempts}
-	opts.RetryPolicy = retryPolicy
-
-	return opts
 }
 
 // WithName sets the queue name and the prefix for the workflow ID.

@@ -19,9 +19,53 @@ package mutex
 
 import (
 	"errors"
+	"fmt"
+
+	"go.temporal.io/sdk/workflow"
 )
 
 var (
 	ErrNilContext   = errors.New("contexts not initialized")
 	ErrNoResourceID = errors.New("no resource ID provided")
 )
+
+type (
+	acquireLockError struct {
+		context workflow.Context // the workflow context for the mutex itself.
+	}
+
+	releaseLockError struct {
+		context workflow.Context // the workflow context for the mutex itself.
+	}
+
+	startWorkflowError struct {
+		context workflow.Context // the workflow contex for the workflow that is requesting to start the distributed mutex.
+	}
+)
+
+func (e *acquireLockError) Error() string {
+	return fmt.Sprintf("%s: failed to acquire lock.", workflow.GetInfo(e.context).WorkflowExecution.ID)
+}
+
+func (e *releaseLockError) Error() string {
+	return fmt.Sprintf("%s: failed to release lock.", workflow.GetInfo(e.context).WorkflowExecution.ID)
+}
+
+func (e *startWorkflowError) Error() string {
+	return fmt.Sprintf("%s: failed to start workflow.", workflow.GetInfo(e.context).WorkflowExecution.ID)
+}
+
+// NewAcquireLockError creates a new acquire lock error.
+func NewAcquireLockError(ctx workflow.Context) error {
+	return &acquireLockError{context: ctx}
+}
+
+// NewReleaseLockError creates a new release lock error.
+func NewReleaseLockError(ctx workflow.Context) error {
+	return &releaseLockError{context: ctx}
+}
+
+// NewStartWorkflowError creates a new start workflow error.
+func NewStartWorkflowError(ctx workflow.Context) error {
+	return &startWorkflowError{context: ctx}
+}
