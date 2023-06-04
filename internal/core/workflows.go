@@ -128,7 +128,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
 	providerActivityOpts := workflow.ActivityOptions{
 		StartToCloseTimeout: 60 * time.Second,
-		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).GetName(),
+		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
 	}
 	pctx := workflow.WithActivityOptions(ctx, providerActivityOpts)
 
