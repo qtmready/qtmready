@@ -26,7 +26,6 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/inspect"
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -87,8 +86,8 @@ func GenerateRefreshToken(userID, teamID string) (string, error) {
 // Middleware to provide JWT & API Key authentication.
 func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
-		inspect.Context(ctx, true)
-		inspect.EchoHeaders(ctx)
+		// inspect.Context(ctx, true)
+		// inspect.EchoHeaders(ctx)
 
 		keyScopes, requiresKey := ctx.Get(APIKeyAuthScopes).([]string)
 		bearerScopes, requiresBearer := ctx.Get(BearerAuthScopes).([]string)
