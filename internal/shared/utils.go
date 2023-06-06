@@ -21,7 +21,7 @@ func StackWorkflowID(id string) string {
 	return Temporal().
 		Queue(CoreQueue).
 		WorkflowID(
-			WithWorkflowIDBlock("stack"),
-			WithWorkflowIDBlockID(id),
+			WithWorkflowBlock("stack"),
+			WithWorkflowBlockVal(id),
 		)
 }

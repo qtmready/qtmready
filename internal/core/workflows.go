@@ -222,9 +222,9 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	logger.Debug("Assets retreived", "Assets", assets)
 
 	// signal parent workflow
-	PRWorkflow := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
+	parent := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
 	_ = workflow.
-		SignalExternalWorkflow(ctx, PRWorkflow, "", WorkflowSignalAssetsRetrieved.String(), assets).
+		SignalExternalWorkflow(ctx, parent, "", WorkflowSignalAssetsRetrieved.String(), assets).
 		Get(ctx, nil)
 
 	return nil
@@ -296,10 +296,10 @@ func onDeploymentStartedSignal(ctx workflow.Context, stackID string, deployments
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
 			ChildWorkflowOptions(
-				shared.WithWorkflowIDParent(ctx),
-				shared.WithWorkflowIDElement("get_assets"),
-				shared.WithWorkflowIDModifier("trigger"),
-				shared.WithWorkflowIDModifierID(strconv.FormatInt(payload.TriggerID, 10)),
+				shared.WithWorkflowParent(ctx),
+				shared.WithWorkflowElement("get_assets"),
+				shared.WithWorkflowMod("trigger"),
+				shared.WithWorkflowModVal(strconv.FormatInt(payload.TriggerID, 10)),
 			)
 
 		getAssetsPayload := &GetAssetsPayload{
@@ -351,16 +351,11 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
 			ChildWorkflowOptions(
-				shared.WithWorkflowIDParent(ctx),
-				shared.WithWorkflowIDBlock("changeset"), // TODO: shouldn't this be part of the changeset controller?
-				shared.WithWorkflowIDBlockID(assets.ChangesetID.String()),
-				shared.WithWorkflowIDElement("provision_infra"),
+				shared.WithWorkflowParent(ctx),
+				shared.WithWorkflowBlock("changeset"), // TODO: shouldn't this be part of the changeset controller?
+				shared.WithWorkflowBlockVal(assets.ChangesetID.String()),
+				shared.WithWorkflowElement("provision_infra"),
 			)
-			// GetChildWorkflowOptions(
-			// 	"stack", stackID,
-			// 	"changeset", assets.ChangesetID.String(),
-			// 	"provision_infra",
-			// )
 
 		cctx := workflow.WithChildOptions(ctx, opts)
 		err := workflow.
@@ -396,10 +391,10 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, lock mutex.M
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
 			ChildWorkflowOptions(
-				shared.WithWorkflowIDParent(ctx),
-				shared.WithWorkflowIDBlock("changeset"), // TODO: shouldn't this be part of the changeset controller?
-				shared.WithWorkflowIDBlockID(assets.ChangesetID.String()),
-				shared.WithWorkflowIDElement("deploy"),
+				shared.WithWorkflowParent(ctx),
+				shared.WithWorkflowBlock("changeset"), // TODO: shouldn't this be part of the changeset controller?
+				shared.WithWorkflowBlockVal(assets.ChangesetID.String()),
+				shared.WithWorkflowElement("deploy"),
 			)
 		cctx := workflow.WithChildOptions(ctx, opts)
 

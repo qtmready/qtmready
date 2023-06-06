@@ -1,3 +1,20 @@
+// Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
+//
+// This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
+// found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
+// THE SOFTWARE, YOU AGREE TO THE TERMS OF THE LICENSE AGREEMENT.
+//
+// The above copyright notice and the subsequent license agreement shall be included in all copies or substantial
+// portions of the software.
+//
+// Breu, Inc. HEREBY DISCLAIMS ANY AND ALL WARRANTIES AND CONDITIONS, EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, AND
+// SPECIFICALLY DISCLAIMS ANY WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, WITH RESPECT TO THE
+// SOFTWARE.
+//
+// Breu, Inc. SHALL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND, INCLUDING BUT NOT LIMITED TO, LOST PROFITS OR ANY
+// CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
+
 package queue
 
 import (
@@ -24,13 +41,13 @@ type (
 
 		// WorkflowID gets the workflow id given the options. In most cases, the workflow id is called via GetWorkflowOptions
 		// or GetChildWorkflowOptions. However, when we need to signal a workflow, this method comes in handy.
-		WorkflowID(options ...WorkflowIDOption) string
+		WorkflowID(options ...WorkflowOptionProvider) string
 
 		// WorkflowOptions creates the workflow options for the queue given WorkflowIDOptions.
-		WorkflowOptions(options ...WorkflowIDOption) client.StartWorkflowOptions
+		WorkflowOptions(options ...WorkflowOptionProvider) client.StartWorkflowOptions
 
 		// ChildWorkflowOptions creates the child workflow options for the queue given WorkflowIDOptions.
-		ChildWorkflowOptions(options ...WorkflowIDOption) workflow.ChildWorkflowOptions
+		ChildWorkflowOptions(options ...WorkflowOptionProvider) workflow.ChildWorkflowOptions
 	}
 
 	// QueueOption is the option for a queue.
@@ -39,12 +56,12 @@ type (
 	// Queues is a map of queues.
 	Queues map[Name]Queue
 
-	// WorkflowID is the interface for creating a workflow id.
-	WorkflowID interface {
+	// WorkflowOption is the interface for creating a workflow id.
+	WorkflowOption interface {
 		IsChild() bool       // IsChild returns true if the workflow id is a child workflow id.
 		String(Queue) string // String returns the workflow id as a string.
 	}
 
-	// WorkflowIDOption is the option for creating a workflow id.
-	WorkflowIDOption func(WorkflowID)
+	// WorkflowOptionProvider is the option for creating a workflow id.
+	WorkflowOptionProvider func(WorkflowOption)
 )

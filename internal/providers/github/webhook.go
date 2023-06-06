@@ -41,9 +41,9 @@ func handleInstallationEvent(ctx echo.Context) error {
 	opts := shared.Temporal().
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
-			shared.WithWorkflowIDBlock("github"),
-			shared.WithWorkflowIDBlock(strconv.FormatInt(payload.Installation.ID, 10)),
-			shared.WithWorkflowIDElement(WebhookEventInstallation.String()),
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlock(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowElement(WebhookEventInstallation.String()),
 		)
 
 	exe, err := shared.Temporal().Client().SignalWithStartWorkflow(
@@ -81,12 +81,12 @@ func handlePushEvent(ctx echo.Context) error {
 	opts := shared.Temporal().
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
-			shared.WithWorkflowIDBlock("github"),
-			shared.WithWorkflowIDBlock(strconv.FormatInt(payload.Installation.ID, 10)),
-			shared.WithWorkflowIDElement("repo"),
-			shared.WithWorkflowIDElementID(strconv.FormatInt(payload.Repository.ID, 10)),
-			shared.WithWorkflowIDModifier(WebhookEventPush.String()),
-			shared.WithWorkflowIDProp("ref", payload.Ref),
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlock(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowElement("repo"),
+			shared.WithWorkflowElementVal(strconv.FormatInt(payload.Repository.ID, 10)),
+			shared.WithWorkflowMod(WebhookEventPush.String()),
+			shared.WithWorkflowProp("ref", payload.Ref),
 		)
 
 	exe, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPushEvent, payload)
@@ -109,12 +109,12 @@ func handlePullRequestEvent(ctx echo.Context) error {
 	opts := shared.Temporal().
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
-			shared.WithWorkflowIDBlock("github"),
-			shared.WithWorkflowIDBlock(strconv.FormatInt(payload.Installation.ID, 10)),
-			shared.WithWorkflowIDElement("repo"),
-			shared.WithWorkflowIDElementID(strconv.FormatInt(payload.Repository.ID, 10)),
-			shared.WithWorkflowIDModifier(WebhookEventPullRequest.String()),
-			shared.WithWorkflowIDModifierID(strconv.FormatInt(payload.PullRequest.ID, 10)),
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlock(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowElement("repo"),
+			shared.WithWorkflowElementVal(strconv.FormatInt(payload.Repository.ID, 10)),
+			shared.WithWorkflowMod(WebhookEventPullRequest.String()),
+			shared.WithWorkflowModVal(strconv.FormatInt(payload.PullRequest.ID, 10)),
 		)
 
 	switch payload.Action {
@@ -147,9 +147,9 @@ func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 	opts := shared.Temporal().
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
-			shared.WithWorkflowIDBlock("github"),
-			shared.WithWorkflowIDBlock(strconv.FormatInt(payload.Installation.ID, 10)),
-			shared.WithWorkflowIDElement(WebhookEventInstallationRepositories.String()),
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlock(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowElement(WebhookEventInstallationRepositories.String()),
 		)
 
 	exe, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnInstallationRepositoriesEvent, payload)

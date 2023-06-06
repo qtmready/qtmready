@@ -30,13 +30,16 @@ import (
 //   - WorkflowSignalRelease: this signal is sent by the caller to release the lock.
 //
 // The workflow will block until the lock is acquired. Once acquired, it will block until the lock is released.
+// TODO: handle timeout.
 func Workflow(ctx workflow.Context, timout time.Duration) error {
+	var (
+		acquirer, releaser string
+	)
+
 	logger := workflow.GetLogger(ctx)
 	logger.Info("mutex: workflow started with ...", "workflow ID", workflow.GetInfo(ctx).WorkflowExecution.ID)
 
 	// selector := workflow.NewSelector(ctx)
-	acquirer := ""
-	releaser := ""
 	acquireCh := workflow.GetSignalChannel(ctx, WorkflowSignalAcquire.String())
 	releaseCh := workflow.GetSignalChannel(ctx, WorkflowSignalRelease.String())
 

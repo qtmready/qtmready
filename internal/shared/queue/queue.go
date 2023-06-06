@@ -18,6 +18,8 @@
 package queue
 
 import (
+	"fmt"
+
 	"go.temporal.io/sdk/client"
 	sdktemporal "go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -41,11 +43,11 @@ func (q *queue) Name() string {
 }
 
 func (q *queue) Prefix() string {
-	return q.prefix
+	return fmt.Sprintf("%s.%s", q.prefix, q.name.String())
 }
 
-func (q *queue) WorkflowID(options ...WorkflowIDOption) string {
-	id := NewWorkflowIDCreator(options...)
+func (q *queue) WorkflowID(options ...WorkflowOptionProvider) string {
+	id := NewWorkflowOptions(options...)
 	if id.IsChild() {
 		return id.String(q)
 	}
@@ -53,7 +55,7 @@ func (q *queue) WorkflowID(options ...WorkflowIDOption) string {
 	return id.String(nil)
 }
 
-func (q *queue) WorkflowOptions(options ...WorkflowIDOption) client.StartWorkflowOptions {
+func (q *queue) WorkflowOptions(options ...WorkflowOptionProvider) client.StartWorkflowOptions {
 	return client.StartWorkflowOptions{
 		ID:          q.WorkflowID(options...),
 		TaskQueue:   q.Name(),
@@ -61,7 +63,7 @@ func (q *queue) WorkflowOptions(options ...WorkflowIDOption) client.StartWorkflo
 	}
 }
 
-func (q *queue) ChildWorkflowOptions(options ...WorkflowIDOption) workflow.ChildWorkflowOptions {
+func (q *queue) ChildWorkflowOptions(options ...WorkflowOptionProvider) workflow.ChildWorkflowOptions {
 	return workflow.ChildWorkflowOptions{
 		WorkflowID:  q.WorkflowID(options...),
 		RetryPolicy: &sdktemporal.RetryPolicy{MaximumAttempts: q.workflowMaxAttempts},

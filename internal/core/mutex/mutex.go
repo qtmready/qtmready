@@ -75,9 +75,9 @@ func (m *mutex) Start() error {
 		Queue(shared.CoreQueue).
 		ChildWorkflowOptions(
 			// TODO: mutex id directly correlates to resource ID. we shouldn't use parent workflow ID.
-			shared.WithWorkflowIDParent(m.contexts.caller),
-			shared.WithWorkflowIDBlock("mutex"),
-			shared.WithWorkflowIDBlockID(m.id),
+			shared.WithWorkflowParent(m.contexts.caller),
+			shared.WithWorkflowBlock("mutex"),
+			shared.WithWorkflowBlockVal(m.id),
 		)
 		// GetChildWorkflowOptions("mutex", m.id)
 	ctx := workflow.WithChildOptions(m.contexts.caller, opts)
