@@ -42,7 +42,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlock(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowBlockVal(strconv.FormatInt(payload.Installation.ID, 10)),
 			shared.WithWorkflowElement(WebhookEventInstallation.String()),
 		)
 
@@ -82,7 +82,7 @@ func handlePushEvent(ctx echo.Context) error {
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlock(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowBlockVal(strconv.FormatInt(payload.Installation.ID, 10)),
 			shared.WithWorkflowElement("repo"),
 			shared.WithWorkflowElementVal(strconv.FormatInt(payload.Repository.ID, 10)),
 			shared.WithWorkflowMod(WebhookEventPush.String()),
@@ -110,7 +110,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlock(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowBlockVal(strconv.FormatInt(payload.Installation.ID, 10)),
 			shared.WithWorkflowElement("repo"),
 			shared.WithWorkflowElementVal(strconv.FormatInt(payload.Repository.ID, 10)),
 			shared.WithWorkflowMod(WebhookEventPullRequest.String()),
@@ -148,7 +148,7 @@ func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlock(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowBlockVal(strconv.FormatInt(payload.Installation.ID, 10)),
 			shared.WithWorkflowElement(WebhookEventInstallationRepositories.String()),
 		)
 
