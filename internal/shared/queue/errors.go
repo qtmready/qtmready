@@ -2,8 +2,23 @@ package queue
 
 import (
 	"errors"
+	"fmt"
 )
 
 var (
-	ErrNoParentNoQueue = errors.New("both parent and queue are nil")
+	ErrParentNil = errors.New("parent workflow context is nil")
 )
+
+type (
+	duplicateIdPropError struct {
+		prop string
+	}
+)
+
+func (e *duplicateIdPropError) Error() string {
+	return fmt.Sprintf("duplicate %s", e.prop)
+}
+
+func NewDuplicateIdPropError(prop string) error {
+	return &duplicateIdPropError{prop: prop}
+}

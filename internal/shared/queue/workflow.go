@@ -20,7 +20,6 @@ package queue
 import (
 	"strings"
 
-	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -37,49 +36,83 @@ type (
 		modID     string
 		props     idprops
 		propOrder []string
-
-		options *client.StartWorkflowOptions // TODO: comeup with a better way to pass this around.
 	}
 )
 
 // WithWorkflowParent sets the parent workflow context.
 func WithWorkflowParent(parent workflow.Context) WorkflowOptionProvider {
-	return func(w WorkflowOption) { w.(*wrkflopts).parent = parent }
+	return func(w WorkflowOptions) { w.(*wrkflopts).parent = parent }
 }
 
 // WithWorkflowBlock sets the block name.
 func WithWorkflowBlock(block string) WorkflowOptionProvider {
-	return func(w WorkflowOption) { w.(*wrkflopts).block = block }
+	return func(w WorkflowOptions) {
+		if w.(*wrkflopts).block != "" {
+			panic(NewDuplicateIdPropError("block"))
+		}
+
+		w.(*wrkflopts).block = block
+	}
 }
 
-// WithWorkflowBlockVal sets the block value.
-func WithWorkflowBlockVal(blockID string) WorkflowOptionProvider {
-	return func(w WorkflowOption) { w.(*wrkflopts).blockID = blockID }
+// WithWorkflowBlockID sets the block value.
+func WithWorkflowBlockID(val string) WorkflowOptionProvider {
+	return func(w WorkflowOptions) {
+		if w.(*wrkflopts).blockID != "" {
+			panic(NewDuplicateIdPropError("block id"))
+		}
+
+		w.(*wrkflopts).blockID = val
+	}
 }
 
 // WithWorkflowElement sets the element name.
 func WithWorkflowElement(element string) WorkflowOptionProvider {
-	return func(w WorkflowOption) { w.(*wrkflopts).elm = element }
+	return func(w WorkflowOptions) {
+		if w.(*wrkflopts).elm != "" {
+			panic(NewDuplicateIdPropError("element"))
+		}
+
+		w.(*wrkflopts).elm = element
+	}
 }
 
-// WithWorkflowElementVal sets the element value.
-func WithWorkflowElementVal(elementID string) WorkflowOptionProvider {
-	return func(w WorkflowOption) { w.(*wrkflopts).elmID = elementID }
+// WithWorkflowElementID sets the element value.
+func WithWorkflowElementID(val string) WorkflowOptionProvider {
+	return func(w WorkflowOptions) {
+		if w.(*wrkflopts).elmID != "" {
+			panic(NewDuplicateIdPropError("element id"))
+		}
+
+		w.(*wrkflopts).elmID = val
+	}
 }
 
 // WithWorkflowMod sets the modifier name.
 func WithWorkflowMod(modifier string) WorkflowOptionProvider {
-	return func(w WorkflowOption) { w.(*wrkflopts).mod = modifier }
+	return func(w WorkflowOptions) {
+		if w.(*wrkflopts).mod != "" {
+			panic(NewDuplicateIdPropError("modifier"))
+		}
+
+		w.(*wrkflopts).mod = modifier
+	}
 }
 
-// WithWorkflowModVal sets the modifier value.
-func WithWorkflowModVal(modifierID string) WorkflowOptionProvider {
-	return func(w WorkflowOption) { w.(*wrkflopts).modID = modifierID }
+// WithWorkflowModID sets the modifier value.
+func WithWorkflowModID(val string) WorkflowOptionProvider {
+	return func(w WorkflowOptions) {
+		if w.(*wrkflopts).modID != "" {
+			panic(NewDuplicateIdPropError("modifier id"))
+		}
+
+		w.(*wrkflopts).modID = val
+	}
 }
 
 // WithWorkflowProp sets the prop given a key & value.
 func WithWorkflowProp(key, val string) WorkflowOptionProvider {
-	return func(w WorkflowOption) {
+	return func(w WorkflowOptions) {
 		w.(*wrkflopts).propOrder = append(w.(*wrkflopts).propOrder, key)
 		w.(*wrkflopts).props[key] = val
 	}
@@ -89,21 +122,9 @@ func (w *wrkflopts) IsChild() bool {
 	return w.parent != nil
 }
 
-// String sanitizes the workflow ID and returns it as a string. queue is optional, but if it is not provided, then the
-// parent workflow context must be set.
-func (w *wrkflopts) String(queue Queue) string {
-	if w.parent == nil && queue == nil {
-		panic(ErrNoParentNoQueue)
-	}
-
-	prefix := ""
-	if w.parent != nil {
-		prefix = workflow.GetInfo(w.parent).WorkflowExecution.ID
-	} else {
-		prefix = queue.Prefix()
-	}
-
-	parts := []string{prefix, w.block, w.blockID, w.elm, w.elmID, w.mod, w.modID}
+// Suffix sanitizes the suffix and returns it.
+func (w *wrkflopts) Suffix() string {
+	parts := []string{w.block, w.blockID, w.elm, w.elmID, w.mod, w.modID}
 	for _, key := range w.propOrder {
 		parts = append(parts, key, w.props[key])
 	}
@@ -120,6 +141,14 @@ func (w *wrkflopts) String(queue Queue) string {
 	return strings.Join(sanitized, ".")
 }
 
+func (w *wrkflopts) ParentWorkflowID() string {
+	if w.parent == nil {
+		panic(ErrParentNil)
+	}
+
+	return workflow.GetInfo(w.parent).WorkflowExecution.ID
+}
+
 // NewWorkflowOptions  creates the workflow ID. Sometimes we need to signal the workflow from a completely disconnected
 // part of the application. For us, it is important to arrive at the same workflow ID regardless of the conditions.
 // We try to follow the block, element, modifier pattern popularized by advocates of mantainable CSS. For more info,
@@ -131,17 +160,17 @@ func (w *wrkflopts) String(queue Queue) string {
 //
 //	opts := NewWorkflowOptions(
 //	  WithWorkflowBlock("github"),
-//	  WithWorkflowBlockVal("123"),
+//	  WithWorkflowBlockID("123"),
 //	  WithWorkflowElement("repository"),
-//	  WithWorkflowElementVal("123"),
+//	  WithWorkflowElementID("123"),
 //	  WithWorkflowModifier("repository"),
-//	  WithWorkflowModifierVal("123"),
+//	  WithWorkflowModifierID("123"),
 //	)
 //
 //	id := opts.String()
 //
 // Please note, that the design is work in progress and may change.
-func NewWorkflowOptions(options ...WorkflowOptionProvider) WorkflowOption {
+func NewWorkflowOptions(options ...WorkflowOptionProvider) WorkflowOptions {
 	w := &wrkflopts{
 		props:     make(idprops),
 		propOrder: make([]string, 0),

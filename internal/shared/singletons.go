@@ -23,7 +23,7 @@ import (
 	"sync"
 
 	"github.com/go-playground/validator/v10"
-	pwg "github.com/sethvargo/go-password/password"
+	"github.com/sethvargo/go-password/password"
 
 	"go.breu.io/ctrlplane/internal/shared/logger"
 	"go.breu.io/ctrlplane/internal/shared/service"
@@ -40,8 +40,8 @@ var (
 	vld     *validator.Validate // Global validator instance.
 	vldOnce sync.Once           // Global validator instance initializer
 
-	tmprl     temporal.Temporal
-	tmprlOnce sync.Once
+	tmprl     temporal.Temporal // Global temporal instance.
+	tmprlOnce sync.Once         // Global temporal instance initializer
 )
 
 // Service returns the global service instance. If the global service instance has not been initialized, it will be initialized with
@@ -60,6 +60,7 @@ func Service() service.Service {
 	return svc
 }
 
+// Logger returns the global logger instance.
 func Logger() logger.Logger {
 	if lgr == nil {
 		lgrOnce.Do(func() {
@@ -70,6 +71,7 @@ func Logger() logger.Logger {
 	return lgr
 }
 
+// Validator returns the global validator instance.
 func Validator() *validator.Validate {
 	if vld == nil {
 		vldOnce.Do(func() {
@@ -87,6 +89,7 @@ func Validator() *validator.Validate {
 	return vld
 }
 
+// Temporal returns the global temporal instance.
 func Temporal() temporal.Temporal {
 	if tmprl == nil {
 		tmprlOnce.Do(func() {
@@ -108,6 +111,6 @@ func InitServiceForTest() {
 	svc = service.NewService(
 		service.WithName("test"),
 		service.WithDebug(true),
-		service.WithSecret(pwg.MustGenerate(32, 8, 0, false, false)),
+		service.WithSecret(password.MustGenerate(32, 8, 0, false, false)),
 	)
 }

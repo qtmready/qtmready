@@ -18,6 +18,8 @@
 package queue
 
 import (
+	"fmt"
+
 	"go.temporal.io/sdk/client"
 	sdktemporal "go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -45,12 +47,16 @@ func (q *queue) Prefix() string {
 }
 
 func (q *queue) WorkflowID(options ...WorkflowOptionProvider) string {
-	id := NewWorkflowOptions(options...)
-	if id.IsChild() {
-		return id.String(nil)
+	prefix := ""
+	opts := NewWorkflowOptions(options...)
+
+	if opts.IsChild() {
+		prefix = opts.ParentWorkflowID()
+	} else {
+		prefix = q.prefix
 	}
 
-	return id.String(q)
+	return fmt.Sprintf("%s.%s", prefix, opts.Suffix())
 }
 
 func (q *queue) WorkflowOptions(options ...WorkflowOptionProvider) client.StartWorkflowOptions {

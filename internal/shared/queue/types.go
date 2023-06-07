@@ -56,12 +56,13 @@ type (
 	// Queues is a map of queues.
 	Queues map[Name]Queue
 
-	// WorkflowOption is the interface for creating a workflow id.
-	WorkflowOption interface {
-		IsChild() bool       // IsChild returns true if the workflow id is a child workflow id.
-		String(Queue) string // String returns the workflow id as a string.
+	// WorkflowOptions is the interface for creating a workflow id.
+	WorkflowOptions interface {
+		IsChild() bool            // IsChild returns true if the workflow id is a child workflow id.
+		ParentWorkflowID() string // ParentWorkflowID returns the parent workflow id.
+		Suffix() string           // Suffix santizes the suffix of the workflow id and then formats it as a string.
 	}
 
 	// WorkflowOptionProvider is the option for creating a workflow id.
-	WorkflowOptionProvider func(WorkflowOption)
+	WorkflowOptionProvider func(WorkflowOptions)
 )

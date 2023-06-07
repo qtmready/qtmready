@@ -75,7 +75,7 @@ func (m *mutex) Start() error {
 		Queue(shared.CoreQueue).
 		ChildWorkflowOptions(
 			shared.WithWorkflowBlock("mutex"),
-			shared.WithWorkflowBlockVal(m.id),
+			shared.WithWorkflowBlockID(m.id),
 		)
 		// GetChildWorkflowOptions("mutex", m.id)
 	ctx := workflow.WithChildOptions(m.contexts.caller, opts)

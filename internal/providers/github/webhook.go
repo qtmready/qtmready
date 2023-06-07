@@ -42,7 +42,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockVal(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
 			shared.WithWorkflowElement(WebhookEventInstallation.String()),
 		)
 
@@ -82,9 +82,9 @@ func handlePushEvent(ctx echo.Context) error {
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockVal(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
 			shared.WithWorkflowElement("repo"),
-			shared.WithWorkflowElementVal(strconv.FormatInt(payload.Repository.ID, 10)),
+			shared.WithWorkflowElementID(strconv.FormatInt(payload.Repository.ID, 10)),
 			shared.WithWorkflowMod(WebhookEventPush.String()),
 			shared.WithWorkflowProp("ref", payload.Ref),
 		)
@@ -110,11 +110,11 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockVal(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
 			shared.WithWorkflowElement("repo"),
-			shared.WithWorkflowElementVal(strconv.FormatInt(payload.Repository.ID, 10)),
+			shared.WithWorkflowElementID(strconv.FormatInt(payload.Repository.ID, 10)),
 			shared.WithWorkflowMod(WebhookEventPullRequest.String()),
-			shared.WithWorkflowModVal(strconv.FormatInt(payload.PullRequest.ID, 10)),
+			shared.WithWorkflowModID(strconv.FormatInt(payload.PullRequest.ID, 10)),
 		)
 
 	switch payload.Action {
@@ -148,7 +148,7 @@ func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockVal(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
 			shared.WithWorkflowElement(WebhookEventInstallationRepositories.String()),
 		)
 

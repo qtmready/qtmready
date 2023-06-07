@@ -299,7 +299,7 @@ func onDeploymentStartedSignal(ctx workflow.Context, stackID string, deployments
 				shared.WithWorkflowParent(ctx),
 				shared.WithWorkflowElement("get_assets"),
 				shared.WithWorkflowMod("trigger"),
-				shared.WithWorkflowModVal(strconv.FormatInt(payload.TriggerID, 10)),
+				shared.WithWorkflowModID(strconv.FormatInt(payload.TriggerID, 10)),
 			)
 
 		getAssetsPayload := &GetAssetsPayload{
@@ -353,7 +353,7 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 			ChildWorkflowOptions(
 				shared.WithWorkflowParent(ctx),
 				shared.WithWorkflowBlock("changeset"), // TODO: shouldn't this be part of the changeset controller?
-				shared.WithWorkflowBlockVal(assets.ChangesetID.String()),
+				shared.WithWorkflowBlockID(assets.ChangesetID.String()),
 				shared.WithWorkflowElement("provision_infra"),
 			)
 
@@ -393,7 +393,7 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, lock mutex.M
 			ChildWorkflowOptions(
 				shared.WithWorkflowParent(ctx),
 				shared.WithWorkflowBlock("changeset"), // TODO: shouldn't this be part of the changeset controller?
-				shared.WithWorkflowBlockVal(assets.ChangesetID.String()),
+				shared.WithWorkflowBlockID(assets.ChangesetID.String()),
 				shared.WithWorkflowElement("deploy"),
 			)
 		cctx := workflow.WithChildOptions(ctx, opts)

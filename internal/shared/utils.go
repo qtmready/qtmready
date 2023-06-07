@@ -22,6 +22,6 @@ func StackWorkflowID(id string) string {
 		Queue(CoreQueue).
 		WorkflowID(
 			WithWorkflowBlock("stack"),
-			WithWorkflowBlockVal(id),
+			WithWorkflowBlockID(id),
 		)
 }
