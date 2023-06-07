@@ -38,6 +38,20 @@ type (
 
 	FutureHandler  func(workflow.Future)               // FutureHandler is the signature of the future handler function.
 	ChannelHandler func(workflow.ReceiveChannel, bool) // ChannelHandler is the signature of the channel handler function.
+
+	WorkflowOption = queue.WorkflowOptions
+)
+
+var (
+	WithWorkflowParent    = queue.WithWorkflowParent    // Sets the parent workflow ID.
+	WithWorkflowBlock     = queue.WithWorkflowBlock     // Sets the block name for the workflow ID.
+	WithWorkflowBlockID   = queue.WithWorkflowBlockID   // Sets the block value for the workflow ID.
+	WithWorkflowElement   = queue.WithWorkflowElement   // Sets the element name for the workflow ID.
+	WithWorkflowElementID = queue.WithWorkflowElementID // Sets the element value for the workflow ID.
+	WithWorkflowMod       = queue.WithWorkflowMod       // Sets the modifier for the workflow ID.
+	WithWorkflowModID     = queue.WithWorkflowModID     // Sets the modifier value for the workflow ID.
+	WithWorkflowProp      = queue.WithWorkflowProp      // Sets the property for the workflow ID.
+	NewWorkflowOptions    = queue.NewWorkflowOptions    // Creates a new workflow ID. (see queue.NewWorkflowOptions)
 )
 
 // queue definitions.

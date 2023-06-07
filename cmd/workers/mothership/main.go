@@ -43,8 +43,8 @@ func main() {
 		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
 	)
 
-	providerQueue := shared.Temporal().Queue(shared.ProvidersQueue).GetName()
-	coreQueue := shared.Temporal().Queue(shared.CoreQueue).GetName()
+	providerQueue := shared.Temporal().Queue(shared.ProvidersQueue).Name()
+	coreQueue := shared.Temporal().Queue(shared.CoreQueue).Name()
 
 	options := worker.Options{OnFatalError: func(err error) { shared.Logger().Error("Fatal error during worker execution", err) }}
 	providerWrkr := worker.New(shared.Temporal().Client(), providerQueue, options)

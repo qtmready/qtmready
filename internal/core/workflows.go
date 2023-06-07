@@ -128,7 +128,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
 	providerActivityOpts := workflow.ActivityOptions{
 		StartToCloseTimeout: 60 * time.Second,
-		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).GetName(),
+		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
 	}
 	pctx := workflow.WithActivityOptions(ctx, providerActivityOpts)
 
@@ -222,9 +222,9 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	logger.Debug("Assets retreived", "Assets", assets)
 
 	// signal parent workflow
-	PRWorkflow := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
+	parent := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
 	_ = workflow.
-		SignalExternalWorkflow(ctx, PRWorkflow, "", WorkflowSignalAssetsRetrieved.String(), assets).
+		SignalExternalWorkflow(ctx, parent, "", WorkflowSignalAssetsRetrieved.String(), assets).
 		Get(ctx, nil)
 
 	return nil
@@ -295,11 +295,11 @@ func onDeploymentStartedSignal(ctx workflow.Context, stackID string, deployments
 		// Set childworkflow options
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
-			GetChildWorkflowOptions(
-				"stack", stackID,
-				"changeset", changesetID.String(),
-				"get_assets",
-				"trigger", strconv.FormatInt(payload.TriggerID, 10),
+			ChildWorkflowOptions(
+				shared.WithWorkflowParent(ctx),
+				shared.WithWorkflowElement("get_assets"),
+				shared.WithWorkflowMod("trigger"),
+				shared.WithWorkflowModID(strconv.FormatInt(payload.TriggerID, 10)),
 			)
 
 		getAssetsPayload := &GetAssetsPayload{
@@ -350,10 +350,11 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
-			GetChildWorkflowOptions(
-				"stack", stackID,
-				"changeset", assets.ChangesetID.String(),
-				"provision_infra",
+			ChildWorkflowOptions(
+				shared.WithWorkflowParent(ctx),
+				shared.WithWorkflowBlock("changeset"), // TODO: shouldn't this be part of the changeset controller?
+				shared.WithWorkflowBlockID(assets.ChangesetID.String()),
+				shared.WithWorkflowElement("provision_infra"),
 			)
 
 		cctx := workflow.WithChildOptions(ctx, opts)
@@ -389,10 +390,11 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, lock mutex.M
 
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
-			GetChildWorkflowOptions(
-				"stack", stackID,
-				"changeset", assets.ChangesetID.String(),
-				"deploy",
+			ChildWorkflowOptions(
+				shared.WithWorkflowParent(ctx),
+				shared.WithWorkflowBlock("changeset"), // TODO: shouldn't this be part of the changeset controller?
+				shared.WithWorkflowBlockID(assets.ChangesetID.String()),
+				shared.WithWorkflowElement("deploy"),
 			)
 		cctx := workflow.WithChildOptions(ctx, opts)
 

@@ -73,7 +73,11 @@ func (m *mutex) Start() error {
 	logger := workflow.GetLogger(m.contexts.caller)
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
-		GetChildWorkflowOptions("mutex", m.id)
+		ChildWorkflowOptions(
+			shared.WithWorkflowBlock("mutex"),
+			shared.WithWorkflowBlockID(m.id),
+		)
+		// GetChildWorkflowOptions("mutex", m.id)
 	ctx := workflow.WithChildOptions(m.contexts.caller, opts)
 	logger.Info("mutex: starting workflow ...", "resource ID", m.id, "with timeout", m.timeout)
 

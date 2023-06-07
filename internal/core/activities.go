@@ -80,7 +80,7 @@ func (a *Activities) GetBluePrint(ctx context.Context, stackID string) (*Bluepri
 	params := db.QueryParams{"stack_id": stackID}
 
 	if err := db.Get(blueprint, params); err != nil {
-		log.Error("GetBlueprint Error", "error", err)
+		log.Error("GetBlueprint Error", "stack", stackID, "error", err)
 		return blueprint, err
 	}
 
