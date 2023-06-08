@@ -10,3 +10,15 @@ type APIError struct {
 	Internal error       `json:"-"`
 	Message  interface{} `json:"message"`
 }
+
+// BadRequest defines the structure of an API error response
+type BadRequest = APIError
+
+// InternalServerError defines the structure of an API error response
+type InternalServerError = APIError
+
+// NotFound defines the structure of an API error response
+type NotFound = APIError
+
+// Unauthorized defines the structure of an API error response
+type Unauthorized = APIError

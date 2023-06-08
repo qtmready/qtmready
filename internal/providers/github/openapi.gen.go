@@ -18,7 +18,6 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/scylladb/gocqlx/v2/table"
-	externalRef1 "go.breu.io/ctrlplane/internal/shared"
 )
 
 const (
@@ -197,12 +196,6 @@ type WorkflowResponse struct {
 // WorkflowStatus the workflow status
 type WorkflowStatus string
 
-// BadRequest defines the structure of an API error response
-type BadRequest = externalRef1.APIError
-
-// InternalServerError defines the structure of an API error response
-type InternalServerError = externalRef1.APIError
-
 // GithubCompleteInstallationJSONRequestBody defines body for GithubCompleteInstallation for application/json ContentType.
 type GithubCompleteInstallationJSONRequestBody = CompleteInstallationRequest
 
@@ -238,9 +231,9 @@ type ServerInterfaceWrapper struct {
 func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubCompleteInstallation
@@ -255,9 +248,9 @@ func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) er
 func (w *ServerInterfaceWrapper) GithubGetInstallations(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubGetInstallations
@@ -272,9 +265,9 @@ func (w *ServerInterfaceWrapper) GithubGetInstallations(ctx echo.Context) error 
 func (w *ServerInterfaceWrapper) GithubGetRepos(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubGetRepos
