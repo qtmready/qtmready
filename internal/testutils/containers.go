@@ -33,10 +33,10 @@ import (
 )
 
 const (
-	DBImage                 = "cassandra:4"
+	DBImage                 = "scylladb/scylla:5.2"
 	TestNetworkName         = "testnet"
 	DBContainerHost         = "test-db"
-	TemporalImage           = "temporalio/auto-setup:1.20.0"
+	TemporalImage           = "temporalio/auto-setup:1.20.3"
 	TemporalContainerHost   = "test-temporal"
 	NatsIOImage             = "nats:2.9.15"
 	NatsIOContainerHost     = "test-natsio"
@@ -74,22 +74,14 @@ func CreateTestNetwork(ctx context.Context) (testcontainers.Network, error) {
 // StartDBContainer starts a Cassandra container for testing purposes.
 func StartDBContainer(ctx context.Context) (*Container, error) {
 	env := ContainerEnvironment{
-		"CASSANDRA_CLUSTER_NAME": "ctrlplane_test",
-		"JVM_EXTRA_OPTS":         "-Dcassandra.skip_wait_for_gossip_to_settle=0",
+		// "CASSANDRA_CLUSTER_NAME": "ctrlplane_test",
+		// "JVM_EXTRA_OPTS":         "-Dcassandra.skip_wait_for_gossip_to_settle=0",
 	}
-
-	_, caller, _, _ := runtime.Caller(0)
-	pkgroot := path.Join(path.Dir(caller), "..", "..")
-	cassandrayaml := path.Join(pkgroot, "deploy", "cassandra", "cassandra.yaml")
 
 	mounts := testcontainers.ContainerMounts{
 		testcontainers.ContainerMount{
 			Source: testcontainers.GenericVolumeMountSource{Name: "test-db"},
-			Target: "/var/lib/cassandra",
-		},
-		testcontainers.ContainerMount{
-			Source: testcontainers.GenericBindMountSource{HostPath: cassandrayaml},
-			Target: "/etc/cassandra/cassandra.yaml",
+			Target: "/var/lib/scylla",
 		},
 	}
 
@@ -99,9 +91,12 @@ func StartDBContainer(ctx context.Context) (*Container, error) {
 		Image:        DBImage,
 		Mounts:       mounts,
 		Env:          env,
+		Cmd:          []string{"--smp", "1", "--skip-wait-for-gossip-to-settle", "1"},
 		Networks:     []string{TestNetworkName},
 		ExposedPorts: []string{"9042/tcp"},
-		WaitingFor:   wait.ForListeningPort("9042/tcp").WithPollInterval(time.Second * 5).WithStartupTimeout(time.Minute * 5),
+		WaitingFor: wait.ForListeningPort("9042/tcp").
+			WithPollInterval(time.Second * 5).
+			WithStartupTimeout(time.Minute * 5),
 	}
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
