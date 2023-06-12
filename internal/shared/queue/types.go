@@ -19,6 +19,7 @@ package queue
 
 import (
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -48,6 +49,9 @@ type (
 
 		// ChildWorkflowOptions creates the child workflow options for the queue given WorkflowIDOptions.
 		ChildWorkflowOptions(options ...WorkflowOptionProvider) workflow.ChildWorkflowOptions
+
+		// Worker creates a worker for the queue.
+		Worker(client client.Client) worker.Worker
 	}
 
 	// QueueOption is the option for a queue.
@@ -56,13 +60,13 @@ type (
 	// Queues is a map of queues.
 	Queues map[Name]Queue
 
-	// WorkflowOptions is the interface for creating a workflow id.
+	// WorkflowOptions defines the interface for creating workflow options.
 	WorkflowOptions interface {
 		IsChild() bool            // IsChild returns true if the workflow id is a child workflow id.
 		ParentWorkflowID() string // ParentWorkflowID returns the parent workflow id.
 		Suffix() string           // Suffix santizes the suffix of the workflow id and then formats it as a string.
 	}
 
-	// WorkflowOptionProvider is the option for creating a workflow id.
+	// WorkflowOptionProvider provides the option to create a workflow id.
 	WorkflowOptionProvider func(WorkflowOptions)
 )

@@ -18,11 +18,12 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"go.temporal.io/sdk/worker"
+	"github.com/fatih/color"
 
 	"go.breu.io/ctrlplane/internal/core"
 	"go.breu.io/ctrlplane/internal/core/mutex"
@@ -43,55 +44,59 @@ func main() {
 		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
 	)
 
-	providerQueue := shared.Temporal().Queue(shared.ProvidersQueue).Name()
-	coreQueue := shared.Temporal().Queue(shared.CoreQueue).Name()
+	/**
+	 * Providers
+	 **/
+	providerwrkr := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		Worker(shared.Temporal().Client())
+	ghwrkflos := &github.Workflows{}
 
-	options := worker.Options{OnFatalError: func(err error) { shared.Logger().Error("Fatal error during worker execution", err) }}
-	providerWrkr := worker.New(shared.Temporal().Client(), providerQueue, options)
-	coreWrkr := worker.New(shared.Temporal().Client(), coreQueue, options)
+	providerwrkr.RegisterWorkflow(ghwrkflos.OnInstallationEvent)
+	providerwrkr.RegisterWorkflow(ghwrkflos.OnInstallationRepositoriesEvent)
+	providerwrkr.RegisterWorkflow(ghwrkflos.OnPushEvent)
+	providerwrkr.RegisterWorkflow(ghwrkflos.OnPullRequestEvent)
 
-	ghwfs := &github.Workflows{}
-	cwfs := &core.Workflows{}
+	providerwrkr.RegisterActivity(&github.Activities{})
 
-	// provider workflows
-	providerWrkr.RegisterWorkflow(ghwfs.OnInstallationEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.OnInstallationRepositoriesEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.OnPushEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
-
-	// provider activities
-	providerWrkr.RegisterActivity(&github.Activities{})
-
-	// mutex workflow
-	coreWrkr.RegisterWorkflow(mutex.Workflow)
-
-	// core workflows
-	coreWrkr.RegisterWorkflow(cwfs.StackController)
-	coreWrkr.RegisterWorkflow(cwfs.Deploy)
-	coreWrkr.RegisterWorkflow(cwfs.GetAssets)
-	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)
-	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
-
-	// core activities
-	coreWrkr.RegisterActivity(&core.Activities{})
-
-	// start worker for provider queue
-	err := providerWrkr.Start()
-	if err != nil {
+	if err := providerwrkr.Start(); err != nil {
 		exitcode = 1
 		return
 	}
+	defer providerwrkr.Stop()
 
-	defer providerWrkr.Stop()
+	/**
+	 * Core
+	 **/
 
-	// start worker for core queue
-	err = coreWrkr.Start()
-	if err != nil {
+	corewrkr := shared.Temporal().
+		Queue(shared.CoreQueue).
+		Worker(shared.Temporal().Client())
+	corewrkflos := &core.Workflows{}
+
+	corewrkr.RegisterWorkflow(mutex.Workflow)
+	corewrkr.RegisterWorkflow(corewrkflos.StackController)
+	corewrkr.RegisterWorkflow(corewrkflos.Deploy)
+	corewrkr.RegisterWorkflow(corewrkflos.GetAssets)
+	corewrkr.RegisterWorkflow(corewrkflos.ProvisionInfra)
+	corewrkr.RegisterWorkflow(corewrkflos.DeProvisionInfra)
+
+	corewrkr.RegisterActivity(&core.Activities{})
+
+	if err := corewrkr.Start(); err != nil {
 		exitcode = 1
 		return
 	}
+	defer corewrkr.Stop()
 
-	defer coreWrkr.Stop()
+	/**
+	 * Worker successfully started. Announcing ...
+	 **/
+	shared.Service().Announce()
+
+	/**
+	 * Graceful Shutdown
+	  **/
 
 	quit := make(chan os.Signal, 1)                      // create a channel to listen to quit signals.
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // setting up the signals to listen to.
@@ -100,4 +105,24 @@ func main() {
 	shared.Logger().Info("Exiting....")
 
 	exitcode = 1
+}
+
+func banner() {
+	text := `
+                           __          
+  ____  __  ______  ____  / /_____ ___ 
+ / __ \/ / / / __ \/ __ \/ __/ __ ˇ__ \
+/ /_/ / /_/ / /_/ / / / / /_  / / / / /
+\__, /\__▲_/\__▲_/_/ /_/\__/_/ /_/ /_/ 
+  /_/  
+Fault Tolerant, Progressive Delivery Engine for OpenGitOps.
+
+compoenent: %s
+version: %s
+
+%s`
+	green := color.New(color.FgGreen).SprintFunc()
+	red := color.New(color.FgRed).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
+	fmt.Printf(text, yellow("MOTHERSHIP"), red(shared.Service().GetVersion()), green("https://breu.io"))
 }

@@ -127,7 +127,7 @@ services:
     container_name: ctrlplane-api
     image: cosmtrek/air:v1.42.0
     environment:
-      SERVICE_NAME: web::api
+      SERVICE_NAME: mothership::api
       DEBUG: true
     env_file:
       - ./.env
@@ -149,7 +149,7 @@ services:
       - mothership
     image: cosmtrek/air:v1.42.0
     environment:
-      SERVICE_NAME: worker::mothership
+      SERVICE_NAME: mothership::worker
       DEBUG: true
       LOG_SKIPPER: 2
     env_file:

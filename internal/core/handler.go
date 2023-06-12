@@ -186,7 +186,7 @@ func (s *ServerHandler) CreateStack(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	shared.Logger().Info("started workflow: ", opts.ID, " run ID: ", exe.GetRunID())
+	shared.Logger().Info("started workflow: ", "ID", opts.ID, " Run ID: ", exe.GetRunID())
 
 	return ctx.JSON(http.StatusCreated, stack)
 }

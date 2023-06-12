@@ -141,6 +141,8 @@ require (
 	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect
 )
 
+require github.com/fatih/color v1.13.0
+
 replace github.com/Guilospanck/igocqlx v1.0.0 => github.com/debuggerpk/igocqlx v1.0.3
 
 replace github.com/deepmap/oapi-codegen v1.13.0 => github.com/breuHQ/oapi-codegen v1.13.0-breu
