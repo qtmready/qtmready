@@ -15,4 +15,16 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package client
+package linters_test
+
+import (
+	"testing"
+
+	"golang.org/x/tools/go/analysis/analysistest"
+
+	"go.breu.io/ctrlplane/tools/linters"
+)
+
+func TestKVLogger(t *testing.T) {
+	analysistest.Run(t, analysistest.TestData(), linters.KVLogger)
+}

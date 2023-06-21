@@ -15,4 +15,12 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package client
+package testdata
+
+import (
+	"./shared"
+)
+
+func singleton_info() {
+	shared.Logger().Info("info")
+}
