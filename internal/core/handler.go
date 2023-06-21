@@ -80,11 +80,12 @@ func (s *ServerHandler) CreateWorkload(ctx echo.Context) error {
 	}
 
 	workload := &Workload{
-		Name:     request.Name,
-		Kind:     request.Kind,
-		RepoID:   request.RepoID,
-		RepoPath: request.RepoPath,
-		StackID:  request.StackID,
+		Name:       request.Name,
+		Kind:       request.Kind,
+		RepoID:     request.RepoID,
+		RepoPath:   request.RepoPath,
+		StackID:    request.StackID,
+		ResourceID: request.ResourceID,
 	}
 
 	if err := db.Save(workload); err != nil {
@@ -131,7 +132,8 @@ func (s *ServerHandler) CreateResource(ctx echo.Context) error {
 		Name:        request.Name,
 		Provider:    request.Provider,
 		StackID:     request.StackID,
-		Driver:      request.Driver,
+		Driver:      Driver(request.Driver),
+		Config:      request.Config,
 		IsImmutable: &request.Immutable,
 	}
 
@@ -186,7 +188,7 @@ func (s *ServerHandler) CreateStack(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	shared.Logger().Info("started workflow: ", opts.ID, " run ID: ", exe.GetRunID())
+	shared.Logger().Info("started workflow", "ID", opts.ID, " run ID: ", exe.GetRunID())
 
 	return ctx.JSON(http.StatusCreated, stack)
 }

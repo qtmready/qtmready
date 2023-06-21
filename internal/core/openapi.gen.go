@@ -21,7 +21,6 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/scylladb/gocqlx/v2/table"
-	"go.breu.io/ctrlplane/internal/shared"
 	externalRef1 "go.breu.io/ctrlplane/internal/shared"
 )
 
@@ -32,6 +31,7 @@ const (
 
 var (
 	ErrInvalidCloudProvider = errors.New("invalid CloudProvider value")
+	ErrInvalidDriver        = errors.New("invalid Driver value")
 	ErrInvalidRepoProvider  = errors.New("invalid RepoProvider value")
 )
 
@@ -63,13 +63,59 @@ func (v CloudProvider) MarshalJSON() ([]byte, error) { return json.Marshal(v.Str
 func (v *CloudProvider) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
-    shared.Logger().Error("Failed to unmarshal CloudProvider", "error", err)
 		return err
 	}
 
 	val, ok := CloudProviderMap[s]
 	if !ok {
 		return ErrInvalidCloudProvider
+	}
+
+	*v = val
+
+	return nil
+}
+
+type (
+	DriverMapType map[string]Driver // DriverMapType is a quick lookup map for Driver.
+)
+
+// Defines values for Driver.
+const (
+	DriverCloudrun Driver = "cloudrun"
+	DriverGke      Driver = "gke"
+	DriverPubsub   Driver = "pubsub"
+	DriverS3       Driver = "s3"
+	DriverSns      Driver = "sns"
+	DriverSqs      Driver = "sqs"
+)
+
+// DriverValues returns all known values for Driver.
+var (
+	DriverMap = DriverMapType{
+		DriverCloudrun.String(): DriverCloudrun,
+		DriverGke.String():      DriverGke,
+		DriverPubsub.String():   DriverPubsub,
+		DriverS3.String():       DriverS3,
+		DriverSns.String():      DriverSns,
+		DriverSqs.String():      DriverSqs,
+	}
+)
+
+/*
+ * Helper methods for Driver for easy marshalling and unmarshalling.
+ */
+func (v Driver) String() string               { return string(v) }
+func (v Driver) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
+func (v *Driver) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	val, ok := DriverMap[s]
+	if !ok {
+		return ErrInvalidDriver
 	}
 
 	*v = val
@@ -169,6 +215,9 @@ type BlueprintCreateRequest struct {
 // CloudProvider aws, gcp, azure
 type CloudProvider string
 
+// Driver gke, cloudrun, pubsub, s3, sqs, sns, dynamodb, postgres, mysql etc
+type Driver string
+
 // Repo defines model for Repo.
 type Repo struct {
 	CreatedAt     time.Time    `cql:"created_at" json:"created_at"`
@@ -217,10 +266,12 @@ type RepoProvider string
 
 // Resource Resource defines the cloud provider resources for the app e.g. s3, sqs, etc
 type Resource struct {
+	// Config resource configruation e.g properties, output environment variables etc
+	Config    string    `cql:"config" json:"config"`
 	CreatedAt time.Time `cql:"created_at" json:"created_at"`
 
-	// Driver s3, sqs, sns, dynamodb, postfres, mysql etc
-	Driver      string     `cql:"driver" json:"driver"`
+	// Driver gke, cloudrun, pubsub, s3, sqs, sns, dynamodb, postgres, mysql etc
+	Driver      Driver     `cql:"driver" json:"driver"`
 	ID          gocql.UUID `cql:"id" json:"id"`
 	IsImmutable *bool      `cql:"is_immutable" json:"is_immutable,omitempty"`
 	Name        string     `cql:"name" json:"name"`
@@ -232,7 +283,7 @@ type Resource struct {
 }
 
 var (
-	resourceColumns = []string{"created_at", "driver", "id", "is_immutable", "name", "provider", "stack_id", "updated_at"}
+	resourceColumns = []string{"config", "created_at", "driver", "id", "is_immutable", "name", "provider", "stack_id", "updated_at"}
 
 	resourceMeta = itable.Metadata{
 		M: &table.Metadata{
@@ -250,6 +301,7 @@ func (resource *Resource) GetTable() itable.ITable {
 
 // ResourceCreateRequest defines model for ResourceCreateRequest.
 type ResourceCreateRequest struct {
+	Config    string `json:"config"`
 	Driver    string `json:"driver"`
 	Immutable bool   `json:"immutable"`
 	Name      string `json:"name"`
@@ -313,16 +365,17 @@ type Workload struct {
 	ID        gocql.UUID `cql:"id" json:"id"`
 
 	// Kind Default, worker, job, cronjob
-	Kind      string     `cql:"kind" json:"kind"`
-	Name      string     `cql:"name" json:"name"`
-	RepoID    gocql.UUID `cql:"repo_id" json:"repo_id"`
-	RepoPath  string     `cql:"repo_path" json:"repo_path"`
-	StackID   gocql.UUID `cql:"stack_id" json:"stack_id"`
-	UpdatedAt time.Time  `cql:"updated_at" json:"updated_at"`
+	Kind       string     `cql:"kind" json:"kind"`
+	Name       string     `cql:"name" json:"name"`
+	RepoID     gocql.UUID `cql:"repo_id" json:"repo_id"`
+	RepoPath   string     `cql:"repo_path" json:"repo_path"`
+	ResourceID gocql.UUID `cql:"resource_id" json:"resource_id"`
+	StackID    gocql.UUID `cql:"stack_id" json:"stack_id"`
+	UpdatedAt  time.Time  `cql:"updated_at" json:"updated_at"`
 }
 
 var (
-	workloadColumns = []string{"builder", "container", "created_at", "id", "kind", "name", "repo_id", "repo_path", "stack_id", "updated_at"}
+	workloadColumns = []string{"builder", "container", "created_at", "id", "kind", "name", "repo_id", "repo_path", "resource_id", "stack_id", "updated_at"}
 
 	workloadMeta = itable.Metadata{
 		M: &table.Metadata{
@@ -340,13 +393,14 @@ func (workload *Workload) GetTable() itable.ITable {
 
 // WorkloadCreateRequest defines model for WorkloadCreateRequest.
 type WorkloadCreateRequest struct {
-	Builder   string     `json:"builder"`
-	Container string     `json:"container"`
-	Kind      string     `json:"kind"`
-	Name      string     `json:"name"`
-	RepoID    gocql.UUID `json:"repo_id"`
-	RepoPath  string     `json:"repo_path"`
-	StackID   gocql.UUID `json:"stack_id"`
+	Builder    string     `json:"builder"`
+	Container  string     `json:"container"`
+	Kind       string     `json:"kind"`
+	Name       string     `json:"name"`
+	RepoID     gocql.UUID `json:"repo_id"`
+	RepoPath   string     `json:"repo_path"`
+	ResourceID gocql.UUID `json:"resource_id"`
+	StackID    gocql.UUID `json:"stack_id"`
 }
 
 // WorkloadListResponse defines model for WorkloadListResponse.

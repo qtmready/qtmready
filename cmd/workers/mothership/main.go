@@ -26,6 +26,7 @@ import (
 
 	"go.breu.io/ctrlplane/internal/core"
 	"go.breu.io/ctrlplane/internal/core/mutex"
+	"go.breu.io/ctrlplane/internal/core/resources/gcp"
 	"go.breu.io/ctrlplane/internal/db"
 	"go.breu.io/ctrlplane/internal/providers/github"
 	"go.breu.io/ctrlplane/internal/shared"
@@ -41,6 +42,7 @@ func main() {
 
 	core.Instance(
 		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
+		core.WithCloudResource(core.CloudProviderGCP, core.DriverCloudrun, &gcp.CloudRunConstructor{}),
 	)
 
 	providerQueue := shared.Temporal().Queue(shared.ProvidersQueue).Name()
@@ -52,6 +54,7 @@ func main() {
 
 	ghwfs := &github.Workflows{}
 	cwfs := &core.Workflows{}
+	gcpwfs := gcp.Workflows{}
 
 	// provider workflows
 	providerWrkr.RegisterWorkflow(ghwfs.OnInstallationEvent)
@@ -71,9 +74,13 @@ func main() {
 	coreWrkr.RegisterWorkflow(cwfs.GetAssets)
 	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)
 	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
+	coreWrkr.RegisterWorkflow(gcpwfs.ProvisionCloudRun)
+	coreWrkr.RegisterWorkflow(gcpwfs.DeployCloudRun)
+	coreWrkr.RegisterWorkflow(gcpwfs.UpdateTraffic)
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.Activities{})
+	coreWrkr.RegisterActivity(&gcp.Activities{})
 
 	// start worker for provider queue
 	err := providerWrkr.Start()

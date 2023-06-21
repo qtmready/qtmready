@@ -385,6 +385,11 @@ components:
           format: uuid
           x-go-name: RepoID
           x-go-type: gocql.UUID
+        resource_id:
+          type: string
+          format: uuid
+          x-go-name: ResourceID
+          x-go-type: gocql.UUID
         repo_path:
           type: string
         kind:
@@ -398,6 +403,7 @@ components:
         - stack_id
         - repo_id
         - repo_path
+        - resource_id
         - kind
         - container
         - builder
@@ -423,11 +429,14 @@ components:
           type: string
         immutable:
           type: boolean
+        config:
+          type: string
       required:
         - name
         - stack_id
         - provider
         - driver
+        - config
         - immutable
 
     ResourceListResponse:
@@ -541,6 +550,11 @@ components:
           format: uuid
           x-go-name: RepoID
           x-go-type: gocql.UUID
+        resource_id:
+          type: string
+          format: uuid
+          x-go-name: ResourceID
+          x-go-type: gocql.UUID
         repo_path:
           type: string
         kind:
@@ -564,6 +578,7 @@ components:
         - stack_id
         - repo_id
         - repo_path
+        - resource_id
         - kind
         - container
         - builder
@@ -587,9 +602,11 @@ components:
           format: uuid
           x-go-name: StackID
           x-go-type: gocql.UUID
-        driver:
+        config:
           type: string
-          description: 's3, sqs, sns, dynamodb, postgres, mysql etc'
+          description: 'resource configruation e.g properties, output environment variables etc'
+        driver:
+          $ref: '#/components/schemas/Driver'
         is_immutable:
           type: boolean
         provider:
@@ -607,6 +624,7 @@ components:
         - repo_id
         - driver
         - provider
+        - config
         - created_at
         - updated_at
 
@@ -737,6 +755,33 @@ components:
         - aws
         - azure
         - default
+
+    GCPDriver:
+      type: string
+      description: 'gke, cloudrun, pubsub etc'
+      enum:
+        - gke
+        - cloudrun
+        - pubsub
+
+    AWSDriver:
+      type: string
+      description: 's3, sqs, sns, dynamodb, postgres, mysql etc'
+      enum:
+        - s3
+        - sns
+        - sqs
+
+    Driver:
+      type: string
+      description: 'gke, cloudrun, pubsub, s3, sqs, sns, dynamodb, postgres, mysql etc'
+      enum:
+        - gke
+        - cloudrun
+        - pubsub
+        - s3
+        - sns
+        - sqs
 
   responses:
     NotFound:

@@ -43,6 +43,30 @@ type (
 	}
 )
 
+// copy old to new, clear old
+func swap(new *Infra, old *Infra) {
+
+	*new = make(Infra)       // clear new
+	for k, v := range *old { // copy old to new
+		(*new)[k] = v
+	}
+
+	// clear old
+	*old = make(Infra)
+}
+
+func getRegion(provider CloudProvider, blueprint *Blueprint) string {
+	switch provider {
+	case CloudProviderAWS:
+		return blueprint.Regions.Aws[0]
+	case CloudProviderGCP:
+		return blueprint.Regions.Gcp[0]
+	case CloudProviderAzure:
+		return blueprint.Regions.Azure[0]
+	}
+	return ""
+}
+
 // ChangesetController controls the rollout lifecycle for one changeset.
 func (w *Workflows) ChangesetController(id string) error {
 	return nil
@@ -50,19 +74,18 @@ func (w *Workflows) ChangesetController(id string) error {
 
 // StackController runs indefinitely and controls and synchronizes all actions on stack.
 // This workflow will start when createStack call is received. it will be the master workflow for all child stack workflows
-// like for tasks like creating infrastructure, doing deployment, apperture controller etc.
+// for tasks like creating infrastructure, doing deployment, apperture controller etc.
 //
 // The workflow waits for the signals from the git provider. It consumes events for PR created, updated, merged etc.
 func (w *Workflows) StackController(ctx workflow.Context, stackID string) error {
 	// deployment map is designed to be used in OnPullRequestWorkflow only
-	deployments := make(Deployments)
 	logger := workflow.GetLogger(ctx)
 	lockID := "stack." + stackID // stack.<stack id>
+	deployments := make(Deployments)
+	activeInfra := make(Infra)
 
 	// create and initialize mutex, initializing mutex will start a mutex workflow
 	logger.Info("creating mutex for stack", "stack", stackID)
-
-	// mutex := NewMutex(mutexID, unLockTimeOutStackMutex)
 	lock := mutex.New(
 		mutex.WithCallerContext(ctx),
 		mutex.WithID(lockID),
@@ -71,13 +94,6 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	if err := lock.Start(); err != nil {
 		logger.Debug("unable to start mutex workflow", "error", err)
 	}
-
-	// err := mutex.Init(ctx)
-	// if err != nil {
-	// 	logger.Error("Error in creating mutex for stack", "stack ID", stackID, "Error", err)
-	// }
-
-	// var prSignalsCounter int = 0
 
 	triggerChannel := workflow.GetSignalChannel(ctx, shared.WorkflowSignalDeploymentStarted.String())
 	assetsChannel := workflow.GetSignalChannel(ctx, WorkflowSignalAssetsRetrieved.String())
@@ -88,19 +104,18 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	selector := workflow.NewSelector(ctx)
 	selector.AddReceive(triggerChannel, onDeploymentStartedSignal(ctx, stackID, deployments))
 	selector.AddReceive(assetsChannel, onAssetsRetreivedSignal(ctx, stackID, deployments))
-	selector.AddReceive(infrachannel, onInfraProvisionedSignal(ctx, stackID, lock, deployments))
+	selector.AddReceive(infrachannel, onInfraProvisionedSignal(ctx, stackID, lock, deployments, activeInfra))
 	selector.AddReceive(deploymentchannel, onDeploymentCompletedSignal(ctx, stackID, deployments))
 	selector.AddReceive(manualOverrideChannel, onManualOverrideSignal(ctx, stackID, deployments))
 
+	// var prSignalsCounter int = 0
+	// return continue as new if this workflow has processed signals upto a limit
+	// if prSignalsCounter >= OnPullRequestWorkflowPRSignalsLimit {
+	// 	return workflow.NewContinueAsNewError(ctx, w.OnPullRequestWorkflow, stackID)
+	// }
 	for {
-		// return continue as new if this workflow has processed signals upto a limit
-		// if prSignalsCounter >= OnPullRequestWorkflowPRSignalsLimit {
-		// 	return workflow.NewContinueAsNewError(ctx, w.OnPullRequestWorkflow, stackID)
-		// }
-		for {
-			logger.Info("waiting for signals ....")
-			selector.Select(ctx)
-		}
+		logger.Info("waiting for signals ....")
+		selector.Select(ctx)
 	}
 }
 
@@ -115,6 +130,8 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 		future workflow.Future
 		err    error = nil
 	)
+
+	shared.Logger().Info("Get assets workflow")
 
 	logger := workflow.GetLogger(ctx)
 	assets := NewAssets()
@@ -232,34 +249,79 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 
 // ProvisionInfra provisions the infrastructure required for stack deployment.
 func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
+
 	logger := workflow.GetLogger(ctx)
-	for _, resource := range assets.Resources {
-		logger.Info("Creating resource", "Name", resource.Name)
+
+	shared.Logger().Debug("provision infra", "assets", assets)
+	for _, rsc := range assets.Resources {
+		logger.Info("Creating resource", "Name", rsc.Name)
+		resconstr := Instance().CloudResources(rsc.Provider, rsc.Driver)
+		if *rsc.IsImmutable {
+			r := resconstr.Create(rsc.Name, getRegion(rsc.Provider, &assets.Blueprint), rsc.Config)
+			ser, err := r.Marshal()
+			if err != nil {
+				logger.Error("Cannot marshal resource", "ID", rsc.ID, "name", rsc.Name)
+				return err
+			}
+			assets.Infra[rsc.ID] = ser
+			r.Provision(ctx)
+		}
 	}
 
+	shared.Logger().Info("Signaling infra provisioned")
 	prWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
 	_ = workflow.SignalExternalWorkflow(ctx, prWorkflowID, "", WorkflowSignalInfraProvisioned.String(), assets).Get(ctx, nil)
 
+	shared.Logger().Info("INFRA PROVISIONED")
 	return nil
 }
 
 // Deploy deploys the stack.
-func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock mutex.Mutex, assets *Assets) error {
+func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.MUtex, assets *Assets) error {
 	logger := workflow.GetLogger(ctx)
 	// Acquire lock
-	logger.Info("Deployment initiated", "changeset", assets.ChangesetID)
+	logger.Info("Deployment initiated", "changeset", assets.ChangesetID, "infra", assets.Infra)
+	Infra := make(Infra)
 
-	err := lock.Acquire()
-	if err != nil {
-		logger.Error("Error in acquiring lock", "Error", err)
-		return err
+	logger.Info("Deployment initiated", "changeset", assets.ChangesetID, "infra converted", Infra)
+
+	// create deployable, map of one or more workloads against each resource
+	deployables := make(map[gocql.UUID][]Workload) // map of resource id and workloads
+	for _, w := range assets.Workloads {
+		_, ok := deployables[w.ResourceID]
+		if ok == false {
+			deployables[w.ResourceID] = make([]Workload, 0)
+		}
+		deployables[w.ResourceID] = append(deployables[w.ResourceID], w)
 	}
 
-	// simulate critical section
-	_ = workflow.Sleep(ctx, 60*time.Second)
+	for _, rsc := range assets.Resources {
+		resconstr := Instance().CloudResources(rsc.Provider, rsc.Driver)
+		inf := assets.Infra[rsc.ID] // get marshaled resource from ID
+		r := resconstr.CreateFromJson(inf)
+		Infra[rsc.ID] = r
+		r.Deploy(ctx, deployables[rsc.ID])
+	}
 
-	// release lock
-	_ = lock.Release()
+	var i int32
+	for i = 20; i <= 100; i += 10 {
+		for id, r := range Infra {
+			shared.Logger().Info("updating traffic", id, r)
+			r.UpdateTraffic(ctx, i)
+			// workflow.Sleep(ctx, 10*time.Second)
+		}
+	}
+	// err := lock.Acquire()
+	// if err != nil {
+	// 	logger.Error("Error in acquiring lock", "Error", err)
+	// 	return err
+	// }
+
+	// // simulate critical section
+	// _ = workflow.Sleep(ctx, 60*time.Second)
+
+	// // release lock
+	// _ = lock.Release()
 
 	prWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
 	workflow.SignalExternalWorkflow(ctx, prWorkflowID, "", WorkflowSignalDeploymentCompleted.String(), assets)
@@ -322,7 +384,7 @@ func onDeploymentStartedSignal(ctx workflow.Context, stackID string, deployments
 		}
 
 		// create and save deployment data against a changeset
-		deployment := &Deployment{}
+		deployment := NewDeployment()
 		deployments[changesetID] = deployment
 		deployment.state = GettingAssets
 		deployment.workflows.GetAssets = execution.ID
@@ -358,6 +420,7 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 			)
 
 		cctx := workflow.WithChildOptions(ctx, opts)
+
 		err := workflow.
 			ExecuteChildWorkflow(cctx, w.ProvisionInfra, assets).
 			GetChildWorkflowExecution().Get(cctx, &execution)
@@ -374,20 +437,22 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 }
 
 // onInfraProvisionedSignal will receive assets by ProvisionInfra, update deployment state and execute Deploy.
-func onInfraProvisionedSignal(ctx workflow.Context, stackID string, lock mutex.Mutex, deployments Deployments) shared.ChannelHandler {
+func onInfraProvisionedSignal(ctx workflow.Context, stackID string, lock mutex.Mutex, deployments Deployments, activeinfra Infra) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 	w := &Workflows{}
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		assets := &Assets{}
+		assets := NewAssets()
 		channel.Receive(ctx, assets)
 		logger.Info("Infra provisioned", "changeset", assets.ChangesetID)
 
 		deployment := deployments[assets.ChangesetID]
 		deployment.state = InfraProvisioned
 
-		var execution workflow.Execution
+		// deployment.OldInfra = activeinfra // All traffic is currently being routed to this infra
+		deployment.NewInfra = assets.Infra // handling zero traffic, no workload is deployed
 
+		var execution workflow.Execution
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
 			ChildWorkflowOptions(
@@ -399,7 +464,7 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, lock mutex.M
 		cctx := workflow.WithChildOptions(ctx, opts)
 
 		err := workflow.
-			ExecuteChildWorkflow(cctx, w.Deploy, stackID, lock, assets).
+			ExecuteChildWorkflow(cctx, w.Deploy, stackID, lock.(*mutex.MUtex), assets).
 			GetChildWorkflowExecution().Get(cctx, &execution)
 		if err != nil {
 			logger.Error("Error in Executing deployment workflow", "Error", err)
@@ -415,7 +480,7 @@ func onDeploymentCompletedSignal(ctx workflow.Context, stackID string, deploymen
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		assets := &Assets{}
+		assets := NewAssets()
 		channel.Receive(ctx, assets)
 		logger.Info("Deployment complete", "changeset", assets.ChangesetID)
 		delete(deployments, assets.ChangesetID)

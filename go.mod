@@ -3,6 +3,8 @@ module go.breu.io/ctrlplane
 go 1.20
 
 require (
+	cloud.google.com/go/iam v0.12.0
+	cloud.google.com/go/run v0.8.0
 	github.com/Guilospanck/gocqlxmock v1.0.1
 	github.com/Guilospanck/igocqlx v1.0.0
 	github.com/Pallinder/go-randomdata v1.2.0
@@ -32,9 +34,19 @@ require (
 )
 
 require (
+	cloud.google.com/go v0.110.0 // indirect
+	cloud.google.com/go/compute v1.18.0 // indirect
+	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	cloud.google.com/go/longrunning v0.4.1 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230217124315-7d5c6f04bbb8 // indirect
 	github.com/cloudflare/circl v1.1.0 // indirect
+	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
+	github.com/google/go-cmp v0.5.9 // indirect
 	github.com/google/go-github/v52 v52.0.0 // indirect
+	github.com/googleapis/enterprise-certificate-proxy v0.2.3 // indirect
+	github.com/googleapis/gax-go/v2 v2.7.0 // indirect
+	go.opencensus.io v0.24.0 // indirect
+	google.golang.org/api v0.110.0 // indirect
 )
 
 require (

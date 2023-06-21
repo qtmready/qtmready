@@ -22,6 +22,7 @@ import (
 	"sync"
 
 	"go.breu.io/ctrlplane/internal/shared"
+	"go.temporal.io/sdk/workflow"
 )
 
 var (
@@ -38,9 +39,11 @@ type (
 	Core interface {
 		RegisterRepoProvider(RepoProvider, RepoProviderActivities)
 		RegisterCloudProvider(CloudProvider, CloudProviderActivities)
+		RegisterCloudResource(provider CloudProvider, driver Driver, resource ResourceConstructor)
 
 		RepoProvider(RepoProvider) RepoProviderActivities
 		CloudProvider(CloudProvider) CloudProviderActivities
+		CloudResources(CloudProvider, Driver) ResourceConstructor
 	}
 
 	CoreOption func(Core)
@@ -58,10 +61,34 @@ type (
 		cloud map[CloudProvider]CloudProviderActivities
 	}
 
+	CloudResource interface {
+		Provision(ctx workflow.Context) error
+		DeProvision() error
+		Deploy(workflow.Context, []Workload) error
+		UpdateTraffic(workflow.Context, int32) error
+		Marshal() ([]byte, error)
+	}
+
+	ResourceConstructor interface {
+		Create(name string, region string, config string) CloudResource
+		CreateFromJson(data []byte) CloudResource
+	}
+
 	core struct {
-		activity ProviderActivities
+		activity         ProviderActivities
+		ResourceProvider map[CloudProvider]map[Driver]ResourceConstructor
+		once             sync.Once // responsible for initializing resources once
 	}
 )
+
+func (c *core) RegisterCloudResource(provider CloudProvider, driver Driver, resource ResourceConstructor) {
+
+	// TODO: replace this with Once
+	if c.ResourceProvider[provider] == nil {
+		c.ResourceProvider[provider] = make(map[Driver]ResourceConstructor)
+	}
+	c.ResourceProvider[provider][driver] = resource
+}
 
 func (c *core) RegisterRepoProvider(provider RepoProvider, activities RepoProviderActivities) {
 	c.activity.repos[provider] = activities
@@ -77,6 +104,19 @@ func (c *core) RepoProvider(name RepoProvider) RepoProviderActivities {
 	}
 
 	panic(ErrProviderNotFound(name.String()))
+}
+
+func (c *core) CloudResources(provider CloudProvider, driver Driver) ResourceConstructor {
+	p, ok := c.ResourceProvider[provider]
+	if !ok {
+		panic(ErrProviderNotFound(provider.String()))
+	}
+
+	if r, ok := p[driver]; ok {
+		return r
+	}
+
+	panic(ErrResourceNotFound(driver.String(), provider.String()))
 }
 
 func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
@@ -103,6 +143,13 @@ func WithCloudProvider(name CloudProvider, provider CloudProviderActivities) Cor
 	}
 }
 
+func WithCloudResource(provider CloudProvider, driver Driver, res ResourceConstructor) CoreOption {
+	return func(c Core) {
+		shared.Logger().Info("core: registering cloud resource", "name", driver.String())
+		c.RegisterCloudResource(provider, driver, res)
+	}
+}
+
 // Instance returns a singleton instance of the core. It is best to call this function in the main() function to
 // register the providers available to the service. This is because the core uses workflow and activity implementations
 // to access the providers.
@@ -115,6 +162,8 @@ func Instance(opts ...CoreOption) Core {
 					repos: make(map[RepoProvider]RepoProviderActivities),
 					cloud: make(map[CloudProvider]CloudProviderActivities),
 				},
+
+				ResourceProvider: make(map[CloudProvider]map[Driver]ResourceConstructor),
 			}
 
 			for _, opt := range opts {
