@@ -87,6 +87,7 @@ func (s *ServerHandler) CreateWorkload(ctx echo.Context) error {
 		RepoPath:   request.RepoPath,
 		StackID:    request.StackID,
 		ResourceID: request.ResourceID,
+		Container:  request.Container,
 	}
 
 	if err := db.Save(workload); err != nil {
