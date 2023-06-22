@@ -69,17 +69,31 @@ type (
 	// 		env map[string]string
 	// 	}
 	// }
+
+	GCPConfig struct {
+		Project string
+	}
 )
 
-func (c *CloudRunConstructor) Create(name string, region string, config string) core.CloudResource {
+func (c *CloudRunConstructor) Create(name string, region string, config string, providerConfig string) (core.CloudResource, error) {
 	cr := &CloudRun{Name: name, Region: region, Config: config}
 	cr.AllowUnauthenticatedAccess = true
-	cr.Project = "breu-dev"
 	cr.Cpu = "2000m"
 	cr.Memory = "1024Mi"
 	cr.MinInstances = 1
 	cr.MaxInstances = 8
-	return cr
+
+	pconfig := new(GCPConfig)
+	err := json.Unmarshal([]byte(providerConfig), pconfig)
+	if err != nil {
+		shared.Logger().Error("Unable to parse provider config for cloudrun")
+		return nil, err
+	}
+
+	cr.Project = pconfig.Project
+
+	shared.Logger().Info("cloud run", "object", providerConfig, "umarshaled", pconfig, "project", cr.Project)
+	return cr, nil
 }
 
 func (c *CloudRunConstructor) CreateFromJson(data []byte) core.CloudResource {
@@ -201,9 +215,9 @@ func (a *Activities) DeployRevision(ctx context.Context, r *CloudRun, wl *core.W
 		req := &runpb.GetServiceRequest{Name: r.GetParent() + "/services/" + wl.Name}
 		service, err := client.GetService(ctx, req)
 
-		shared.Logger().Info("10 percent traffic to latest", "revision", r.Revision)
-		tt := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: 10}
-		tt1 := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION, Revision: r.LastRevision, Percent: 90}
+		shared.Logger().Info("20 percent traffic to latest", "revision", r.Revision)
+		tt := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: 20}
+		tt1 := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION, Revision: r.LastRevision, Percent: 80}
 		service.Traffic = []*runpb.TrafficTarget{tt, tt1}
 
 		if err != nil {

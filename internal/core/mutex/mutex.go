@@ -107,7 +107,6 @@ func (m *Lock) Acquire(ctx workflow.Context) error {
 	shared.Logger().Debug("Acquire lock", "m", m)
 	logger := workflow.GetLogger(ctx)
 	caller := workflow.GetInfo(ctx)
-	mutex := workflow.GetInfo(m.contexts.mutex)
 	logger.Info(
 		"mutex: acquiring lock. sending signal to mutex workflow ...",
 		"resource ID", m.ID,
@@ -118,7 +117,7 @@ func (m *Lock) Acquire(ctx workflow.Context) error {
 	if err := workflow.
 		SignalExternalWorkflow(
 			ctx,
-			mutex.WorkflowExecution.ID,
+			m.ExecutionID,
 			"",
 			WorkflowSignalAcquire.String(),
 			caller.WorkflowExecution.ID,
@@ -139,11 +138,10 @@ func (m *Lock) Release(ctx workflow.Context) error {
 	logger.Info("mutex: releasing lock. sending signal to mutex workflow ...", "resource ID", m.ID)
 
 	caller := workflow.GetInfo(ctx)
-	mutex := workflow.GetInfo(m.contexts.mutex)
 
 	if err := workflow.SignalExternalWorkflow(
 		ctx,
-		mutex.WorkflowExecution.ID,
+		m.ExecutionID,
 		"",
 		WorkflowSignalRelease.String(),
 		caller.WorkflowExecution.ID,

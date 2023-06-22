@@ -67,6 +67,18 @@ func getRegion(provider CloudProvider, blueprint *Blueprint) string {
 	return ""
 }
 
+func getProviderConfig(provider CloudProvider, blueprint *Blueprint) string {
+	switch provider {
+	case CloudProviderAWS:
+		return "blueprint.ProviderConfig.Aws"
+	case CloudProviderGCP:
+		return blueprint.ProviderConfig
+	case CloudProviderAzure:
+		return "blueprint.ProviderConfig.Azure"
+	}
+	return ""
+}
+
 // ChangesetController controls the rollout lifecycle for one changeset.
 func (w *Workflows) ChangesetController(id string) error {
 	return nil
@@ -255,9 +267,13 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 	shared.Logger().Debug("provision infra", "assets", assets)
 	for _, rsc := range assets.Resources {
 		logger.Info("Creating resource", "Name", rsc.Name)
+
+		// get the resource contructor specific to the driver e.g gke, cloudrun for GCP, sns, fargate for AWS
 		resconstr := Instance().CloudResources(rsc.Provider, rsc.Driver)
 		if *rsc.IsImmutable {
-			r := resconstr.Create(rsc.Name, getRegion(rsc.Provider, &assets.Blueprint), rsc.Config)
+			region := getRegion(rsc.Provider, &assets.Blueprint)
+			providerConfig := getProviderConfig(rsc.Provider, &assets.Blueprint)
+			r, _ := resconstr.Create(rsc.Name, region, rsc.Config, providerConfig)
 			ser, err := r.Marshal()
 			if err != nil {
 				logger.Error("Cannot marshal resource", "ID", rsc.ID, "name", rsc.Name)
@@ -285,6 +301,12 @@ func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Loc
 
 	logger.Info("Deployment initiated", "changeset", assets.ChangesetID, "infra converted", Infra)
 
+	err := lock.Acquire(ctx)
+	if err != nil {
+		logger.Error("Error in acquiring lock", "Error", err)
+		return err
+	}
+
 	// create deployable, map of one or more workloads against each resource
 	deployables := make(map[gocql.UUID][]Workload) // map of resource id and workloads
 	for _, w := range assets.Workloads {
@@ -304,24 +326,15 @@ func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Loc
 	}
 
 	var i int32
-	for i = 20; i <= 100; i += 10 {
+	for i = 20; i <= 100; i += 20 {
 		for id, r := range Infra {
 			shared.Logger().Info("updating traffic", id, r)
 			r.UpdateTraffic(ctx, i)
 			// workflow.Sleep(ctx, 10*time.Second)
 		}
 	}
-	err := lock.Acquire(ctx)
-	if err != nil {
-		logger.Error("Error in acquiring lock", "Error", err)
-		return err
-	}
 
-	// simulate critical section
-	_ = workflow.Sleep(ctx, 60*time.Second)
-
-	// release lock
-	// _ = lock.Release()
+	_ = lock.Release(ctx)
 
 	prWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
 	workflow.SignalExternalWorkflow(ctx, prWorkflowID, "", WorkflowSignalDeploymentCompleted.String(), assets)

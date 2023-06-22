@@ -362,6 +362,8 @@ components:
           x-go-type: gocql.UUID
         rollout_budget:
           type: string
+        provider_config:
+          type: string
         regions:
           $ref: '#/components/schemas/BluePrintRegions'
       required:
@@ -369,6 +371,7 @@ components:
         - stack_id
         - rollout_budget
         - regions
+        - provider_config
 
     WorkloadCreateRequest:
       type: object
@@ -504,6 +507,8 @@ components:
           x-go-type: gocql.UUID
         name:
           type: string
+        provider_config:
+          type: string
         stack_id:
           type: string
           format: uuid
@@ -525,6 +530,7 @@ components:
         - stack_id
         - regions
         - rollout_budget
+        - provider_config
         - created_at
         - updated_at
 
@@ -750,6 +756,24 @@ components:
           type: array
           items:
             type: string
+      required:
+        - gcp
+        - aws
+        - azure
+        - default
+
+    ProviderConfiguration:
+      type: object
+      description: Provider config defines configuration specific to a cloud provider
+      properties:
+        gcp:
+          type: string
+        aws:
+          type: string
+        azure:
+          type: string
+        default:
+          type: string
       required:
         - gcp
         - aws

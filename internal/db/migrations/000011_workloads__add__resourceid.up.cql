@@ -1,1 +1,0 @@
-alter table workloads add resource_id uuid;

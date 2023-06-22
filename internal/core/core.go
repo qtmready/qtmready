@@ -70,7 +70,7 @@ type (
 	}
 
 	ResourceConstructor interface {
-		Create(name string, region string, config string) CloudResource
+		Create(name string, region string, config string, providerConfig string) (CloudResource, error)
 		CreateFromJson(data []byte) CloudResource
 	}
 

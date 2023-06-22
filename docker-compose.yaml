@@ -161,6 +161,7 @@ services:
     container_name: ctrlplane-worker--mothership
     profiles:
       - mothership
+      - full
     image: cosmtrek/air:v1.42.0
     environment:
       SERVICE_NAME: worker::mothership

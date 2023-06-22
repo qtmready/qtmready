@@ -49,10 +49,11 @@ func (s *ServerHandler) CreateBlueprint(ctx echo.Context) error {
 	}
 
 	blueprint := &Blueprint{
-		Name:          request.Name,
-		Regions:       request.Regions,
-		StackID:       request.StackID,
-		RolloutBudget: request.RolloutBudget,
+		Name:           request.Name,
+		Regions:        request.Regions,
+		StackID:        request.StackID,
+		RolloutBudget:  request.RolloutBudget,
+		ProviderConfig: request.ProviderConfig,
 	}
 
 	if err := db.Save(blueprint); err != nil {

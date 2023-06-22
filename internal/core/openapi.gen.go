@@ -174,9 +174,10 @@ type BluePrintRegions struct {
 
 // Blueprint Blueprint contains a collection of Workload & Resource to define one single release
 type Blueprint struct {
-	CreatedAt time.Time  `cql:"created_at" json:"created_at"`
-	ID        gocql.UUID `cql:"id" json:"id"`
-	Name      string     `cql:"name" json:"name"`
+	CreatedAt      time.Time  `cql:"created_at" json:"created_at"`
+	ID             gocql.UUID `cql:"id" json:"id"`
+	Name           string     `cql:"name" json:"name"`
+	ProviderConfig string     `cql:"provider_config" json:"provider_config"`
 
 	// Regions BluePrintRegions sets the cloud regions where a blueprint can be deployed
 	Regions       BluePrintRegions `cql:"regions" json:"regions"`
@@ -186,7 +187,7 @@ type Blueprint struct {
 }
 
 var (
-	blueprintColumns = []string{"created_at", "id", "name", "regions", "rollout_budget", "stack_id", "updated_at"}
+	blueprintColumns = []string{"created_at", "id", "name", "provider_config", "regions", "rollout_budget", "stack_id", "updated_at"}
 
 	blueprintMeta = itable.Metadata{
 		M: &table.Metadata{
@@ -204,7 +205,8 @@ func (blueprint *Blueprint) GetTable() itable.ITable {
 
 // BlueprintCreateRequest defines model for BlueprintCreateRequest.
 type BlueprintCreateRequest struct {
-	Name string `json:"name"`
+	Name           string `json:"name"`
+	ProviderConfig string `json:"provider_config"`
 
 	// Regions BluePrintRegions sets the cloud regions where a blueprint can be deployed
 	Regions       BluePrintRegions `json:"regions"`
