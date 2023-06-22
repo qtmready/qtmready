@@ -15,11 +15,27 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-// shared contains shared code between the various services.
-package shared
+package user
 
 import (
-	_ "github.com/deepmap/oapi-codegen/pkg/codegen" // Required for code generation
+	"fmt"
+
+	"github.com/spf13/cobra"
 )
 
-//go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen -config openapi.codegen.yaml -package shared -generate types,skip-prune,client -o types.gen.go openapi.spec.yaml
+func NewCmdUser() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "user",
+		Short: "command for user operations.",
+		Long:  `command for user operations`,
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Print("error: must specify a resource")
+			fmt.Printf("cmd: user, args: %v", args)
+		},
+	}
+
+	cmd.AddCommand(NewCmdUserRegister())
+	cmd.AddCommand(NewCmdUserLogin())
+
+	return cmd
+}

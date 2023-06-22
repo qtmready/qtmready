@@ -2,6 +2,7 @@ package: github
 generate:
   models: true
   echo-server: true
+  client: true
 import-mapping:
   '../../shared/openapi.spec.yaml': go.breu.io/ctrlplane/internal/shared
   '../../entity/openapi.spec.yaml': go.breu.io/ctrlplane/internal/entity

@@ -15,11 +15,60 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-// shared contains shared code between the various services.
-package shared
+package client
 
 import (
-	_ "github.com/deepmap/oapi-codegen/pkg/codegen" // Required for code generation
+	"fmt"
+	"net/http"
+	"os"
+	"strings"
+
+	"go.breu.io/ctrlplane/internal/auth"
+	"go.breu.io/ctrlplane/internal/core"
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
-//go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen -config openapi.codegen.yaml -package shared -generate types,skip-prune,client -o types.gen.go openapi.spec.yaml
+var Client client
+
+type client struct {
+	AuthClient *auth.Client
+	CoreClient *core.Client
+}
+
+func (c *client) CheckStatus(r *http.Response, successCodes ...int) {
+	pass := false
+	for _, c := range successCodes {
+		if r.StatusCode == c {
+			pass = true
+		}
+	}
+	if pass == false {
+		fmt.Printf("Command failed with status code: %d\r\n", r.StatusCode)
+	}
+}
+
+func (c *client) CheckError(err error) {
+	if err != nil {
+		if strings.Contains(err.Error(), "No connection") {
+			fmt.Print("Quantum server is not running\n")
+		} else {
+			fmt.Printf("Command failed: %v", err.Error())
+		}
+		os.Exit(1)
+	}
+}
+
+// init initializes the auth and core clients to connect with quantum
+func (c *client) Init() {
+
+	var err error
+	c.AuthClient, err = auth.NewClient(shared.Service.CLI.BaseURL)
+	if err != nil {
+		c.AuthClient = nil
+	}
+
+	c.CoreClient, err = core.NewClient(shared.Service.CLI.APIKEY)
+	if err != nil {
+		c.CoreClient = nil
+	}
+}

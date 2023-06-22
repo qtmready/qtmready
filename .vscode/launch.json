@@ -18,6 +18,15 @@
       "type": "go",
       "request": "launch",
       "mode": "debug",
+      "program": "${workspaceFolder}/cmd/cli",
+      "args": [],
+      "envFile": "${workspaceFolder}/.env.debug"
+    },
+    {
+      "name": "cmd",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
       "program": "${workspaceFolder}/cmd/api",
       "args": [],
       "envFile": "${workspaceFolder}/.env.debug"

@@ -15,11 +15,12 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-// shared contains shared code between the various services.
-package shared
+package utils
 
-import (
-	_ "github.com/deepmap/oapi-codegen/pkg/codegen" // Required for code generation
-)
+import "github.com/spf13/cobra"
 
-//go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen -config openapi.codegen.yaml -package shared -generate types,skip-prune,client -o types.gen.go openapi.spec.yaml
+func AddRequiredFlags(cmd *cobra.Command, flags ...string) {
+	for _, f := range flags {
+		cmd.MarkFlagRequired(f)
+	}
+}
