@@ -40,13 +40,13 @@ type (
 
 	// Mutex defines the signature for the workflow mutex. This workflow is meant to control the access to a resource.
 	Mutex interface {
-		Start() error                // Start the mutex workflow.
-		Acquire() error              // Acquire aquires the lock.
-		Release() error              // Release releases the lock.
-		SetContext(workflow.Context) // SetContext sets the workflow context for the current mutex workflow exececution.
+		Start(ctx workflow.Context) error   // Start the mutex workflow.
+		Acquire(ctx workflow.Context) error // Acquire aquires the lock.
+		Release(ctx workflow.Context) error // Release releases the lock.
+		// SetContext(workflow.Context)        // SetContext sets the workflow context for the current mutex workflow exececution.
 	}
 
-	MutexOption func(*MUtex)
+	MutexOption func(*Lock)
 
 	Contexts struct {
 		caller workflow.Context
@@ -57,43 +57,45 @@ type (
 	//
 	// Although it gets the job done for now, but it is not an ideal design. The mutex should hold the lock regardless of the caller.
 	// We should be able to call the mutex from any workflow and it should be able to acquire the lock.
-	MUtex struct {
-		Contexts *Contexts
-		Id       string        // ID of the mutex. The format is `{resource type}.{resource ID}`.
-		Timeout  time.Duration // Timeout for the mutex. After this timeout, the lock is automagically released.
+	Lock struct {
+		contexts    *Contexts
+		ID          string        // ID of the mutex. The format is `{resource type}.{resource ID}`.
+		Timeout     time.Duration // Timeout for the mutex. After this timeout, the lock is automagically released.
+		ExecutionID string
 	}
 )
 
-func (m *MUtex) Start() error {
+func (m *Lock) Start(ctx workflow.Context) error {
 	if err := m.validate(); err != nil {
 		shared.Logger().Error("unable to validate mutex", "error", err)
 		return err
 	}
 
-	logger := workflow.GetLogger(m.Contexts.caller)
+	logger := workflow.GetLogger(ctx)
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
 		ChildWorkflowOptions(
 			shared.WithWorkflowBlock("mutex"),
-			shared.WithWorkflowBlockID(m.Id),
+			shared.WithWorkflowBlockID(m.ID),
 		)
 		// GetChildWorkflowOptions("mutex", m.Id)
-	ctx := workflow.WithChildOptions(m.Contexts.caller, opts)
-	logger.Info("mutex: starting workflow ...", "resource ID", m.Id, "with timeout", m.Timeout)
+	cctx := workflow.WithChildOptions(ctx, opts)
+	logger.Info("mutex: starting workflow ...", "resource ID", m.ID, "with timeout", m.Timeout)
 
 	var exe workflow.Execution
 	if err := workflow.
-		ExecuteChildWorkflow(ctx, Workflow, m.Timeout).
+		ExecuteChildWorkflow(cctx, Workflow, m.Timeout).
 		GetChildWorkflowExecution().
-		Get(ctx, &exe); err != nil {
+		Get(cctx, &exe); err != nil {
 		logger.Error("mutex: unable to start.", "error", err)
-		return NewStartWorkflowError(m.Contexts.caller)
+		return NewStartWorkflowError(m.ExecutionID)
 	}
 
-	m.SetContext(ctx)
+	m.ExecutionID = exe.ID
+
 	logger.Info(
 		"mutex: workflow started, waiting for lock to be acquired.",
-		"resource ID", m.Id,
+		"resource ID", m.ID,
 		"workflow ID", exe.ID,
 		"run ID", exe.RunID,
 	)
@@ -101,68 +103,64 @@ func (m *MUtex) Start() error {
 	return nil
 }
 
-func (m *MUtex) Acquire() error {
+func (m *Lock) Acquire(ctx workflow.Context) error {
 	shared.Logger().Debug("Acquire lock", "m", m)
-	logger := workflow.GetLogger(m.Contexts.caller)
-	caller := workflow.GetInfo(m.Contexts.caller)
-	mutex := workflow.GetInfo(m.Contexts.mutex)
+	logger := workflow.GetLogger(ctx)
+	caller := workflow.GetInfo(ctx)
+	mutex := workflow.GetInfo(m.contexts.mutex)
 	logger.Info(
 		"mutex: acquiring lock. sending signal to mutex workflow ...",
-		"resource ID", m.Id,
+		"resource ID", m.ID,
 		"caller", caller.WorkflowType.Name,
 		"caller ID", caller.WorkflowExecution.ID,
 	)
 
 	if err := workflow.
 		SignalExternalWorkflow(
-			m.Contexts.caller,
+			ctx,
 			mutex.WorkflowExecution.ID,
 			"",
 			WorkflowSignalAcquire.String(),
 			caller.WorkflowExecution.ID,
 		).
-		Get(m.Contexts.caller, nil); err != nil {
-		return NewAcquireLockError(m.Contexts.mutex)
+		Get(ctx, nil); err != nil {
+		return NewAcquireLockError(m.ExecutionID)
 	}
 
-	logger.Info("mutex: acquiring lock. signal sent successfully, waiting for lock ... ", "resource ID", m.Id)
-	workflow.GetSignalChannel(m.Contexts.caller, WorkflowSignalLocked.String()).Receive(m.Contexts.caller, nil)
-	logger.Info("mutex: lock acquired.", "resource ID", m.Id)
+	logger.Info("mutex: acquiring lock. signal sent successfully, waiting for lock ... ", "resource ID", m.ID)
+	workflow.GetSignalChannel(ctx, WorkflowSignalLocked.String()).Receive(ctx, nil)
+	logger.Info("mutex: lock acquired.", "resource ID", m.ID)
 
 	return nil
 }
 
-func (m *MUtex) Release() error {
-	logger := workflow.GetLogger(m.Contexts.caller)
-	logger.Info("mutex: releasing lock. sending signal to mutex workflow ...", "resource ID", m.Id)
+func (m *Lock) Release(ctx workflow.Context) error {
+	logger := workflow.GetLogger(ctx)
+	logger.Info("mutex: releasing lock. sending signal to mutex workflow ...", "resource ID", m.ID)
 
-	caller := workflow.GetInfo(m.Contexts.caller)
-	mutex := workflow.GetInfo(m.Contexts.mutex)
+	caller := workflow.GetInfo(ctx)
+	mutex := workflow.GetInfo(m.contexts.mutex)
 
 	if err := workflow.SignalExternalWorkflow(
-		m.Contexts.caller,
+		ctx,
 		mutex.WorkflowExecution.ID,
 		"",
 		WorkflowSignalRelease.String(),
 		caller.WorkflowExecution.ID,
-	).Get(m.Contexts.caller, nil); err != nil {
-		return NewReleaseLockError(m.Contexts.mutex)
+	).Get(ctx, nil); err != nil {
+		return NewReleaseLockError(m.ExecutionID)
 	}
 
 	return nil
 }
 
-func (m *MUtex) SetContext(ctx workflow.Context) {
-	m.Contexts.mutex = ctx
-}
-
 // validate validates if the mutex is properly configured.
-func (m *MUtex) validate() error {
-	if m.Contexts == nil {
+func (m *Lock) validate() error {
+	if m.contexts == nil {
 		return ErrNilContext
 	}
 
-	if m.Id == "" {
+	if m.ID == "" {
 		return ErrNoResourceID
 	}
 
@@ -171,21 +169,21 @@ func (m *MUtex) validate() error {
 
 // WithCallerContext sets the workflow context for the workflow that is invoking the mutex.
 func WithCallerContext(ctx workflow.Context) MutexOption {
-	return func(m *MUtex) {
-		m.Contexts.caller = ctx
+	return func(m *Lock) {
+		m.contexts.caller = ctx
 	}
 }
 
 // WithID sets the resource ID for the mutex workflow.
 func WithID(id string) MutexOption {
-	return func(m *MUtex) {
-		m.Id = id
+	return func(m *Lock) {
+		m.ID = id
 	}
 }
 
 // WithTimeout sets the timeout for the mutex workflow.
 func WithTimeout(timeout time.Duration) MutexOption {
-	return func(m *MUtex) {
+	return func(m *Lock) {
 		m.Timeout = timeout
 	}
 }
@@ -205,7 +203,7 @@ func WithTimeout(timeout time.Duration) MutexOption {
 //	if err := m.Acquire(); err != nil {/*handle error*/}
 //	if err := m.Release(); err != nil {/*handle error*/}
 func New(opts ...MutexOption) Mutex {
-	m := &MUtex{Timeout: DefaultTimeout, Contexts: &Contexts{}}
+	m := &Lock{Timeout: DefaultTimeout, contexts: &Contexts{}}
 	for _, opt := range opts {
 		opt(m)
 	}

@@ -20,8 +20,6 @@ package mutex
 import (
 	"errors"
 	"fmt"
-
-	"go.temporal.io/sdk/workflow"
 )
 
 var (
@@ -31,41 +29,41 @@ var (
 
 type (
 	acquireLockError struct {
-		context workflow.Context // the workflow context for the mutex itself.
+		ID string // the workflow context for the mutex itself.
 	}
 
 	releaseLockError struct {
-		context workflow.Context // the workflow context for the mutex itself.
+		ID string // the workflow context for the mutex itself.
 	}
 
 	startWorkflowError struct {
-		context workflow.Context // the workflow contex for the workflow that is requesting to start the distributed mutex.
+		ID string // the workflow contex for the workflow that is requesting to start the distributed mutex.
 	}
 )
 
 func (e *acquireLockError) Error() string {
-	return fmt.Sprintf("%s: failed to acquire lock.", workflow.GetInfo(e.context).WorkflowExecution.ID)
+	return fmt.Sprintf("%s: failed to acquire lock.", e.ID)
 }
 
 func (e *releaseLockError) Error() string {
-	return fmt.Sprintf("%s: failed to release lock.", workflow.GetInfo(e.context).WorkflowExecution.ID)
+	return fmt.Sprintf("%s: failed to release lock.", e.ID)
 }
 
 func (e *startWorkflowError) Error() string {
-	return fmt.Sprintf("%s: failed to start workflow.", workflow.GetInfo(e.context).WorkflowExecution.ID)
+	return fmt.Sprintf("%s: failed to start workflow.", e.ID)
 }
 
 // NewAcquireLockError creates a new acquire lock error.
-func NewAcquireLockError(ctx workflow.Context) error {
-	return &acquireLockError{context: ctx}
+func NewAcquireLockError(id string) error {
+	return &acquireLockError{ID: id}
 }
 
 // NewReleaseLockError creates a new release lock error.
-func NewReleaseLockError(ctx workflow.Context) error {
-	return &releaseLockError{context: ctx}
+func NewReleaseLockError(id string) error {
+	return &releaseLockError{ID: id}
 }
 
 // NewStartWorkflowError creates a new start workflow error.
-func NewStartWorkflowError(ctx workflow.Context) error {
-	return &startWorkflowError{context: ctx}
+func NewStartWorkflowError(id string) error {
+	return &startWorkflowError{ID: id}
 }

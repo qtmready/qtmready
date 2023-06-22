@@ -91,7 +91,7 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 		mutex.WithID(lockID),
 	)
 
-	if err := lock.Start(); err != nil {
+	if err := lock.Start(ctx); err != nil {
 		logger.Debug("unable to start mutex workflow", "error", err)
 	}
 
@@ -277,7 +277,7 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 }
 
 // Deploy deploys the stack.
-func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.MUtex, assets *Assets) error {
+func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Lock, assets *Assets) error {
 	logger := workflow.GetLogger(ctx)
 	// Acquire lock
 	logger.Info("Deployment initiated", "changeset", assets.ChangesetID, "infra", assets.Infra)
@@ -311,16 +311,16 @@ func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.MUt
 			// workflow.Sleep(ctx, 10*time.Second)
 		}
 	}
-	// err := lock.Acquire()
-	// if err != nil {
-	// 	logger.Error("Error in acquiring lock", "Error", err)
-	// 	return err
-	// }
+	err := lock.Acquire(ctx)
+	if err != nil {
+		logger.Error("Error in acquiring lock", "Error", err)
+		return err
+	}
 
-	// // simulate critical section
-	// _ = workflow.Sleep(ctx, 60*time.Second)
+	// simulate critical section
+	_ = workflow.Sleep(ctx, 60*time.Second)
 
-	// // release lock
+	// release lock
 	// _ = lock.Release()
 
 	prWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
@@ -464,7 +464,7 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, lock mutex.M
 		cctx := workflow.WithChildOptions(ctx, opts)
 
 		err := workflow.
-			ExecuteChildWorkflow(cctx, w.Deploy, stackID, lock.(*mutex.MUtex), assets).
+			ExecuteChildWorkflow(cctx, w.Deploy, stackID, lock.(*mutex.Lock), assets).
 			GetChildWorkflowExecution().Get(cctx, &execution)
 		if err != nil {
 			logger.Error("Error in Executing deployment workflow", "Error", err)
