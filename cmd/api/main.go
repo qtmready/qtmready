@@ -90,7 +90,7 @@ func main() {
 		}
 	}()
 
-	shared.Service().Announce()
+	shared.Service().Banner()
 
 	quit := make(chan os.Signal, 1)                      // create a channel to listen to quit signals.
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // setting up the signals to listen to.

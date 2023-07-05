@@ -18,12 +18,9 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"github.com/fatih/color"
 
 	"go.breu.io/ctrlplane/internal/core"
 	"go.breu.io/ctrlplane/internal/core/mutex"
@@ -92,7 +89,7 @@ func main() {
 	/**
 	 * Worker successfully started. Announcing ...
 	 **/
-	shared.Service().Announce()
+	shared.Service().Banner()
 
 	/**
 	 * Graceful Shutdown
@@ -105,24 +102,4 @@ func main() {
 	shared.Logger().Info("Exiting....")
 
 	exitcode = 1
-}
-
-func banner() {
-	text := `
-                           __          
-  ____  __  ______  ____  / /_____ ___ 
- / __ \/ / / / __ \/ __ \/ __/ __ ˇ__ \
-/ /_/ / /_/ / /_/ / / / / /_  / / / / /
-\__, /\__▲_/\__▲_/_/ /_/\__/_/ /_/ /_/ 
-  /_/  
-Fault Tolerant, Progressive Delivery Engine for OpenGitOps.
-
-compoenent: %s
-version: %s
-
-%s`
-	green := color.New(color.FgGreen).SprintFunc()
-	red := color.New(color.FgRed).SprintFunc()
-	yellow := color.New(color.FgYellow).SprintFunc()
-	fmt.Printf(text, yellow("MOTHERSHIP"), red(shared.Service().GetVersion()), green("https://breu.io"))
 }

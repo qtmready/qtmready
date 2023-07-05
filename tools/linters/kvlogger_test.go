@@ -26,5 +26,5 @@ import (
 )
 
 func TestKVLogger(t *testing.T) {
-	analysistest.Run(t, analysistest.TestData(), linters.KVLogger)
+	analysistest.Run(t, analysistest.TestData(), linters.KVLoggerAnalyzer)
 }

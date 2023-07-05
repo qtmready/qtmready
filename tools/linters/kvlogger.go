@@ -20,6 +20,7 @@ package linters
 import (
 	"fmt"
 	"go/ast"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/passes/inspect"
@@ -32,7 +33,7 @@ const (
 )
 
 var (
-	KVLogger = &analysis.Analyzer{
+	KVLoggerAnalyzer = &analysis.Analyzer{
 		Name:     "kvlogger",
 		Doc:      kvdoc,
 		Requires: []*analysis.Analyzer{inspect.Analyzer},
@@ -41,33 +42,34 @@ var (
 )
 
 func run(pass *analysis.Pass) (any, error) {
-	callexprs := []ast.Node{(*ast.CallExpr)(nil)}
+	nodes := []ast.Node{(*ast.CallExpr)(nil)}
 	scan, ok := pass.ResultOf[inspect.Analyzer].(*inspector.Inspector)
 
 	if !ok {
 		return nil, fmt.Errorf("kvlogger: couldn't get inspector")
 	}
 
-	scan.Preorder(callexprs, check(pass))
+	scan.Preorder(nodes, analyze(pass))
 
 	return nil, nil
 }
 
-func check(pass *analysis.Pass) func(ast.Node) {
+// analyze checks if the function is logger. If it is, then it checks if the number of arguments are correct.
+func analyze(pass *analysis.Pass) func(ast.Node) {
 	return func(node ast.Node) {
-		function := node.(*ast.CallExpr)
-		if selector, ok := function.Fun.(*ast.SelectorExpr); ok {
+		fn := node.(*ast.CallExpr)
+		if selector, ok := fn.Fun.(*ast.SelectorExpr); ok {
 			// check shared.Logger().{Debug,Error,Warn,Info}
 			if callexpr, ok := selector.X.(*ast.CallExpr); ok {
-				if checkFnName(selector.Sel.Name) && checkIdentOrder(callexpr) && isEven(len(function.Args)) {
-					pass.Reportf(function.Pos(), kverror)
+				if checkFnName(selector.Sel.Name) && checkIdentOrder(callexpr) && isEven(len(fn.Args)) {
+					pass.Reportf(fn.Pos(), kverror)
 				}
 			}
 
 			// check logger.{Debug,Error,Warn,Info}
 			if ident, ok := selector.X.(*ast.Ident); ok {
-				if ident.Name == "logger" && checkFnName(selector.Sel.Name) && isEven(len(function.Args)) {
-					pass.Reportf(function.Pos(), kverror)
+				if isLogger(ident.Name) && checkFnName(selector.Sel.Name) && isEven(len(fn.Args)) {
+					pass.Reportf(fn.Pos(), kverror)
 				}
 			}
 		}
@@ -103,19 +105,7 @@ func checkIdentOrder(callexpr *ast.CallExpr) bool {
 }
 
 // isLogger checks if the function name is prefixed with Logger.
-func isLogger(name string) bool {
-	if name == "Logger" {
-		return true
-	}
-
-	return false
-}
+func isLogger(name string) bool { return strings.ToLower(name) == "logger" }
 
 // isShared checks if the function name is prefixed with shared.
-func isShared(name string) bool {
-	if name == "shared" {
-		return true
-	}
-
-	return false
-}
+func isShared(name string) bool { return name == "shared" }

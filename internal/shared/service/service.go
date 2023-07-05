@@ -43,7 +43,7 @@ type (
 		GetSecret() string
 		GetDebug() bool
 		GetLogSkipper() int
-		Announce()
+		Banner()
 	}
 
 	ServiceOption func(Service)
@@ -69,7 +69,7 @@ func (s *config) GetLogSkipper() int {
 	return s.LogSkipper
 }
 
-func (s *config) Announce() {
+func (s *config) Banner() {
 	banner := `
                              __          
   ____  __  ______  ____  / /_____ ___ 
