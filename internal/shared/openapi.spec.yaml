@@ -1,3 +1,8 @@
+openapi: 3.0.0
+info:
+  title: shared
+  version: 0.0.1
+
 components:
   securitySchemes:
     BearerAuth:
@@ -29,3 +34,36 @@ components:
         - message
         - code
         - internal
+
+  responses:
+    # Status code 400
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+
+    # Status code 401
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+
+    # Status code 404
+    NotFound:
+      description: Team Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+
+    # Status code 500
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'

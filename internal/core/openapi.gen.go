@@ -21,8 +21,6 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/scylladb/gocqlx/v2/table"
-	"go.breu.io/ctrlplane/internal/shared"
-	externalRef1 "go.breu.io/ctrlplane/internal/shared"
 )
 
 const (
@@ -63,7 +61,6 @@ func (v CloudProvider) MarshalJSON() ([]byte, error) { return json.Marshal(v.Str
 func (v *CloudProvider) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
-    shared.Logger().Error("Failed to unmarshal CloudProvider", "error", err)
 		return err
 	}
 
@@ -219,7 +216,7 @@ type RepoProvider string
 type Resource struct {
 	CreatedAt time.Time `cql:"created_at" json:"created_at"`
 
-	// Driver s3, sqs, sns, dynamodb, postfres, mysql etc
+	// Driver s3, sqs, sns, dynamodb, postgres, mysql etc
 	Driver      string     `cql:"driver" json:"driver"`
 	ID          gocql.UUID `cql:"id" json:"id"`
 	IsImmutable *bool      `cql:"is_immutable" json:"is_immutable,omitempty"`
@@ -352,15 +349,6 @@ type WorkloadCreateRequest struct {
 // WorkloadListResponse defines model for WorkloadListResponse.
 type WorkloadListResponse = []Workload
 
-// BadRequest defines the structure of an API error response
-type BadRequest = externalRef1.APIError
-
-// InternalServerError defines the structure of an API error response
-type InternalServerError = externalRef1.APIError
-
-// NotFound defines the structure of an API error response
-type NotFound = externalRef1.APIError
-
 // GetWorkloadParams defines parameters for GetWorkload.
 type GetWorkloadParams struct {
 	// RepoId Repo ID
@@ -449,9 +437,9 @@ type ServerInterfaceWrapper struct {
 func (w *ServerInterfaceWrapper) CreateBlueprint(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CreateBlueprint
@@ -473,9 +461,9 @@ func (w *ServerInterfaceWrapper) GetBlueprint(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter stack_id: %s", err))
 	}
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GetBlueprint
@@ -490,9 +478,9 @@ func (w *ServerInterfaceWrapper) GetBlueprint(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) ListRepos(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.ListRepos
@@ -507,9 +495,9 @@ func (w *ServerInterfaceWrapper) ListRepos(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) CreateRepo(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CreateRepo
@@ -531,9 +519,9 @@ func (w *ServerInterfaceWrapper) GetRepo(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
 	}
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GetRepo
@@ -548,9 +536,9 @@ func (w *ServerInterfaceWrapper) GetRepo(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) CreateResource(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CreateResource
@@ -572,9 +560,9 @@ func (w *ServerInterfaceWrapper) GetResource(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter stack_id: %s", err))
 	}
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GetResource
@@ -589,9 +577,9 @@ func (w *ServerInterfaceWrapper) GetResource(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) ListStacks(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.ListStacks
@@ -606,9 +594,9 @@ func (w *ServerInterfaceWrapper) ListStacks(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) CreateStack(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CreateStack
@@ -630,9 +618,9 @@ func (w *ServerInterfaceWrapper) GetStack(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter slug: %s", err))
 	}
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GetStack
@@ -647,9 +635,9 @@ func (w *ServerInterfaceWrapper) GetStack(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) CreateWorkload(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CreateWorkload
@@ -664,9 +652,9 @@ func (w *ServerInterfaceWrapper) CreateWorkload(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GetWorkload(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetWorkloadParams

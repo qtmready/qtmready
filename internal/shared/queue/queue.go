@@ -22,6 +22,7 @@ import (
 
 	"go.temporal.io/sdk/client"
 	sdktemporal "go.temporal.io/sdk/temporal"
+	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -72,6 +73,11 @@ func (q *queue) ChildWorkflowOptions(options ...WorkflowOptionProvider) workflow
 		WorkflowID:  q.WorkflowID(options...),
 		RetryPolicy: &sdktemporal.RetryPolicy{MaximumAttempts: q.workflowMaxAttempts},
 	}
+}
+
+func (q *queue) Worker(c client.Client) worker.Worker {
+	options := worker.Options{OnFatalError: func(err error) { panic(err) }}
+	return worker.New(c, q.Name(), options)
 }
 
 // WithName sets the queue name and the prefix for the workflow ID.

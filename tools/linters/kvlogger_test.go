@@ -15,19 +15,16 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package client
+package linters_test
 
 import (
-	"go.breu.io/ctrlplane/internal/core"
+	"testing"
+
+	"golang.org/x/tools/go/analysis/analysistest"
+
+	"go.breu.io/ctrlplane/tools/linters"
 )
 
-func (c *Client) AppList() ([]core.Stack, error) {
-	url := "/apps"
-	reply := make([]core.Stack, 0)
-
-	if err := c.request("GET", url, &reply, nil); err != nil {
-		return reply, err
-	}
-
-	return reply, nil
+func TestKVLogger(t *testing.T) {
+	analysistest.Run(t, analysistest.TestData(), linters.KVLoggerAnalyzer)
 }

@@ -37,10 +37,10 @@ import (
 
 type (
 	Containers struct {
-		network    testcontainers.Network
-		db         *testutils.Container
-		temporal   *testutils.Container
-		nats       *testutils.Container
+		network  testcontainers.Network
+		db       *testutils.Container
+		temporal *testutils.Container
+		// nats       *testutils.Container
 		api        *testutils.Container
 		mothership *testutils.Container
 	}
@@ -71,7 +71,6 @@ func (c *Containers) shutdown(ctx context.Context) {
 	_ = c.api.Shutdown()
 	_ = c.mothership.Shutdown()
 	_ = c.temporal.Shutdown()
-	_ = c.nats.Shutdown()
 	_ = c.db.DropKeyspace(db.TestKeyspace)
 	_ = c.db.ShutdownCassandra()
 	_ = c.network.Remove(ctx)
@@ -125,11 +124,6 @@ func (s *ServerHandlerTestSuite) SetupContainers() {
 		s.T().Fatalf("failed to start temporal container: %v", err)
 	}
 
-	natsctr, err := testutils.StartNatsIOContainer(s.context)
-	if err != nil {
-		s.T().Fatalf("failed to start natsio container: %v", err)
-	}
-
 	apictr, err := testutils.StartAPIContainer(s.context, shared.Service().GetSecret())
 	if err != nil {
 		s.T().Fatalf("failed to start api container: %v", err)
@@ -142,17 +136,15 @@ func (s *ServerHandlerTestSuite) SetupContainers() {
 
 	dbhost, _ := dbctr.Container.ContainerIP(s.context)
 	temporalhost, _ := temporalctr.Container.ContainerIP(s.context)
-	natshost, _ := natsctr.Container.ContainerIP(s.context)
 	apihost, _ := apictr.Container.ContainerIP(s.context)
 	mxhost, _ := mxctr.Container.ContainerIP(s.context)
 
-	shared.Logger().Info("hosts ...", "db", dbhost, "temporal", temporalhost, "nats", natshost, "api", apihost, "mothership", mxhost)
+	shared.Logger().Info("hosts ...", "db", dbhost, "temporal", temporalhost, "api", apihost, "mothership", mxhost)
 
 	s.ctrs = &Containers{
 		network:    network,
 		db:         dbctr,
 		temporal:   temporalctr,
-		nats:       natsctr,
 		api:        apictr,
 		mothership: mxctr,
 	}

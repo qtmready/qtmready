@@ -35,21 +35,28 @@ import (
 	"go.breu.io/ctrlplane/internal/shared"
 )
 
+type (
+	HealthzResponse struct {
+		Status string `json:"status"`
+	}
+)
+
 func main() {
 	// graceful shutdown.
 	// LINK: https://stackoverflow.com/a/46255965/228697.
 	exitcode := 0
 	defer func() {
-		shared.Logger().Debug("exiting ...")
+		shared.Logger().Info("exiting ...")
 		os.Exit(exitcode)
 	}() // all connections are closed, exit with the right code.
 	defer func() { _ = shared.Logger().Sync() }() // flush log buffer.
 	defer db.DB().Session.Close()
 	defer shared.Temporal().Client().Close()
 
-	shared.Logger().Debug("starting ...")
+	shared.Logger().Info("starting ...")
 	// web server based on echo
 	e := echo.New()
+	e.HideBanner = true
 
 	// configure middleware
 	e.Use(middleware.CORS())
@@ -83,6 +90,8 @@ func main() {
 		}
 	}()
 
+	shared.Service().Banner()
+
 	quit := make(chan os.Signal, 1)                      // create a channel to listen to quit signals.
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // setting up the signals to listen to.
 	<-quit                                               // wait for quit signal.
@@ -94,12 +103,6 @@ func main() {
 
 	exitcode = 1
 }
-
-type (
-	HealthzResponse struct {
-		Status string `json:"status"`
-	}
-)
 
 // healthz is the health check endpoint.
 //
