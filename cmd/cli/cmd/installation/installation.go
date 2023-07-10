@@ -15,53 +15,26 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package client
+package installation
 
 import (
 	"fmt"
-	"net/http"
-	"os"
-	"strings"
 
-	"go.breu.io/ctrlplane/internal/auth"
-	"go.breu.io/ctrlplane/internal/core"
-	"go.breu.io/ctrlplane/internal/providers/github"
+	"github.com/spf13/cobra"
 )
 
-var Client client
-
-type client struct {
-	AuthClient   *auth.Client
-	CoreClient   *core.Client
-	GithubClient *github.Client
-}
-
-func (c *client) CheckStatus(r *http.Response, successCodes ...int) {
-	pass := false
-	for _, c := range successCodes {
-		if r.StatusCode == c {
-			pass = true
-		}
+func NewCmdInstallation() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "installation",
+		Short: "command for installation operations.",
+		Long:  `command for installation operations`,
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Print("error: must specify a resource")
+			fmt.Printf("cmd: user, args: %v", args)
+		},
 	}
-	if pass == false {
-		fmt.Printf("Command failed with status code: %d\r\n", r.StatusCode)
-	}
-}
 
-func (c *client) CheckError(err error) {
-	if err != nil {
-		if strings.Contains(err.Error(), "No connection") {
-			fmt.Print("Quantum server is not running\n")
-		} else {
-			fmt.Printf("Command failed: %v", err.Error())
-		}
-		os.Exit(1)
-	}
-}
+	cmd.AddCommand(NewCmdInstallationComplete())
 
-// init initializes the auth and core clients to connect with quantum
-func (c *client) Init(url string) {
-	c.AuthClient, _ = auth.NewClient(url)
-	c.CoreClient, _ = core.NewClient(url)
-	c.GithubClient, _ = github.NewClient(url)
+	return cmd
 }

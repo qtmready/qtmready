@@ -216,8 +216,8 @@ func (a *Activities) DeployRevision(ctx context.Context, r *CloudRun, wl *core.W
 		service, err := client.GetService(ctx, req)
 
 		shared.Logger().Info("20 percent traffic to latest", "revision", r.Revision)
-		tt := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: 20}
-		tt1 := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION, Revision: r.LastRevision, Percent: 80}
+		tt := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: 50}
+		tt1 := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION, Revision: r.LastRevision, Percent: 50}
 		service.Traffic = []*runpb.TrafficTarget{tt, tt1}
 
 		if err != nil {

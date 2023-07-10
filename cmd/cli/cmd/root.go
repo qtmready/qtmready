@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	client "go.breu.io/ctrlplane/cmd/cli/apiClient"
+	"go.breu.io/ctrlplane/cmd/cli/cmd/installation"
 	"go.breu.io/ctrlplane/cmd/cli/cmd/user"
 	"go.breu.io/ctrlplane/internal/shared"
 )
@@ -49,6 +50,7 @@ To learn more, visit https://breu.io/ctrlplane.
 func Execute() {
 	rootCmd.AddCommand(NewCmdInit())
 	rootCmd.AddCommand(user.NewCmdUser())
+	rootCmd.AddCommand(installation.NewCmdInstallation())
 	rootCmd.AddCommand(NewCmdVersion())
 	rootCmd.AddCommand(NewCmdCDelete())
 	rootCmd.AddCommand(NewCmdCGet())
@@ -64,8 +66,6 @@ func Execute() {
 }
 
 func init() {
-	if err := shared.Service.InitCLI(); err != nil {
-		println("ctrlplane not initialized, please do ctrlplane init")
-	}
-	client.Client.Init()
+	url := shared.CLI().GetURL()
+	client.Client.Init(url) // TODO: change to singleton pattern
 }

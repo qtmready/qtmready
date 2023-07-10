@@ -14,16 +14,20 @@
       "envFile": "${workspaceFolder}/.env.debug"
     },
     {
-      "name": "api",
+      "name": "cli",
       "type": "go",
       "request": "launch",
       "mode": "debug",
       "program": "${workspaceFolder}/cmd/cli",
-      "args": [],
+      "args": [
+        "user",
+        "login"
+      ],
+      "console": "externalTerminal",
       "envFile": "${workspaceFolder}/.env.debug"
     },
     {
-      "name": "cmd",
+      "name": "api",
       "type": "go",
       "request": "launch",
       "mode": "debug",

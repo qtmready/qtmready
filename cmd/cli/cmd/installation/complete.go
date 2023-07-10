@@ -15,53 +15,56 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package client
+package installation
 
 import (
-	"fmt"
+	"context"
 	"net/http"
 	"os"
-	"strings"
 
-	"go.breu.io/ctrlplane/internal/auth"
-	"go.breu.io/ctrlplane/internal/core"
+	"github.com/spf13/cobra"
+	client "go.breu.io/ctrlplane/cmd/cli/apiClient"
 	"go.breu.io/ctrlplane/internal/providers/github"
 )
 
-var Client client
+func NewCmdInstallationComplete() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "complete",
+		Short: "Completes github app installation",
+		Long:  `Completes github app installation`,
+		Run: func(cmd *cobra.Command, args []string) {
+			CompleteInstallation(cmd)
+		},
+	}
 
-type client struct {
-	AuthClient   *auth.Client
-	CoreClient   *core.Client
-	GithubClient *github.Client
+	cmd.Flags().Int64("installation_id", 0, "give installation id of the github app")
+
+	return cmd
 }
 
-func (c *client) CheckStatus(r *http.Response, successCodes ...int) {
-	pass := false
-	for _, c := range successCodes {
-		if r.StatusCode == c {
-			pass = true
-		}
+func CompleteInstallation(cmd *cobra.Command) {
+	id, _ := cmd.Flags().GetInt64("installation_id")
+
+	completeInstallationBody := github.CompleteInstallationRequest{
+		InstallationId: id,
+		SetupAction:    github.SetupActionCreated,
 	}
-	if pass == false {
-		fmt.Printf("Command failed with status code: %d\r\n", r.StatusCode)
-	}
+
+	c := client.Client
+	r, err := c.GithubClient.GithubCompleteInstallation(context.Background(), completeInstallationBody, AddAuthHeader)
+	c.CheckError(err)
+	c.CheckStatus(r, 200)
+
+	println("Github app installation complete")
 }
 
-func (c *client) CheckError(err error) {
+func AddAuthHeader(ctx context.Context, req *http.Request) error {
+
+	b, err := os.ReadFile("C:\\go\\access.token")
 	if err != nil {
-		if strings.Contains(err.Error(), "No connection") {
-			fmt.Print("Quantum server is not running\n")
-		} else {
-			fmt.Printf("Command failed: %v", err.Error())
-		}
-		os.Exit(1)
+		panic(err)
 	}
-}
-
-// init initializes the auth and core clients to connect with quantum
-func (c *client) Init(url string) {
-	c.AuthClient, _ = auth.NewClient(url)
-	c.CoreClient, _ = core.NewClient(url)
-	c.GithubClient, _ = github.NewClient(url)
+	token := string(b)
+	req.Header.Set("authorization", "Token "+token)
+	return nil
 }

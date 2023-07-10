@@ -280,7 +280,7 @@ type Resource struct {
 	// Driver gke, cloudrun, pubsub, s3, sqs, sns, dynamodb, postgres, mysql etc
 	Driver      Driver     `cql:"driver" json:"driver"`
 	ID          gocql.UUID `cql:"id" json:"id"`
-	IsImmutable *bool      `cql:"is_immutable" json:"is_immutable,omitempty"`
+	IsImmutable bool       `cql:"is_immutable" json:"is_immutable"`
 	Name        string     `cql:"name" json:"name"`
 
 	// Provider aws, gcp, azure

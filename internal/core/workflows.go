@@ -270,7 +270,7 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 
 		// get the resource contructor specific to the driver e.g gke, cloudrun for GCP, sns, fargate for AWS
 		resconstr := Instance().CloudResources(rsc.Provider, rsc.Driver)
-		if *rsc.IsImmutable {
+		if rsc.IsImmutable {
 			region := getRegion(rsc.Provider, &assets.Blueprint)
 			providerConfig := getProviderConfig(rsc.Provider, &assets.Blueprint)
 			r, _ := resconstr.Create(rsc.Name, region, rsc.Config, providerConfig)
@@ -326,7 +326,7 @@ func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Loc
 	}
 
 	var i int32
-	for i = 20; i <= 100; i += 20 {
+	for i = 50; i <= 100; i += 25 {
 		for id, r := range Infra {
 			shared.Logger().Info("updating traffic", id, r)
 			r.UpdateTraffic(ctx, i)

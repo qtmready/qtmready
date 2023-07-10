@@ -25,6 +25,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/sethvargo/go-password/password"
 
+	"go.breu.io/ctrlplane/internal/shared/cli"
 	"go.breu.io/ctrlplane/internal/shared/logger"
 	"go.breu.io/ctrlplane/internal/shared/service"
 	"go.breu.io/ctrlplane/internal/shared/temporal"
@@ -42,6 +43,9 @@ var (
 
 	tmprl     temporal.Temporal // Global temporal instance.
 	tmprlOnce sync.Once         // Global temporal instance initializer
+
+	ci      cli.Cli   // Global cli instance
+	cliOnce sync.Once // Global cli instance initializer
 )
 
 // Service returns the global service instance. If the global service instance has not been initialized, it will be initialized with
@@ -113,4 +117,16 @@ func InitServiceForTest() {
 		service.WithDebug(true),
 		service.WithSecret(password.MustGenerate(32, 8, 0, false, false)),
 	)
+}
+
+func CLI() cli.Cli {
+	if ci == nil {
+		cliOnce.Do(func() {
+			ci = cli.NewCLI(
+				cli.FromEnvironment(),
+			)
+		})
+	}
+
+	return ci
 }

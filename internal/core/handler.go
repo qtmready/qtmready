@@ -136,7 +136,7 @@ func (s *ServerHandler) CreateResource(ctx echo.Context) error {
 		StackID:     request.StackID,
 		Driver:      Driver(request.Driver),
 		Config:      request.Config,
-		IsImmutable: &request.Immutable,
+		IsImmutable: true,
 	}
 
 	if err := db.Save(resource); err != nil {

@@ -34,7 +34,7 @@ func NewCmdVersion() *cobra.Command {
 		Long:  `Show the current ctrlplane version.`,
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Println("cmd: version")
-			fmt.Println(shared.Service.Version()) // TODO: integrate versioning
+			fmt.Println(shared.Service().GetVersion()) // TODO: integrate versioning
 		},
 	}
 

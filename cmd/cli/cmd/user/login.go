@@ -85,6 +85,11 @@ func (o loginOptions) RunLogin() {
 		panic("Error: User login failed")
 	}
 
-	println("User logged in")
-	os.Setenv("USER_AUTH_TOKEN", pr.JSON200.AccessToken)
+	println("Login Successful")
+	//os.Setenv("USER_AUTH_TOKEN", pr.JSON200.AccessToken)
+
+	err = os.WriteFile("C:\\go\\access.token", []byte(pr.JSON200.AccessToken), 0644)
+	if err != nil {
+		panic(err)
+	}
 }
