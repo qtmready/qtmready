@@ -25,8 +25,8 @@ import (
 	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/ctrlplane/internal/core/mutex"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/core/mutex"
+	"go.breu.io/quantm/internal/shared"
 )
 
 const (

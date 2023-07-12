@@ -26,7 +26,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/scylladb/gocqlx/v2/table"
-	externalRef0 "go.breu.io/ctrlplane/internal/shared"
+	externalRef0 "go.breu.io/quantm/internal/shared"
 )
 
 const (

@@ -26,7 +26,7 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 
-	"go.breu.io/ctrlplane/cmd/cli/utils"
+	"go.breu.io/quantm/cmd/cli/utils"
 
 	_ "embed" // required to embed cue files into the binary
 )

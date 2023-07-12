@@ -24,8 +24,8 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/shared"
 )
 
 // handleInstallationEvent handles GitHub App installation event.

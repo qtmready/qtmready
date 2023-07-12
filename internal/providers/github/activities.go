@@ -24,8 +24,8 @@ import (
 
 	"go.temporal.io/sdk/activity"
 
-	"go.breu.io/ctrlplane/internal/core"
-	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/db"
 )
 
 type (

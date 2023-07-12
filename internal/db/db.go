@@ -31,7 +31,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/cassandra"
 	"github.com/ilyakaznacheev/cleanenv"
 
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/shared"
 
 	_ "github.com/golang-migrate/migrate/v4/source/file" // required for file:// migrations
 )

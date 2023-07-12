@@ -25,7 +25,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/shared"
 )
 
 // Context prints the contents of a context.

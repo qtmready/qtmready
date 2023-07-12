@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/shared"
 )
 
 var (

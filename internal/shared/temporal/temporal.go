@@ -27,7 +27,7 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
 
-	"go.breu.io/ctrlplane/internal/shared/queue"
+	"go.breu.io/quantm/internal/shared/queue"
 )
 
 var (

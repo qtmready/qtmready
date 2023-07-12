@@ -20,7 +20,7 @@ package core
 import (
 	"github.com/gocql/gocql"
 
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/shared"
 )
 
 // Workflow signal types.

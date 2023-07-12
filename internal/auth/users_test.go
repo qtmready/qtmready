@@ -20,8 +20,8 @@ package auth_test
 import (
 	"testing"
 
-	"go.breu.io/ctrlplane/internal/auth"
-	"go.breu.io/ctrlplane/internal/testutils"
+	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/testutils"
 )
 
 var (

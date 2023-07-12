@@ -42,9 +42,9 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/qb"
 
-	"go.breu.io/ctrlplane/internal/auth"
-	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/testutils"
+	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/testutils"
 )
 
 type (

@@ -18,7 +18,7 @@
 package main
 
 import (
-	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/quantm/internal/db"
 )
 
 func main() {

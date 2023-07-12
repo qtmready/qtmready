@@ -21,7 +21,7 @@ import (
 	"context"
 	"sync"
 
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/shared"
 )
 
 var (
@@ -76,7 +76,7 @@ func (c *core) RepoProvider(name RepoProvider) RepoProviderActivities {
 		return p
 	}
 
-	panic(ErrProviderNotFound(name.String()))
+	panic(NewProviderNotFoundError(name.String()))
 }
 
 func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
@@ -84,7 +84,7 @@ func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
 		return p
 	}
 
-	panic(ErrProviderNotFound(name.String()))
+	panic(NewProviderNotFoundError(name.String()))
 }
 
 // WithRepoProvider registers a repo provider with the core.

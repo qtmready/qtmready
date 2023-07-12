@@ -25,9 +25,9 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/sethvargo/go-password/password"
 
-	"go.breu.io/ctrlplane/internal/shared/logger"
-	"go.breu.io/ctrlplane/internal/shared/service"
-	"go.breu.io/ctrlplane/internal/shared/temporal"
+	"go.breu.io/quantm/internal/shared/logger"
+	"go.breu.io/quantm/internal/shared/service"
+	"go.breu.io/quantm/internal/shared/temporal"
 )
 
 var (

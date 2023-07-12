@@ -20,7 +20,7 @@ package testutils
 import (
 	"testing"
 
-	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/quantm/internal/db"
 )
 
 func TestEntityGetTable(expect string, entity db.Entity) func(*testing.T) {

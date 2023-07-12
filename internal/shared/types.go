@@ -22,7 +22,7 @@ import (
 	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/ctrlplane/internal/shared/queue"
+	"go.breu.io/quantm/internal/shared/queue"
 )
 
 // workflow related shared types and contants.

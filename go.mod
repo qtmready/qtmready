@@ -1,4 +1,4 @@
-module go.breu.io/ctrlplane
+module go.breu.io/quantm
 
 go 1.20
 
