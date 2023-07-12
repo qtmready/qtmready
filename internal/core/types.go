@@ -47,7 +47,7 @@ const (
 
 type (
 	Infra               map[gocql.UUID]CloudResource // Map of resource Name and provider
-	SerializedInfra     map[gocql.UUID][]byte
+	JsonInfra           map[gocql.UUID][]byte
 	SlicedResult[T any] struct {
 		Data []T `json:"data"`
 	}
@@ -65,8 +65,8 @@ type (
 	Deployment struct {
 		state     State
 		workflows ChildWorkflows
-		OldInfra  SerializedInfra
-		NewInfra  SerializedInfra
+		OldInfra  JsonInfra
+		NewInfra  JsonInfra
 		rwpair    map[string][]Workload // resource name and workloads
 
 	}
@@ -81,7 +81,7 @@ type (
 		Workloads   []Workload // stack workloads
 		Blueprint   Blueprint  // stack blueprint
 		ChangesetID gocql.UUID
-		Infra       SerializedInfra
+		Infra       JsonInfra
 	}
 )
 
@@ -90,14 +90,14 @@ func NewAssets() *Assets {
 		Repos:     make([]Repo, 0),
 		Resources: make([]Resource, 0),
 		Workloads: make([]Workload, 0),
-		Infra:     make(SerializedInfra),
+		Infra:     make(JsonInfra),
 	}
 }
 
 func NewDeployment() *Deployment {
 	d := new(Deployment)
-	d.NewInfra = make(SerializedInfra)
-	d.OldInfra = make(SerializedInfra)
+	d.NewInfra = make(JsonInfra)
+	d.OldInfra = make(JsonInfra)
 	d.rwpair = make(map[string][]Workload)
 	return d
 }

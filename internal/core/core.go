@@ -62,7 +62,7 @@ type (
 	}
 
 	CloudResource interface {
-		Provision(ctx workflow.Context) error
+		Provision(ctx workflow.Context) (workflow.Future, error)
 		DeProvision() error
 		Deploy(workflow.Context, []Workload) error
 		UpdateTraffic(workflow.Context, int32) error

@@ -67,6 +67,10 @@ func getRegion(provider CloudProvider, blueprint *Blueprint) string {
 	return ""
 }
 
+// getProviderConfig gets a specific provider config from blueprint
+
+// TODO: the provider config only has GCP config, this was hardcoded for demo,
+// need to make it generic so we can get any provider config based on its name
 func getProviderConfig(provider CloudProvider, blueprint *Blueprint) string {
 	switch provider {
 	case CloudProviderAWS:
@@ -263,6 +267,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 
 	logger := workflow.GetLogger(ctx)
+	var children []workflow.Future
 
 	shared.Logger().Debug("provision infra", "assets", assets)
 	for _, rsc := range assets.Resources {
@@ -271,17 +276,39 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 		// get the resource contructor specific to the driver e.g gke, cloudrun for GCP, sns, fargate for AWS
 		resconstr := Instance().CloudResources(rsc.Provider, rsc.Driver)
 		if rsc.IsImmutable {
+			// assuming a single region for now
 			region := getRegion(rsc.Provider, &assets.Blueprint)
 			providerConfig := getProviderConfig(rsc.Provider, &assets.Blueprint)
-			r, _ := resconstr.Create(rsc.Name, region, rsc.Config, providerConfig)
+			r, err := resconstr.Create(rsc.Name, region, rsc.Config, providerConfig)
+
+			if err != nil {
+				logger.Error("could not create resource object", "ID", rsc.ID, "name", rsc.Name, "Error", err)
+				return err
+			}
+
+			// resource is an interface and cannot be sent as a parameter in workflow because workflow cannot unmarshal an interface. So we need to
+			// send the marshalled value in workflow and then unmarshal and resconstruct the resource again in the workflow
 			ser, err := r.Marshal()
 			if err != nil {
-				logger.Error("Cannot marshal resource", "ID", rsc.ID, "name", rsc.Name)
+				logger.Error("could not marshal resource", "ID", rsc.ID, "name", rsc.Name, "Error", err)
 				return err
 			}
 			assets.Infra[rsc.ID] = ser
-			r.Provision(ctx)
+
+			// TODO: initiate all resource provisions in parallel in child workflows and wait for all child workflows
+			// completion before sending infra provisioned signal
+			if f, err := r.Provision(ctx); err != nil {
+				logger.Error("could not start resource provisioning", "ID", rsc.ID, "name", rsc.Name, "Error", err)
+				return err
+
+			} else if f != nil {
+				children = append(children, f)
+			}
 		}
+	}
+
+	for _, child := range children {
+		child.Get(ctx, nil)
 	}
 
 	shared.Logger().Info("Signaling infra provisioned")
@@ -295,12 +322,10 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 // Deploy deploys the stack.
 func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Lock, assets *Assets) error {
 	logger := workflow.GetLogger(ctx)
-	// Acquire lock
 	logger.Info("Deployment initiated", "changeset", assets.ChangesetID, "infra", assets.Infra)
 	Infra := make(Infra)
 
-	logger.Info("Deployment initiated", "changeset", assets.ChangesetID, "infra converted", Infra)
-
+	// Acquire lock
 	err := lock.Acquire(ctx)
 	if err != nil {
 		logger.Error("Error in acquiring lock", "Error", err)
@@ -317,6 +342,7 @@ func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Loc
 		deployables[w.ResourceID] = append(deployables[w.ResourceID], w)
 	}
 
+	// create the resource object again from marshaled data
 	for _, rsc := range assets.Resources {
 		resconstr := Instance().CloudResources(rsc.Provider, rsc.Driver)
 		inf := assets.Infra[rsc.ID] // get marshaled resource from ID
@@ -325,6 +351,7 @@ func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Loc
 		r.Deploy(ctx, deployables[rsc.ID])
 	}
 
+	// update traffic on resource from 50 to 100
 	var i int32
 	for i = 50; i <= 100; i += 25 {
 		for id, r := range Infra {
