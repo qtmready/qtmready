@@ -74,6 +74,8 @@ func main() {
 	coreWrkr.RegisterWorkflow(cwfs.GetAssets)
 	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)
 	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
+
+	//TODO: find a way to register workflows of all cloud resources in a loop
 	coreWrkr.RegisterWorkflow(gcpwfs.DeployCloudRun)
 	coreWrkr.RegisterWorkflow(gcpwfs.UpdateTraffic)
 

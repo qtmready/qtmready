@@ -29,8 +29,7 @@ func NewCmdInstallation() *cobra.Command {
 		Short: "command for installation operations.",
 		Long:  `command for installation operations`,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Print("error: must specify a resource")
-			fmt.Printf("cmd: user, args: %v", args)
+			fmt.Print("error: must specify a sub command, execute quantum installation --help for subcommands")
 		},
 	}
 

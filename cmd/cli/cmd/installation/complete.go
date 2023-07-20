@@ -25,6 +25,7 @@ import (
 	"github.com/spf13/cobra"
 	client "go.breu.io/ctrlplane/cmd/cli/apiClient"
 	"go.breu.io/ctrlplane/internal/providers/github"
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 func NewCmdInstallationComplete() *cobra.Command {
@@ -60,7 +61,8 @@ func CompleteInstallation(cmd *cobra.Command) {
 
 func AddAuthHeader(ctx context.Context, req *http.Request) error {
 
-	b, err := os.ReadFile("C:\\go\\access.token")
+	//TODO: get the file path as an environment variable
+	b, err := os.ReadFile(shared.CLI().GetConfigFile())
 	if err != nil {
 		panic(err)
 	}

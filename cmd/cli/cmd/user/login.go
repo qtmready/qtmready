@@ -27,6 +27,7 @@ import (
 	client "go.breu.io/ctrlplane/cmd/cli/apiClient"
 	"go.breu.io/ctrlplane/cmd/cli/utils/models"
 	"go.breu.io/ctrlplane/internal/auth"
+	"go.breu.io/ctrlplane/internal/shared"
 )
 
 func NewCmdUserLogin() *cobra.Command {
@@ -86,9 +87,7 @@ func (o loginOptions) RunLogin() {
 	}
 
 	println("Login Successful")
-	//os.Setenv("USER_AUTH_TOKEN", pr.JSON200.AccessToken)
-
-	err = os.WriteFile("C:\\go\\access.token", []byte(pr.JSON200.AccessToken), 0644)
+	err = os.WriteFile(shared.CLI().GetConfigFile(), []byte(pr.JSON200.AccessToken), 0644)
 	if err != nil {
 		panic(err)
 	}
