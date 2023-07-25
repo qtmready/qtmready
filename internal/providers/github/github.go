@@ -108,42 +108,12 @@ type (
 	ConfigOption func(*Config)
 )
 
-const (
-	KEY = `-----BEGIN RSA PRIVATE KEY-----
-MIIEpQIBAAKCAQEA0UG2NPBaqqY+XSZQfFpQm8jUVX8KOUTJhnSpwb02tq7VlugQ
-FQEb1+gXIb+/aNRi0KWR/cW5VUlpyRaMoiGzg63FkLxlL5EQCjn3dAfVCiQsWvzb
-3hm1NUh1QtDpOoVCXL0veVoJYgEh+ioA5FGYuKBPuqp6Bp1NdGTq+eNBf35JSM6A
-Um23l0AUrlyK+qHDFHYBa9Qupn/vk4FDN2vxH1unELhHXTTBFRS1aDYjjGd/wRy6
-2HJD8wXqcAZ8F9OY08tetw3+n1gqSsL3xtAmtFbqvhRNxaijMwr8l2CmNZm5vw7V
-SFIc9WWtS5rROmzemS3uCp+/qHYZqFlNzTuYJQIDAQABAoIBAAmKYXBQdRHKupUs
-pgbFZ19y7JtpS2IJDNcggozev5vcpMhYlEMg5dAWONfFEkkJRegVZG6ZkTWeP0B3
-0rmhp7mdNqC+ti5RAtY0hl+367Kmq48KcEvUCDsBrrb5J2kPolLwHTX/MOZS/uWU
-/K1sOvZP+NKd6ypaCaoA3+W8wsO5PRrtVq4pxPEVbkfIh7md+d5ogV6fVK/Byah7
-LCMAypKY+jkIBzv7BzqZnDFlS5knleUgll0QuFz9p7FJm5RyX3djbXtQuSgZSAlS
-fSuCxeEqGMpaXb34tt+0GaeICF44+UNSiM6Agh5Uu2FJHJESZGfsNmRRxxJxjQSd
-B2TrJgECgYEA+h38yW2fb8V33QjGwm5bQnvkyNk5AJW/RoWiLMjU3zaxNNYbqOzK
-fQAh4EQ8AQQhQhsSHVw4W3iolnk5xIFZcR+nQL1G/j0xzTarw4hZUyFb/or5t2gS
-EWwKrjjxT1/64f2DyVQtcxHBzNTW2DCA/OSn4cNQlnm+bMgh6cTX0IUCgYEA1i2x
-tImboxO4gejbZPrStl4aqhUdzzbsZ776c3YM0z8Q2C7EWY4JWTCivkO4l960rEft
-h2kc/6Khd7IlvvOGf/hvGEHmJarv3K8eh7FGYtRwTX0zQQDY+0tfdid1LH0WfZl2
-0Ot2hEqMxN/u/q17AWDZz+rDu3+K08I5yf3kCyECgYEAoCQdGzcGE0FiynH5GLoh
-0kKTLInwdlBqxJOBT51StoxFD6ha02CxETHJftcReDEVvkao5YWLS/3IK3f4pbmP
-898pbkkCMHwr69GqTip5zsEYLrT6yBRpJSCBAiXRU1oHvzRbccdkxj1DUYug95Cu
-tb0NRH6SlZXjd7D4Db4L1CUCgYEAiHN6KNQWtPHGdfV9eTsXbZpMkJl9cVvDh2Ez
-vMWz7A3c1G4PKCMGr6z9sgwBGbiIEM6OdNux3uekyVZVF++cfAEx/hlV4B+kS0vC
-Pp7hgetoVOXz9nDszES739HJo/tZjdFs0jOBQU0hm/gzEkxB9qHWgtFFvDnIn5q5
-KIg5diECgYEA+RieA4ydYCKPboEgMJ7up1Wx3zPmYLCeUnY1cpMZ6rynvGhZFJw6
-rh1U79mLewaxDgTehNbyQuDjwK9mYWZ86h/a6iGoqrUPoua8rJCflJJAd8iAtAZ7
-CXrNxr5r1sMKe2XPdQ1WMh/xvBkLpbWFajtzttTPPYJf6j8cdEjwqgU=
------END RSA PRIVATE KEY-----`
-)
-
 func (g *Config) GetActivities() *Activities {
 	return g.Activities
 }
 
 func (g *Config) GetClientForInstallation(installationID int64) (*gh.Client, error) {
-	transport, err := ghinstallation.New(http.DefaultTransport, g.AppID, installationID, []byte(KEY))
+	transport, err := ghinstallation.New(http.DefaultTransport, g.AppID, installationID, []byte(g.PrivateKey))
 	if err != nil {
 		return nil, err
 	}

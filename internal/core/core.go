@@ -67,6 +67,9 @@ type (
 		Deploy(workflow.Context, []Workload) error
 		UpdateTraffic(workflow.Context, int32) error
 		Marshal() ([]byte, error)
+
+		UpdateTrafficWorkflow(workflow.Context, *CloudResource, int32) error
+		DeployWorkflow(workflow.Context, *CloudResource, *Workload) error
 	}
 
 	ResourceConstructor interface {
@@ -173,4 +176,32 @@ func Instance(opts ...CoreOption) Core {
 	}
 
 	return instance
+}
+
+func getRegion(provider CloudProvider, blueprint *Blueprint) string {
+	switch provider {
+	case CloudProviderAWS:
+		return blueprint.Regions.Aws[0]
+	case CloudProviderGCP:
+		return blueprint.Regions.Gcp[0]
+	case CloudProviderAzure:
+		return blueprint.Regions.Azure[0]
+	}
+	return ""
+}
+
+// getProviderConfig gets a specific provider config from blueprint
+
+// TODO: the provider config only has GCP config, this was hardcoded for demo,
+// need to make it generic so we can get any provider config based on its name
+func getProviderConfig(provider CloudProvider, blueprint *Blueprint) string {
+	switch provider {
+	case CloudProviderAWS:
+		return "blueprint.ProviderConfig.Aws"
+	case CloudProviderGCP:
+		return blueprint.ProviderConfig
+	case CloudProviderAzure:
+		return "blueprint.ProviderConfig.Azure"
+	}
+	return ""
 }

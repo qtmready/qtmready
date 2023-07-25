@@ -18,20 +18,53 @@
 version: '3.9'
 
 services:
+
+  # database:
+  #   profiles:
+  #     - full
+  #   container_name: database
+  #   image: cassandra:4
+  #   ports:
+  #     - '9042:9042'
+  #   environment:
+  #     - CASSNDRA_CLUSTER_NAME=ctrlplane
+  #     - JVM_EXTRA_OPTS=-Dcassandra.skip_wait_for_gossip_to_settle=0
+  #   volumes:
+  #     - db-data:/var/lib/cassandra
+  #     - ./deploy/cassandra/cassandra.yaml:/etc/cassandra/cassandra.yaml
+  #   networks:
+  #     - ctrlplane
+
+  # database-init:
+  #   profiles:
+  #     - full
+  #   container_name: ctrlplane-db-init
+  #   image: cassandra:4
+  #   depends_on:
+  #     - database
+  #   volumes:
+  #     - ./deploy/cassandra/keyspace.cql:/keyspace.cql
+  #   command: /bin/bash -c "sleep 20 && echo loading database keyspace && cqlsh database -f /keyspace.cql"
+  #   deploy:
+  #     restart_policy:
+  #       condition: on-failure
+  #       delay: 5s
+  #       max_attempts: 10
+  #       window: 120s
+  #   networks:
+  #     - ctrlplane
+
   # common
   database:
     profiles:
-      - full
+    - full
     container_name: database
-    image: cassandra:4
+    image: scylladb/scylla:5.2
     ports:
       - '9042:9042'
-    environment:
-      - CASSNDRA_CLUSTER_NAME=ctrlplane
-      - JVM_EXTRA_OPTS=-Dcassandra.skip_wait_for_gossip_to_settle=0
     volumes:
-      - db-data:/var/lib/cassandra
-      - ./deploy/cassandra/cassandra.yaml:/etc/cassandra/cassandra.yaml
+      - db-data:/var/lib/scylla
+    command: --smp 1 --skip-wait-for-gossip-to-settle 0
     networks:
       - ctrlplane
 
@@ -39,12 +72,12 @@ services:
     profiles:
       - full
     container_name: ctrlplane-db-init
-    image: cassandra:4
+    image:  scylladb/scylla-cqlsh:v6.0.9
     depends_on:
       - database
     volumes:
       - ./deploy/cassandra/keyspace.cql:/keyspace.cql
-    command: /bin/bash -c "sleep 20 && echo loading database keyspace && cqlsh database -f /keyspace.cql"
+    command: database -f /keyspace.cql
     deploy:
       restart_policy:
         condition: on-failure
@@ -55,8 +88,6 @@ services:
       - ctrlplane
 
   mailslurper:
-    profiles:
-      - full
     container_name: mailslurper
     image: oryd/mailslurper:latest-smtps
     ports:
@@ -67,8 +98,6 @@ services:
 
   # temporal.io
   temporal:
-    profiles:
-      - full
     container_name: temporal
     depends_on:
       - database
@@ -84,8 +113,6 @@ services:
       - ctrlplane
 
   temporal-admin-tools:
-    profiles:
-      - full
     container_name: temporal-admin-tools
     depends_on:
       - temporal
@@ -98,8 +125,6 @@ services:
       - ctrlplane
 
   temporal-ui:
-    profiles:
-      - full
     container_name: temporal-ui
     depends_on:
       - temporal

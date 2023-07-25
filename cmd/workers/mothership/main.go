@@ -40,11 +40,6 @@ func main() {
 	defer shared.Temporal().Client().Close()
 	defer db.DB().Session.Close()
 
-	core.Instance(
-		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
-		core.WithCloudResource(core.CloudProviderGCP, core.DriverCloudrun, &gcp.CloudRunConstructor{}),
-	)
-
 	providerQueue := shared.Temporal().Queue(shared.ProvidersQueue).Name()
 	coreQueue := shared.Temporal().Queue(shared.CoreQueue).Name()
 
@@ -52,9 +47,13 @@ func main() {
 	providerWrkr := worker.New(shared.Temporal().Client(), providerQueue, options)
 	coreWrkr := worker.New(shared.Temporal().Client(), coreQueue, options)
 
+	core.Instance(
+		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
+		core.WithCloudResource(core.CloudProviderGCP, core.DriverCloudrun, &gcp.CloudRunConstructor{}),
+	)
+
 	ghwfs := &github.Workflows{}
 	cwfs := &core.Workflows{}
-	gcpwfs := gcp.Workflows{}
 
 	// provider workflows
 	providerWrkr.RegisterWorkflow(ghwfs.OnInstallationEvent)
@@ -75,9 +74,10 @@ func main() {
 	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)
 	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
 
+	coreWrkr.RegisterWorkflow(core.CloudResource.DeployWorkflow)
+	coreWrkr.RegisterWorkflow(core.CloudResource.UpdateTrafficWorkflow)
+
 	//TODO: find a way to register workflows of all cloud resources in a loop
-	coreWrkr.RegisterWorkflow(gcpwfs.DeployCloudRun)
-	coreWrkr.RegisterWorkflow(gcpwfs.UpdateTraffic)
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.Activities{})

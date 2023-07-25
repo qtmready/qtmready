@@ -131,8 +131,6 @@ func (r *CloudRun) UpdateTraffic(ctx workflow.Context, trafficpcnt int32) error 
 
 	// UpdateTraffic will execute a workflow to update the resource. This workflow is not directly called
 	// from provisioninfra workflow to avoid passing resource interface as argument
-	w := &Workflows{}
-
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
 		ChildWorkflowOptions(
@@ -147,7 +145,7 @@ func (r *CloudRun) UpdateTraffic(ctx workflow.Context, trafficpcnt int32) error 
 	shared.Logger().Info("Executing Update traffic workflow")
 
 	err := workflow.
-		ExecuteChildWorkflow(cctx, w.UpdateTraffic, r, trafficpcnt).Get(cctx, nil)
+		ExecuteChildWorkflow(cctx, r.UpdateTrafficWorkflow, r, trafficpcnt).Get(cctx, nil)
 
 	if err != nil {
 		shared.Logger().Error("Could not execute UpdateTraffic workflow", "error", err)
@@ -166,7 +164,6 @@ func (r *CloudRun) Deploy(ctx workflow.Context, wl []core.Workload) error {
 
 	// provision with execute a workflow to provision the resources. This workflow is not directly called
 	// from provisioninfra workflow to avoid passing resource interface as argument
-	w := &Workflows{}
 
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
@@ -182,7 +179,7 @@ func (r *CloudRun) Deploy(ctx workflow.Context, wl []core.Workload) error {
 	shared.Logger().Info("starting DeployCloudRun workflow")
 
 	err := workflow.
-		ExecuteChildWorkflow(cctx, w.DeployCloudRun, r, wl[0]).Get(cctx, r)
+		ExecuteChildWorkflow(cctx, r.DeployWorkflow, r, wl[0]).Get(cctx, r)
 
 	if err != nil {
 		shared.Logger().Error("Could not start DeployCloudRun workflow", "error", err)
@@ -191,7 +188,7 @@ func (r *CloudRun) Deploy(ctx workflow.Context, wl []core.Workload) error {
 	return nil
 }
 
-func (w *Workflows) DeployCloudRun(ctx workflow.Context, r *CloudRun, wl *core.Workload) (*CloudRun, error) {
+func (r *CloudRun) DeployWorkflow(ctx workflow.Context, cr *core.CloudResource, wl *core.Workload) error {
 
 	r.ServiceName = wl.Name
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
@@ -199,19 +196,19 @@ func (w *Workflows) DeployCloudRun(ctx workflow.Context, r *CloudRun, wl *core.W
 	err := workflow.ExecuteActivity(actx, activities.GetNextRevision, r).Get(actx, r)
 	if err != nil {
 		shared.Logger().Error("Error in Executing activity: GetNextRevision", "error", err)
-		return r, err
+		return err
 	}
 
 	err = workflow.ExecuteActivity(actx, activities.DeployRevision, r, wl).Get(actx, nil)
 	if err != nil {
 		shared.Logger().Error("Error in Executing activity: DeployDummy", "error", err)
-		return r, err
+		return err
 	}
-	return r, nil
+	return nil
 }
 
 // UpdateTraffic workflow executes UpdateTrafficActivity
-func (w *Workflows) UpdateTraffic(ctx workflow.Context, r *CloudRun, trafficpcnt int32) error {
+func (r *CloudRun) UpdateTrafficWorkflow(ctx workflow.Context, cr *core.CloudResource, trafficpcnt int32) error {
 
 	shared.Logger().Info("Distributing traffic between revisions", r.Revision, r.LastRevision)
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}

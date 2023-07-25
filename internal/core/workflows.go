@@ -43,46 +43,6 @@ type (
 	}
 )
 
-// copy old to new, clear old
-func swap(new *Infra, old *Infra) {
-
-	*new = make(Infra)       // clear new
-	for k, v := range *old { // copy old to new
-		(*new)[k] = v
-	}
-
-	// clear old
-	*old = make(Infra)
-}
-
-func getRegion(provider CloudProvider, blueprint *Blueprint) string {
-	switch provider {
-	case CloudProviderAWS:
-		return blueprint.Regions.Aws[0]
-	case CloudProviderGCP:
-		return blueprint.Regions.Gcp[0]
-	case CloudProviderAzure:
-		return blueprint.Regions.Azure[0]
-	}
-	return ""
-}
-
-// getProviderConfig gets a specific provider config from blueprint
-
-// TODO: the provider config only has GCP config, this was hardcoded for demo,
-// need to make it generic so we can get any provider config based on its name
-func getProviderConfig(provider CloudProvider, blueprint *Blueprint) string {
-	switch provider {
-	case CloudProviderAWS:
-		return "blueprint.ProviderConfig.Aws"
-	case CloudProviderGCP:
-		return blueprint.ProviderConfig
-	case CloudProviderAzure:
-		return "blueprint.ProviderConfig.Azure"
-	}
-	return ""
-}
-
 // ChangesetController controls the rollout lifecycle for one changeset.
 func (w *Workflows) ChangesetController(id string) error {
 	return nil
