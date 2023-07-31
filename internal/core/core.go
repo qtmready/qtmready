@@ -81,6 +81,7 @@ type (
 	}
 )
 
+// RegisterCloudResource the cloud resource constructor for against a cloud resource
 func (c *core) RegisterCloudResource(provider CloudProvider, driver Driver, resource ResourceConstructor) {
 
 	// TODO: replace this with Once
