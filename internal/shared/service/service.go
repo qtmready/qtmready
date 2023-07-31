@@ -71,7 +71,7 @@ func (s *config) GetLogSkipper() int {
 
 func (s *config) Banner() {
 	banner := `
-                             __          
+                           __          
   ____  __  ______  ____  / /_____ ___ 
  / __ \/ / / / __ \/ __ \/ __/ __ ˇ__ \
 / /_/ / /_/ / /_/ / / / / /_  / / / / /

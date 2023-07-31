@@ -54,7 +54,7 @@ components:
 
     # Status code 404
     NotFound:
-      description: Team Not found
+      description: Not Found
       content:
         application/json:
           schema:
