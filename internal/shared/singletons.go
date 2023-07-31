@@ -100,9 +100,10 @@ func Temporal() temporal.Temporal {
 			tmprl = temporal.NewTemporal(
 				temporal.FromEnvironment(),
 				temporal.WithLogger(Logger()),
+				temporal.WithClientCreation(),
 				temporal.WithQueue(CoreQueue),
 				temporal.WithQueue(ProvidersQueue),
-				temporal.WithQueue(MutexQueue),
+				temporal.WithQueue(MutexQueue), // this should be fixed as it requies options to be in order. WithClientCreation needs to come before with queue
 			)
 		})
 	}

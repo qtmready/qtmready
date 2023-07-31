@@ -26,6 +26,7 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
+	"go.temporal.io/sdk/worker"
 
 	"go.breu.io/ctrlplane/internal/shared/queue"
 )
@@ -39,6 +40,7 @@ type (
 		GetConnectionString() string
 		Queue(queue.Name) queue.Queue
 		Client() client.Client
+		Worker(queue.Name) worker.Worker
 	}
 
 	// Config holds the temporal server host and port, the client and all the available queues.
@@ -56,6 +58,7 @@ type (
 		client     client.Client
 		queues     queue.Queues
 		logger     log.Logger
+		workers    queue.Workers
 	}
 
 	ConfigOption func(*Config)
@@ -67,6 +70,10 @@ func (t *Config) GetConnectionString() string {
 
 func (t *Config) Queue(name queue.Name) queue.Queue {
 	return t.queues[name]
+}
+
+func (t *Config) Worker(name queue.Name) worker.Worker {
+	return t.workers[name]
 }
 
 func (t *Config) Client() client.Client {
@@ -106,7 +113,10 @@ func (t *Config) Client() client.Client {
 // WithQueue adds a new queue to the Temporal.
 func WithQueue(name queue.Name) ConfigOption {
 	return func(t *Config) {
+
+		options := worker.Options{OnFatalError: func(err error) { t.logger.Error("Fatal error during worker execution %v", err) }}
 		t.queues[name] = queue.NewQueue(queue.WithName(name))
+		t.workers[name] = worker.New(t.client, name.String(), options)
 	}
 }
 
@@ -160,7 +170,7 @@ func WithClientCreation() ConfigOption {
 
 // NewTemporal creates a new Temporal instance.
 func NewTemporal(opts ...ConfigOption) Temporal {
-	t := &Config{queues: make(queue.Queues)}
+	t := &Config{queues: make(queue.Queues), workers: make(queue.Workers)}
 	for _, opt := range opts {
 		opt(t)
 	}

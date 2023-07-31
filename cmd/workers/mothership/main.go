@@ -22,8 +22,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"go.temporal.io/sdk/worker"
-
 	"go.breu.io/ctrlplane/internal/core"
 	"go.breu.io/ctrlplane/internal/core/mutex"
 	"go.breu.io/ctrlplane/internal/core/resources/gcp"
@@ -40,12 +38,8 @@ func main() {
 	defer shared.Temporal().Client().Close()
 	defer db.DB().Session.Close()
 
-	providerQueue := shared.Temporal().Queue(shared.ProvidersQueue).Name()
-	coreQueue := shared.Temporal().Queue(shared.CoreQueue).Name()
-
-	options := worker.Options{OnFatalError: func(err error) { shared.Logger().Error("Fatal error during worker execution", err) }}
-	providerWrkr := worker.New(shared.Temporal().Client(), providerQueue, options)
-	coreWrkr := worker.New(shared.Temporal().Client(), coreQueue, options)
+	providerWrkr := shared.Temporal().Worker(shared.ProvidersQueue)
+	coreWrkr := shared.Temporal().Worker(shared.CoreQueue)
 
 	core.Instance(
 		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
@@ -73,11 +67,6 @@ func main() {
 	coreWrkr.RegisterWorkflow(cwfs.GetAssets)
 	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)
 	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
-
-	coreWrkr.RegisterWorkflow(core.CloudResource.DeployWorkflow)
-	coreWrkr.RegisterWorkflow(core.CloudResource.UpdateTrafficWorkflow)
-
-	//TODO: find a way to register workflows of all cloud resources in a loop
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.Activities{})

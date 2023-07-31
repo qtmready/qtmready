@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"cloud.google.com/go/iam/apiv1/iampb"
@@ -18,9 +20,11 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+var registerOnce sync.Once
+
 type (
-	CloudRunConstructor struct {
-	}
+	CloudRunConstructor struct{}
+	workflows           struct{}
 
 	CloudRun struct {
 		ID                         gocql.UUID
@@ -97,6 +101,12 @@ func (c *CloudRunConstructor) Create(name string, region string, config string, 
 	cr.Project = pconfig.Project
 
 	shared.Logger().Info("cloud run", "object", providerConfig, "umarshaled", pconfig, "project", cr.Project)
+	w := &workflows{}
+	registerOnce.Do(func() {
+		coreWrkr := shared.Temporal().Worker(shared.CoreQueue)
+		coreWrkr.RegisterWorkflow(w.DeployWorkflow)
+		coreWrkr.RegisterWorkflow(w.UpdateTrafficWorkflow)
+	})
 	return cr, nil
 }
 
@@ -144,8 +154,9 @@ func (r *CloudRun) UpdateTraffic(ctx workflow.Context, trafficpcnt int32) error 
 
 	shared.Logger().Info("Executing Update traffic workflow")
 
+	w := &workflows{}
 	err := workflow.
-		ExecuteChildWorkflow(cctx, r.UpdateTrafficWorkflow, r, trafficpcnt).Get(cctx, nil)
+		ExecuteChildWorkflow(cctx, w.UpdateTrafficWorkflow, r, trafficpcnt).Get(cctx, nil)
 
 	if err != nil {
 		shared.Logger().Error("Could not execute UpdateTraffic workflow", "error", err)
@@ -178,8 +189,9 @@ func (r *CloudRun) Deploy(ctx workflow.Context, wl []core.Workload) error {
 
 	shared.Logger().Info("starting DeployCloudRun workflow")
 
+	w := &workflows{}
 	err := workflow.
-		ExecuteChildWorkflow(cctx, r.DeployWorkflow, r, wl[0]).Get(cctx, r)
+		ExecuteChildWorkflow(cctx, w.DeployWorkflow, r, wl[0]).Get(cctx, r)
 
 	if err != nil {
 		shared.Logger().Error("Could not start DeployCloudRun workflow", "error", err)
@@ -188,7 +200,9 @@ func (r *CloudRun) Deploy(ctx workflow.Context, wl []core.Workload) error {
 	return nil
 }
 
-func (r *CloudRun) DeployWorkflow(ctx workflow.Context, cr *core.CloudResource, wl *core.Workload) error {
+func (w *workflows) DeployWorkflow(ctx workflow.Context, r *CloudRun, wl *core.Workload) (*CloudRun, error) {
+
+	shared.Logger().Info("debug only in DeployWorkflow deploying", "cloudrun", r, "workload", wl)
 
 	r.ServiceName = wl.Name
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
@@ -196,19 +210,21 @@ func (r *CloudRun) DeployWorkflow(ctx workflow.Context, cr *core.CloudResource, 
 	err := workflow.ExecuteActivity(actx, activities.GetNextRevision, r).Get(actx, r)
 	if err != nil {
 		shared.Logger().Error("Error in Executing activity: GetNextRevision", "error", err)
-		return err
+		return r, err
 	}
 
 	err = workflow.ExecuteActivity(actx, activities.DeployRevision, r, wl).Get(actx, nil)
 	if err != nil {
 		shared.Logger().Error("Error in Executing activity: DeployDummy", "error", err)
-		return err
+		return r, err
 	}
-	return nil
+	return r, nil
 }
 
 // UpdateTraffic workflow executes UpdateTrafficActivity
-func (r *CloudRun) UpdateTrafficWorkflow(ctx workflow.Context, cr *core.CloudResource, trafficpcnt int32) error {
+func (w *workflows) UpdateTrafficWorkflow(ctx workflow.Context, r *CloudRun, trafficpcnt int32) error {
+
+	shared.Logger().Info("debug only in UpdateTrafficWorkflow deploying", "cloudrun", r)
 
 	shared.Logger().Info("Distributing traffic between revisions", r.Revision, r.LastRevision)
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
@@ -430,6 +446,7 @@ func (r *CloudRun) GetServiceTemplate(ctx context.Context, wl *core.Workload) *r
 }
 
 func (r *CloudRun) GetParent() string {
+	fmt.Printf("Debug only, parent: %s\n", "projects/"+r.Project+"/locations/"+r.Region)
 	return "projects/" + r.Project + "/locations/" + r.Region
 }
 

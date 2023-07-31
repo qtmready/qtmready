@@ -67,9 +67,6 @@ type (
 		Deploy(workflow.Context, []Workload) error
 		UpdateTraffic(workflow.Context, int32) error
 		Marshal() ([]byte, error)
-
-		UpdateTrafficWorkflow(workflow.Context, *CloudResource, int32) error
-		DeployWorkflow(workflow.Context, *CloudResource, *Workload) error
 	}
 
 	ResourceConstructor interface {
@@ -91,6 +88,18 @@ func (c *core) RegisterCloudResource(provider CloudProvider, driver Driver, reso
 		c.ResourceProvider[provider] = make(map[Driver]ResourceConstructor)
 	}
 	c.ResourceProvider[provider][driver] = resource
+
+	// Problem with below approach is that the signature of deploy workflow needs to be generic and part of cloud resource interface
+	// e.g DeployWorkflow(ctx workflow.Context, resource CloudResource)
+	// but the above won't work without custom data converter as CloudResource is an interface and temporal will not be able to unmarshal it
+	// so to solve this problem we have to define workflow like this
+	// DeployWorkflow(ctx workflow.Context, resource []byte)
+	// problem with this approach: we have to serialize and deserialize the data every time especially when the resource is modified by the workflow
+
+	// r := resource.CreateDummy()
+	// wrkr := shared.Temporal().Worker(shared.CoreQueue)
+	// wrkr.RegisterWorkflow(r.DeployWorkflow)
+	// wrkr.RegisterWorkflow(r.UpdateTrafficWorkflow)
 }
 
 func (c *core) RegisterRepoProvider(provider RepoProvider, activities RepoProviderActivities) {

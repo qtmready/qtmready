@@ -247,7 +247,7 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 			}
 
 			// resource is an interface and cannot be sent as a parameter in workflow because workflow cannot unmarshal an interface. So we need to
-			// send the marshalled value in workflow and then unmarshal and resconstruct the resource again in the workflow
+			// send the marshalled value in this workflow and then unmarshal and resconstruct the resource again in the Deploy workflow
 			ser, err := r.Marshal()
 			if err != nil {
 				logger.Error("could not marshal resource", "ID", rsc.ID, "name", rsc.Name, "Error", err)

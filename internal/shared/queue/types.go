@@ -19,6 +19,7 @@ package queue
 
 import (
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -55,6 +56,9 @@ type (
 
 	// Queues is a map of queues.
 	Queues map[Name]Queue
+
+	// Workers is a map of workers against queues
+	Workers map[Name]worker.Worker
 
 	// WorkflowOptions is the interface for creating a workflow id.
 	WorkflowOptions interface {
