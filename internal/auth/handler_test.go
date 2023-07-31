@@ -29,10 +29,10 @@ import (
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
 
-	"go.breu.io/ctrlplane/internal/auth"
-	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/shared"
-	"go.breu.io/ctrlplane/internal/testutils"
+	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/testutils"
 )
 
 type (

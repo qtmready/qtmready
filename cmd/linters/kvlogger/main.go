@@ -4,7 +4,7 @@ import (
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/singlechecker"
 
-	"go.breu.io/ctrlplane/tools/linters"
+	"go.breu.io/quantm/tools/linters"
 )
 
 var (

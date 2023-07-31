@@ -22,7 +22,7 @@ import (
 
 	"golang.org/x/tools/go/analysis/analysistest"
 
-	"go.breu.io/ctrlplane/tools/linters"
+	"go.breu.io/quantm/tools/linters"
 )
 
 func TestKVLogger(t *testing.T) {

@@ -28,8 +28,8 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/wait"
 
-	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/shared"
 )
 
 const (

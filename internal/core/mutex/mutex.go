@@ -22,7 +22,7 @@ import (
 
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/shared"
 )
 
 const (
@@ -77,7 +77,7 @@ func (m *mutex) Start() error {
 			shared.WithWorkflowBlock("mutex"),
 			shared.WithWorkflowBlockID(m.id),
 		)
-		// GetChildWorkflowOptions("mutex", m.id)
+	// GetChildWorkflowOptions("mutex", m.id)
 	ctx := workflow.WithChildOptions(m.contexts.caller, opts)
 	logger.Info("mutex: starting workflow ...", "resource ID", m.id, "with timeout", m.timeout)
 

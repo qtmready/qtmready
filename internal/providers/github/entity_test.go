@@ -37,8 +37,8 @@ package github_test
 import (
 	"testing"
 
-	"go.breu.io/ctrlplane/internal/providers/github"
-	"go.breu.io/ctrlplane/internal/testutils"
+	"go.breu.io/quantm/internal/providers/github"
+	"go.breu.io/quantm/internal/testutils"
 )
 
 func TestGithubInstallation(t *testing.T) {

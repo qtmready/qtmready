@@ -22,11 +22,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"go.breu.io/ctrlplane/internal/core"
-	"go.breu.io/ctrlplane/internal/core/mutex"
-	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/providers/github"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/core/mutex"
+	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/providers/github"
+	"go.breu.io/quantm/internal/shared"
 )
 
 func main() {

@@ -23,8 +23,8 @@ import (
 
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/ctrlplane/internal/core"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/shared"
 )
 
 var (

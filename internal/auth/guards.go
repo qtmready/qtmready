@@ -29,7 +29,7 @@ import (
 	"github.com/scylladb/gocqlx/v2/table"
 	"golang.org/x/crypto/bcrypt"
 
-	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/quantm/internal/db"
 )
 
 var (

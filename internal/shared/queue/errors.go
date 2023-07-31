@@ -27,15 +27,15 @@ var (
 )
 
 type (
-	duplicateIdPropError struct {
+	duplicateIDPropError struct {
 		prop string
 	}
 )
 
-func (e *duplicateIdPropError) Error() string {
+func (e *duplicateIDPropError) Error() string {
 	return fmt.Sprintf("duplicate %s", e.prop)
 }
 
-func NewDuplicateIdPropError(prop string) error {
-	return &duplicateIdPropError{prop: prop}
+func NewDuplicateIDPropError(prop string) error {
+	return &duplicateIDPropError{prop: prop}
 }

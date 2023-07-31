@@ -26,8 +26,8 @@ import (
 var (
 	// rootCmd represents the base command when called without any subcommands.
 	rootCmd = &cobra.Command{
-		Use:   "ctrlplane",
-		Short: "ctrlplane is a multi stage release rollout engine with pre-emptive rollbacks.",
+		Use:   "quantm",
+		Short: "quantm is a multi stage release rollout engine with pre-emptive rollbacks.",
 		Long: `
 ctrlplane is a multi stage release rollout engine for cloud-native applications. It is designed to be used in
 conjunction with a CI/CD pipeline & near realtime application monitoring to provide a safe and reliable rollout

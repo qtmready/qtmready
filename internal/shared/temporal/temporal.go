@@ -27,7 +27,7 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
 
-	"go.breu.io/ctrlplane/internal/shared/queue"
+	"go.breu.io/quantm/internal/shared/queue"
 )
 
 var (
@@ -103,14 +103,14 @@ func (t *Config) Client() client.Client {
 	return t.client
 }
 
-// WithQueue adds a new queue to the Temporal.
+// WithQueue adds a new queue to the Config.
 func WithQueue(name queue.Name) ConfigOption {
 	return func(t *Config) {
 		t.queues[name] = queue.NewQueue(queue.WithName(name))
 	}
 }
 
-// WithLogger sets the logger for the Temporal.
+// WithLogger sets the logger for the Config.
 func WithLogger(logger log.Logger) ConfigOption {
 	return func(t *Config) {
 		t.logger = logger

@@ -13,6 +13,5 @@
   "go.editorContextMenuCommands": {
     "generateTestForPackage": true
   },
-  "ansible.python.interpreterPath": "/Users/jay/.pyenv/versions/3.10.3/bin/python",
   "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools"
 }
