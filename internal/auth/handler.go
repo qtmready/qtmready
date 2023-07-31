@@ -33,7 +33,7 @@ type (
 	// Usage:
 	//  package {name}
 	//
-	//  import "go.breu.io/ctrlplane/internal/auth"
+	//  import "go.breu.io/quantm/internal/auth"
 	//
 	//  type ServerHandler struct {
 	//    *auth.SecurityHandler

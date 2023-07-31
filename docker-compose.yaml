@@ -19,6 +19,7 @@ version: '3.9'
 
 services:
   # common
+  
   database:
     container_name: database
     image: scylladb/scylla:5.2
@@ -46,6 +47,38 @@ services:
         window: 120s
     networks:
       - ctrlplane
+
+  # database:
+  #   container_name: database
+  #   image: cassandra:4
+  #   ports:
+  #     - '9042:9042'
+  #   environment:
+  #     - CASSNDRA_CLUSTER_NAME=ctrlplane
+  #     - JVM_EXTRA_OPTS=-Dcassandra.skip_wait_for_gossip_to_settle=0
+  #   volumes:
+  #     - db-data:/var/lib/cassandra
+  #     - ./deploy/cassandra/cassandra.yaml:/etc/cassandra/cassandra.yaml
+  #   networks:
+  #     - ctrlplane
+
+  # database-init:
+  #   container_name: ctrlplane-db-init
+  #   image: cassandra:4
+  #   depends_on:
+  #     - database
+  #   volumes:
+  #     - ./deploy/cassandra/keyspace.cql:/keyspace.cql
+  #   command: /bin/bash -c "sleep 20 && echo loading database keyspace && cqlsh database -f /keyspace.cql"
+  #   deploy:
+  #     restart_policy:
+  #       condition: on-failure
+  #       delay: 5s
+  #       max_attempts: 10
+  #       window: 120s
+  #   networks:
+  #     - ctrlplane
+
 
   mailslurper:
     container_name: mailslurper
@@ -145,8 +178,8 @@ services:
   ctrlplane-worker--mothership:
     container_name: ctrlplane-worker--mothership
     profiles:
-      - full
       - mothership
+      - full
     image: cosmtrek/air:v1.42.0
     environment:
       SERVICE_NAME: mothership::worker
@@ -157,6 +190,7 @@ services:
     volumes:
       - ./deploy/air/mothership.toml:/mothership/.air.toml
       - ./:/mothership/
+      - C:\Users\DELL\AppData\Roaming\gcloud\application_default_credentials.json:/root/.config/gcloud/application_default_credentials.json
       - worker-mothership-go-pkg-mod:/go/pkg/mod
       - worker-mothership-build-cache:/root/.cache/go-build
     working_dir: /mothership

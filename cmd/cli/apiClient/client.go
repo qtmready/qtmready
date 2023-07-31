@@ -15,35 +15,54 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package core
+package client
 
 import (
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
+
+	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/providers/github"
 )
 
-type (
-	providerNotFoundError struct {
-		name string
+var Client client
+
+type client struct {
+	AuthClient   *auth.Client
+	CoreClient   *core.Client
+	GithubClient *github.Client
+}
+
+// CheckStatus returns false if the status code is other than provided in parameters
+func (c *client) CheckStatus(r *http.Response, successCodes ...int) {
+	pass := false
+	for _, c := range successCodes {
+		if r.StatusCode == c {
+			pass = true
+		}
 	}
-
-	resourceNotFoundError struct {
-		name     string
-		provider string
+	if pass == false {
+		fmt.Printf("Command failed with status code: %d\r\n", r.StatusCode)
 	}
-)
-
-func (e *providerNotFoundError) Error() string {
-	return fmt.Sprintf("provider %s not found. plese register your providers first.", e.name)
 }
 
-func NewProviderNotFoundError(name string) error {
-	return &providerNotFoundError{name}
+func (c *client) CheckError(err error) {
+	if err != nil {
+		if strings.Contains(err.Error(), "No connection") {
+			fmt.Print("Quantum server is not running\n")
+		} else {
+			fmt.Printf("Command failed: %v", err.Error())
+		}
+		os.Exit(1)
+	}
 }
 
-func NewResourceNotFoundError(name string, provider string) error {
-	return &resourceNotFoundError{name, provider}
-}
-
-func (e *resourceNotFoundError) Error() string {
-	return fmt.Sprintf("resource %s not found. plese register your resource with the provider %s first.", e.name, e.provider)
+// init initializes the auth, github and core clients to connect with quantum
+func (c *client) Init(url string) {
+	c.AuthClient, _ = auth.NewClient(url)
+	c.CoreClient, _ = core.NewClient(url)
+	c.GithubClient, _ = github.NewClient(url)
 }

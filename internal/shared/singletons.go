@@ -25,6 +25,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/sethvargo/go-password/password"
 
+	"go.breu.io/quantm/internal/shared/cli"
 	"go.breu.io/quantm/internal/shared/logger"
 	"go.breu.io/quantm/internal/shared/service"
 	"go.breu.io/quantm/internal/shared/temporal"
@@ -42,6 +43,9 @@ var (
 
 	tmprl     temporal.Temporal // Global temporal instance.
 	tmprlOnce sync.Once         // Global temporal instance initializer
+
+	ci      cli.Cli   // Global cli instance
+	cliOnce sync.Once // Global cli instance initializer
 )
 
 // Service returns the global service instance. If the global service instance has not been initialized, it will be initialized with
@@ -96,9 +100,10 @@ func Temporal() temporal.Temporal {
 			tmprl = temporal.NewTemporal(
 				temporal.FromEnvironment(),
 				temporal.WithLogger(Logger()),
+				temporal.WithClientCreation(),
 				temporal.WithQueue(CoreQueue),
 				temporal.WithQueue(ProvidersQueue),
-				temporal.WithQueue(MutexQueue),
+				temporal.WithQueue(MutexQueue), // this should be fixed as it requies options to be in order. WithClientCreation needs to come before with queue
 			)
 		})
 	}
@@ -113,4 +118,16 @@ func InitServiceForTest() {
 		service.WithDebug(true),
 		service.WithSecret(password.MustGenerate(32, 8, 0, false, false)),
 	)
+}
+
+func CLI() cli.Cli {
+	if ci == nil {
+		cliOnce.Do(func() {
+			ci = cli.NewCLI(
+				cli.FromEnvironment(),
+			)
+		})
+	}
+
+	return ci
 }
