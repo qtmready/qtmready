@@ -24,12 +24,13 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
 type (
 	config struct {
-		Name       string `env:"SERVICE_NAME" env-default:"service"`
+		Name       string `env:"SERVICE_NAME" env-default:"default::service"`
 		Debug      bool   `env:"DEBUG" env-default:"false"`
 		Secret     string `env:"SECRET" env-default:""`
 		Version    string `env:"VERSION" env-default:"dev"`
@@ -42,6 +43,7 @@ type (
 		GetSecret() string
 		GetDebug() bool
 		GetLogSkipper() int
+		Banner()
 	}
 
 	ServiceOption func(Service)
@@ -65,6 +67,28 @@ func (s *config) GetDebug() bool {
 
 func (s *config) GetLogSkipper() int {
 	return s.LogSkipper
+}
+
+func (s *config) Banner() {
+	banner := `
+                           __          
+  ____  __  ______  ____  / /_____ ___ 
+ / __ \/ / / / __ \/ __ \/ __/ __ ˇ__ \
+/ /_/ / /_/ / /_/ / / / / /_  / / / / /
+\__, /\__▲_/\__▲_/_/ /_/\__/_/ /_/ /_/ 
+  /_/  
+Fault Tolerant, Progressive Delivery Engine for OpenGitOps.
+
+compoenent: %s
+version: %s
+
+%s
+  `
+	green := color.New(color.FgGreen).SprintFunc()
+	blue := color.New(color.FgBlue).SprintFunc()
+	yellow := color.New(color.FgYellow).SprintFunc()
+
+	fmt.Printf(banner, green(s.Name), blue(s.Version), yellow("https://breu.io"))
 }
 
 // WithName sets the service name.

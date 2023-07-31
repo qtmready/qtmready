@@ -23,9 +23,9 @@ import (
 	"os"
 	"strings"
 
-	"go.breu.io/ctrlplane/internal/auth"
-	"go.breu.io/ctrlplane/internal/core"
-	"go.breu.io/ctrlplane/internal/providers/github"
+	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/providers/github"
 )
 
 var Client client

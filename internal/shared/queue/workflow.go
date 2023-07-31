@@ -48,7 +48,7 @@ func WithWorkflowParent(parent workflow.Context) WorkflowOptionProvider {
 func WithWorkflowBlock(block string) WorkflowOptionProvider {
 	return func(w WorkflowOptions) {
 		if w.(*wrkflopts).block != "" {
-			panic(NewDuplicateIdPropError("block"))
+			panic(NewDuplicateIDPropError("block"))
 		}
 
 		w.(*wrkflopts).block = block
@@ -59,7 +59,7 @@ func WithWorkflowBlock(block string) WorkflowOptionProvider {
 func WithWorkflowBlockID(val string) WorkflowOptionProvider {
 	return func(w WorkflowOptions) {
 		if w.(*wrkflopts).blockID != "" {
-			panic(NewDuplicateIdPropError("block id"))
+			panic(NewDuplicateIDPropError("block id"))
 		}
 
 		w.(*wrkflopts).blockID = val
@@ -70,7 +70,7 @@ func WithWorkflowBlockID(val string) WorkflowOptionProvider {
 func WithWorkflowElement(element string) WorkflowOptionProvider {
 	return func(w WorkflowOptions) {
 		if w.(*wrkflopts).elm != "" {
-			panic(NewDuplicateIdPropError("element"))
+			panic(NewDuplicateIDPropError("element"))
 		}
 
 		w.(*wrkflopts).elm = element
@@ -81,7 +81,7 @@ func WithWorkflowElement(element string) WorkflowOptionProvider {
 func WithWorkflowElementID(val string) WorkflowOptionProvider {
 	return func(w WorkflowOptions) {
 		if w.(*wrkflopts).elmID != "" {
-			panic(NewDuplicateIdPropError("element id"))
+			panic(NewDuplicateIDPropError("element id"))
 		}
 
 		w.(*wrkflopts).elmID = val
@@ -92,7 +92,7 @@ func WithWorkflowElementID(val string) WorkflowOptionProvider {
 func WithWorkflowMod(modifier string) WorkflowOptionProvider {
 	return func(w WorkflowOptions) {
 		if w.(*wrkflopts).mod != "" {
-			panic(NewDuplicateIdPropError("modifier"))
+			panic(NewDuplicateIDPropError("modifier"))
 		}
 
 		w.(*wrkflopts).mod = modifier
@@ -103,7 +103,7 @@ func WithWorkflowMod(modifier string) WorkflowOptionProvider {
 func WithWorkflowModID(val string) WorkflowOptionProvider {
 	return func(w WorkflowOptions) {
 		if w.(*wrkflopts).modID != "" {
-			panic(NewDuplicateIdPropError("modifier id"))
+			panic(NewDuplicateIDPropError("modifier id"))
 		}
 
 		w.(*wrkflopts).modID = val

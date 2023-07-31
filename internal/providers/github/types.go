@@ -21,7 +21,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/shared"
 )
 
 // Webhook events & Workflow singals.

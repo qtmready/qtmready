@@ -23,8 +23,8 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 
-	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -33,7 +33,7 @@ type (
 	// Usage:
 	//  package {name}
 	//
-	//  import "go.breu.io/ctrlplane/internal/auth"
+	//  import "go.breu.io/quantm/internal/auth"
 	//
 	//  type ServerHandler struct {
 	//    *auth.SecurityHandler

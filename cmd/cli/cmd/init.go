@@ -26,7 +26,7 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/spf13/cobra"
 
-	"go.breu.io/ctrlplane/cmd/cli/utils"
+	"go.breu.io/quantm/cmd/cli/utils"
 
 	_ "embed" // required to embed cue files into the binary
 )
@@ -42,10 +42,10 @@ var (
 func NewCmdInit() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "init",
-		Short: "Create a new ctrlplane project",
+		Short: "Create a new quantm project",
 		Long: `
-Creates a new ctrlplane project in the current directory. This will create .ctrlplane file for
-configuration management and .ctrlplane/ directory for state management
+Creates a new quantm project in the current directory. This will create .quantm file for
+configuration management and .quantm/ directory for state management
   `,
 		Run: func(cmd *cobra.Command, args []string) {
 			fmt.Println("cmd: Run")

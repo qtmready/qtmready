@@ -20,7 +20,7 @@ package core
 import (
 	"github.com/gocql/gocql"
 
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/shared"
 )
 
 // Workflow signal types.
@@ -67,7 +67,7 @@ type (
 		workflows ChildWorkflows
 		OldInfra  JsonInfra
 		NewInfra  JsonInfra
-		rwpair    map[string][]Workload // resource name and workloads
+		// rwpair    map[string][]Workload // resource name and workloads
 
 	}
 
@@ -98,6 +98,6 @@ func NewDeployment() *Deployment {
 	d := new(Deployment)
 	d.NewInfra = make(JsonInfra)
 	d.OldInfra = make(JsonInfra)
-	d.rwpair = make(map[string][]Workload)
+	// d.rwpair = make(map[string][]Workload)
 	return d
 }

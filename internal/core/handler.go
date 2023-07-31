@@ -24,9 +24,9 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 
-	"go.breu.io/ctrlplane/internal/auth"
-	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -134,6 +134,7 @@ func (s *ServerHandler) CreateResource(ctx echo.Context) error {
 		Name:        request.Name,
 		Provider:    request.Provider,
 		StackID:     request.StackID,
+		// TODO: check why assinging directly wasn't working
 		Driver:      Driver(request.Driver),
 		Config:      request.Config,
 		IsImmutable: request.Immutable,
@@ -190,7 +191,7 @@ func (s *ServerHandler) CreateStack(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
-	shared.Logger().Info("started workflow", "ID", opts.ID, " run ID: ", exe.GetRunID())
+	shared.Logger().Info("started workflow: ", "ID", opts.ID, " Run ID: ", exe.GetRunID())
 
 	return ctx.JSON(http.StatusCreated, stack)
 }

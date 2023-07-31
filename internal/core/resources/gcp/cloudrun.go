@@ -14,8 +14,8 @@ import (
 	run "cloud.google.com/go/run/apiv2"
 	"cloud.google.com/go/run/apiv2/runpb"
 	"github.com/gocql/gocql"
-	"go.breu.io/ctrlplane/internal/core"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/shared"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/workflow"
 )

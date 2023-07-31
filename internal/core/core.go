@@ -21,7 +21,7 @@ import (
 	"context"
 	"sync"
 
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/shared"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -90,7 +90,8 @@ func (c *core) RegisterCloudResource(provider CloudProvider, driver Driver, reso
 	}
 	c.ResourceProvider[provider][driver] = resource
 
-	// Problem with below approach is that the signature of deploy workflow needs to be generic and part of cloud resource interface
+	// All cloud resources workflows can be registered like this but the
+	// problem with this approach is that the signature of deploy workflow needs to be generic and part of cloud resource interface
 	// e.g DeployWorkflow(ctx workflow.Context, resource CloudResource)
 	// but the above won't work without custom data converter as CloudResource is an interface and temporal will not be able to unmarshal it
 	// so to solve this problem we have to define workflow like this
@@ -116,20 +117,20 @@ func (c *core) RepoProvider(name RepoProvider) RepoProviderActivities {
 		return p
 	}
 
-	panic(ErrProviderNotFound(name.String()))
+	panic(NewProviderNotFoundError(name.String()))
 }
 
 func (c *core) CloudResources(provider CloudProvider, driver Driver) ResourceConstructor {
 	p, ok := c.ResourceProvider[provider]
 	if !ok {
-		panic(ErrProviderNotFound(provider.String()))
+		panic(NewProviderNotFoundError(provider.String()))
 	}
 
 	if r, ok := p[driver]; ok {
 		return r
 	}
 
-	panic(ErrResourceNotFound(driver.String(), provider.String()))
+	panic(NewResourceNotFoundError(driver.String(), provider.String()))
 }
 
 func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
@@ -137,7 +138,7 @@ func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
 		return p
 	}
 
-	panic(ErrProviderNotFound(name.String()))
+	panic(NewProviderNotFoundError(name.String()))
 }
 
 // WithRepoProvider registers a repo provider with the core.

@@ -49,6 +49,9 @@ type (
 
 		// ChildWorkflowOptions creates the child workflow options for the queue given WorkflowIDOptions.
 		ChildWorkflowOptions(options ...WorkflowOptionProvider) workflow.ChildWorkflowOptions
+
+		// Worker creates a worker for the queue.
+		Worker(client client.Client) worker.Worker
 	}
 
 	// QueueOption is the option for a queue.
@@ -67,6 +70,6 @@ type (
 		Suffix() string           // Suffix santizes the suffix of the workflow id and then formats it as a string.
 	}
 
-	// WorkflowOptionProvider is the option for creating a workflow id.
+	// WorkflowOptionProvider provides the option to create a workflow id.
 	WorkflowOptionProvider func(WorkflowOptions)
 )

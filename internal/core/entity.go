@@ -26,7 +26,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/table"
 
-	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/quantm/internal/db"
 )
 
 func (stack *Stack) PreCreate() error { stack.Slug = db.CreateSlug(stack.Name); return nil }

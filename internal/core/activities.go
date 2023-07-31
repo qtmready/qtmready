@@ -23,7 +23,7 @@ import (
 	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/activity"
 
-	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/quantm/internal/db"
 )
 
 var (

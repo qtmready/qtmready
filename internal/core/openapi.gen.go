@@ -26,7 +26,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/scylladb/gocqlx/v2/table"
-	externalRef1 "go.breu.io/ctrlplane/internal/shared"
+	externalRef0 "go.breu.io/quantm/internal/shared"
 )
 
 const (
@@ -412,15 +412,6 @@ type WorkloadCreateRequest struct {
 
 // WorkloadListResponse defines model for WorkloadListResponse.
 type WorkloadListResponse = []Workload
-
-// BadRequest defines the structure of an API error response
-type BadRequest = externalRef1.APIError
-
-// InternalServerError defines the structure of an API error response
-type InternalServerError = externalRef1.APIError
-
-// NotFound defines the structure of an API error response
-type NotFound = externalRef1.APIError
 
 // GetWorkloadParams defines parameters for GetWorkload.
 type GetWorkloadParams struct {
@@ -1179,41 +1170,43 @@ func NewGetWorkloadRequest(server string, params *GetWorkloadParams) (*http.Requ
 		return nil, err
 	}
 
-	queryValues := queryURL.Query()
+	if params != nil {
+		queryValues := queryURL.Query()
 
-	if params.RepoId != nil {
+		if params.RepoId != nil {
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "repo_id", runtime.ParamLocationQuery, *params.RepoId); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "repo_id", runtime.ParamLocationQuery, *params.RepoId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
 				}
 			}
+
 		}
 
-	}
+		if params.StackId != nil {
 
-	if params.StackId != nil {
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "stack_id", runtime.ParamLocationQuery, *params.StackId); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "stack_id", runtime.ParamLocationQuery, *params.StackId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
 				}
 			}
+
 		}
 
+		queryURL.RawQuery = queryValues.Encode()
 	}
-
-	queryURL.RawQuery = queryValues.Encode()
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
@@ -1317,8 +1310,8 @@ type CreateBlueprintResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON201      *Blueprint
-	JSON400      *externalRef1.APIError
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1341,8 +1334,10 @@ type GetBlueprintResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *Blueprint
-	JSON404      *externalRef1.APIError
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON404      *externalRef0.NotFound
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1365,8 +1360,9 @@ type ListReposResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *RepoListResponse
-	JSON404      *externalRef1.APIError
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1389,8 +1385,9 @@ type CreateRepoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON201      *Repo
-	JSON400      *externalRef1.APIError
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1413,8 +1410,10 @@ type GetRepoResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *Repo
-	JSON404      *externalRef1.APIError
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON404      *externalRef0.NotFound
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1437,8 +1436,9 @@ type CreateResourceResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON201      *Resource
-	JSON400      *externalRef1.APIError
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1461,8 +1461,10 @@ type GetResourceResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *ResourceListResponse
-	JSON404      *externalRef1.APIError
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON404      *externalRef0.NotFound
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1485,7 +1487,9 @@ type ListStacksResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *StackListResponse
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1508,8 +1512,9 @@ type CreateStackResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON201      *Stack
-	JSON400      *externalRef1.APIError
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1532,8 +1537,10 @@ type GetStackResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *Stack
-	JSON404      *externalRef1.APIError
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON404      *externalRef0.NotFound
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1556,8 +1563,9 @@ type CreateWorkloadResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON201      *Workload
-	JSON400      *externalRef1.APIError
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1582,8 +1590,9 @@ type GetWorkloadResponse struct {
 	JSON200      *struct {
 		union json.RawMessage
 	}
-	JSON404 *externalRef1.APIError
-	JSON500 *externalRef1.APIError
+	JSON400 *externalRef0.BadRequest
+	JSON401 *externalRef0.Unauthorized
+	JSON500 *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1772,14 +1781,14 @@ func ParseCreateBlueprintResponse(rsp *http.Response) (*CreateBlueprintResponse,
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef1.APIError
+		var dest externalRef0.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1811,15 +1820,29 @@ func ParseGetBlueprintResponse(rsp *http.Response) (*GetBlueprintResponse, error
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef1.APIError
+		var dest externalRef0.NotFound
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1851,15 +1874,22 @@ func ParseListReposResponse(rsp *http.Response) (*ListReposResponse, error) {
 		}
 		response.JSON200 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef1.APIError
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON404 = &dest
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1892,14 +1922,21 @@ func ParseCreateRepoResponse(rsp *http.Response) (*CreateRepoResponse, error) {
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef1.APIError
+		var dest externalRef0.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1931,15 +1968,29 @@ func ParseGetRepoResponse(rsp *http.Response) (*GetRepoResponse, error) {
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef1.APIError
+		var dest externalRef0.NotFound
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1972,14 +2023,21 @@ func ParseCreateResourceResponse(rsp *http.Response) (*CreateResourceResponse, e
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef1.APIError
+		var dest externalRef0.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2011,15 +2069,29 @@ func ParseGetResourceResponse(rsp *http.Response) (*GetResourceResponse, error) 
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef1.APIError
+		var dest externalRef0.NotFound
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2051,8 +2123,22 @@ func ParseListStacksResponse(rsp *http.Response) (*ListStacksResponse, error) {
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2085,14 +2171,21 @@ func ParseCreateStackResponse(rsp *http.Response) (*CreateStackResponse, error) 
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef1.APIError
+		var dest externalRef0.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2124,15 +2217,29 @@ func ParseGetStackResponse(rsp *http.Response) (*GetStackResponse, error) {
 		}
 		response.JSON200 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef1.APIError
+		var dest externalRef0.NotFound
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2165,14 +2272,21 @@ func ParseCreateWorkloadResponse(rsp *http.Response) (*CreateWorkloadResponse, e
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef1.APIError
+		var dest externalRef0.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2206,15 +2320,22 @@ func ParseGetWorkloadResponse(rsp *http.Response) (*GetWorkloadResponse, error) 
 		}
 		response.JSON200 = &dest
 
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef1.APIError
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON404 = &dest
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2289,9 +2410,9 @@ type ServerInterfaceWrapper struct {
 func (w *ServerInterfaceWrapper) CreateBlueprint(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CreateBlueprint
@@ -2313,9 +2434,9 @@ func (w *ServerInterfaceWrapper) GetBlueprint(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter stack_id: %s", err))
 	}
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GetBlueprint
@@ -2330,9 +2451,9 @@ func (w *ServerInterfaceWrapper) GetBlueprint(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) ListRepos(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.ListRepos
@@ -2347,9 +2468,9 @@ func (w *ServerInterfaceWrapper) ListRepos(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) CreateRepo(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CreateRepo
@@ -2371,9 +2492,9 @@ func (w *ServerInterfaceWrapper) GetRepo(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
 	}
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GetRepo
@@ -2388,9 +2509,9 @@ func (w *ServerInterfaceWrapper) GetRepo(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) CreateResource(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CreateResource
@@ -2412,9 +2533,9 @@ func (w *ServerInterfaceWrapper) GetResource(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter stack_id: %s", err))
 	}
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GetResource
@@ -2429,9 +2550,9 @@ func (w *ServerInterfaceWrapper) GetResource(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) ListStacks(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.ListStacks
@@ -2446,9 +2567,9 @@ func (w *ServerInterfaceWrapper) ListStacks(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) CreateStack(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CreateStack
@@ -2470,9 +2591,9 @@ func (w *ServerInterfaceWrapper) GetStack(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter slug: %s", err))
 	}
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GetStack
@@ -2487,9 +2608,9 @@ func (w *ServerInterfaceWrapper) GetStack(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) CreateWorkload(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CreateWorkload
@@ -2504,9 +2625,9 @@ func (w *ServerInterfaceWrapper) CreateWorkload(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GetWorkload(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GetWorkloadParams

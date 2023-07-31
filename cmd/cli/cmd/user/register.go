@@ -24,9 +24,9 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	client "go.breu.io/ctrlplane/cmd/cli/apiClient"
-	"go.breu.io/ctrlplane/cmd/cli/utils/models"
-	"go.breu.io/ctrlplane/internal/auth"
+	client "go.breu.io/quantm/cmd/cli/apiClient"
+	"go.breu.io/quantm/cmd/cli/utils/models"
+	"go.breu.io/quantm/internal/auth"
 )
 
 type (

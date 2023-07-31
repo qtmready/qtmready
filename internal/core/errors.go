@@ -36,11 +36,11 @@ func (e *providerNotFoundError) Error() string {
 	return fmt.Sprintf("provider %s not found. plese register your providers first.", e.name)
 }
 
-func ErrProviderNotFound(name string) error {
+func NewProviderNotFoundError(name string) error {
 	return &providerNotFoundError{name}
 }
 
-func ErrResourceNotFound(name string, provider string) error {
+func NewResourceNotFoundError(name string, provider string) error {
 	return &resourceNotFoundError{name, provider}
 }
 

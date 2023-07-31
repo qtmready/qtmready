@@ -19,7 +19,7 @@ package utils
 
 import (
 	"github.com/charmbracelet/bubbles/textinput"
-	"go.breu.io/ctrlplane/cmd/cli/styles"
+	"go.breu.io/quantm/cmd/cli/styles"
 )
 
 func SetFocusedState(ti *textinput.Model) {

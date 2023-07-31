@@ -23,8 +23,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"go.breu.io/ctrlplane/cmd/cli/styles"
-	"go.breu.io/ctrlplane/cmd/cli/utils"
+	"go.breu.io/quantm/cmd/cli/styles"
+	"go.breu.io/quantm/cmd/cli/utils"
 )
 
 type InputModel struct {

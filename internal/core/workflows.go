@@ -25,8 +25,8 @@ import (
 	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/ctrlplane/internal/core/mutex"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/core/mutex"
+	"go.breu.io/quantm/internal/shared"
 )
 
 const (
@@ -58,6 +58,9 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	logger := workflow.GetLogger(ctx)
 	lockID := "stack." + stackID // stack.<stack id>
 	deployments := make(Deployments)
+
+	// the idea is to save active infra which will be serving all the traffic and use this active infra as reference for next deployment
+	// this is not being used that as active infra for cloud run is being fetched from the cloud which is not an efficient approach
 	activeInfra := make(Infra)
 
 	// create and initialize mutex, initializing mutex will start a mutex workflow
@@ -108,7 +111,6 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	)
 
 	shared.Logger().Info("Get assets workflow")
-
 	logger := workflow.GetLogger(ctx)
 	assets := NewAssets()
 	workloads := SlicedResult[Workload]{}
@@ -267,6 +269,9 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 		}
 	}
 
+	// not tested yet as provision workflow for cloudrun doesn't return any future.
+	// the idea is to run all provision workflows asynchronously and in parallel and wait here for their completion before moving forward
+	// also need to test if we can call child.Get with parent workflow's context
 	for _, child := range children {
 		child.Get(ctx, nil)
 	}
@@ -275,7 +280,6 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 	prWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
 	_ = workflow.SignalExternalWorkflow(ctx, prWorkflowID, "", WorkflowSignalInfraProvisioned.String(), assets).Get(ctx, nil)
 
-	shared.Logger().Info("INFRA PROVISIONED")
 	return nil
 }
 
@@ -449,7 +453,7 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, lock mutex.M
 		deployment := deployments[assets.ChangesetID]
 		deployment.state = InfraProvisioned
 
-		// deployment.OldInfra = activeinfra // All traffic is currently being routed to this infra
+		// deployment.OldInfra = activeinfra  // All traffic is currently being routed to this infra
 		deployment.NewInfra = assets.Infra // handling zero traffic, no workload is deployed
 
 		var execution workflow.Execution

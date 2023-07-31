@@ -24,15 +24,21 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/labstack/echo-contrib/prometheus"
+	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	"go.breu.io/ctrlplane/internal/auth"
-	"go.breu.io/ctrlplane/internal/core"
-	"go.breu.io/ctrlplane/internal/db"
-	"go.breu.io/ctrlplane/internal/providers/github"
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/providers/github"
+	"go.breu.io/quantm/internal/shared"
+)
+
+type (
+	HealthzResponse struct {
+		Status string `json:"status"`
+	}
 )
 
 func main() {
@@ -40,30 +46,28 @@ func main() {
 	// LINK: https://stackoverflow.com/a/46255965/228697.
 	exitcode := 0
 	defer func() {
-		shared.Logger().Debug("exiting ...")
+		shared.Logger().Info("exiting ...")
 		os.Exit(exitcode)
 	}() // all connections are closed, exit with the right code.
 	defer func() { _ = shared.Logger().Sync() }() // flush log buffer.
 	defer db.DB().Session.Close()
 	defer shared.Temporal().Client().Close()
 
-	shared.Logger().Debug("starting ...")
+	shared.Logger().Info("starting ...")
 	// web server based on echo
 	e := echo.New()
+	e.HideBanner = true
 
 	// configure middleware
 	e.Use(middleware.CORS())
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
+	e.Use(echoprometheus.NewMiddleware(shared.Service().GetName()))
 
 	// e.Use(middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte) {
 	// 	body := string(reqBody[:])
 	// 	shared.Logger.Debug("body: %s", body)
 	// }))
-
-	// adding prometheus metrics
-	prom := prometheus.NewPrometheus(shared.Service().GetName(), nil)
-	prom.Use(e)
 
 	// override the defaults
 	e.Validator = &shared.EchoValidator{Validator: shared.Validator()}
@@ -75,6 +79,7 @@ func main() {
 	github.RegisterHandlers(e, github.NewServerHandler(auth.Middleware))
 
 	e.GET("/healthz", healthz)
+	e.GET("/metrics", echoprometheus.NewHandler())
 
 	go func() {
 		if err := e.Start(":8000"); err != nil && err != http.ErrServerClosed {
@@ -82,6 +87,8 @@ func main() {
 			return
 		}
 	}()
+
+	shared.Service().Banner()
 
 	quit := make(chan os.Signal, 1)                      // create a channel to listen to quit signals.
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // setting up the signals to listen to.
@@ -94,12 +101,6 @@ func main() {
 
 	exitcode = 1
 }
-
-type (
-	HealthzResponse struct {
-		Status string `json:"status"`
-	}
-)
 
 // healthz is the health check endpoint.
 //

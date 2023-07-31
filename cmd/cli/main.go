@@ -18,7 +18,7 @@
 package main
 
 import (
-	"go.breu.io/ctrlplane/cmd/cli/cmd"
+	"go.breu.io/quantm/cmd/cli/cmd"
 )
 
 func main() {

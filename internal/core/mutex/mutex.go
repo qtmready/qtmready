@@ -22,7 +22,7 @@ import (
 
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/ctrlplane/internal/shared"
+	"go.breu.io/quantm/internal/shared"
 )
 
 const (
@@ -104,7 +104,6 @@ func (m *Lock) Start(ctx workflow.Context) error {
 }
 
 func (m *Lock) Acquire(ctx workflow.Context) error {
-	shared.Logger().Debug("Acquire lock", "m", m)
 	logger := workflow.GetLogger(ctx)
 	caller := workflow.GetInfo(ctx)
 	logger.Info(

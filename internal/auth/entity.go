@@ -21,7 +21,7 @@ import (
 	"github.com/gocql/gocql"
 	"golang.org/x/crypto/bcrypt"
 
-	"go.breu.io/ctrlplane/internal/db"
+	"go.breu.io/quantm/internal/db"
 )
 
 func (t *Team) PreCreate() error { t.Slug = db.CreateSlug(t.Name); return nil }

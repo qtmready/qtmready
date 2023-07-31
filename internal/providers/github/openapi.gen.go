@@ -25,7 +25,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/scylladb/gocqlx/v2/table"
-	externalRef1 "go.breu.io/ctrlplane/internal/shared"
+	externalRef0 "go.breu.io/quantm/internal/shared"
 )
 
 const (
@@ -203,12 +203,6 @@ type WorkflowResponse struct {
 
 // WorkflowStatus the workflow status
 type WorkflowStatus string
-
-// BadRequest defines the structure of an API error response
-type BadRequest = externalRef1.APIError
-
-// InternalServerError defines the structure of an API error response
-type InternalServerError = externalRef1.APIError
 
 // GithubCompleteInstallationJSONRequestBody defines body for GithubCompleteInstallation for application/json ContentType.
 type GithubCompleteInstallationJSONRequestBody = CompleteInstallationRequest
@@ -545,8 +539,10 @@ type GithubCompleteInstallationResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *WorkflowResponse
 	JSON201      *WorkflowResponse
-	JSON400      *externalRef1.APIError
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON404      *externalRef0.NotFound
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -569,8 +565,9 @@ type GithubGetInstallationsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]Installation
-	JSON400      *externalRef1.APIError
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -593,8 +590,9 @@ type GithubGetReposResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]Repo
-	JSON400      *externalRef1.APIError
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -618,8 +616,8 @@ type GithubWebhookResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *WorkflowResponse
 	JSON201      *WorkflowResponse
-	JSON400      *externalRef1.APIError
-	JSON500      *externalRef1.APIError
+	JSON400      *externalRef0.BadRequest
+	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -711,14 +709,28 @@ func ParseGithubCompleteInstallationResponse(rsp *http.Response) (*GithubComplet
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef1.APIError
+		var dest externalRef0.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest externalRef0.NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -751,14 +763,21 @@ func ParseGithubGetInstallationsResponse(rsp *http.Response) (*GithubGetInstalla
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef1.APIError
+		var dest externalRef0.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -791,14 +810,21 @@ func ParseGithubGetReposResponse(rsp *http.Response) (*GithubGetReposResponse, e
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef1.APIError
+		var dest externalRef0.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -838,14 +864,14 @@ func ParseGithubWebhookResponse(rsp *http.Response) (*GithubWebhookResponse, err
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef1.APIError
+		var dest externalRef0.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.APIError
+		var dest externalRef0.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -888,9 +914,9 @@ type ServerInterfaceWrapper struct {
 func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubCompleteInstallation
@@ -905,9 +931,9 @@ func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) er
 func (w *ServerInterfaceWrapper) GithubGetInstallations(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubGetInstallations
@@ -922,9 +948,9 @@ func (w *ServerInterfaceWrapper) GithubGetInstallations(ctx echo.Context) error 
 func (w *ServerInterfaceWrapper) GithubGetRepos(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{""})
+	ctx.Set(BearerAuthScopes, []string{})
 
-	ctx.Set(APIKeyAuthScopes, []string{""})
+	ctx.Set(APIKeyAuthScopes, []string{})
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubGetRepos

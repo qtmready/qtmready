@@ -22,25 +22,25 @@ import (
 
 	"github.com/spf13/cobra"
 
-	client "go.breu.io/ctrlplane/cmd/cli/apiClient"
-	"go.breu.io/ctrlplane/cmd/cli/cmd/installation"
-	"go.breu.io/ctrlplane/cmd/cli/cmd/user"
-	"go.breu.io/ctrlplane/internal/shared"
+	client "go.breu.io/quantm/cmd/cli/apiClient"
+	"go.breu.io/quantm/cmd/cli/cmd/installation"
+	"go.breu.io/quantm/cmd/cli/cmd/user"
+	"go.breu.io/quantm/internal/shared"
 )
 
 var (
 	// rootCmd represents the base command when called without any subcommands.
 	rootCmd = &cobra.Command{
-		Use:   "ctrlplane",
-		Short: "ctrlplane is a multi stage release rollout engine with pre-emptive rollbacks.",
+		Use:   "quantm",
+		Short: "quantm is a multi stage release rollout engine with pre-emptive rollbacks.",
 		Long: `
-ctrlplane is a multi stage release rollout engine for cloud-native applications. It is designed to be used in
+quantm is a multi stage release rollout engine for cloud-native applications. It is designed to be used in
 conjunction with a CI/CD pipeline & near realtime application monitoring to provide a safe and reliable rollout
 process with rollbacks for microservices.
 
 Currently, it only supports monorepo, but poly repo support is on the roadmap.
 
-To learn more, visit https://breu.io/ctrlplane.
+To learn more, visit https://breu.io/quantm.
   `,
 	}
 )

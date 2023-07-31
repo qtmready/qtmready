@@ -8,7 +8,7 @@ var (
 
 {{.JsonName | lower}}Meta = itable.Metadata{
   M: &table.Metadata{
-    Name: {{.Schema.BreuEntity}},
+    Name: "{{.Schema.BreuEntity}}",
     Columns: {{.JsonName | lower}}Columns,
   },
 }

@@ -23,9 +23,9 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	client "go.breu.io/ctrlplane/cmd/cli/apiClient"
-	"go.breu.io/ctrlplane/internal/providers/github"
-	"go.breu.io/ctrlplane/internal/shared"
+	client "go.breu.io/quantm/cmd/cli/apiClient"
+	"go.breu.io/quantm/internal/providers/github"
+	"go.breu.io/quantm/internal/shared"
 )
 
 func NewCmdInstallationComplete() *cobra.Command {

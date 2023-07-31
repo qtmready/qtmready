@@ -15,19 +15,32 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package client
+package shared
 
-import (
-	"go.breu.io/ctrlplane/internal/core"
-)
-
-func (c *Client) AppList() ([]core.Stack, error) {
-	url := "/apps"
-	reply := make([]core.Stack, 0)
-
-	if err := c.request("GET", url, &reply, nil); err != nil {
-		return reply, err
+type (
+	logger interface {
+		Debug(string, ...any)
+		Error(string, ...any)
+		Info(string, ...any)
+		Printf(string, ...any)
+		Sync() error
+		Trace(string, ...any)
+		Warn(string, ...any)
+		Verbose() bool
 	}
 
-	return reply, nil
+	log struct{}
+)
+
+func (l *log) Debug(msg string, fields ...any)  {}
+func (l *log) Error(msg string, fields ...any)  {}
+func (l *log) Info(msg string, fields ...any)   {}
+func (l *log) Printf(msg string, fields ...any) {}
+func (l *log) Sync() error                      { return nil }
+func (l *log) Trace(msg string, fields ...any)  {}
+func (l *log) Warn(msg string, fields ...any)   {}
+func (l *log) Verbose() bool                    { return false }
+
+func Logger() logger {
+	return &log{}
 }

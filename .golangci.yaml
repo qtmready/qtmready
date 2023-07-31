@@ -1,6 +1,6 @@
 run:
   skip-files:
-  - doc.go
+    - doc.go
 linters:
   enable:
     - asasalint
@@ -29,6 +29,7 @@ linters-settings:
   funlen:
     lines: -1
     statements: 60
+
   grouper:
     # Require the use of grouped global 'const' declarations.
     # Default: false
@@ -45,12 +46,13 @@ linters-settings:
     # Require the use of grouped global 'var' declarations.
     # Default: false
     var-require-grouping: true
+
   gci:
     # Default: ["standard", "default"]
     sections:
       - standard # Standard section: captures all standard packages.
       - default # Default section: contains all imports that could not be matched to another section type.
-      - prefix(go.breu.io/ctrlplane) # Custom section: groups all imports with the specified Prefix.
+      - prefix(go.breu.io/quantum) # Custom section: groups all imports with the specified Prefix.
       - blank # Blank section: contains all imports that could not be matched to another section type.
     # Default: true
     skip-generated: false
@@ -58,12 +60,15 @@ linters-settings:
     # If `true`, make the section order the same as the order of `sections`.
     # Default: false
     custom-order: true
+
   dogsled:
     # Checks assignments with too many blank identifiers.
     # Default: 2
     max-blank-identifiers: 3
+
   interfacebloat:
     max: 15
+
   revive:
     confidence: 0.8
     rules:
@@ -74,3 +79,7 @@ linters-settings:
       - name: use-any
         severity: warning
 
+  custom:
+    kvlogger:
+      path: ./plugins/kvlogger.so
+      description: checks if the logger is used correctly with the right number of arguments
