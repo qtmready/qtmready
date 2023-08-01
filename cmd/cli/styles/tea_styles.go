@@ -15,35 +15,22 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package core
+package styles
 
 import (
 	"fmt"
+
+	"github.com/charmbracelet/lipgloss"
 )
 
-type (
-	providerNotFoundError struct {
-		name string
-	}
+var (
+	FocusedStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("205"))
+	BlurredStyle        = lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+	CursorStyle         = FocusedStyle.Copy()
+	NoStyle             = lipgloss.NewStyle()
+	HelpStyle           = BlurredStyle.Copy()
+	CursorModeHelpStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
 
-	resourceNotFoundError struct {
-		name     string
-		provider string
-	}
+	FocusedButton = FocusedStyle.Copy().Render("[ Submit ]")
+	BlurredButton = fmt.Sprintf("[ %s ]", BlurredStyle.Render("Submit"))
 )
-
-func (e *providerNotFoundError) Error() string {
-	return fmt.Sprintf("provider %s not found. plese register your providers first.", e.name)
-}
-
-func NewProviderNotFoundError(name string) error {
-	return &providerNotFoundError{name}
-}
-
-func NewResourceNotFoundError(name string, provider string) error {
-	return &resourceNotFoundError{name, provider}
-}
-
-func (e *resourceNotFoundError) Error() string {
-	return fmt.Sprintf("resource %s not found. plese register your resource with the provider %s first.", e.name, e.provider)
-}

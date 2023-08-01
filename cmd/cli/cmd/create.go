@@ -15,35 +15,24 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package core
+package cmd
 
 import (
 	"fmt"
+
+	"github.com/spf13/cobra"
 )
 
-type (
-	providerNotFoundError struct {
-		name string
+func NewCmdCreate() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "command for creating a resource",
+		Long:  `command for interactivily creating a resource`,
+
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("cmd: create")
+		},
 	}
 
-	resourceNotFoundError struct {
-		name     string
-		provider string
-	}
-)
-
-func (e *providerNotFoundError) Error() string {
-	return fmt.Sprintf("provider %s not found. plese register your providers first.", e.name)
-}
-
-func NewProviderNotFoundError(name string) error {
-	return &providerNotFoundError{name}
-}
-
-func NewResourceNotFoundError(name string, provider string) error {
-	return &resourceNotFoundError{name, provider}
-}
-
-func (e *resourceNotFoundError) Error() string {
-	return fmt.Sprintf("resource %s not found. plese register your resource with the provider %s first.", e.name, e.provider)
+	return cmd
 }

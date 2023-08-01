@@ -21,6 +21,11 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	client "go.breu.io/quantm/cmd/cli/apiClient"
+	"go.breu.io/quantm/cmd/cli/cmd/installation"
+	"go.breu.io/quantm/cmd/cli/cmd/user"
+	"go.breu.io/quantm/internal/shared"
 )
 
 var (
@@ -29,13 +34,13 @@ var (
 		Use:   "quantm",
 		Short: "quantm is a multi stage release rollout engine with pre-emptive rollbacks.",
 		Long: `
-ctrlplane is a multi stage release rollout engine for cloud-native applications. It is designed to be used in
+quantm is a multi stage release rollout engine for cloud-native applications. It is designed to be used in
 conjunction with a CI/CD pipeline & near realtime application monitoring to provide a safe and reliable rollout
 process with rollbacks for microservices.
 
 Currently, it only supports monorepo, but poly repo support is on the roadmap.
 
-To learn more, visit https://breu.io/ctrlplane.
+To learn more, visit https://breu.io/quantm.
   `,
 	}
 )
@@ -43,6 +48,16 @@ To learn more, visit https://breu.io/ctrlplane.
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	rootCmd.AddCommand(NewCmdInit())
+	rootCmd.AddCommand(user.NewCmdUser())
+	rootCmd.AddCommand(installation.NewCmdInstallation())
+	rootCmd.AddCommand(NewCmdVersion())
+	rootCmd.AddCommand(NewCmdCDelete())
+	rootCmd.AddCommand(NewCmdCGet())
+	rootCmd.AddCommand(NewCmdCreate())
+	rootCmd.AddCommand(NewCmdEdit())
+	rootCmd.AddCommand(NewCmdList())
+
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
@@ -50,4 +65,6 @@ func Execute() {
 }
 
 func init() {
+	url := shared.CLI().GetURL()
+	client.Client.Init(url) // TODO: change to singleton pattern
 }

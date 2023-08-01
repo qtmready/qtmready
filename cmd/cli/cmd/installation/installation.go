@@ -15,35 +15,25 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package core
+package installation
 
 import (
 	"fmt"
+
+	"github.com/spf13/cobra"
 )
 
-type (
-	providerNotFoundError struct {
-		name string
+func NewCmdInstallation() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "installation",
+		Short: "command for installation operations.",
+		Long:  `command for installation operations`,
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Print("error: must specify a sub command, execute quantum installation --help for subcommands")
+		},
 	}
 
-	resourceNotFoundError struct {
-		name     string
-		provider string
-	}
-)
+	cmd.AddCommand(NewCmdInstallationComplete())
 
-func (e *providerNotFoundError) Error() string {
-	return fmt.Sprintf("provider %s not found. plese register your providers first.", e.name)
-}
-
-func NewProviderNotFoundError(name string) error {
-	return &providerNotFoundError{name}
-}
-
-func NewResourceNotFoundError(name string, provider string) error {
-	return &resourceNotFoundError{name, provider}
-}
-
-func (e *resourceNotFoundError) Error() string {
-	return fmt.Sprintf("resource %s not found. plese register your resource with the provider %s first.", e.name, e.provider)
+	return cmd
 }

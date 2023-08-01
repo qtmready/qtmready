@@ -49,10 +49,11 @@ func (s *ServerHandler) CreateBlueprint(ctx echo.Context) error {
 	}
 
 	blueprint := &Blueprint{
-		Name:          request.Name,
-		Regions:       request.Regions,
-		StackID:       request.StackID,
-		RolloutBudget: request.RolloutBudget,
+		Name:           request.Name,
+		Regions:        request.Regions,
+		StackID:        request.StackID,
+		RolloutBudget:  request.RolloutBudget,
+		ProviderConfig: request.ProviderConfig,
 	}
 
 	if err := db.Save(blueprint); err != nil {
@@ -80,11 +81,13 @@ func (s *ServerHandler) CreateWorkload(ctx echo.Context) error {
 	}
 
 	workload := &Workload{
-		Name:     request.Name,
-		Kind:     request.Kind,
-		RepoID:   request.RepoID,
-		RepoPath: request.RepoPath,
-		StackID:  request.StackID,
+		Name:       request.Name,
+		Kind:       request.Kind,
+		RepoID:     request.RepoID,
+		RepoPath:   request.RepoPath,
+		StackID:    request.StackID,
+		ResourceID: request.ResourceID,
+		Container:  request.Container,
 	}
 
 	if err := db.Save(workload); err != nil {
@@ -131,8 +134,10 @@ func (s *ServerHandler) CreateResource(ctx echo.Context) error {
 		Name:        request.Name,
 		Provider:    request.Provider,
 		StackID:     request.StackID,
-		Driver:      request.Driver,
-		IsImmutable: &request.Immutable,
+		// TODO: check why assinging directly wasn't working
+		Driver:      Driver(request.Driver),
+		Config:      request.Config,
+		IsImmutable: request.Immutable,
 	}
 
 	if err := db.Save(resource); err != nil {

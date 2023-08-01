@@ -15,28 +15,58 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package cmd
+package installation
 
 import (
-	"fmt"
+	"context"
+	"net/http"
+	"os"
 
 	"github.com/spf13/cobra"
-
+	client "go.breu.io/quantm/cmd/cli/apiClient"
+	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/shared"
 )
 
-var ()
-
-func NewCmdVersion() *cobra.Command {
+func NewCmdInstallationComplete() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "version",
-		Short: "Show the current quantm version.",
-		Long:  `Show the current quantm version.`,
+		Use:   "complete",
+		Short: "Completes github app installation",
+		Long:  `Completes github app installation`,
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Println("cmd: version")
-			fmt.Println(shared.Service().GetVersion()) // TODO: integrate versioning
+			CompleteInstallation(cmd)
 		},
 	}
 
+	cmd.Flags().Int64("installation_id", 0, "give installation id of the github app")
+
 	return cmd
+}
+
+func CompleteInstallation(cmd *cobra.Command) {
+	id, _ := cmd.Flags().GetInt64("installation_id")
+
+	completeInstallationBody := github.CompleteInstallationRequest{
+		InstallationId: id,
+		SetupAction:    github.SetupActionCreated,
+	}
+
+	c := client.Client
+	r, err := c.GithubClient.GithubCompleteInstallation(context.Background(), completeInstallationBody, AddAuthHeader)
+	c.CheckError(err)
+	c.CheckStatus(r, 200)
+
+	println("Github app installation complete")
+}
+
+func AddAuthHeader(ctx context.Context, req *http.Request) error {
+
+	//TODO: get the file path as an environment variable
+	b, err := os.ReadFile(shared.CLI().GetConfigFile())
+	if err != nil {
+		panic(err)
+	}
+	token := string(b)
+	req.Header.Set("authorization", "Token "+token)
+	return nil
 }

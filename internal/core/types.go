@@ -46,6 +46,8 @@ const (
 )
 
 type (
+	Infra               map[gocql.UUID]CloudResource // Map of resource Name and provider
+	JsonInfra           map[gocql.UUID][]byte
 	SlicedResult[T any] struct {
 		Data []T `json:"data"`
 	}
@@ -63,6 +65,10 @@ type (
 	Deployment struct {
 		state     State
 		workflows ChildWorkflows
+		OldInfra  JsonInfra
+		NewInfra  JsonInfra
+		// rwpair    map[string][]Workload // resource name and workloads
+
 	}
 
 	Deployments     map[gocql.UUID]*Deployment // deployments against a changesetID.
@@ -70,20 +76,28 @@ type (
 
 	// Assets contains all the assets fetched from DB against a stack.
 	Assets struct {
-		Repos           []Repo
-		Resources       []Resource
-		Workloads       []Workload
-		Blueprint       Blueprint
-		ResourcesConfig []ResourceConfig
-		ChangesetID     gocql.UUID
+		Repos       []Repo     // stack repos
+		Resources   []Resource // stack cloud resources
+		Workloads   []Workload // stack workloads
+		Blueprint   Blueprint  // stack blueprint
+		ChangesetID gocql.UUID
+		Infra       JsonInfra
 	}
 )
 
 func NewAssets() *Assets {
 	return &Assets{
-		Repos:           make([]Repo, 0),
-		Resources:       make([]Resource, 0),
-		Workloads:       make([]Workload, 0),
-		ResourcesConfig: make([]ResourceConfig, 0),
+		Repos:     make([]Repo, 0),
+		Resources: make([]Resource, 0),
+		Workloads: make([]Workload, 0),
+		Infra:     make(JsonInfra),
 	}
+}
+
+func NewDeployment() *Deployment {
+	d := new(Deployment)
+	d.NewInfra = make(JsonInfra)
+	d.OldInfra = make(JsonInfra)
+	// d.rwpair = make(map[string][]Workload)
+	return d
 }

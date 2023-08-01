@@ -15,35 +15,12 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package core
+package utils
 
-import (
-	"fmt"
-)
+import "github.com/spf13/cobra"
 
-type (
-	providerNotFoundError struct {
-		name string
+func AddRequiredFlags(cmd *cobra.Command, flags ...string) {
+	for _, f := range flags {
+		cmd.MarkFlagRequired(f)
 	}
-
-	resourceNotFoundError struct {
-		name     string
-		provider string
-	}
-)
-
-func (e *providerNotFoundError) Error() string {
-	return fmt.Sprintf("provider %s not found. plese register your providers first.", e.name)
-}
-
-func NewProviderNotFoundError(name string) error {
-	return &providerNotFoundError{name}
-}
-
-func NewResourceNotFoundError(name string, provider string) error {
-	return &resourceNotFoundError{name, provider}
-}
-
-func (e *resourceNotFoundError) Error() string {
-	return fmt.Sprintf("resource %s not found. plese register your resource with the provider %s first.", e.name, e.provider)
 }

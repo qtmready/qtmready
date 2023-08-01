@@ -15,35 +15,21 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package core
+package utils
 
 import (
-	"fmt"
+	"github.com/charmbracelet/bubbles/textinput"
+	"go.breu.io/quantm/cmd/cli/styles"
 )
 
-type (
-	providerNotFoundError struct {
-		name string
-	}
-
-	resourceNotFoundError struct {
-		name     string
-		provider string
-	}
-)
-
-func (e *providerNotFoundError) Error() string {
-	return fmt.Sprintf("provider %s not found. plese register your providers first.", e.name)
+func SetFocusedState(ti *textinput.Model) {
+	ti.Focus()
+	ti.PromptStyle = styles.FocusedStyle
+	ti.TextStyle = styles.FocusedStyle
 }
 
-func NewProviderNotFoundError(name string) error {
-	return &providerNotFoundError{name}
-}
-
-func NewResourceNotFoundError(name string, provider string) error {
-	return &resourceNotFoundError{name, provider}
-}
-
-func (e *resourceNotFoundError) Error() string {
-	return fmt.Sprintf("resource %s not found. plese register your resource with the provider %s first.", e.name, e.provider)
+func RemoveFocusedState(ti *textinput.Model) {
+	ti.Blur()
+	ti.PromptStyle = styles.NoStyle
+	ti.TextStyle = styles.NoStyle
 }
