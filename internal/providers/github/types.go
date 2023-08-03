@@ -87,6 +87,10 @@ type (
 		SetupAction    SetupAction `json:"setup_action"`
 		TeamID         gocql.UUID  `json:"team_id"`
 	}
+
+	ArtifactReadySignal struct {
+		image string
+	}
 )
 
 // Webhook event types. We get this from the header `X-Github-Event`.
@@ -150,4 +154,5 @@ const (
 	WorkflowSignalInstallationEvent    shared.WorkflowSignal = "installation_event"
 	WorkflowSignalCompleteInstallation shared.WorkflowSignal = "complete_installation"
 	WorkflowSignalPullRequestProcessed shared.WorkflowSignal = "pull_request_processed"
+	WorkflowSignalArtifactReady        shared.WorkflowSignal = "artifact_ready"
 )

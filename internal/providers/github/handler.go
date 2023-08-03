@@ -54,7 +54,7 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 		return err
 	}
 
-	payload := &CompleteInstallationSignal{request.InstallationId, request.SetupAction, teamID}
+	payload := &CompleteInstallationSignal{request.InstallationID, request.SetupAction, teamID}
 
 	workflows := &Workflows{}
 	opts := shared.Temporal().
@@ -107,6 +107,35 @@ func (s *ServerHandler) GithubGetInstallations(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(http.StatusOK, result)
+}
+
+// GithubArtifactReady API is called by github action after building and pushing the build artifact
+// After receiving pull request webhook, Quantum waits for the artifact ready event to start deployment
+func (s *ServerHandler) GithubArtifactReady(ctx echo.Context) error {
+	request := &ArtifactReadyRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	workflowID := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowID(
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlockID(request.InstallationID),
+			shared.WithWorkflowElement("repo"),
+			shared.WithWorkflowElementID(request.RepoID),
+			shared.WithWorkflowMod(WebhookEventPullRequest.String()),
+			shared.WithWorkflowModID(request.PullRequestID),
+		)
+
+	payload := &ArtifactReadySignal{image: request.Image}
+
+	err := shared.Temporal().Client().SignalWorkflow(ctx.Request().Context(), workflowID, "", WorkflowSignalArtifactReady.String(), payload)
+	if err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
 }
 
 func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {

@@ -116,9 +116,34 @@ func (v *WorkflowStatus) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// ArtifactReadyRequest defines model for ArtifactReadyRequest.
+type ArtifactReadyRequest struct {
+	Image          string `cql:"image" json:"image"`
+	InstallationID string `cql:"installation_id" json:"installation_id"`
+	PullRequestID  string `cql:"pull_request_id" json:"pull_request_id"`
+	RepoID         string `cql:"repo_id" json:"repo_id"`
+}
+
+var (
+	artifactreadyrequestColumns = []string{"image", "installation_id", "pull_request_id", "repo_id"}
+
+	artifactreadyrequestMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "github_artifact",
+			Columns: artifactreadyrequestColumns,
+		},
+	}
+
+	artifactreadyrequestTable = itable.New(*artifactreadyrequestMeta.M)
+)
+
+func (artifactreadyrequest *ArtifactReadyRequest) GetTable() itable.ITable {
+	return artifactreadyrequestTable
+}
+
 // CompleteInstallationRequest complete the installation given the installation_id & setup_action
 type CompleteInstallationRequest struct {
-	InstallationId int64       `json:"installation_id"`
+	InstallationID int64       `json:"installation_id"`
 	SetupAction    SetupAction `json:"setup_action"`
 }
 
@@ -196,11 +221,18 @@ type WorkflowResponse struct {
 // WorkflowStatus the workflow status
 type WorkflowStatus string
 
+// GithubArtifactReadyJSONRequestBody defines body for GithubArtifactReady for application/json ContentType.
+type GithubArtifactReadyJSONRequestBody = ArtifactReadyRequest
+
 // GithubCompleteInstallationJSONRequestBody defines body for GithubCompleteInstallation for application/json ContentType.
 type GithubCompleteInstallationJSONRequestBody = CompleteInstallationRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// GitHub release artifact ready
+	// (POST /providers/github/artifact-ready)
+	GithubArtifactReady(ctx echo.Context) error
+
 	// Complete GitHub App installation
 	// (POST /providers/github/complete-installation)
 	GithubCompleteInstallation(ctx echo.Context) error
@@ -224,6 +256,21 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// GithubArtifactReady converts echo context to params.
+
+func (w *ServerInterfaceWrapper) GithubArtifactReady(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(APIKeyAuthScopes, []string{})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.GithubArtifactReady
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
 }
 
 // GithubCompleteInstallation converts echo context to params.
@@ -316,6 +363,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.POST(baseURL+"/providers/github/artifact-ready", wrapper.GithubArtifactReady)
 	router.POST(baseURL+"/providers/github/complete-installation", wrapper.GithubCompleteInstallation)
 	router.GET(baseURL+"/providers/github/installations", wrapper.GithubGetInstallations)
 	router.GET(baseURL+"/providers/github/repos", wrapper.GithubGetRepos)
