@@ -34,6 +34,7 @@ type (
 		RepoID           gocql.UUID
 		SenderWorkflowID string
 		TriggerID        int64
+		Image            string
 	}
 
 	FutureHandler  func(workflow.Future)               // FutureHandler is the signature of the future handler function.

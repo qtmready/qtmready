@@ -16,12 +16,3 @@
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
 package shared
-
-func StackWorkflowID(id string) string {
-	return Temporal().
-		Queue(CoreQueue).
-		WorkflowID(
-			WithWorkflowBlock("stack"),
-			WithWorkflowBlockID(id),
-		)
-}

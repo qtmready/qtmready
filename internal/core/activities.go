@@ -92,3 +92,8 @@ func (a *Activities) CreateChangeset(ctx context.Context, changeSet *ChangeSet, 
 	err := db.CreateWithID(changeSet, id)
 	return err
 }
+
+func (a *Activities) TagImage(ctx context.Context, tag string) error {
+
+	return nil
+}

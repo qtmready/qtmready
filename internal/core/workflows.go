@@ -40,6 +40,7 @@ type (
 		StackID     string
 		RepoID      gocql.UUID
 		ChangeSetID gocql.UUID
+		Image       string
 	}
 )
 
@@ -177,6 +178,9 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 			return err
 		}
 	}
+
+	// Tag the build image with changeset ID
+	workflow.ExecuteActivity(actx, activities.TagImage, payload.Image, blueprint.re).Get(nil, nil)
 
 	// get commits against the repos
 	repoMarker := make([]ChangeSetRepoMarker, len(repos.Data))
