@@ -158,6 +158,11 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	logger := workflow.GetLogger(ctx)
 	// status := &PullRequestWorkflowStatus{Complete: false}
 
+	// wait for artifact to generate and push to registery
+	ch := workflow.GetSignalChannel(ctx, WorkflowSignalArtifactReady.String())
+	artifact := &ArtifactReadySignal{}
+	ch.Receive(ctx, artifact)
+
 	// setting activity options
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
@@ -172,16 +177,20 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 		return err
 	}
 
-	logger.Debug("Got core repo")
-
 	// get core workflow ID for this stack
-	corePRWfID := shared.StackWorkflowID(coreRepo.StackID.String())
+	corePRWfID := shared.Temporal().
+		Queue(shared.CoreQueue).
+		WorkflowID(
+			shared.WithWorkflowBlock("stack"),
+			shared.WithWorkflowBlockID(coreRepo.StackID.String()),
+		)
 
 	// payload for core stack workflow
 	signalPayload := &shared.PullRequestSignal{
 		RepoID:           coreRepo.ID,
 		SenderWorkflowID: workflow.GetInfo(ctx).WorkflowExecution.ID,
 		TriggerID:        payload.PullRequest.ID,
+		Image:            artifact.Image,
 	}
 
 	// signal core stack workflow

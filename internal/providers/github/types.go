@@ -89,7 +89,7 @@ type (
 	}
 
 	ArtifactReadySignal struct {
-		image string
+		Image string
 	}
 )
 
