@@ -510,7 +510,7 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// CreateBlueprint request with any body
+	// CreateBlueprintWithBody request with any body
 	CreateBlueprintWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateBlueprint(ctx context.Context, body CreateBlueprintJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -521,7 +521,7 @@ type ClientInterface interface {
 	// ListRepos request
 	ListRepos(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateRepo request with any body
+	// CreateRepoWithBody request with any body
 	CreateRepoWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateRepo(ctx context.Context, body CreateRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -529,7 +529,7 @@ type ClientInterface interface {
 	// GetRepo request
 	GetRepo(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateResource request with any body
+	// CreateResourceWithBody request with any body
 	CreateResourceWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateResource(ctx context.Context, body CreateResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -540,7 +540,7 @@ type ClientInterface interface {
 	// ListStacks request
 	ListStacks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateStack request with any body
+	// CreateStackWithBody request with any body
 	CreateStackWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateStack(ctx context.Context, body CreateStackJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -548,7 +548,7 @@ type ClientInterface interface {
 	// GetStack request
 	GetStack(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateWorkload request with any body
+	// CreateWorkloadWithBody request with any body
 	CreateWorkloadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateWorkload(ctx context.Context, body CreateWorkloadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -1259,50 +1259,50 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// CreateBlueprint request with any body
+	// CreateBlueprintWithBodyWithResponse request with any body
 	CreateBlueprintWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBlueprintResponse, error)
 
 	CreateBlueprintWithResponse(ctx context.Context, body CreateBlueprintJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateBlueprintResponse, error)
 
-	// GetBlueprint request
+	// GetBlueprintWithResponse request
 	GetBlueprintWithResponse(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*GetBlueprintResponse, error)
 
-	// ListRepos request
+	// ListReposWithResponse request
 	ListReposWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListReposResponse, error)
 
-	// CreateRepo request with any body
+	// CreateRepoWithBodyWithResponse request with any body
 	CreateRepoWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateRepoResponse, error)
 
 	CreateRepoWithResponse(ctx context.Context, body CreateRepoJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateRepoResponse, error)
 
-	// GetRepo request
+	// GetRepoWithResponse request
 	GetRepoWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetRepoResponse, error)
 
-	// CreateResource request with any body
+	// CreateResourceWithBodyWithResponse request with any body
 	CreateResourceWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateResourceResponse, error)
 
 	CreateResourceWithResponse(ctx context.Context, body CreateResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateResourceResponse, error)
 
-	// GetResource request
+	// GetResourceWithResponse request
 	GetResourceWithResponse(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*GetResourceResponse, error)
 
-	// ListStacks request
+	// ListStacksWithResponse request
 	ListStacksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListStacksResponse, error)
 
-	// CreateStack request with any body
+	// CreateStackWithBodyWithResponse request with any body
 	CreateStackWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateStackResponse, error)
 
 	CreateStackWithResponse(ctx context.Context, body CreateStackJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateStackResponse, error)
 
-	// GetStack request
+	// GetStackWithResponse request
 	GetStackWithResponse(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*GetStackResponse, error)
 
-	// CreateWorkload request with any body
+	// CreateWorkloadWithBodyWithResponse request with any body
 	CreateWorkloadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWorkloadResponse, error)
 
 	CreateWorkloadWithResponse(ctx context.Context, body CreateWorkloadJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWorkloadResponse, error)
 
-	// GetWorkload request
+	// GetWorkloadWithResponse request
 	GetWorkloadWithResponse(ctx context.Context, params *GetWorkloadParams, reqEditors ...RequestEditorFn) (*GetWorkloadResponse, error)
 }
 

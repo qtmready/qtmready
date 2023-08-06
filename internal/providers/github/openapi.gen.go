@@ -280,7 +280,7 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// GithubCompleteInstallation request with any body
+	// GithubCompleteInstallationWithBody request with any body
 	GithubCompleteInstallationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	GithubCompleteInstallation(ctx context.Context, body GithubCompleteInstallationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -519,18 +519,18 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// GithubCompleteInstallation request with any body
+	// GithubCompleteInstallationWithBodyWithResponse request with any body
 	GithubCompleteInstallationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error)
 
 	GithubCompleteInstallationWithResponse(ctx context.Context, body GithubCompleteInstallationJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error)
 
-	// GithubGetInstallations request
+	// GithubGetInstallationsWithResponse request
 	GithubGetInstallationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubGetInstallationsResponse, error)
 
-	// GithubGetRepos request
+	// GithubGetReposWithResponse request
 	GithubGetReposWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubGetReposResponse, error)
 
-	// GithubWebhook request
+	// GithubWebhookWithResponse request
 	GithubWebhookWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubWebhookResponse, error)
 }
 
