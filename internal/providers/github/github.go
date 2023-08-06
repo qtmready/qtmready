@@ -26,7 +26,7 @@ import (
 	"sync"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	gh "github.com/google/go-github/v50/github"
+	gh "github.com/google/go-github/v53/github"
 	"github.com/ilyakaznacheev/cleanenv"
 )
 
