@@ -37,10 +37,11 @@ const (
 type (
 	Workflows        struct{}
 	GetAssetsPayload struct {
-		StackID     string
-		RepoID      gocql.UUID
-		ChangeSetID gocql.UUID
-		Image       string
+		StackID       string
+		RepoID        gocql.UUID
+		ChangeSetID   gocql.UUID
+		Image         string
+		ImageRegistry string
 	}
 )
 
@@ -180,7 +181,13 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	}
 
 	// Tag the build image with changeset ID
-	workflow.ExecuteActivity(actx, activities.TagImage, payload.Image, blueprint.re).Get(nil, nil)
+	switch payload.ImageRegistry {
+	case "gcp":
+		workflow.ExecuteActivity(actx, activities.TagGcpImage, payload.Image, payload.ChangeSetID).Get(nil, nil)
+		break
+	default:
+		shared.Logger().Error("This image registery is not supported in quantum yet", "registery", payload.ImageRegistry)
+	}
 
 	// get commits against the repos
 	repoMarker := make([]ChangeSetRepoMarker, len(repos.Data))
