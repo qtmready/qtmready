@@ -4,6 +4,32 @@ info:
   version: 0.0.1
 
 paths:
+  /core/alerts/{alert}:
+    post:
+      summary: Receive alerts
+      description: Receive alerts
+      operationId: Receive-alerts
+      security:
+        - BearerAuth: []
+        - APIKeyAuth: []
+      tags:
+        - core
+      parameters:
+        - name: alert
+          in: path
+          description: type of alerts
+          required: true
+          schema:
+            type: string
+            format: uuid
+            x-go-type: string
+      requestBody:
+        description: alerts
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReceiveAlertsRequest"
+
   /core/blueprints:
     post:
       summary: Create blueprint
@@ -387,6 +413,41 @@ components:
       $ref: "../shared/openapi.spec.yaml#/components/securitySchemes/APIKeyAuth"
 
   schemas:
+    ReceiveAlertsRequest:
+      type: object
+      properties:
+        version:
+          type: string
+        groupKey:
+          type: string
+        truncatedAlerts:
+          type: integer
+        status:
+          type: string
+        receiver:
+          type: string
+        groupLabels:
+          type: object
+        commonLabels:
+          type: object
+        commonAnnotations:
+          type: object
+        externalURL:
+          type: string
+        alerts:
+          type: array
+      required:
+        - version
+        - groupKey
+        - truncatedAlerts
+        - status
+        - receiver
+        - groupLabels
+        - commonLabels
+        - commonAnnotations
+        - externalURL
+        - alerts
+
     BlueprintCreateRequest:
       type: object
       properties:

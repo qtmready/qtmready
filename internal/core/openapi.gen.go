@@ -225,6 +225,20 @@ type CloudProvider string
 // Driver gke, cloudrun, pubsub, s3, sqs, sns, dynamodb, postgres, mysql etc
 type Driver string
 
+// ReceiveAlertsRequest defines model for ReceiveAlertsRequest.
+type ReceiveAlertsRequest struct {
+	Alerts            []interface{}          `json:"alerts"`
+	CommonAnnotations map[string]interface{} `json:"commonAnnotations"`
+	CommonLabels      map[string]interface{} `json:"commonLabels"`
+	ExternalURL       string                 `json:"externalURL"`
+	GroupKey          string                 `json:"groupKey"`
+	GroupLabels       map[string]interface{} `json:"groupLabels"`
+	Receiver          string                 `json:"receiver"`
+	Status            string                 `json:"status"`
+	TruncatedAlerts   int                    `json:"truncatedAlerts"`
+	Version           string                 `json:"version"`
+}
+
 // Repo defines model for Repo.
 type Repo struct {
 	CreatedAt     time.Time    `cql:"created_at" json:"created_at"`
@@ -422,6 +436,9 @@ type GetWorkloadParams struct {
 	StackId *string `form:"stack_id,omitempty" json:"stack_id,omitempty"`
 }
 
+// ReceiveAlertsJSONRequestBody defines body for ReceiveAlerts for application/json ContentType.
+type ReceiveAlertsJSONRequestBody = ReceiveAlertsRequest
+
 // CreateBlueprintJSONRequestBody defines body for CreateBlueprint for application/json ContentType.
 type CreateBlueprintJSONRequestBody = BlueprintCreateRequest
 
@@ -510,6 +527,11 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// ReceiveAlertsWithBody request with any body
+	ReceiveAlertsWithBody(ctx context.Context, alert string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	ReceiveAlerts(ctx context.Context, alert string, body ReceiveAlertsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateBlueprintWithBody request with any body
 	CreateBlueprintWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -555,6 +577,30 @@ type ClientInterface interface {
 
 	// GetWorkload request
 	GetWorkload(ctx context.Context, params *GetWorkloadParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) ReceiveAlertsWithBody(ctx context.Context, alert string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReceiveAlertsRequestWithBody(c.Server, alert, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) ReceiveAlerts(ctx context.Context, alert string, body ReceiveAlertsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewReceiveAlertsRequest(c.Server, alert, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) CreateBlueprintWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -759,6 +805,53 @@ func (c *Client) GetWorkload(ctx context.Context, params *GetWorkloadParams, req
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewReceiveAlertsRequest calls the generic ReceiveAlerts builder with application/json body
+func NewReceiveAlertsRequest(server string, alert string, body ReceiveAlertsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewReceiveAlertsRequestWithBody(server, alert, "application/json", bodyReader)
+}
+
+// NewReceiveAlertsRequestWithBody generates requests for ReceiveAlerts with any type of body
+func NewReceiveAlertsRequestWithBody(server string, alert string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "alert", runtime.ParamLocationPath, alert)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/alerts/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
 }
 
 // NewCreateBlueprintRequest calls the generic CreateBlueprint builder with application/json body
@@ -1259,6 +1352,11 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// ReceiveAlertsWithBodyWithResponse request with any body
+	ReceiveAlertsWithBodyWithResponse(ctx context.Context, alert string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReceiveAlertsResponse, error)
+
+	ReceiveAlertsWithResponse(ctx context.Context, alert string, body ReceiveAlertsJSONRequestBody, reqEditors ...RequestEditorFn) (*ReceiveAlertsResponse, error)
+
 	// CreateBlueprintWithBodyWithResponse request with any body
 	CreateBlueprintWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBlueprintResponse, error)
 
@@ -1304,6 +1402,27 @@ type ClientWithResponsesInterface interface {
 
 	// GetWorkloadWithResponse request
 	GetWorkloadWithResponse(ctx context.Context, params *GetWorkloadParams, reqEditors ...RequestEditorFn) (*GetWorkloadResponse, error)
+}
+
+type ReceiveAlertsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+}
+
+// Status returns HTTPResponse.Status
+func (r ReceiveAlertsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r ReceiveAlertsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type CreateBlueprintResponse struct {
@@ -1611,6 +1730,23 @@ func (r GetWorkloadResponse) StatusCode() int {
 	return 0
 }
 
+// ReceiveAlertsWithBodyWithResponse request with arbitrary body returning *ReceiveAlertsResponse
+func (c *ClientWithResponses) ReceiveAlertsWithBodyWithResponse(ctx context.Context, alert string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*ReceiveAlertsResponse, error) {
+	rsp, err := c.ReceiveAlertsWithBody(ctx, alert, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReceiveAlertsResponse(rsp)
+}
+
+func (c *ClientWithResponses) ReceiveAlertsWithResponse(ctx context.Context, alert string, body ReceiveAlertsJSONRequestBody, reqEditors ...RequestEditorFn) (*ReceiveAlertsResponse, error) {
+	rsp, err := c.ReceiveAlerts(ctx, alert, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseReceiveAlertsResponse(rsp)
+}
+
 // CreateBlueprintWithBodyWithResponse request with arbitrary body returning *CreateBlueprintResponse
 func (c *ClientWithResponses) CreateBlueprintWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBlueprintResponse, error) {
 	rsp, err := c.CreateBlueprintWithBody(ctx, contentType, body, reqEditors...)
@@ -1757,6 +1893,22 @@ func (c *ClientWithResponses) GetWorkloadWithResponse(ctx context.Context, param
 		return nil, err
 	}
 	return ParseGetWorkloadResponse(rsp)
+}
+
+// ParseReceiveAlertsResponse parses an HTTP response from a ReceiveAlertsWithResponse call
+func ParseReceiveAlertsResponse(rsp *http.Response) (*ReceiveAlertsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &ReceiveAlertsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	return response, nil
 }
 
 // ParseCreateBlueprintResponse parses an HTTP response from a CreateBlueprintWithResponse call
@@ -2348,6 +2500,10 @@ func ParseGetWorkloadResponse(rsp *http.Response) (*GetWorkloadResponse, error) 
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Receive alerts
+	// (POST /core/alerts/{alert})
+	ReceiveAlerts(ctx echo.Context) error
+
 	// Create blueprint
 	// (POST /core/blueprints)
 	CreateBlueprint(ctx echo.Context) error
@@ -2403,6 +2559,30 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// ReceiveAlerts converts echo context to params.
+
+func (w *ServerInterfaceWrapper) ReceiveAlerts(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "alert" -------------
+	var alert string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "alert", runtime.ParamLocationPath, ctx.Param("alert"), &alert)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter alert: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(APIKeyAuthScopes, []string{})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.ReceiveAlerts
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
 }
 
 // CreateBlueprint converts echo context to params.
@@ -2680,6 +2860,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.POST(baseURL+"/core/alerts/:alert", wrapper.ReceiveAlerts)
 	router.POST(baseURL+"/core/blueprints", wrapper.CreateBlueprint)
 	router.GET(baseURL+"/core/blueprints/:stack_id", wrapper.GetBlueprint)
 	router.GET(baseURL+"/core/repos", wrapper.ListRepos)
