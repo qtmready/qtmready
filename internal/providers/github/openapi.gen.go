@@ -34,9 +34,49 @@ const (
 )
 
 var (
-	ErrInvalidSetupAction    = errors.New("invalid SetupAction value")
-	ErrInvalidWorkflowStatus = errors.New("invalid WorkflowStatus value")
+	ErrInvalidOCIImageRegistry = errors.New("invalid OCIImageRegistry value")
+	ErrInvalidSetupAction      = errors.New("invalid SetupAction value")
+	ErrInvalidWorkflowStatus   = errors.New("invalid WorkflowStatus value")
 )
+
+type (
+	OCIImageRegistryMapType map[string]OCIImageRegistry // OCIImageRegistryMapType is a quick lookup map for OCIImageRegistry.
+)
+
+// Defines values for OCIImageRegistry.
+const (
+	OCIImageRegistryGCPArtifactRegistry  OCIImageRegistry = "GCPArtifactRegistry"
+	OCIImageRegistryGCPContainerRegistry OCIImageRegistry = "GCPContainerRegistry"
+)
+
+// OCIImageRegistryValues returns all known values for OCIImageRegistry.
+var (
+	OCIImageRegistryMap = OCIImageRegistryMapType{
+		OCIImageRegistryGCPArtifactRegistry.String():  OCIImageRegistryGCPArtifactRegistry,
+		OCIImageRegistryGCPContainerRegistry.String(): OCIImageRegistryGCPContainerRegistry,
+	}
+)
+
+/*
+ * Helper methods for OCIImageRegistry for easy marshalling and unmarshalling.
+ */
+func (v OCIImageRegistry) String() string               { return string(v) }
+func (v OCIImageRegistry) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
+func (v *OCIImageRegistry) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	val, ok := OCIImageRegistryMap[s]
+	if !ok {
+		return ErrInvalidOCIImageRegistry
+	}
+
+	*v = val
+
+	return nil
+}
 
 type (
 	SetupActionMapType map[string]SetupAction // SetupActionMapType is a quick lookup map for SetupAction.
@@ -124,9 +164,36 @@ func (v *WorkflowStatus) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// ArtifactReadyRequest defines model for ArtifactReadyRequest.
+type ArtifactReadyRequest struct {
+	Digest         string           `cql:"digest" json:"digest"`
+	Image          string           `cql:"image" json:"image"`
+	InstallationID string           `cql:"installation_id" json:"installation_id"`
+	PullRequestID  string           `cql:"pull_request_id" json:"pull_request_id"`
+	Registry       OCIImageRegistry `cql:"registry" json:"registry"`
+	RepoID         string           `cql:"repo_id" json:"repo_id"`
+}
+
+var (
+	artifactreadyrequestColumns = []string{"digest", "image", "installation_id", "pull_request_id", "registry", "repo_id"}
+
+	artifactreadyrequestMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "github_artifact",
+			Columns: artifactreadyrequestColumns,
+		},
+	}
+
+	artifactreadyrequestTable = itable.New(*artifactreadyrequestMeta.M)
+)
+
+func (artifactreadyrequest *ArtifactReadyRequest) GetTable() itable.ITable {
+	return artifactreadyrequestTable
+}
+
 // CompleteInstallationRequest complete the installation given the installation_id & setup_action
 type CompleteInstallationRequest struct {
-	InstallationId int64       `json:"installation_id"`
+	InstallationID int64       `json:"installation_id"`
 	SetupAction    SetupAction `json:"setup_action"`
 }
 
@@ -190,6 +257,9 @@ func (githubrepo *Repo) GetTable() itable.ITable {
 	return githubrepoTable
 }
 
+// OCIImageRegistry defines model for OCIImageRegistry.
+type OCIImageRegistry string
+
 // SetupAction defines model for SetupAction.
 type SetupAction string
 
@@ -203,6 +273,9 @@ type WorkflowResponse struct {
 
 // WorkflowStatus the workflow status
 type WorkflowStatus string
+
+// GithubArtifactReadyJSONRequestBody defines body for GithubArtifactReady for application/json ContentType.
+type GithubArtifactReadyJSONRequestBody = ArtifactReadyRequest
 
 // GithubCompleteInstallationJSONRequestBody defines body for GithubCompleteInstallation for application/json ContentType.
 type GithubCompleteInstallationJSONRequestBody = CompleteInstallationRequest
@@ -280,6 +353,11 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// GithubArtifactReadyWithBody request with any body
+	GithubArtifactReadyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GithubArtifactReady(ctx context.Context, body GithubArtifactReadyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GithubCompleteInstallationWithBody request with any body
 	GithubCompleteInstallationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -293,6 +371,30 @@ type ClientInterface interface {
 
 	// GithubWebhook request
 	GithubWebhook(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) GithubArtifactReadyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubArtifactReadyRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GithubArtifactReady(ctx context.Context, body GithubArtifactReadyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubArtifactReadyRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) GithubCompleteInstallationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -353,6 +455,46 @@ func (c *Client) GithubWebhook(ctx context.Context, reqEditors ...RequestEditorF
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewGithubArtifactReadyRequest calls the generic GithubArtifactReady builder with application/json body
+func NewGithubArtifactReadyRequest(server string, body GithubArtifactReadyJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGithubArtifactReadyRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGithubArtifactReadyRequestWithBody generates requests for GithubArtifactReady with any type of body
+func NewGithubArtifactReadyRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/providers/github/artifact-ready")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
 }
 
 // NewGithubCompleteInstallationRequest calls the generic GithubCompleteInstallation builder with application/json body
@@ -519,6 +661,11 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// GithubArtifactReadyWithBodyWithResponse request with any body
+	GithubArtifactReadyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error)
+
+	GithubArtifactReadyWithResponse(ctx context.Context, body GithubArtifactReadyJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error)
+
 	// GithubCompleteInstallationWithBodyWithResponse request with any body
 	GithubCompleteInstallationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error)
 
@@ -532,6 +679,31 @@ type ClientWithResponsesInterface interface {
 
 	// GithubWebhookWithResponse request
 	GithubWebhookWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubWebhookResponse, error)
+}
+
+type GithubArtifactReadyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]WorkflowResponse
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubArtifactReadyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubArtifactReadyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type GithubCompleteInstallationResponse struct {
@@ -636,6 +808,23 @@ func (r GithubWebhookResponse) StatusCode() int {
 	return 0
 }
 
+// GithubArtifactReadyWithBodyWithResponse request with arbitrary body returning *GithubArtifactReadyResponse
+func (c *ClientWithResponses) GithubArtifactReadyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error) {
+	rsp, err := c.GithubArtifactReadyWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubArtifactReadyResponse(rsp)
+}
+
+func (c *ClientWithResponses) GithubArtifactReadyWithResponse(ctx context.Context, body GithubArtifactReadyJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error) {
+	rsp, err := c.GithubArtifactReady(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubArtifactReadyResponse(rsp)
+}
+
 // GithubCompleteInstallationWithBodyWithResponse request with arbitrary body returning *GithubCompleteInstallationResponse
 func (c *ClientWithResponses) GithubCompleteInstallationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error) {
 	rsp, err := c.GithubCompleteInstallationWithBody(ctx, contentType, body, reqEditors...)
@@ -678,6 +867,53 @@ func (c *ClientWithResponses) GithubWebhookWithResponse(ctx context.Context, req
 		return nil, err
 	}
 	return ParseGithubWebhookResponse(rsp)
+}
+
+// ParseGithubArtifactReadyResponse parses an HTTP response from a GithubArtifactReadyWithResponse call
+func ParseGithubArtifactReadyResponse(rsp *http.Response) (*GithubArtifactReadyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubArtifactReadyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []WorkflowResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseGithubCompleteInstallationResponse parses an HTTP response from a GithubCompleteInstallationWithResponse call
@@ -884,6 +1120,10 @@ func ParseGithubWebhookResponse(rsp *http.Response) (*GithubWebhookResponse, err
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// GitHub release artifact ready
+	// (POST /providers/github/artifact-ready)
+	GithubArtifactReady(ctx echo.Context) error
+
 	// Complete GitHub App installation
 	// (POST /providers/github/complete-installation)
 	GithubCompleteInstallation(ctx echo.Context) error
@@ -907,6 +1147,21 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// GithubArtifactReady converts echo context to params.
+
+func (w *ServerInterfaceWrapper) GithubArtifactReady(ctx echo.Context) error {
+	var err error
+
+	ctx.Set(APIKeyAuthScopes, []string{})
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.GithubArtifactReady
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
+
+	return err
 }
 
 // GithubCompleteInstallation converts echo context to params.
@@ -999,6 +1254,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.POST(baseURL+"/providers/github/artifact-ready", wrapper.GithubArtifactReady)
 	router.POST(baseURL+"/providers/github/complete-installation", wrapper.GithubCompleteInstallation)
 	router.GET(baseURL+"/providers/github/installations", wrapper.GithubGetInstallations)
 	router.GET(baseURL+"/providers/github/repos", wrapper.GithubGetRepos)

@@ -141,6 +141,8 @@ require (
 	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect
 )
 
+require cloud.google.com/go/artifactregistry v1.13.0
+
 require (
 	cloud.google.com/go/iam v1.1.1
 	cloud.google.com/go/run v1.2.0

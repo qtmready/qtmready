@@ -37,9 +37,12 @@ const (
 type (
 	Workflows        struct{}
 	GetAssetsPayload struct {
-		StackID     string
-		RepoID      gocql.UUID
-		ChangeSetID gocql.UUID
+		StackID       string
+		RepoID        gocql.UUID
+		ChangeSetID   gocql.UUID
+		Image         string
+		ImageRegistry string
+		Digest        string
 	}
 )
 
@@ -171,6 +174,16 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 			logger.Error("Exiting due to activity failure")
 			return err
 		}
+	}
+
+	// Tag the build image with changeset ID
+	// TODO: update it to tag one or multiple images against every workload
+	switch payload.ImageRegistry {
+	case "GCPArtifactRegistry":
+		workflow.ExecuteActivity(actx, activities.TagGcpImage, payload.Image, payload.Digest, payload.ChangeSetID).Get(ctx, nil)
+		break
+	default:
+		shared.Logger().Error("This image registery is not supported in quantum yet", "registery", payload.ImageRegistry)
 	}
 
 	// get commits against the repos
@@ -306,13 +319,13 @@ func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Loc
 		deployables[w.ResourceID] = append(deployables[w.ResourceID], w)
 	}
 
-	// create the resource object again from marshaled data
+	// create the resource object again from marshaled data and deploy workload on resource
 	for _, rsc := range assets.Resources {
 		resconstr := Instance().CloudResources(rsc.Provider, rsc.Driver)
 		inf := assets.Infra[rsc.ID] // get marshaled resource from ID
 		r := resconstr.CreateFromJson(inf)
 		Infra[rsc.ID] = r
-		r.Deploy(ctx, deployables[rsc.ID])
+		r.Deploy(ctx, deployables[rsc.ID], assets.ChangesetID)
 	}
 
 	// update traffic on resource from 50 to 100
@@ -369,9 +382,12 @@ func onDeploymentStartedSignal(ctx workflow.Context, stackID string, deployments
 			)
 
 		getAssetsPayload := &GetAssetsPayload{
-			StackID:     stackID,
-			RepoID:      payload.RepoID,
-			ChangeSetID: changesetID,
+			StackID:       stackID,
+			RepoID:        payload.RepoID,
+			ChangeSetID:   changesetID,
+			Digest:        payload.Digest,
+			ImageRegistry: payload.ImageRegistry,
+			Image:         payload.Image,
 		}
 
 		// execute GetAssets and wait until spawned

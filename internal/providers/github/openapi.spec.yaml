@@ -122,6 +122,38 @@ paths:
         "500":
           $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
+  /providers/github/artifact-ready:
+    post:
+      summary: GitHub release artifact ready
+      description: Inform qunatum that release artifact is ready for
+      operationId: github-artifact-ready
+      security:
+        - APIKeyAuth: []
+      tags:
+        - providers
+        - github
+      requestBody:
+        description: GitHub release artifact ready
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ArtifactReadyRequest"
+      responses:
+        "200":
+          description: "to fill"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WorkflowResponse"
+        "400":
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "500":
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
 components:
   securitySchemes:
     BearerAuth:
@@ -172,6 +204,33 @@ components:
         - full_name
         - created_at
         - updated_at
+
+    ArtifactReadyRequest:
+      type: object
+      x-breu-entity: github_artifact
+      properties:
+        pull_request_id:
+          type: string
+          x-go-name: PullRequestID
+        repo_id:
+          type: string
+          x-go-name: RepoID
+        image:
+          type: string
+        installation_id:
+          type: string
+          x-go-name: InstallationID
+        registry:
+          $ref: "#/components/schemas/OCIImageRegistry"
+        digest:
+          type: string
+      required:
+        - pull_request_id
+        - repo_id
+        - image
+        - installation_id
+        - registry
+        - digest
 
     GithubInstallation:
       type: object
@@ -231,6 +290,7 @@ components:
         installation_id:
           type: integer
           format: int64
+          x-go-name: InstallationID
         setup_action:
           $ref: "#/components/schemas/SetupAction"
       required:
@@ -243,6 +303,12 @@ components:
         - created
         - updated
         - deleted
+
+    OCIImageRegistry:
+      type: string
+      enum:
+        - GCPArtifactRegistry
+        - GCPContainerRegistry
 
     WorkflowResponse:
       type: object

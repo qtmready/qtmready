@@ -66,7 +66,7 @@ func main() {
 
 	// e.Use(middleware.BodyDump(func(c echo.Context, reqBody, resBody []byte) {
 	// 	body := string(reqBody[:])
-	// 	shared.Logger.Debug("body: %s", body)
+	// 	fmt.Printf("bdy: %v", body)
 	// }))
 
 	// override the defaults

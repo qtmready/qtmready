@@ -21,6 +21,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/gocql/gocql"
 	"go.breu.io/quantm/internal/shared"
 	"go.temporal.io/sdk/workflow"
 )
@@ -64,7 +65,7 @@ type (
 	CloudResource interface {
 		Provision(ctx workflow.Context) (workflow.Future, error)
 		DeProvision() error
-		Deploy(workflow.Context, []Workload) error
+		Deploy(workflow.Context, []Workload, gocql.UUID) error
 		UpdateTraffic(workflow.Context, int32) error
 		Marshal() ([]byte, error)
 	}

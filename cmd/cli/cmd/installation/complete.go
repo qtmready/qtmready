@@ -47,7 +47,7 @@ func CompleteInstallation(cmd *cobra.Command) {
 	id, _ := cmd.Flags().GetInt64("installation_id")
 
 	completeInstallationBody := github.CompleteInstallationRequest{
-		InstallationId: id,
+		InstallationID: id,
 		SetupAction:    github.SetupActionCreated,
 	}
 

@@ -164,7 +164,7 @@ func (r *CloudRun) UpdateTraffic(ctx workflow.Context, trafficpcnt int32) error 
 	return nil
 }
 
-func (r *CloudRun) Deploy(ctx workflow.Context, wl []core.Workload) error {
+func (r *CloudRun) Deploy(ctx workflow.Context, wl []core.Workload, changesetID gocql.UUID) error {
 	shared.Logger().Info("deploying", "cloudrun", r, "workload", wl)
 
 	if len(wl) != 1 {
@@ -174,6 +174,11 @@ func (r *CloudRun) Deploy(ctx workflow.Context, wl []core.Workload) error {
 
 	// provision with execute a workflow to provision the resources. This workflow is not directly called
 	// from provisioninfra workflow to avoid passing resource interface as argument
+
+	crworkload := &Workload{}
+	json.Unmarshal([]byte(wl[0].Container), crworkload)
+	crworkload.Image = crworkload.Image + ":" + changesetID.String()
+	crworkload.Name = wl[0].Name
 
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
@@ -190,7 +195,7 @@ func (r *CloudRun) Deploy(ctx workflow.Context, wl []core.Workload) error {
 
 	w := &workflows{}
 	err := workflow.
-		ExecuteChildWorkflow(cctx, w.DeployWorkflow, r, wl[0]).Get(cctx, r)
+		ExecuteChildWorkflow(cctx, w.DeployWorkflow, r, crworkload).Get(cctx, r)
 
 	if err != nil {
 		shared.Logger().Error("Could not start DeployCloudRun workflow", "error", err)
@@ -199,7 +204,7 @@ func (r *CloudRun) Deploy(ctx workflow.Context, wl []core.Workload) error {
 	return nil
 }
 
-func (w *workflows) DeployWorkflow(ctx workflow.Context, r *CloudRun, wl *core.Workload) (*CloudRun, error) {
+func (w *workflows) DeployWorkflow(ctx workflow.Context, r *CloudRun, wl *Workload) (*CloudRun, error) {
 
 	r.ServiceName = wl.Name
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
@@ -239,6 +244,7 @@ func (a *Activities) GetNextRevision(ctx context.Context, r *CloudRun) (*CloudRu
 	r.LastRevision = ""
 
 	// get the deployed service, if not found then it will be first revision
+	//TODO: we should get the revision from the saved cache is quantum. We should not have to Get cloud run service for it
 	svc := r.GetService(ctx)
 	if svc != nil {
 		rev := svc.Template.Revision
@@ -257,7 +263,7 @@ func (a *Activities) GetNextRevision(ctx context.Context, r *CloudRun) (*CloudRu
 
 // DeployRevision deploys a new revision on CloudRun if the service is already created.
 // If no service is running, then it will create a new service and deploy first revision
-func (a *Activities) DeployRevision(ctx context.Context, r *CloudRun, wl *core.Workload) error {
+func (a *Activities) DeployRevision(ctx context.Context, r *CloudRun, wl *Workload) error {
 
 	logger := activity.GetLogger(ctx)
 	client, err := run.NewServicesRESTClient(context.Background())
@@ -270,6 +276,7 @@ func (a *Activities) DeployRevision(ctx context.Context, r *CloudRun, wl *core.W
 	// Create service if this is the first revision
 	if r.Revision == r.GetFirstRevision() {
 		service := r.GetServiceTemplate(ctx, wl)
+
 		logger.Info("deploying service", "data", service, "parent", r.GetParent(), "ID", wl.Name)
 		csr := &runpb.CreateServiceRequest{Parent: r.GetParent(), Service: service, ServiceId: wl.Name}
 		op, err := client.CreateService(ctx, csr)
@@ -283,18 +290,23 @@ func (a *Activities) DeployRevision(ctx context.Context, r *CloudRun, wl *core.W
 		op.Wait(ctx)
 		// otherwise create a new revision and route 50% traffic to it
 	} else {
+
+		// Get the already deployed service on cloud run.
+		// TODO: We should be able to construct the service template of currently deployed service by chaching the data in quantum
 		req := &runpb.GetServiceRequest{Name: r.GetParent() + "/services/" + wl.Name}
 		service, err := client.GetService(ctx, req)
-
-		logger.Info("50 percent traffic to latest", "revision", r.Revision)
-		tt := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: 50}
-		tt1 := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION, Revision: r.LastRevision, Percent: 50}
-		service.Traffic = []*runpb.TrafficTarget{tt, tt1}
 
 		if err != nil {
 			logger.Error("could not get service", "Error", err)
 			return err
 		}
+
+		// assuming there is no side container on cloud run
+		service.Template.Containers[0].Image = wl.Image
+		logger.Info("50 percent traffic to latest", "revision", r.Revision)
+		tt := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: 50}
+		tt1 := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION, Revision: r.LastRevision, Percent: 50}
+		service.Traffic = []*runpb.TrafficTarget{tt, tt1}
 
 		service.Template.Revision = r.Revision
 		usr := &runpb.UpdateServiceRequest{Service: service}
@@ -376,13 +388,15 @@ func (r *CloudRun) GetService(ctx context.Context) *runpb.Service {
 
 	svcpath := r.GetParent() + "/services/" + r.ServiceName
 	req := &runpb.GetServiceRequest{Name: svcpath}
+
 	svc, err := serviceClient.GetService(ctx, req)
 
 	if err != nil {
-		logger.Error("Get Service", "Error", err)
+		logger.Error("Get Service", "Error, returning nil", err)
 		return nil
 	}
 
+	logger.Debug("Get service", "service", svc, "error", err)
 	return svc
 }
 
@@ -415,17 +429,15 @@ func (r *CloudRun) AllowAccessToAll(ctx context.Context) error {
 // this template will be used for first deployment only, from next deployments the already deployed template will be
 // fetched from cloudrun and the same will be used for next revision
 // TODO: the above design will not work if resource definition is changed
-func (r *CloudRun) GetServiceTemplate(ctx context.Context, wl *core.Workload) *runpb.Service {
+func (r *CloudRun) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.Service {
 
 	activity.GetLogger(ctx).Info("setting service template for", "revision", r.Revision)
 	resources := &runpb.ResourceRequirements{Limits: map[string]string{"cpu": r.Cpu, "memory": r.Memory}}
 
 	// unmarshaling the container here assuming that container definition will be specific to a resource
 	// this can be done at a common location if the container definition turns out to be same for all resources
-	crworkload := &Workload{}
-	json.Unmarshal([]byte(wl.Container), crworkload)
 
-	container := &runpb.Container{Name: wl.Name, Image: crworkload.Image, Resources: resources}
+	container := &runpb.Container{Name: wl.Name, Image: wl.Image, Resources: resources}
 
 	scaling := &runpb.RevisionScaling{MinInstanceCount: r.MinInstances, MaxInstanceCount: r.MaxInstances}
 

@@ -19,11 +19,16 @@ package core
 
 import (
 	"context"
+	"errors"
+	"strings"
 
+	artifactregistry "cloud.google.com/go/artifactregistry/apiv1"
+	"cloud.google.com/go/artifactregistry/apiv1/artifactregistrypb"
 	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/shared"
 )
 
 var (
@@ -31,7 +36,14 @@ var (
 )
 
 type (
-	Activities struct{}
+	Activities            struct{}
+	ArtifactRegistryImage struct {
+		Location   string
+		Project    string
+		Pkg        string //image name
+		Repository string
+		Tag        string
+	}
 )
 
 // GetResources gets resources from DB against a stack.
@@ -91,4 +103,67 @@ func (a *Activities) GetBluePrint(ctx context.Context, stackID string) (*Bluepri
 func (a *Activities) CreateChangeset(ctx context.Context, changeSet *ChangeSet, id gocql.UUID) error {
 	err := db.CreateWithID(changeSet, id)
 	return err
+}
+
+// TagGcpImage creates a new tag on a docker image in GCP artifact registry
+func (a *Activities) TagGcpImage(ctx context.Context, image string, digest string, tag string) error {
+
+	logger := activity.GetLogger(ctx)
+	c, err := artifactregistry.NewRESTClient(ctx)
+	if err != nil {
+		logger.Error("Could not create REST client for artifact registry", "Error", err)
+		return err
+	}
+	defer c.Close()
+
+	imageparts, err := ParseArtifactRegistryImage(image)
+	if err != nil {
+		logger.Error("Error in parsing artifact registry image", "Error", err)
+		return err
+	}
+
+	logger.Debug("Debug only", "image", image, "imageparts", imageparts)
+
+	parent := "projects/" + imageparts.Project + "/locations/" + imageparts.Location + "/repositories/" + imageparts.Repository + "/packages/" + imageparts.Pkg
+	newtag := &artifactregistrypb.Tag{
+		Name:    parent + "/tags/" + tag,
+		Version: parent + "/versions/" + digest,
+	}
+	req := &artifactregistrypb.UpdateTagRequest{Tag: newtag}
+	_, err = c.UpdateTag(ctx, req)
+
+	if err != nil {
+		logger.Error("Error in updating tag", "Error", err)
+		return err
+	}
+
+	logger.Info("Tag updated")
+	return nil
+}
+
+func ParseArtifactRegistryImage(image string) (*ArtifactRegistryImage, error) {
+	arImage := new(ArtifactRegistryImage)
+
+	// asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/helloworld:1hd29h -> asia-southeast1/breu-dev/ctrlplane/helloworld:1hd29h
+	image = strings.Replace(image, "-docker.pkg.dev", "", 1)
+	result := strings.Split(image, "/")
+
+	// assuming here that the image name will have no slashes except to separate location, repo, project and package
+	// sample image: asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/helloworld
+	// sample image: <location>-docker.pkg.dev/<project>/<repository>/<package>
+	if len(result) > 4 {
+		shared.Logger().Error("Unexpected image string, can't parse", "Image", image)
+		return nil, errors.New("Unexpected image string, can't parse")
+	}
+
+	arImage.Location = result[0]   // asia-southeast1
+	arImage.Project = result[1]    // breu-dev
+	arImage.Repository = result[2] // ctrlplane
+
+	// result[3] = helloworld:1hd29h
+	result = strings.Split(result[3], ":")
+	arImage.Pkg = result[0] // helloworld
+	arImage.Tag = result[1] // 1hd29h
+
+	return arImage, nil
 }
