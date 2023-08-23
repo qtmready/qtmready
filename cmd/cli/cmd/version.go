@@ -25,17 +25,18 @@ import (
 	"go.breu.io/quantm/internal/shared"
 )
 
-var (
-	versionCmd = &cobra.Command{
+var ()
+
+func NewCmdVersion() *cobra.Command {
+	cmd := &cobra.Command{
 		Use:   "version",
-		Short: "Show the current ctrlplane version.",
-		Long:  `Show the current ctrlplane version.`,
+		Short: "Show the current quantm version.",
+		Long:  `Show the current quantm version.`,
 		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println("cmd: version")
 			fmt.Println(shared.Service().GetVersion()) // TODO: integrate versioning
 		},
 	}
-)
 
-func init() {
-	rootCmd.AddCommand(versionCmd)
+	return cmd
 }

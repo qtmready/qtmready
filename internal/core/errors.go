@@ -25,6 +25,11 @@ type (
 	providerNotFoundError struct {
 		name string
 	}
+
+	resourceNotFoundError struct {
+		name     string
+		provider string
+	}
 )
 
 func (e *providerNotFoundError) Error() string {
@@ -33,4 +38,12 @@ func (e *providerNotFoundError) Error() string {
 
 func NewProviderNotFoundError(name string) error {
 	return &providerNotFoundError{name}
+}
+
+func NewResourceNotFoundError(name string, provider string) error {
+	return &resourceNotFoundError{name, provider}
+}
+
+func (e *resourceNotFoundError) Error() string {
+	return fmt.Sprintf("resource %s not found. plese register your resource with the provider %s first.", e.name, e.provider)
 }

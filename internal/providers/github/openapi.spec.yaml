@@ -220,12 +220,17 @@ components:
         installation_id:
           type: string
           x-go-name: InstallationID
+        registry:
+          $ref: "#/components/schemas/OCIImageRegistry"
+        digest:
+          type: string
       required:
         - pull_request_id
-        - repo_name
         - repo_id
         - image
         - installation_id
+        - registry
+        - digest
 
     GithubInstallation:
       type: object
@@ -298,6 +303,12 @@ components:
         - created
         - updated
         - deleted
+
+    OCIImageRegistry:
+      type: string
+      enum:
+        - GCPArtifactRegistry
+        - GCPContainerRegistry
 
     WorkflowResponse:
       type: object

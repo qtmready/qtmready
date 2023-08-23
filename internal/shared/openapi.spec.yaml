@@ -42,7 +42,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/APIError'
+            $ref: "#/components/schemas/APIError"
 
     # Status code 401
     Unauthorized:
@@ -50,7 +50,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/APIError'
+            $ref: "#/components/schemas/APIError"
 
     # Status code 404
     NotFound:
@@ -58,7 +58,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/APIError'
+            $ref: "#/components/schemas/APIError"
 
     # Status code 500
     InternalServerError:
@@ -66,4 +66,4 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/APIError'
+            $ref: "#/components/schemas/APIError"

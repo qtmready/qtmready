@@ -29,7 +29,7 @@ url = "http://localhost:8000/core/repos"
 payload = {
     "stack_id": stack_id,
     "provider": "github",
-    "provider_id": "648084184",
+    "provider_id": "673778454",
     "default_branch": "main",
     "name": "HelloWorld",
     "is_monorepo": True
@@ -72,7 +72,7 @@ payload = {
     "name" : "Helloworld blueprint",
     "stack_id" : stack_id,
     "rollout_budget" : "300",
-    "regions" : { "gcp": ["asia-southeast1"], "aws": [], "azure": [], "default": [] },
+    "regions" : { "gcp": ["us-central1"], "aws": [], "azure": [], "default": [] },
     "provider_config" : '{"project": "breu-dev"}'
 }
 blueprint_id = requests.request("POST", url, json=payload, headers=headers).json()["id"]

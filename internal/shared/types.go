@@ -35,6 +35,8 @@ type (
 		SenderWorkflowID string
 		TriggerID        int64
 		Image            string
+		Digest           string
+		ImageRegistry    string //TODO: move registry enum generation to shared
 	}
 
 	FutureHandler  func(workflow.Future)               // FutureHandler is the signature of the future handler function.

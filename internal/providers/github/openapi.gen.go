@@ -10,14 +10,22 @@
 package github
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
 	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/scylladb/gocqlx/v2/table"
+	externalRef0 "go.breu.io/quantm/internal/shared"
 )
 
 const (
@@ -26,9 +34,49 @@ const (
 )
 
 var (
-	ErrInvalidSetupAction    = errors.New("invalid SetupAction value")
-	ErrInvalidWorkflowStatus = errors.New("invalid WorkflowStatus value")
+	ErrInvalidOCIImageRegistry = errors.New("invalid OCIImageRegistry value")
+	ErrInvalidSetupAction      = errors.New("invalid SetupAction value")
+	ErrInvalidWorkflowStatus   = errors.New("invalid WorkflowStatus value")
 )
+
+type (
+	OCIImageRegistryMapType map[string]OCIImageRegistry // OCIImageRegistryMapType is a quick lookup map for OCIImageRegistry.
+)
+
+// Defines values for OCIImageRegistry.
+const (
+	OCIImageRegistryGCPArtifactRegistry  OCIImageRegistry = "GCPArtifactRegistry"
+	OCIImageRegistryGCPContainerRegistry OCIImageRegistry = "GCPContainerRegistry"
+)
+
+// OCIImageRegistryValues returns all known values for OCIImageRegistry.
+var (
+	OCIImageRegistryMap = OCIImageRegistryMapType{
+		OCIImageRegistryGCPArtifactRegistry.String():  OCIImageRegistryGCPArtifactRegistry,
+		OCIImageRegistryGCPContainerRegistry.String(): OCIImageRegistryGCPContainerRegistry,
+	}
+)
+
+/*
+ * Helper methods for OCIImageRegistry for easy marshalling and unmarshalling.
+ */
+func (v OCIImageRegistry) String() string               { return string(v) }
+func (v OCIImageRegistry) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
+func (v *OCIImageRegistry) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	val, ok := OCIImageRegistryMap[s]
+	if !ok {
+		return ErrInvalidOCIImageRegistry
+	}
+
+	*v = val
+
+	return nil
+}
 
 type (
 	SetupActionMapType map[string]SetupAction // SetupActionMapType is a quick lookup map for SetupAction.
@@ -118,14 +166,16 @@ func (v *WorkflowStatus) UnmarshalJSON(data []byte) error {
 
 // ArtifactReadyRequest defines model for ArtifactReadyRequest.
 type ArtifactReadyRequest struct {
-	Image          string `cql:"image" json:"image"`
-	InstallationID string `cql:"installation_id" json:"installation_id"`
-	PullRequestID  string `cql:"pull_request_id" json:"pull_request_id"`
-	RepoID         string `cql:"repo_id" json:"repo_id"`
+	Digest         string           `cql:"digest" json:"digest"`
+	Image          string           `cql:"image" json:"image"`
+	InstallationID string           `cql:"installation_id" json:"installation_id"`
+	PullRequestID  string           `cql:"pull_request_id" json:"pull_request_id"`
+	Registry       OCIImageRegistry `cql:"registry" json:"registry"`
+	RepoID         string           `cql:"repo_id" json:"repo_id"`
 }
 
 var (
-	artifactreadyrequestColumns = []string{"image", "installation_id", "pull_request_id", "repo_id"}
+	artifactreadyrequestColumns = []string{"digest", "image", "installation_id", "pull_request_id", "registry", "repo_id"}
 
 	artifactreadyrequestMeta = itable.Metadata{
 		M: &table.Metadata{
@@ -207,6 +257,9 @@ func (githubrepo *Repo) GetTable() itable.ITable {
 	return githubrepoTable
 }
 
+// OCIImageRegistry defines model for OCIImageRegistry.
+type OCIImageRegistry string
+
 // SetupAction defines model for SetupAction.
 type SetupAction string
 
@@ -226,6 +279,844 @@ type GithubArtifactReadyJSONRequestBody = ArtifactReadyRequest
 
 // GithubCompleteInstallationJSONRequestBody defines body for GithubCompleteInstallation for application/json ContentType.
 type GithubCompleteInstallationJSONRequestBody = CompleteInstallationRequest
+
+// RequestEditorFn  is the function signature for the RequestEditor callback function
+type RequestEditorFn func(ctx context.Context, req *http.Request) error
+
+// Doer performs HTTP requests.
+//
+// The standard http.Client implements this interface.
+type HttpRequestDoer interface {
+	Do(req *http.Request) (*http.Response, error)
+}
+
+// Client which conforms to the OpenAPI3 specification for this service.
+type Client struct {
+	// The endpoint of the server conforming to this interface, with scheme,
+	// https://api.deepmap.com for example. This can contain a path relative
+	// to the server, such as https://api.deepmap.com/dev-test, and all the
+	// paths in the swagger spec will be appended to the server.
+	Server string
+
+	// Doer for performing requests, typically a *http.Client with any
+	// customized settings, such as certificate chains.
+	Client HttpRequestDoer
+
+	// A list of callbacks for modifying requests which are generated before sending over
+	// the network.
+	RequestEditors []RequestEditorFn
+}
+
+// ClientOption allows setting custom parameters during construction
+type ClientOption func(*Client) error
+
+// Creates a new Client, with reasonable defaults
+func NewClient(server string, opts ...ClientOption) (*Client, error) {
+	// create a client with sane default values
+	client := Client{
+		Server: server,
+	}
+	// mutate client and add all optional params
+	for _, o := range opts {
+		if err := o(&client); err != nil {
+			return nil, err
+		}
+	}
+	// ensure the server URL always has a trailing slash
+	if !strings.HasSuffix(client.Server, "/") {
+		client.Server += "/"
+	}
+	// create httpClient, if not already present
+	if client.Client == nil {
+		client.Client = &http.Client{}
+	}
+	return &client, nil
+}
+
+// WithHTTPClient allows overriding the default Doer, which is
+// automatically created using http.Client. This is useful for tests.
+func WithHTTPClient(doer HttpRequestDoer) ClientOption {
+	return func(c *Client) error {
+		c.Client = doer
+		return nil
+	}
+}
+
+// WithRequestEditorFn allows setting up a callback function, which will be
+// called right before sending the request. This can be used to mutate the request.
+func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
+	return func(c *Client) error {
+		c.RequestEditors = append(c.RequestEditors, fn)
+		return nil
+	}
+}
+
+// The interface specification for the client above.
+type ClientInterface interface {
+	// GithubArtifactReadyWithBody request with any body
+	GithubArtifactReadyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GithubArtifactReady(ctx context.Context, body GithubArtifactReadyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubCompleteInstallationWithBody request with any body
+	GithubCompleteInstallationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GithubCompleteInstallation(ctx context.Context, body GithubCompleteInstallationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubGetInstallations request
+	GithubGetInstallations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubGetRepos request
+	GithubGetRepos(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubWebhook request
+	GithubWebhook(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) GithubArtifactReadyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubArtifactReadyRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GithubArtifactReady(ctx context.Context, body GithubArtifactReadyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubArtifactReadyRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GithubCompleteInstallationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubCompleteInstallationRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GithubCompleteInstallation(ctx context.Context, body GithubCompleteInstallationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubCompleteInstallationRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GithubGetInstallations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubGetInstallationsRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GithubGetRepos(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubGetReposRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GithubWebhook(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubWebhookRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+// NewGithubArtifactReadyRequest calls the generic GithubArtifactReady builder with application/json body
+func NewGithubArtifactReadyRequest(server string, body GithubArtifactReadyJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGithubArtifactReadyRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGithubArtifactReadyRequestWithBody generates requests for GithubArtifactReady with any type of body
+func NewGithubArtifactReadyRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/providers/github/artifact-ready")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGithubCompleteInstallationRequest calls the generic GithubCompleteInstallation builder with application/json body
+func NewGithubCompleteInstallationRequest(server string, body GithubCompleteInstallationJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGithubCompleteInstallationRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGithubCompleteInstallationRequestWithBody generates requests for GithubCompleteInstallation with any type of body
+func NewGithubCompleteInstallationRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/providers/github/complete-installation")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewGithubGetInstallationsRequest generates requests for GithubGetInstallations
+func NewGithubGetInstallationsRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/providers/github/installations")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGithubGetReposRequest generates requests for GithubGetRepos
+func NewGithubGetReposRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/providers/github/repos")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGithubWebhookRequest generates requests for GithubWebhook
+func NewGithubWebhookRequest(server string) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/providers/github/webhook")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
+	for _, r := range c.RequestEditors {
+		if err := r(ctx, req); err != nil {
+			return err
+		}
+	}
+	for _, r := range additionalEditors {
+		if err := r(ctx, req); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ClientWithResponses builds on ClientInterface to offer response payloads
+type ClientWithResponses struct {
+	ClientInterface
+}
+
+// NewClientWithResponses creates a new ClientWithResponses, which wraps
+// Client with return type handling
+func NewClientWithResponses(server string, opts ...ClientOption) (*ClientWithResponses, error) {
+	client, err := NewClient(server, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return &ClientWithResponses{client}, nil
+}
+
+// WithBaseURL overrides the baseURL.
+func WithBaseURL(baseURL string) ClientOption {
+	return func(c *Client) error {
+		newBaseURL, err := url.Parse(baseURL)
+		if err != nil {
+			return err
+		}
+		c.Server = newBaseURL.String()
+		return nil
+	}
+}
+
+// ClientWithResponsesInterface is the interface specification for the client with responses above.
+type ClientWithResponsesInterface interface {
+	// GithubArtifactReadyWithBodyWithResponse request with any body
+	GithubArtifactReadyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error)
+
+	GithubArtifactReadyWithResponse(ctx context.Context, body GithubArtifactReadyJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error)
+
+	// GithubCompleteInstallationWithBodyWithResponse request with any body
+	GithubCompleteInstallationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error)
+
+	GithubCompleteInstallationWithResponse(ctx context.Context, body GithubCompleteInstallationJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error)
+
+	// GithubGetInstallationsWithResponse request
+	GithubGetInstallationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubGetInstallationsResponse, error)
+
+	// GithubGetReposWithResponse request
+	GithubGetReposWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubGetReposResponse, error)
+
+	// GithubWebhookWithResponse request
+	GithubWebhookWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubWebhookResponse, error)
+}
+
+type GithubArtifactReadyResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]WorkflowResponse
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubArtifactReadyResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubArtifactReadyResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GithubCompleteInstallationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *WorkflowResponse
+	JSON201      *WorkflowResponse
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON404      *externalRef0.NotFound
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubCompleteInstallationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubCompleteInstallationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GithubGetInstallationsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]Installation
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubGetInstallationsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubGetInstallationsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GithubGetReposResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *[]Repo
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubGetReposResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubGetReposResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GithubWebhookResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *WorkflowResponse
+	JSON201      *WorkflowResponse
+	JSON400      *externalRef0.BadRequest
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubWebhookResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// GithubArtifactReadyWithBodyWithResponse request with arbitrary body returning *GithubArtifactReadyResponse
+func (c *ClientWithResponses) GithubArtifactReadyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error) {
+	rsp, err := c.GithubArtifactReadyWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubArtifactReadyResponse(rsp)
+}
+
+func (c *ClientWithResponses) GithubArtifactReadyWithResponse(ctx context.Context, body GithubArtifactReadyJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error) {
+	rsp, err := c.GithubArtifactReady(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubArtifactReadyResponse(rsp)
+}
+
+// GithubCompleteInstallationWithBodyWithResponse request with arbitrary body returning *GithubCompleteInstallationResponse
+func (c *ClientWithResponses) GithubCompleteInstallationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error) {
+	rsp, err := c.GithubCompleteInstallationWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubCompleteInstallationResponse(rsp)
+}
+
+func (c *ClientWithResponses) GithubCompleteInstallationWithResponse(ctx context.Context, body GithubCompleteInstallationJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error) {
+	rsp, err := c.GithubCompleteInstallation(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubCompleteInstallationResponse(rsp)
+}
+
+// GithubGetInstallationsWithResponse request returning *GithubGetInstallationsResponse
+func (c *ClientWithResponses) GithubGetInstallationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubGetInstallationsResponse, error) {
+	rsp, err := c.GithubGetInstallations(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubGetInstallationsResponse(rsp)
+}
+
+// GithubGetReposWithResponse request returning *GithubGetReposResponse
+func (c *ClientWithResponses) GithubGetReposWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubGetReposResponse, error) {
+	rsp, err := c.GithubGetRepos(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubGetReposResponse(rsp)
+}
+
+// GithubWebhookWithResponse request returning *GithubWebhookResponse
+func (c *ClientWithResponses) GithubWebhookWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubWebhookResponse, error) {
+	rsp, err := c.GithubWebhook(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubWebhookResponse(rsp)
+}
+
+// ParseGithubArtifactReadyResponse parses an HTTP response from a GithubArtifactReadyWithResponse call
+func ParseGithubArtifactReadyResponse(rsp *http.Response) (*GithubArtifactReadyResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubArtifactReadyResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []WorkflowResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGithubCompleteInstallationResponse parses an HTTP response from a GithubCompleteInstallationWithResponse call
+func ParseGithubCompleteInstallationResponse(rsp *http.Response) (*GithubCompleteInstallationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubCompleteInstallationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkflowResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest WorkflowResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest externalRef0.NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGithubGetInstallationsResponse parses an HTTP response from a GithubGetInstallationsWithResponse call
+func ParseGithubGetInstallationsResponse(rsp *http.Response) (*GithubGetInstallationsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubGetInstallationsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Installation
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGithubGetReposResponse parses an HTTP response from a GithubGetReposWithResponse call
+func ParseGithubGetReposResponse(rsp *http.Response) (*GithubGetReposResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubGetReposResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest []Repo
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseGithubWebhookResponse parses an HTTP response from a GithubWebhookWithResponse call
+func ParseGithubWebhookResponse(rsp *http.Response) (*GithubWebhookResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubWebhookResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest WorkflowResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest WorkflowResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {

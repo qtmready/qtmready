@@ -191,6 +191,8 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 		SenderWorkflowID: workflow.GetInfo(ctx).WorkflowExecution.ID,
 		TriggerID:        payload.PullRequest.ID,
 		Image:            artifact.Image,
+		Digest:           artifact.Digest,
+		ImageRegistry:    artifact.Registry,
 	}
 
 	// signal core stack workflow

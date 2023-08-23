@@ -267,12 +267,12 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// CreateTeamAPIKey request with any body
+	// CreateTeamAPIKeyWithBody request with any body
 	CreateTeamAPIKeyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateTeamAPIKey(ctx context.Context, body CreateTeamAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateUserAPIKey request with any body
+	// CreateUserAPIKeyWithBody request with any body
 	CreateUserAPIKeyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateUserAPIKey(ctx context.Context, body CreateUserAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -280,12 +280,12 @@ type ClientInterface interface {
 	// ValidateAPIKey request
 	ValidateAPIKey(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// Login request with any body
+	// LoginWithBody request with any body
 	LoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	Login(ctx context.Context, body LoginJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// Register request with any body
+	// RegisterWithBody request with any body
 	RegisterWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	Register(ctx context.Context, body RegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -293,7 +293,7 @@ type ClientInterface interface {
 	// ListTeams request
 	ListTeams(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateTeam request with any body
+	// CreateTeamWithBody request with any body
 	CreateTeamWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateTeam(ctx context.Context, body CreateTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -301,7 +301,7 @@ type ClientInterface interface {
 	// GetTeam request
 	GetTeam(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// AddUserToTeam request with any body
+	// AddUserToTeamWithBody request with any body
 	AddUserToTeamWithBody(ctx context.Context, slug string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	AddUserToTeam(ctx context.Context, slug string, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -865,41 +865,41 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// CreateTeamAPIKey request with any body
+	// CreateTeamAPIKeyWithBodyWithResponse request with any body
 	CreateTeamAPIKeyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTeamAPIKeyResponse, error)
 
 	CreateTeamAPIKeyWithResponse(ctx context.Context, body CreateTeamAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTeamAPIKeyResponse, error)
 
-	// CreateUserAPIKey request with any body
+	// CreateUserAPIKeyWithBodyWithResponse request with any body
 	CreateUserAPIKeyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserAPIKeyResponse, error)
 
 	CreateUserAPIKeyWithResponse(ctx context.Context, body CreateUserAPIKeyJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserAPIKeyResponse, error)
 
-	// ValidateAPIKey request
+	// ValidateAPIKeyWithResponse request
 	ValidateAPIKeyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ValidateAPIKeyResponse, error)
 
-	// Login request with any body
+	// LoginWithBodyWithResponse request with any body
 	LoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginResponse, error)
 
 	LoginWithResponse(ctx context.Context, body LoginJSONRequestBody, reqEditors ...RequestEditorFn) (*LoginResponse, error)
 
-	// Register request with any body
+	// RegisterWithBodyWithResponse request with any body
 	RegisterWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RegisterResponse, error)
 
 	RegisterWithResponse(ctx context.Context, body RegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*RegisterResponse, error)
 
-	// ListTeams request
+	// ListTeamsWithResponse request
 	ListTeamsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTeamsResponse, error)
 
-	// CreateTeam request with any body
+	// CreateTeamWithBodyWithResponse request with any body
 	CreateTeamWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTeamResponse, error)
 
 	CreateTeamWithResponse(ctx context.Context, body CreateTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTeamResponse, error)
 
-	// GetTeam request
+	// GetTeamWithResponse request
 	GetTeamWithResponse(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*GetTeamResponse, error)
 
-	// AddUserToTeam request with any body
+	// AddUserToTeamWithBodyWithResponse request with any body
 	AddUserToTeamWithBodyWithResponse(ctx context.Context, slug string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error)
 
 	AddUserToTeamWithResponse(ctx context.Context, slug string, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error)

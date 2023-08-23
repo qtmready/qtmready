@@ -38,10 +38,11 @@ var (
 type (
 	Activities            struct{}
 	ArtifactRegistryImage struct {
-		location   string
-		project    string
-		pkg        string //image name
-		repository string
+		Location   string
+		Project    string
+		Pkg        string //image name
+		Repository string
+		Tag        string
 	}
 )
 
@@ -121,7 +122,9 @@ func (a *Activities) TagGcpImage(ctx context.Context, image string, digest strin
 		return err
 	}
 
-	parent := "projects/" + imageparts.project + "/locations/" + imageparts.location + "/repositories/" + imageparts.repository + "/packages/" + imageparts.pkg
+	logger.Debug("Debug only", "image", image, "imageparts", imageparts)
+
+	parent := "projects/" + imageparts.Project + "/locations/" + imageparts.Location + "/repositories/" + imageparts.Repository + "/packages/" + imageparts.Pkg
 	newtag := &artifactregistrypb.Tag{
 		Name:    parent + "/tags/" + tag,
 		Version: parent + "/versions/" + digest,
@@ -140,7 +143,8 @@ func (a *Activities) TagGcpImage(ctx context.Context, image string, digest strin
 
 func ParseArtifactRegistryImage(image string) (*ArtifactRegistryImage, error) {
 	arImage := new(ArtifactRegistryImage)
-	// get location
+
+	// asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/helloworld:1hd29h -> asia-southeast1/breu-dev/ctrlplane/helloworld:1hd29h
 	image = strings.Replace(image, "-docker.pkg.dev", "", 1)
 	result := strings.Split(image, "/")
 
@@ -152,9 +156,14 @@ func ParseArtifactRegistryImage(image string) (*ArtifactRegistryImage, error) {
 		return nil, errors.New("Unexpected image string, can't parse")
 	}
 
-	arImage.location = result[0]
-	arImage.project = result[1]
-	arImage.repository = result[2]
-	arImage.pkg = result[3]
+	arImage.Location = result[0]   // asia-southeast1
+	arImage.Project = result[1]    // breu-dev
+	arImage.Repository = result[2] // ctrlplane
+
+	// result[3] = helloworld:1hd29h
+	result = strings.Split(result[3], ":")
+	arImage.Pkg = result[0] // helloworld
+	arImage.Tag = result[1] // 1hd29h
+
 	return arImage, nil
 }

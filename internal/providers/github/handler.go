@@ -128,7 +128,7 @@ func (s *ServerHandler) GithubArtifactReady(ctx echo.Context) error {
 			shared.WithWorkflowModID(request.PullRequestID),
 		)
 
-	payload := &ArtifactReadySignal{Image: request.Image}
+	payload := &ArtifactReadySignal{Image: request.Image, Digest: request.Digest, Registry: request.Registry.String()}
 
 	err := shared.Temporal().Client().SignalWorkflow(ctx.Request().Context(), workflowID, "", WorkflowSignalArtifactReady.String(), payload)
 	if err != nil {
