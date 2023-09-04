@@ -223,6 +223,19 @@ func (w *workflows) DeployWorkflow(ctx workflow.Context, r *CloudRun, wl *Worklo
 	return r, nil
 }
 
+func (w *workflows) RollbackWorkflow(ctx workflow.Context, r *CloudRun, wl *Workload) (*CloudRun, error) {
+	r.ServiceName = wl.Name
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
+	err := workflow.ExecuteActivity(actx, activities.DeployLastRevision, r).Get(actx, r)
+	if err != nil {
+		shared.Logger().Error("Error in Executing activity: DeployLastRevision", "error", err)
+		return r, err
+	}
+
+	return r, nil
+}
+
 // UpdateTraffic workflow executes UpdateTrafficActivity
 func (w *workflows) UpdateTrafficWorkflow(ctx workflow.Context, r *CloudRun, trafficpcnt int32) error {
 
