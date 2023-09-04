@@ -261,6 +261,52 @@ func (a *Activities) GetNextRevision(ctx context.Context, r *CloudRun) (*CloudRu
 	return r, nil
 }
 
+func (a *Activities) DeployLastRevision(ctx context.Context, r *CloudRun, wl *core.Workload) error {
+
+	logger := activity.GetLogger(ctx)
+	client, err := run.NewServicesRESTClient(context.Background())
+	if err != nil {
+		logger.Error("could not create service client", "error", err)
+	}
+
+	defer client.Close()
+
+	req := &runpb.GetServiceRequest{Name: r.GetParent() + "/services/" + wl.Name}
+	service, err := client.GetService(ctx, req)
+	if err != nil {
+		logger.Error("could not get service", "Error", err)
+		return err
+	}
+
+	logger.Info("100 percent traffic to last", "revision", r.LastRevision)
+	tt := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: 0}
+	tt1 := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION, Revision: r.LastRevision, Percent: 100}
+	service.Traffic = []*runpb.TrafficTarget{tt, tt1}
+
+	service.Template.Revision = r.LastRevision
+	usr := &runpb.UpdateServiceRequest{Service: service}
+	op, err := client.UpdateService(ctx, usr)
+	if err != nil {
+		logger.Error("could not update service", "Error", err)
+		return err
+	}
+
+	r.Revision = r.LastRevision //revert the revision back in cloudrun struct too
+
+	logger.Info("waiting for service revision update")
+	_, err = op.Wait(ctx)
+	if err == nil {
+		logger.Info("service revision updated")
+	}
+
+	// Allow access to all users
+	if r.AllowUnauthenticatedAccess {
+		r.AllowAccessToAll(ctx)
+	}
+
+	return nil
+}
+
 // DeployRevision deploys a new revision on CloudRun if the service is already created.
 // If no service is running, then it will create a new service and deploy first revision
 func (a *Activities) DeployRevision(ctx context.Context, r *CloudRun, wl *Workload) error {
