@@ -46,7 +46,6 @@ func NewServerHandler(security echo.MiddlewareFunc) *ServerHandler {
 }
 
 func (s *ServerHandler) ReceiveAlerts(ctx echo.Context) error {
-
 	alertType := ctx.Param("alert")
 	fmt.Printf("Alert type: %v\n\r", alertType)
 
@@ -62,24 +61,28 @@ func (s *ServerHandler) ReceiveAlerts(ctx echo.Context) error {
 	if err != nil {
 		fmt.Printf("failed to marshal")
 	}
+
 	fmt.Printf("CommonAnnotations: %v\n\r", string(j))
 
 	j, err = json.Marshal(request.CommonLabels)
 	if err != nil {
 		fmt.Printf("failed to marshal")
 	}
+
 	fmt.Printf("CommonLabels: %v\n\r", string(j))
 
 	j, err = json.Marshal(request.GroupLabels)
 	if err != nil {
 		fmt.Printf("failed to marshal")
 	}
+
 	fmt.Printf("GroupLabels: %v\n\r", string(j))
 
 	j, err = json.Marshal(request.Alerts)
 	if err != nil {
 		fmt.Printf("failed to marshal")
 	}
+
 	fmt.Printf("Alerts: %v\n\r", string(j))
 
 	fmt.Printf("groupKey: %v\n\r", request.GroupKey)
