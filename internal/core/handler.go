@@ -19,10 +19,13 @@ package core
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
+
+	"fmt"
 
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/db"
@@ -40,6 +43,54 @@ func NewServerHandler(security echo.MiddlewareFunc) *ServerHandler {
 	return &ServerHandler{
 		SecurityHandler: &auth.SecurityHandler{Middleware: security},
 	}
+}
+
+func (s *ServerHandler) ReceiveAlerts(ctx echo.Context) error {
+	alertType := ctx.Param("alert")
+	fmt.Printf("Alert type: %v\n\r", alertType)
+
+	request := &ReceiveAlertsRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	fmt.Printf("status: %v\n\r", request.Status)
+	fmt.Printf("externalURL: %v\n\r", request.ExternalURL)
+
+	j, err := json.Marshal((request.CommonAnnotations))
+	if err != nil {
+		fmt.Printf("failed to marshal")
+	}
+
+	fmt.Printf("CommonAnnotations: %v\n\r", string(j))
+
+	j, err = json.Marshal(request.CommonLabels)
+	if err != nil {
+		fmt.Printf("failed to marshal")
+	}
+
+	fmt.Printf("CommonLabels: %v\n\r", string(j))
+
+	j, err = json.Marshal(request.GroupLabels)
+	if err != nil {
+		fmt.Printf("failed to marshal")
+	}
+
+	fmt.Printf("GroupLabels: %v\n\r", string(j))
+
+	j, err = json.Marshal(request.Alerts)
+	if err != nil {
+		fmt.Printf("failed to marshal")
+	}
+
+	fmt.Printf("Alerts: %v\n\r", string(j))
+
+	fmt.Printf("groupKey: %v\n\r", request.GroupKey)
+	fmt.Printf("receiver: %v\n\r", request.Receiver)
+	fmt.Printf("TruncatedAlerts: %v\n\r", request.TruncatedAlerts)
+	fmt.Printf("version: %v\n\r", request.Version)
+
+	return ctx.JSON(http.StatusOK, "Temp response")
 }
 
 func (s *ServerHandler) CreateBlueprint(ctx echo.Context) error {
@@ -131,9 +182,9 @@ func (s *ServerHandler) CreateResource(ctx echo.Context) error {
 	}
 
 	resource := &Resource{
-		Name:        request.Name,
-		Provider:    request.Provider,
-		StackID:     request.StackID,
+		Name:     request.Name,
+		Provider: request.Provider,
+		StackID:  request.StackID,
 		// TODO: check why assinging directly wasn't working
 		Driver:      Driver(request.Driver),
 		Config:      request.Config,
