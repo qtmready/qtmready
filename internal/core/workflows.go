@@ -82,6 +82,7 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	infrachannel := workflow.GetSignalChannel(ctx, WorkflowSignalInfraProvisioned.String())
 	deploymentchannel := workflow.GetSignalChannel(ctx, WorkflowSignalDeploymentCompleted.String())
 	manualOverrideChannel := workflow.GetSignalChannel(ctx, WorkflowSignalManaulOverride.String())
+	rollbackChannel := workflow.GetSignalChannel(ctx, WorkflowSignalRollback.String())
 
 	selector := workflow.NewSelector(ctx)
 	selector.AddReceive(triggerChannel, onDeploymentStartedSignal(ctx, stackID, deployments))
@@ -89,6 +90,7 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	selector.AddReceive(infrachannel, onInfraProvisionedSignal(ctx, stackID, lock, deployments, activeInfra))
 	selector.AddReceive(deploymentchannel, onDeploymentCompletedSignal(ctx, stackID, deployments))
 	selector.AddReceive(manualOverrideChannel, onManualOverrideSignal(ctx, stackID, deployments))
+	selector.AddReceive(rollbackChannel, onRollbackSignal(ctx))
 
 	// var prSignalsCounter int = 0
 	// return continue as new if this workflow has processed signals upto a limit
@@ -346,6 +348,54 @@ func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Loc
 	return nil
 }
 
+func (w *Workflows) Rollback(ctx workflow.Context, lock *mutex.Lock, assets *Assets) error {
+	logger := workflow.GetLogger(ctx)
+	logger.Info("Rollback initiated")
+
+	err := lock.Acquire(ctx)
+	if err != nil {
+		logger.Error("Error in acquiring lock", "Error", err)
+		return err
+	}
+
+	for _, rsc := range assets.Resources {
+		resconstr := Instance().CloudResources(rsc.Provider, rsc.Driver)
+		inf := assets.Infra[rsc.ID] // get marshaled resource from ID
+		r := resconstr.CreateFromJson(inf)
+		r.Rollback(ctx, assets.Workloads[0])
+	}
+
+	_ = lock.Release(ctx)
+	return nil
+}
+
+func onRollbackSignal(ctx workflow.Context) shared.ChannelHandler {
+	logger := workflow.GetLogger(ctx)
+	w := &Workflows{}
+
+	return func(channel workflow.ReceiveChannel, more bool) {
+		logger.Info("Rollback signaled")
+
+		var execution workflow.Execution
+		opts := shared.Temporal().
+			Queue(shared.CoreQueue).
+			ChildWorkflowOptions(
+				shared.WithWorkflowParent(ctx),
+				shared.WithWorkflowBlock("rollback"),
+				shared.WithWorkflowBlockID("123456"),
+				shared.WithWorkflowElement("rollback"),
+			)
+		cctx := workflow.WithChildOptions(ctx, opts)
+
+		err := workflow.
+			ExecuteChildWorkflow(cctx, w.Rollback).
+			GetChildWorkflowExecution().Get(cctx, &execution)
+		if err != nil {
+			logger.Error("Error in Executing rollback workflow", "Error", err)
+		}
+	}
+}
+
 func onManualOverrideSignal(ctx workflow.Context, stackID string, deployments Deployments) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 	triggerID := int64(0)
@@ -423,6 +473,9 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 
 		// update deployment state
 		deployment := deployments[assets.ChangesetID]
+		if deployment == nil {
+			logger.Error("\n\n\nPANIC!!!!\n\n\n")
+		}
 		deployment.state = GotAssets
 
 		// execute provision infra workflow

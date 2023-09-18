@@ -105,6 +105,7 @@ func (c *CloudRunConstructor) Create(name string, region string, config string, 
 		coreWrkr := shared.Temporal().Worker(shared.CoreQueue)
 		coreWrkr.RegisterWorkflow(w.DeployWorkflow)
 		coreWrkr.RegisterWorkflow(w.UpdateTrafficWorkflow)
+		coreWrkr.RegisterWorkflow(w.RollbackWorkflow)
 	})
 	return cr, nil
 }
@@ -159,6 +160,33 @@ func (r *CloudRun) UpdateTraffic(ctx workflow.Context, trafficpcnt int32) error 
 
 	if err != nil {
 		shared.Logger().Error("Could not execute UpdateTraffic workflow", "error", err)
+		return err
+	}
+	return nil
+}
+
+func (r *CloudRun) Rollback(ctx workflow.Context, wl core.Workload) error {
+	shared.Logger().Info("rolling back", "cloudrun", r, "workload", wl)
+
+	opts := shared.Temporal().
+		Queue(shared.CoreQueue).
+		ChildWorkflowOptions(
+			shared.WithWorkflowParent(ctx),
+			shared.WithWorkflowBlock("CloudRun"),
+			shared.WithWorkflowBlockID(r.Name),
+			shared.WithWorkflowElement("Deploy"),
+		)
+
+	cctx := workflow.WithChildOptions(ctx, opts)
+
+	shared.Logger().Info("starting DeployCloudRun workflow")
+
+	w := &workflows{}
+	err := workflow.
+		ExecuteChildWorkflow(cctx, w.RollbackWorkflow, r, wl).Get(cctx, r)
+
+	if err != nil {
+		shared.Logger().Error("Could not start DeployCloudRun workflow", "error", err)
 		return err
 	}
 	return nil

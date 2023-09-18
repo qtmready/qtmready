@@ -67,6 +67,7 @@ type (
 		DeProvision() error
 		Deploy(workflow.Context, []Workload, gocql.UUID) error
 		UpdateTraffic(workflow.Context, int32) error
+		Rollback(workflow.Context, Workload) error
 		Marshal() ([]byte, error)
 	}
 
