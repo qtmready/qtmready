@@ -90,6 +90,22 @@ func (s *ServerHandler) ReceiveAlerts(ctx echo.Context) error {
 	fmt.Printf("TruncatedAlerts: %v\n\r", request.TruncatedAlerts)
 	fmt.Printf("version: %v\n\r", request.Version)
 
+	// workflowID := shared.Temporal().
+	// 	Queue(shared.ProvidersQueue).
+	// 	WorkflowID(
+	// 		shared.WithWorkflowBlock("stack"),
+	// 		shared.WithWorkflowBlockID("be5e9daa-6e6a-4c29-a6be-2c5c0a0a5fa3"),
+	// 	)
+	err = shared.Temporal().
+		Client().
+		SignalWorkflow(context.Background(), "ai.ctrlplane.core.stack.be5e9daa-6e6a-4c29-a6be-2c5c0a0a5fa3", "", WorkflowSignalRollback.String(), "")
+	if err != nil {
+		shared.Logger().Error("unable to signal ...", "options", "", "error", err)
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	shared.Logger().Debug("rollback workflow signaled")
+
 	return ctx.JSON(http.StatusOK, "Temp response")
 }
 
