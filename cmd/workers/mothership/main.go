@@ -67,6 +67,7 @@ func main() {
 	coreWrkr.RegisterWorkflow(cwfs.GetAssets)
 	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)
 	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
+	coreWrkr.RegisterWorkflow(cwfs.Rollback)
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.Activities{})
