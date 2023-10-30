@@ -167,7 +167,7 @@ func ParseArtifactRegistryImage(image string) (*ArtifactRegistryImage, error) {
 	// result[3] = helloworld:1hd29h
 	result[len(result)-1] = strings.Split(result[len(result)-1], ":")[0]
 	resultSlice := result[3:]
-	arImage.Pkg = strings.Join(resultSlice, "/") // helloworld
+	arImage.Pkg = strings.Join(resultSlice, "%2F") // helloworld
 
 	return arImage, nil
 }
