@@ -7,8 +7,8 @@ stack_name = "quantum poc"
 print("Logging in")
 url = "http://localhost:8000/auth/login"
 payload = {
-    "email": "amna@breu.io",
-    "password": "password"
+    "email": "mahad@breu.io",
+    "password": "pass123"
 }
 headers = {"Content-Type": "application/json"}
 access_token = requests.request("POST", url, json=payload, headers=headers).json()["access_token"]
@@ -29,9 +29,9 @@ url = "http://localhost:8000/core/repos"
 payload = {
     "stack_id": stack_id,
     "provider": "github",
-    "provider_id": "673778454",
+    "provider_id": "684576037",
     "default_branch": "main",
-    "name": "HelloWorld",
+    "name": "cargoflo",
     "is_monorepo": True
 }
 repo_id = requests.request("POST", url, json=payload, headers=headers).json()["id"]
@@ -40,12 +40,12 @@ repo_id = requests.request("POST", url, json=payload, headers=headers).json()["i
 print("Creating Resource")
 url = "http://localhost:8000/core/resources"
 payloadx = {
-    "Name": "CloudRun_HelloWorld",
+    "Name": "CloudRun_CargoFlo",
     "provider": "GCP",
     "driver": "cloudrun",
     "stack_id": stack_id,
-    "Config": '{"properties":{"generation":"second-generation","cpu":"2000m","memory":"1024Mi"},"output":{"env":[{"url":"CloudRun_HelloWorld_URL"}]}}',
-    "is_immutable": True
+    "Config": '{"properties":{"generation":"second-generation","cpu":"2000m","memory":"1024Mi"},"output":{"env":[{"url":"CloudRun_CargoFlo_URL"}]}}',
+    "immutable": True
 }
 rsid = requests.request("POST", url, json=payloadx, headers=headers).json()["id"]
 
@@ -53,14 +53,14 @@ rsid = requests.request("POST", url, json=payloadx, headers=headers).json()["id"
 print("Creating Workload")
 url = "http://localhost:8000/core/workloads"
 payload = {
-    "Name": "helloworld",
+    "Name": "api-quantum",
     "kind": "worker",
     "repo_id": repo_id,
-    "repo_path": "https://github.com/amnabreu/HelloWorld",
+    "repo_path": "https://github.com/breuHQ/cargoflo",
     "resource_id": rsid,
     "stack_id": stack_id,
     "builder": "",
-    "container": '{"image": "asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/helloworld"}'
+    "container": '{"image": "europe-west3-docker.pkg.dev/cargoflo-dev-400720/cloud-run-source-deploy/cargoflo/api"}'
 }
 workload_id = requests.request("POST", url, json=payload, headers=headers).json()["id"]
 
@@ -69,10 +69,10 @@ print("Creating BluePrint")
 url = "http://localhost:8000/core/blueprints"
 payload = {
     
-    "name" : "Helloworld blueprint",
+    "name" : "CargoFlo blueprint",
     "stack_id" : stack_id,
     "rollout_budget" : "300",
-    "regions" : { "gcp": ["us-central1"], "aws": [], "azure": [], "default": [] },
-    "provider_config" : '{"project": "breu-dev"}'
+    "regions" : { "gcp": ["europe-west3"], "aws": [], "azure": [], "default": [] },
+    "provider_config" : '{"project": "CargoFlo-dev-400720"}'
 }
 blueprint_id = requests.request("POST", url, json=payload, headers=headers).json()["id"]
