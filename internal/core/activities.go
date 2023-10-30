@@ -129,6 +129,9 @@ func (a *Activities) TagGcpImage(ctx context.Context, image string, digest strin
 		Name:    parent + "/tags/" + tag,
 		Version: parent + "/versions/" + digest,
 	}
+	logger.Info("Parent", "parent", parent)
+	logger.Info("Tag", "tag", tag)
+	logger.Info("Digest", "digest", digest)
 	req := &artifactregistrypb.UpdateTagRequest{Tag: newtag}
 	_, err = c.UpdateTag(ctx, req)
 
@@ -151,19 +154,20 @@ func ParseArtifactRegistryImage(image string) (*ArtifactRegistryImage, error) {
 	// assuming here that the image name will have no slashes except to separate location, repo, project and package
 	// sample image: asia-southeast1-docker.pkg.dev/breu-dev/ctrlplane/helloworld
 	// sample image: <location>-docker.pkg.dev/<project>/<repository>/<package>
-	if len(result) > 4 {
+	if len(result) < 4 {
 		shared.Logger().Error("Unexpected image string, can't parse", "Image", image)
 		return nil, errors.New("Unexpected image string, can't parse")
 	}
 
-	arImage.Location = result[0]   // asia-southeast1
-	arImage.Project = result[1]    // breu-dev
-	arImage.Repository = result[2] // ctrlplane
+	arImage.Location = result[0]                               // asia-southeast1
+	arImage.Project = result[1]                                // breu-dev
+	arImage.Repository = result[2]                             // ctrlplane
+	arImage.Tag = strings.Split(result[len(result)-1], ":")[1] // 1hd29h
 
 	// result[3] = helloworld:1hd29h
-	result = strings.Split(result[3], ":")
-	arImage.Pkg = result[0] // helloworld
-	arImage.Tag = result[1] // 1hd29h
+	result[len(result)-1] = strings.Split(result[len(result)-1], ":")[0]
+	resultSlice := result[3:]
+	arImage.Pkg = strings.Join(resultSlice, "/") // helloworld
 
 	return arImage, nil
 }
