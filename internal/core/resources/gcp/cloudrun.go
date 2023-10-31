@@ -30,6 +30,7 @@ type (
 		Cpu                        string
 		Memory                     string
 		Generation                 uint8
+		Port                       int32
 		Envs                       map[string]string
 		OutputEnvs                 map[string]string
 		Region                     string // from blueprint
@@ -41,6 +42,7 @@ type (
 		MinInstances               int32
 		MaxInstances               int32
 		AllowUnauthenticatedAccess bool
+		CpuIdle                    bool
 		Project                    string
 		ServiceName                string
 	}
@@ -85,9 +87,12 @@ func (c *CloudRunConstructor) Create(name string, region string, config string, 
 	cr.AllowUnauthenticatedAccess = true
 	cr.Cpu = "2000m"
 	cr.Memory = "1024Mi"
-	cr.MinInstances = 1
-	cr.MaxInstances = 8
+	cr.MinInstances = 0
+	cr.MaxInstances = 5
 	cr.Generation = 2
+
+	cr.Port = 8000
+	cr.CpuIdle = true
 
 	// get gcp project from configuration
 	pconfig := new(GCPConfig)
@@ -432,12 +437,13 @@ func (r *CloudRun) AllowAccessToAll(ctx context.Context) error {
 func (r *CloudRun) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.Service {
 
 	activity.GetLogger(ctx).Info("setting service template for", "revision", r.Revision)
-	resources := &runpb.ResourceRequirements{Limits: map[string]string{"cpu": r.Cpu, "memory": r.Memory}}
+	resources := &runpb.ResourceRequirements{Limits: map[string]string{"cpu": r.Cpu, "memory": r.Memory}, CpuIdle: r.CpuIdle}
 
 	// unmarshaling the container here assuming that container definition will be specific to a resource
 	// this can be done at a common location if the container definition turns out to be same for all resources
 
-	container := &runpb.Container{Name: wl.Name, Image: wl.Image, Resources: resources}
+	containerPort := &runpb.ContainerPort{ContainerPort: r.Port}
+	container := &runpb.Container{Name: wl.Name, Image: wl.Image, Resources: resources, Ports: []*runpb.ContainerPort{containerPort}}
 
 	scaling := &runpb.RevisionScaling{MinInstanceCount: r.MinInstances, MaxInstanceCount: r.MaxInstances}
 
