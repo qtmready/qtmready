@@ -73,6 +73,6 @@ payload = {
     "stack_id" : stack_id,
     "rollout_budget" : "300",
     "regions" : { "gcp": ["europe-west3"], "aws": [], "azure": [], "default": [] },
-    "provider_config" : '{"project": "CargoFlo-dev-400720"}'
+    "provider_config" : '{"project": "cargoflo-dev-400720"}'
 }
 blueprint_id = requests.request("POST", url, json=payload, headers=headers).json()["id"]
