@@ -94,6 +94,14 @@ func (c *CloudRunConstructor) Create(name string, region string, config string, 
 	cr.Port = 8000
 	cr.CpuIdle = true
 
+	// TODO: Get env values from config
+	cr.Envs = append(cr.Envs, &runpb.EnvVar{Name: "CARGOFLO_DEBUG", Values: &runpb.EnvVar_Value{Value: "false"}})
+	cr.Envs = append(cr.Envs, &runpb.EnvVar{Name: "CARGOFLO_TEMPORAL_HOST", Values: &runpb.EnvVar_Value{Value: "10.10.0.3"}})
+	cr.Envs = append(cr.Envs, &runpb.EnvVar{Name: "CARGOFLO_DB_HOST", Values: &runpb.EnvVar_Value{Value: "10.69.49.8"}})
+	cr.Envs = append(cr.Envs, &runpb.EnvVar{Name: "CARGOFLO_DB_NAME", Values: &runpb.EnvVar_Value{Value: "cargoflo"}})
+	cr.Envs = append(cr.Envs, &runpb.EnvVar{Name: "CARGOFLO_DB_USER", Values: &runpb.EnvVar_Value{Value: "cargoflo"}})
+	cr.Envs = append(cr.Envs, &runpb.EnvVar{Name: "CARGOFLO_DB_PASS", Values: &runpb.EnvVar_Value{Value: "cargoflo"}})
+
 	// get gcp project from configuration
 	pconfig := new(GCPConfig)
 	err := json.Unmarshal([]byte(providerConfig), pconfig)
