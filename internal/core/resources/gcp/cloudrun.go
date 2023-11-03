@@ -31,7 +31,7 @@ type (
 		Memory                     string
 		Generation                 uint8
 		Port                       int32
-		Envs                       map[string]string
+		Envs                       []*runpb.EnvVar
 		OutputEnvs                 map[string]string
 		Region                     string // from blueprint
 		Image                      string // from workload
