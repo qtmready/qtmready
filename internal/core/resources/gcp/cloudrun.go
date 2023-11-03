@@ -443,7 +443,7 @@ func (r *CloudRun) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 	// this can be done at a common location if the container definition turns out to be same for all resources
 
 	containerPort := &runpb.ContainerPort{ContainerPort: r.Port}
-	container := &runpb.Container{Name: wl.Name, Image: wl.Image, Resources: resources, Ports: []*runpb.ContainerPort{containerPort}}
+	container := &runpb.Container{Name: wl.Name, Image: wl.Image, Resources: resources, Ports: []*runpb.ContainerPort{containerPort}, Env: r.Envs}
 
 	scaling := &runpb.RevisionScaling{MinInstanceCount: r.MinInstances, MaxInstanceCount: r.MaxInstances}
 
