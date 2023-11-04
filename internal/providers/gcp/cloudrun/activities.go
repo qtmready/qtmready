@@ -1,12 +1,13 @@
 package cloudrun
 
 import (
-	run "cloud.google.com/go/run/apiv2"
-	"cloud.google.com/go/run/apiv2/runpb"
 	"context"
-	"go.temporal.io/sdk/activity"
 	"strconv"
 	"strings"
+
+	run "cloud.google.com/go/run/apiv2"
+	"cloud.google.com/go/run/apiv2/runpb"
+	"go.temporal.io/sdk/activity"
 )
 
 type (
@@ -74,7 +75,7 @@ func (a *Activities) DeployRevision(ctx context.Context, r *Resource, wl *Worklo
 
 	// Allow access to all users
 	if r.AllowUnauthenticatedAccess {
-		r.AllowAccessToAll(ctx)
+		_ = r.AllowAccessToAll(ctx)
 	}
 
 	return nil
@@ -82,9 +83,9 @@ func (a *Activities) DeployRevision(ctx context.Context, r *Resource, wl *Worklo
 
 // UpdateTrafficActivity updates traffic percentage on a cloud run resource
 // This cannot be done in the workflow because of the blocking updateservice call
-func (a *Activities) UpdateTrafficActivity(ctx context.Context, r *Resource, trafficpcnt int32) error {
+func (a *Activities) UpdateTrafficActivity(ctx context.Context, r *Resource, percent int32) error {
 	logger := activity.GetLogger(ctx)
-	logger.Info("Update traffic", "revision", r.Revision, "percentage", trafficpcnt)
+	logger.Info("Update traffic", "revision", r.Revision, "percentage", percent)
 
 	service := r.GetService(ctx)
 	svctx := context.Background()
@@ -101,8 +102,8 @@ func (a *Activities) UpdateTrafficActivity(ctx context.Context, r *Resource, tra
 		ttc := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: 100}
 		service.Traffic = []*runpb.TrafficTarget{ttc}
 	} else {
-		ttc := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: trafficpcnt}
-		ttp := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION, Revision: r.LastRevision, Percent: 100 - trafficpcnt}
+		ttc := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: percent}
+		ttp := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION, Revision: r.LastRevision, Percent: 100 - percent}
 		service.Traffic = []*runpb.TrafficTarget{ttc, ttp}
 	}
 

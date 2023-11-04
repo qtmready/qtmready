@@ -4,25 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"sync"
-	"time"
 
 	"cloud.google.com/go/iam/apiv1/iampb"
 	run "cloud.google.com/go/run/apiv2"
 	"cloud.google.com/go/run/apiv2/runpb"
 	"github.com/gocql/gocql"
-	"go.breu.io/quantm/internal/core"
-	"go.breu.io/quantm/internal/shared"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/workflow"
+
+	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/shared"
 )
 
-var registerOnce sync.Once
-
 type (
-	Constructor struct{}
-	workflows   struct{}
-
 	Resource struct {
 		ID                         gocql.UUID
 		Cpu                        string
@@ -59,54 +53,6 @@ var (
 	activities *Activities
 )
 
-// Create creates cloud run resource
-func (c *Constructor) Create(name string, region string, config string, providerConfig string) (core.CloudResource, error) {
-	cr := &Resource{Name: name, Region: region, Config: config}
-	cr.AllowUnauthenticatedAccess = true
-	cr.Cpu = "2000m"
-	cr.Memory = "1024Mi"
-	cr.MinInstances = 0
-	cr.MaxInstances = 5
-	cr.Generation = 2
-
-	cr.Port = 8000
-	cr.CpuIdle = true
-
-	// TODO: Get env values from config
-	cr.Envs = append(cr.Envs, &runpb.EnvVar{Name: "CARGOFLO_DEBUG", Values: &runpb.EnvVar_Value{Value: "false"}})
-	cr.Envs = append(cr.Envs, &runpb.EnvVar{Name: "CARGOFLO_TEMPORAL_HOST", Values: &runpb.EnvVar_Value{Value: "10.10.0.3"}})
-	cr.Envs = append(cr.Envs, &runpb.EnvVar{Name: "CARGOFLO_DB_HOST", Values: &runpb.EnvVar_Value{Value: "10.69.49.8"}})
-	cr.Envs = append(cr.Envs, &runpb.EnvVar{Name: "CARGOFLO_DB_NAME", Values: &runpb.EnvVar_Value{Value: "cargoflo"}})
-	cr.Envs = append(cr.Envs, &runpb.EnvVar{Name: "CARGOFLO_DB_USER", Values: &runpb.EnvVar_Value{Value: "cargoflo"}})
-	cr.Envs = append(cr.Envs, &runpb.EnvVar{Name: "CARGOFLO_DB_PASS", Values: &runpb.EnvVar_Value{Value: "cargoflo"}})
-
-	// get gcp project from configuration
-	pconfig := new(GCPConfig)
-	err := json.Unmarshal([]byte(providerConfig), pconfig)
-	if err != nil {
-		shared.Logger().Error("Unable to parse provider config for cloudrun")
-		return nil, err
-	}
-
-	cr.Project = pconfig.Project
-
-	shared.Logger().Info("cloud run", "object", providerConfig, "umarshaled", pconfig, "project", cr.Project)
-	w := &workflows{}
-	registerOnce.Do(func() {
-		coreWrkr := shared.Temporal().Worker(shared.CoreQueue)
-		coreWrkr.RegisterWorkflow(w.DeployWorkflow)
-		coreWrkr.RegisterWorkflow(w.UpdateTrafficWorkflow)
-	})
-	return cr, nil
-}
-
-// CreateFromJson creates a Resource object from JSON
-func (c *Constructor) CreateFromJson(data []byte) core.CloudResource {
-	cr := &Resource{}
-	json.Unmarshal(data, cr)
-	return cr
-}
-
 // Marshal marshals the Resource object
 func (r *Resource) Marshal() ([]byte, error) {
 	return json.Marshal(r)
@@ -127,8 +73,7 @@ func (r *Resource) DeProvision() error {
 
 // UpdateTraffic updates the traffic distribution on latest and previous revision as per the input
 // parameter trafficpcnt is the percentage traffic to be deployed on latest revision
-func (r *Resource) UpdateTraffic(ctx workflow.Context, trafficpcnt int32) error {
-
+func (r *Resource) UpdateTraffic(ctx workflow.Context, percent int32) error {
 	// UpdateTraffic will execute a workflow to update the resource. This workflow is not directly called
 	// from provisioninfra workflow to avoid passing resource interface as argument
 	opts := shared.Temporal().
@@ -146,7 +91,7 @@ func (r *Resource) UpdateTraffic(ctx workflow.Context, trafficpcnt int32) error 
 
 	w := &workflows{}
 	err := workflow.
-		ExecuteChildWorkflow(cctx, w.UpdateTrafficWorkflow, r, trafficpcnt).Get(cctx, nil)
+		ExecuteChildWorkflow(cctx, w.UpdateTraffic, r, percent).Get(cctx, nil)
 
 	if err != nil {
 		shared.Logger().Error("Could not execute UpdateTraffic workflow", "error", err)
@@ -195,38 +140,6 @@ func (r *Resource) Deploy(ctx workflow.Context, wl []core.Workload, changesetID 
 	return nil
 }
 
-func (w *workflows) DeployWorkflow(ctx workflow.Context, r *Resource, wl *Workload) (*Resource, error) {
-
-	r.ServiceName = wl.Name
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
-	err := workflow.ExecuteActivity(actx, activities.GetNextRevision, r).Get(actx, r)
-	if err != nil {
-		shared.Logger().Error("Error in Executing activity: GetNextRevision", "error", err)
-		return r, err
-	}
-
-	err = workflow.ExecuteActivity(actx, activities.DeployRevision, r, wl).Get(actx, nil)
-	if err != nil {
-		shared.Logger().Error("Error in Executing activity: DeployDummy", "error", err)
-		return r, err
-	}
-	return r, nil
-}
-
-// UpdateTraffic workflow executes UpdateTrafficActivity
-func (w *workflows) UpdateTrafficWorkflow(ctx workflow.Context, r *Resource, trafficpcnt int32) error {
-	shared.Logger().Info("Distributing traffic between revisions", r.Revision, r.LastRevision)
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
-	err := workflow.ExecuteActivity(actx, activities.UpdateTrafficActivity, r, trafficpcnt).Get(ctx, r)
-	if err != nil {
-		shared.Logger().Error("Error in Executing activity: UpdateTrafficActivity", "error", err)
-		return err
-	}
-	return nil
-}
-
 func (r *Resource) GetServiceClient() (*run.ServicesClient, error) {
 	client, err := run.NewServicesRESTClient(context.Background())
 	if err != nil {
@@ -239,7 +152,6 @@ func (r *Resource) GetServiceClient() (*run.ServicesClient, error) {
 
 // GetService gets a cloud run service from GCP
 func (r *Resource) GetService(ctx context.Context) *runpb.Service {
-
 	logger := activity.GetLogger(ctx)
 	serviceClient, err := run.NewServicesRESTClient(ctx)
 	if err != nil {

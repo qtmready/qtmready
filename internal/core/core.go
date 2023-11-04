@@ -103,7 +103,7 @@ func (c *core) RegisterCloudResource(provider CloudProvider, driver Driver, reso
 	// r := resource.CreateDummy()
 	// wrkr := shared.Temporal().Worker(shared.CoreQueue)
 	// wrkr.RegisterWorkflow(r.DeployWorkflow)
-	// wrkr.RegisterWorkflow(r.UpdateTrafficWorkflow)
+	// wrkr.RegisterWorkflow(r.UpdateTraffic)
 }
 
 func (c *core) RegisterRepoProvider(provider RepoProvider, activities RepoProviderActivities) {
