@@ -18,6 +18,7 @@
 package main
 
 import (
+	"go.breu.io/quantm/internal/core/resources/gcp/cloudrun"
 	"os"
 	"os/signal"
 	"syscall"
@@ -43,7 +44,7 @@ func main() {
 
 	core.Instance(
 		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
-		core.WithCloudResource(core.CloudProviderGCP, core.DriverCloudrun, &gcp.CloudRunConstructor{}),
+		core.WithCloudResource(core.CloudProviderGCP, core.DriverCloudrun, &cloudrun.Constructor{}),
 	)
 
 	ghwfs := &github.Workflows{}
