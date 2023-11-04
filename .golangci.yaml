@@ -78,9 +78,3 @@ linters-settings:
           - 140
       - name: use-any
         severity: warning
-
-  custom:
-    kvlogger:
-      path: ./plugins/kvlogger.so
-      description: checks if the logger is used correctly with the right number of arguments
-
