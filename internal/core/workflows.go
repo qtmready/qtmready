@@ -134,7 +134,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	future = workflow.ExecuteActivity(actx, activities.GetResources, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &resources); err != nil {
-			logger.Error("GetResources activity failed", "error", err)
+			logger.Error("GetResources activities failed", "error", err)
 			return
 		}
 	})
@@ -143,7 +143,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	future = workflow.ExecuteActivity(actx, activities.GetWorkloads, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &workloads); err != nil {
-			logger.Error("GetWorkloads activity failed", "error", err)
+			logger.Error("GetWorkloads activities failed", "error", err)
 			return
 		}
 	})
@@ -152,7 +152,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	future = workflow.ExecuteActivity(actx, activities.GetRepos, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &repos); err != nil {
-			logger.Error("GetRepos activity failed", "error", err)
+			logger.Error("GetRepos activities failed", "error", err)
 			return
 		}
 	})
@@ -161,7 +161,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	future = workflow.ExecuteActivity(actx, activities.GetBluePrint, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &blueprint); err != nil {
-			logger.Error("GetBluePrint activity failed", "error", err)
+			logger.Error("GetBluePrint activities failed", "error", err)
 			return
 		}
 	})
@@ -169,9 +169,9 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	// TODO: come up with a better logic for this
 	for i := 0; i < 4; i++ {
 		selector.Select(ctx)
-		// return if activity failed. TODO: handle race conditions as the 'err' variable is shared among all activities
+		// return if activities failed. TODO: handle race conditions as the 'err' variable is shared among all activities
 		if err != nil {
-			logger.Error("Exiting due to activity failure")
+			logger.Error("Exiting due to activities failure")
 			return err
 		}
 	}

@@ -18,84 +18,83 @@
 package main
 
 import (
-	"go.breu.io/quantm/internal/core/resources/gcp/cloudrun"
-	"os"
-	"os/signal"
-	"syscall"
+  "os"
+  "os/signal"
+  "syscall"
 
-	"go.breu.io/quantm/internal/core"
-	"go.breu.io/quantm/internal/core/mutex"
-	"go.breu.io/quantm/internal/core/resources/gcp"
-	"go.breu.io/quantm/internal/db"
-	"go.breu.io/quantm/internal/providers/github"
-	"go.breu.io/quantm/internal/shared"
+  "go.breu.io/quantm/internal/core"
+  "go.breu.io/quantm/internal/core/mutex"
+  "go.breu.io/quantm/internal/db"
+  "go.breu.io/quantm/internal/providers/gcp/cloudrun"
+  "go.breu.io/quantm/internal/providers/github"
+  "go.breu.io/quantm/internal/shared"
 )
 
 func main() {
-	// graceful shutdown. see https://stackoverflow.com/a/46255965/228697.
-	exitcode := 0
-	defer func() { os.Exit(exitcode) }()
-	defer func() { _ = shared.Logger().Sync() }()
-	defer shared.Temporal().Client().Close()
-	defer db.DB().Session.Close()
+  // graceful shutdown. see https://stackoverflow.com/a/46255965/228697.
+  exitcode := 0
+  defer func() { os.Exit(exitcode) }()
+  defer func() { _ = shared.Logger().Sync() }()
+  defer shared.Temporal().Client().Close()
+  defer db.DB().Session.Close()
 
-	providerWrkr := shared.Temporal().Worker(shared.ProvidersQueue)
-	coreWrkr := shared.Temporal().Worker(shared.CoreQueue)
+  providerWrkr := shared.Temporal().Worker(shared.ProvidersQueue)
+  coreWrkr := shared.Temporal().Worker(shared.CoreQueue)
 
-	core.Instance(
-		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
-		core.WithCloudResource(core.CloudProviderGCP, core.DriverCloudrun, &cloudrun.Constructor{}),
-	)
+  core.Instance(
+    core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
+    core.WithCloudResource(core.CloudProviderGCP, core.DriverCloudrun, &cloudrun.Constructor{}),
+  )
 
-	ghwfs := &github.Workflows{}
-	cwfs := &core.Workflows{}
+  ghwfs := &github.Workflows{}
+  cwfs := &core.Workflows{}
 
-	// provider workflows
-	providerWrkr.RegisterWorkflow(ghwfs.OnInstallationEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.OnInstallationRepositoriesEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.OnPushEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
+  // provider workflows
+  providerWrkr.RegisterWorkflow(ghwfs.OnInstallationEvent)
+  providerWrkr.RegisterWorkflow(ghwfs.OnInstallationRepositoriesEvent)
+  providerWrkr.RegisterWorkflow(ghwfs.OnPushEvent)
+  providerWrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
 
-	// provider activities
-	providerWrkr.RegisterActivity(&github.Activities{})
+  // provider activities
+  providerWrkr.RegisterActivity(&github.Activities{})
 
-	// mutex workflow
-	coreWrkr.RegisterWorkflow(mutex.Workflow)
+  // mutex workflow
+  coreWrkr.RegisterWorkflow(mutex.Workflow)
 
-	// core workflows
-	coreWrkr.RegisterWorkflow(cwfs.StackController)
-	coreWrkr.RegisterWorkflow(cwfs.Deploy)
-	coreWrkr.RegisterWorkflow(cwfs.GetAssets)
-	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)
-	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
+  // core workflows
+  coreWrkr.RegisterWorkflow(cwfs.StackController)
+  coreWrkr.RegisterWorkflow(cwfs.Deploy)
+  coreWrkr.RegisterWorkflow(cwfs.GetAssets)
+  coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)
+  coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
 
-	// core activities
-	coreWrkr.RegisterActivity(&core.Activities{})
-	coreWrkr.RegisterActivity(&gcp.Activities{})
+  // core activities
+  coreWrkr.RegisterActivity(&core.Activities{})
+  coreWrkr.RegisterActivity(&cloudrun.Activities{})
 
-	// start worker for provider queue
-	err := providerWrkr.Start()
-	if err != nil {
-		exitcode = 1
-		return
-	}
+  // start worker for provider queue
+  err := providerWrkr.Start()
+  if err != nil {
+    exitcode = 1
+    return
+  }
 
-	defer providerWrkr.Stop()
+  defer providerWrkr.Stop()
 
-	// start worker for core queue
-	err = coreWrkr.Start()
-	if err != nil {
-		exitcode = 1
-		return
-	}
+  // start worker for core queue
+  err = coreWrkr.Start()
+  if err != nil {
+    exitcode = 1
+    return
+  }
 
-	defer coreWrkr.Stop()
+  defer coreWrkr.Stop()
 
-	quit := make(chan os.Signal, 1)                      // create a channel to listen to quit signals.
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // setting up the signals to listen to.
-	<-quit                                               // wait for quit signal.
+  quit := make(chan os.Signal, 1)                      // create a channel to listen to quit signals.
+  signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // setting up the signals to listen to.
+  <-quit                                               // wait for quit signal.
 
-	shared.Logger().Info("Exiting....")
+  shared.Logger().Info("Exiting....")
 
-	exitcode = 1
+  exitcode = 1
 }

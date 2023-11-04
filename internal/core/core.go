@@ -76,9 +76,9 @@ type (
 	}
 
 	core struct {
-		activity         ProviderActivities
-		ResourceProvider map[CloudProvider]map[Driver]ResourceConstructor
-		once             sync.Once // responsible for initializing resources once
+		activities ProviderActivities
+		resources  map[CloudProvider]map[Driver]ResourceConstructor
+		once       sync.Once // responsible for initializing resources once
 	}
 )
 
@@ -86,10 +86,11 @@ type (
 func (c *core) RegisterCloudResource(provider CloudProvider, driver Driver, resource ResourceConstructor) {
 
 	// TODO: replace this with Once
-	if c.ResourceProvider[provider] == nil {
-		c.ResourceProvider[provider] = make(map[Driver]ResourceConstructor)
+	if c.resources[provider] == nil {
+		c.resources[provider] = make(map[Driver]ResourceConstructor)
 	}
-	c.ResourceProvider[provider][driver] = resource
+
+	c.resources[provider][driver] = resource
 
 	// All cloud resources workflows can be registered like this but the
 	// problem with this approach is that the signature of deploy workflow needs to be generic and part of cloud resource interface
@@ -106,15 +107,15 @@ func (c *core) RegisterCloudResource(provider CloudProvider, driver Driver, reso
 }
 
 func (c *core) RegisterRepoProvider(provider RepoProvider, activities RepoProviderActivities) {
-	c.activity.repos[provider] = activities
+	c.activities.repos[provider] = activities
 }
 
 func (c *core) RegisterCloudProvider(provider CloudProvider, activities CloudProviderActivities) {
-	c.activity.cloud[provider] = activities
+	c.activities.cloud[provider] = activities
 }
 
 func (c *core) RepoProvider(name RepoProvider) RepoProviderActivities {
-	if p, ok := c.activity.repos[name]; ok {
+	if p, ok := c.activities.repos[name]; ok {
 		return p
 	}
 
@@ -122,7 +123,7 @@ func (c *core) RepoProvider(name RepoProvider) RepoProviderActivities {
 }
 
 func (c *core) ResourceConstructor(provider CloudProvider, driver Driver) ResourceConstructor {
-	p, ok := c.ResourceProvider[provider]
+	p, ok := c.resources[provider]
 	if !ok {
 		panic(NewProviderNotFoundError(provider.String()))
 	}
@@ -135,7 +136,7 @@ func (c *core) ResourceConstructor(provider CloudProvider, driver Driver) Resour
 }
 
 func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
-	if p, ok := c.activity.cloud[name]; ok {
+	if p, ok := c.activities.cloud[name]; ok {
 		return p
 	}
 
@@ -166,19 +167,19 @@ func WithCloudResource(provider CloudProvider, driver Driver, res ResourceConstr
 }
 
 // Instance returns a singleton instance of the core. It is best to call this function in the main() function to
-// register the providers available to the service. This is because the core uses workflow and activity implementations
+// register the providers available to the service. This is because the core uses workflow and activities implementations
 // to access the providers.
 func Instance(opts ...Option) Core {
 	if instance == nil {
 		shared.Logger().Info("core: instance not initialized, initializing now ...")
 		once.Do(func() {
 			instance = &core{
-				activity: ProviderActivities{
+				activities: ProviderActivities{
 					repos: make(map[RepoProvider]RepoProviderActivities),
 					cloud: make(map[CloudProvider]CloudProviderActivities),
 				},
 
-				ResourceProvider: make(map[CloudProvider]map[Driver]ResourceConstructor),
+				resources: make(map[CloudProvider]map[Driver]ResourceConstructor),
 			}
 
 			for _, opt := range opts {

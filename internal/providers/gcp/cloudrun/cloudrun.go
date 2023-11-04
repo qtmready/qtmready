@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"go.breu.io/quantm/internal/core/resources/gcp"
 	"sync"
 	"time"
 
@@ -81,7 +80,7 @@ type (
 )
 
 var (
-	activities *gcp.Activities
+	activities *Activities
 )
 
 // Create creates cloud run resource
