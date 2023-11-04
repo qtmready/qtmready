@@ -44,10 +44,10 @@ type (
 
 		RepoProvider(RepoProvider) RepoProviderActivities
 		CloudProvider(CloudProvider) CloudProviderActivities
-		CloudResources(CloudProvider, Driver) ResourceConstructor
+		ResourceConstructor(CloudProvider, Driver) ResourceConstructor
 	}
 
-	CoreOption func(Core)
+	Option func(Core)
 
 	RepoProviderActivities interface {
 		GetLatestCommit(context.Context, string, string) (string, error)
@@ -121,7 +121,7 @@ func (c *core) RepoProvider(name RepoProvider) RepoProviderActivities {
 	panic(NewProviderNotFoundError(name.String()))
 }
 
-func (c *core) CloudResources(provider CloudProvider, driver Driver) ResourceConstructor {
+func (c *core) ResourceConstructor(provider CloudProvider, driver Driver) ResourceConstructor {
 	p, ok := c.ResourceProvider[provider]
 	if !ok {
 		panic(NewProviderNotFoundError(provider.String()))
@@ -143,7 +143,7 @@ func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
 }
 
 // WithRepoProvider registers a repo provider with the core.
-func WithRepoProvider(name RepoProvider, provider RepoProviderActivities) CoreOption {
+func WithRepoProvider(name RepoProvider, provider RepoProviderActivities) Option {
 	return func(c Core) {
 		shared.Logger().Info("core: registering repo provider", "name", name.String())
 		c.RegisterRepoProvider(name, provider)
@@ -151,14 +151,14 @@ func WithRepoProvider(name RepoProvider, provider RepoProviderActivities) CoreOp
 }
 
 // WithCloudProvider registers a cloud provider with the core.
-func WithCloudProvider(name CloudProvider, provider CloudProviderActivities) CoreOption {
+func WithCloudProvider(name CloudProvider, provider CloudProviderActivities) Option {
 	return func(c Core) {
 		shared.Logger().Info("core: registering cloud provider", "name", name.String())
 		c.RegisterCloudProvider(name, provider)
 	}
 }
 
-func WithCloudResource(provider CloudProvider, driver Driver, res ResourceConstructor) CoreOption {
+func WithCloudResource(provider CloudProvider, driver Driver, res ResourceConstructor) Option {
 	return func(c Core) {
 		shared.Logger().Info("core: registering cloud resource", "name", driver.String())
 		c.RegisterCloudResource(provider, driver, res)
@@ -168,7 +168,7 @@ func WithCloudResource(provider CloudProvider, driver Driver, res ResourceConstr
 // Instance returns a singleton instance of the core. It is best to call this function in the main() function to
 // register the providers available to the service. This is because the core uses workflow and activity implementations
 // to access the providers.
-func Instance(opts ...CoreOption) Core {
+func Instance(opts ...Option) Core {
 	if instance == nil {
 		shared.Logger().Info("core: instance not initialized, initializing now ...")
 		once.Do(func() {
