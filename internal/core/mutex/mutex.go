@@ -46,14 +46,14 @@ type (
 		// SetContext(workflow.Context)        // SetContext sets the workflow context for the current mutex workflow exececution.
 	}
 
-	MutexOption func(*Lock)
+	Option func(*Lock)
 
 	Contexts struct {
 		caller workflow.Context
 		mutex  workflow.Context
 	}
 
-	// mutex is the implementation of the Mutex interface.
+	// Lock is the implementation of the Mutex interface.
 	//
 	// Although it gets the job done for now, but it is not an ideal design. The mutex should hold the lock regardless of the caller.
 	// We should be able to call the mutex from any workflow and it should be able to acquire the lock.
@@ -78,7 +78,7 @@ func (m *Lock) Start(ctx workflow.Context) error {
 			shared.WithWorkflowBlock("mutex"),
 			shared.WithWorkflowBlockID(m.ID),
 		)
-		// GetChildWorkflowOptions("mutex", m.Id)
+	// GetChildWorkflowOptions("mutex", m.Id)
 	cctx := workflow.WithChildOptions(ctx, opts)
 	logger.Info("mutex: starting workflow ...", "resource ID", m.ID, "with timeout", m.Timeout)
 
@@ -165,21 +165,21 @@ func (m *Lock) validate() error {
 }
 
 // WithCallerContext sets the workflow context for the workflow that is invoking the mutex.
-func WithCallerContext(ctx workflow.Context) MutexOption {
+func WithCallerContext(ctx workflow.Context) Option {
 	return func(m *Lock) {
 		m.contexts.caller = ctx
 	}
 }
 
 // WithID sets the resource ID for the mutex workflow.
-func WithID(id string) MutexOption {
+func WithID(id string) Option {
 	return func(m *Lock) {
 		m.ID = id
 	}
 }
 
 // WithTimeout sets the timeout for the mutex workflow.
-func WithTimeout(timeout time.Duration) MutexOption {
+func WithTimeout(timeout time.Duration) Option {
 	return func(m *Lock) {
 		m.Timeout = timeout
 	}
@@ -199,7 +199,7 @@ func WithTimeout(timeout time.Duration) MutexOption {
 //	if err := m.Start(); err != nil {/*handle error*/}
 //	if err := m.Acquire(); err != nil {/*handle error*/}
 //	if err := m.Release(); err != nil {/*handle error*/}
-func New(opts ...MutexOption) Mutex {
+func New(opts ...Option) Mutex {
 	m := &Lock{Timeout: DefaultTimeout, contexts: &Contexts{}}
 	for _, opt := range opts {
 		opt(m)

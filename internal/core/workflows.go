@@ -79,15 +79,15 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 
 	triggerChannel := workflow.GetSignalChannel(ctx, shared.WorkflowSignalDeploymentStarted.String())
 	assetsChannel := workflow.GetSignalChannel(ctx, WorkflowSignalAssetsRetrieved.String())
-	infrachannel := workflow.GetSignalChannel(ctx, WorkflowSignalInfraProvisioned.String())
-	deploymentchannel := workflow.GetSignalChannel(ctx, WorkflowSignalDeploymentCompleted.String())
+	infraChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInfraProvisioned.String())
+	deploymentChannel := workflow.GetSignalChannel(ctx, WorkflowSignalDeploymentCompleted.String())
 	manualOverrideChannel := workflow.GetSignalChannel(ctx, WorkflowSignalManualOverride.String())
 
 	selector := workflow.NewSelector(ctx)
 	selector.AddReceive(triggerChannel, onDeploymentStartedSignal(ctx, stackID, deployments))
 	selector.AddReceive(assetsChannel, onAssetsRetrievedSignal(ctx, stackID, deployments))
-	selector.AddReceive(infrachannel, onInfraProvisionedSignal(ctx, stackID, lock, deployments, activeInfra))
-	selector.AddReceive(deploymentchannel, onDeploymentCompletedSignal(ctx, stackID, deployments))
+	selector.AddReceive(infraChannel, onInfraProvisionedSignal(ctx, stackID, lock, deployments, activeInfra))
+	selector.AddReceive(deploymentChannel, onDeploymentCompletedSignal(ctx, stackID, deployments))
 	selector.AddReceive(manualOverrideChannel, onManualOverrideSignal(ctx, stackID, deployments))
 
 	// var prSignalsCounter int = 0
@@ -106,7 +106,7 @@ func (w *Workflows) DeProvisionInfra(ctx workflow.Context, stackID string, resou
 	return nil
 }
 
-// GetAssets gets assests for stack including resources, workloads and blueprint.
+// GetAssets gets assets for stack including resources, workloads and blueprint.
 func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) error {
 	var (
 		future workflow.Future
@@ -124,6 +124,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	selector := workflow.NewSelector(ctx)
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
+
 	providerActivityOpts := workflow.ActivityOptions{
 		StartToCloseTimeout: 60 * time.Second,
 		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
@@ -248,7 +249,7 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 	for _, rsc := range assets.Resources {
 		logger.Info("Creating resource", "Name", rsc.Name)
 
-		// get the resource contructor specific to the driver e.g gke, cloudrun for GCP, sns, fargate for AWS
+		// get the resource constructor specific to the driver e.g gke, cloudrun for GCP, sns, fargate for AWS
 		resconstr := Instance().ResourceConstructor(rsc.Provider, rsc.Driver)
 		if rsc.IsImmutable {
 			// assuming a single region for now
@@ -300,7 +301,7 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Lock, assets *Assets) error {
 	logger := workflow.GetLogger(ctx)
 	logger.Info("Deployment initiated", "changeset", assets.ChangesetID, "infra", assets.Infra)
-	Infra := make(Infra)
+	infra := make(Infra)
 
 	// Acquire lock
 	err := lock.Acquire(ctx)
@@ -324,14 +325,14 @@ func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Loc
 		resconstr := Instance().ResourceConstructor(rsc.Provider, rsc.Driver)
 		inf := assets.Infra[rsc.ID] // get marshaled resource from ID
 		r := resconstr.CreateFromJson(inf)
-		Infra[rsc.ID] = r
+		infra[rsc.ID] = r
 		r.Deploy(ctx, deployables[rsc.ID], assets.ChangesetID)
 	}
 
 	// update traffic on resource from 50 to 100
 	var i int32
 	for i = 50; i <= 100; i += 25 {
-		for id, r := range Infra {
+		for id, r := range infra {
 			logger.Info("updating traffic", id, r)
 			r.UpdateTraffic(ctx, i)
 			// workflow.Sleep(ctx, 10*time.Second)
@@ -371,7 +372,7 @@ func onDeploymentStartedSignal(ctx workflow.Context, stackID string, deployments
 		// We want to filter workflows with changeset ID, so create changeset ID here and use it for creating workflow ID
 		changesetID, _ := gocql.RandomUUID()
 
-		// Set childworkflow options
+		// Set child workflow options
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
 			ChildWorkflowOptions(
