@@ -3,7 +3,7 @@
 ## Workflows
 
 ### Pull Request
-.
+
 ```mermaid
 sequenceDiagram
   autonumber
@@ -31,13 +31,14 @@ sequenceDiagram
 
     mwf ->> cwfpr: Lock acquired
     cwfpr ->> cwfpr: execute critical section
-    cwfpr ->> mwf: release lock 
-    
+    cwfpr ->> mwf: release lock
+
   deactivate cwfpr
   deactivate mwf
 ```
 
 ### Create Stack API
+
 ```mermaid
 sequenceDiagram
     autonumber
@@ -53,5 +54,4 @@ sequenceDiagram
 
     cwfpr ->> mwf: start child workflow
     deactivate cwfpr
-    <!-- deactivate mwf -->
 ```
