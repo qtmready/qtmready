@@ -110,7 +110,7 @@ func (s *ServerHandler) GithubGetInstallations(ctx echo.Context) error {
 }
 
 // GithubArtifactReady API is called by github action after building and pushing the build artifact
-// After receiving pull request webhook, Quantum waits for the artifact ready event to start deployment
+// After receiving pull request webhook, Quantum waits for the artifact ready event to start deployment.
 func (s *ServerHandler) GithubArtifactReady(ctx echo.Context) error {
 	request := &ArtifactReadyRequest{}
 	if err := ctx.Bind(request); err != nil {

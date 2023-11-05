@@ -15,7 +15,7 @@ type (
 )
 
 // DeployRevision deploys a new revision on Resource if the service is already created.
-// If no service is running, then it will create a new service and deploy first revision
+// If no service is running, then it will create a new service and deploy first revision.
 func (a *Activities) DeployRevision(ctx context.Context, r *Resource, wl *Workload) error {
 	logger := activity.GetLogger(ctx)
 
@@ -40,9 +40,9 @@ func (a *Activities) DeployRevision(ctx context.Context, r *Resource, wl *Worklo
 		}
 
 		logger.Info("waiting for service creation")
+
 		_, _ = op.Wait(ctx)
-		// otherwise create a new revision and route 50% traffic to it
-	} else {
+	} else { // otherwise create a new revision and route 50% traffic to it
 		// Get the already deployed service on cloud run.
 		// TODO: We should be able to construct the service template of currently deployed service by caching the data in quantum
 		req := &runpb.GetServiceRequest{Name: r.GetParent() + "/services/" + wl.Name}
@@ -57,7 +57,9 @@ func (a *Activities) DeployRevision(ctx context.Context, r *Resource, wl *Worklo
 		service.Template.Containers[0].Image = wl.Image
 		logger.Info("50 percent traffic to latest", "revision", r.Revision)
 		tt := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: 50}
-		tt1 := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION, Revision: r.LastRevision, Percent: 50}
+		tt1 := &runpb.TrafficTarget{
+			Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION, Revision: r.LastRevision, Percent: 50,
+		}
 
 		service.Traffic = []*runpb.TrafficTarget{tt, tt1}
 		service.Template.Revision = r.Revision
@@ -70,7 +72,7 @@ func (a *Activities) DeployRevision(ctx context.Context, r *Resource, wl *Worklo
 		}
 
 		logger.Info("waiting for service revision update")
-		op.Wait(ctx)
+		_, _ = op.Wait(ctx)
 	}
 
 	// Allow access to all users
@@ -82,7 +84,7 @@ func (a *Activities) DeployRevision(ctx context.Context, r *Resource, wl *Worklo
 }
 
 // UpdateTrafficActivity updates traffic percentage on a cloud run resource
-// This cannot be done in the workflow because of the blocking updateservice call
+// This cannot be done in the workflow because of the blocking updateservice call.
 func (a *Activities) UpdateTrafficActivity(ctx context.Context, r *Resource, percent int32) error {
 	logger := activity.GetLogger(ctx)
 	logger.Info("Update traffic", "revision", r.Revision, "percentage", percent)
@@ -103,7 +105,11 @@ func (a *Activities) UpdateTrafficActivity(ctx context.Context, r *Resource, per
 		service.Traffic = []*runpb.TrafficTarget{ttc}
 	} else {
 		ttc := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: percent}
-		ttp := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION, Revision: r.LastRevision, Percent: 100 - percent}
+		ttp := &runpb.TrafficTarget{
+			Type:     runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION,
+			Revision: r.LastRevision,
+			Percent:  100 - percent,
+		}
 		service.Traffic = []*runpb.TrafficTarget{ttc, ttp}
 	}
 
@@ -115,13 +121,16 @@ func (a *Activities) UpdateTrafficActivity(ctx context.Context, r *Resource, per
 		return err
 	} else {
 		logger.Info("waiting for service update")
-		lro.Wait(svctx)
+
+		_, _ = lro.Wait(svctx)
 	}
+
 	return nil
 }
 
 // GetNextRevision Gets next revision Name to be deployed
-// TODO: save the active resource's data on each deployment and on next deployment trigger get the associated data from the saved deployment.
+// TODO: save the active resource's data on each deployment and on next deployment trigger get the associated data from the
+// saved deployment.
 func (a *Activities) GetNextRevision(ctx context.Context, r *Resource) (*Resource, error) {
 	revision := r.GetFirstRevision()
 	r.LastRevision = ""
@@ -129,11 +138,13 @@ func (a *Activities) GetNextRevision(ctx context.Context, r *Resource) (*Resourc
 	// get the deployed service, if not found then it will be first revision
 	//TODO: we should get the revision from the saved cache is quantum. We should not have to Get cloud run service for it
 	svc := r.GetService(ctx)
+
 	if svc != nil {
 		rev := svc.Template.Revision
 		r.LastRevision = rev
 
-		// revision name would be <service name>-<revision number> e.g first revision for helloworld service would be helloworld-0, second will be helloworld-1
+		// FIXME: revision name would be <service name>-<revision number> e.g first revision for helloworld service would be helloworld-0,
+		// second will be helloworld-1. it should be helloworld-${changesetID}
 		ss := strings.Split(rev, r.ServiceName+"-")
 		revVersion, _ := strconv.Atoi(ss[1])
 		revVersion++

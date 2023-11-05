@@ -98,7 +98,7 @@ type (
 // Webhook event types. We get this from the header `X-Github-Event`.
 // For payload information, see https://developer.github.com/webhooks/event-payloads/.
 const (
-	WebhookEventAppAuthorization                    WebhookEvent = "github_app_authorization"
+	WebhookEventAppAuthorization                    WebhookEvent = "github_app_authorization" // nolint:gosec
 	WebhookEventCheckRun                            WebhookEvent = "check_run"
 	WebhookEventCheckSuite                          WebhookEvent = "check_suite"
 	WebhookEventCommitComment                       WebhookEvent = "commit_comment"

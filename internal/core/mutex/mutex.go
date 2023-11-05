@@ -80,6 +80,7 @@ func (m *Lock) Start(ctx workflow.Context) error {
 		)
 	// GetChildWorkflowOptions("mutex", m.Id)
 	cctx := workflow.WithChildOptions(ctx, opts)
+
 	logger.Info("mutex: starting workflow ...", "resource ID", m.ID, "with timeout", m.Timeout)
 
 	var exe workflow.Execution

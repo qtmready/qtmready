@@ -21,25 +21,29 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/cursor"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+
 	"go.breu.io/quantm/cmd/cli/styles"
 	"go.breu.io/quantm/cmd/cli/utils"
 )
 
-type InputModel struct {
-	focusIndex int
-	inputs     []textinput.Model
-	cursorMode textinput.CursorMode
-	fields     InputFields
-}
+type (
+	InputModel struct {
+		focusIndex int
+		inputs     []textinput.Model
+		cursorMode cursor.Mode
+		fields     InputFields
+	}
 
-type InputFields interface {
-	// GetFields returns field names of the struct from json tag
-	GetFields() []string
-	BindFields(inputs []textinput.Model)
-	RunCmd()
-}
+	InputFields interface {
+		// GetFields returns field names of the struct from json tag
+		GetFields() []string
+		BindFields(inputs []textinput.Model)
+		RunCmd()
+	}
+)
 
 func InitializeInputModel(f InputFields) InputModel {
 	prompts := f.GetFields()
@@ -55,6 +59,7 @@ func InitializeInputModel(f InputFields) InputModel {
 
 	// focus on first index
 	utils.SetFocusedState(&m.inputs[0])
+
 	return m
 }
 
@@ -63,7 +68,6 @@ func (m InputModel) Init() tea.Cmd {
 }
 
 func (m InputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -79,6 +83,7 @@ func (m InputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if s == "enter" && m.focusIndex == len(m.inputs) {
 				m.fields.BindFields(m.inputs)
 				m.fields.RunCmd()
+
 				return m, tea.Quit
 			}
 
@@ -96,12 +101,15 @@ func (m InputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 			cmds := make([]tea.Cmd, len(m.inputs))
+
 			for i := 0; i <= len(m.inputs)-1; i++ {
 				if i == m.focusIndex {
 					cmds[i] = m.inputs[i].Focus()
 					utils.SetFocusedState(&m.inputs[i])
+
 					continue
 				}
+
 				utils.RemoveFocusedState(&m.inputs[i])
 			}
 
@@ -132,6 +140,7 @@ func (m InputModel) View() string {
 
 	for i := range m.inputs {
 		b.WriteString(m.inputs[i].View())
+
 		if i < len(m.inputs)-1 {
 			b.WriteRune('\n')
 		}
@@ -141,6 +150,7 @@ func (m InputModel) View() string {
 	if m.focusIndex == len(m.inputs) {
 		button = &styles.FocusedButton
 	}
+
 	fmt.Fprintf(&b, "\n\n%s\n\n", *button)
 
 	return b.String()

@@ -17,10 +17,12 @@
 
 package utils
 
-import "github.com/spf13/cobra"
+import (
+	"github.com/spf13/cobra"
+)
 
 func AddRequiredFlags(cmd *cobra.Command, flags ...string) {
 	for _, f := range flags {
-		cmd.MarkFlagRequired(f)
+		_ = cmd.MarkFlagRequired(f)
 	}
 }

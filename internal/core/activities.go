@@ -20,6 +20,7 @@ package core
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	artifactregistry "cloud.google.com/go/artifactregistry/apiv1"
@@ -40,7 +41,7 @@ type (
 	ArtifactRegistryImage struct {
 		Location   string
 		Project    string
-		Pkg        string //image name
+		Pkg        string // image name
 		Repository string
 		Tag        string
 	}
@@ -105,15 +106,16 @@ func (a *Activities) CreateChangeset(ctx context.Context, changeSet *ChangeSet, 
 	return err
 }
 
-// TagGcpImage creates a new tag on a docker image in GCP artifact registry
+// TagGcpImage creates a new tag on a docker image in GCP artifact registry.
 func (a *Activities) TagGcpImage(ctx context.Context, image string, digest string, tag string) error {
-
 	logger := activity.GetLogger(ctx)
+
 	c, err := artifactregistry.NewRESTClient(ctx)
 	if err != nil {
 		logger.Error("Could not create REST client for artifact registry", "Error", err)
 		return err
 	}
+
 	defer c.Close()
 
 	imageparts, err := ParseArtifactRegistryImage(image)
@@ -124,14 +126,19 @@ func (a *Activities) TagGcpImage(ctx context.Context, image string, digest strin
 
 	logger.Debug("Debug only", "image", image, "imageparts", imageparts)
 
-	parent := "projects/" + imageparts.Project + "/locations/" + imageparts.Location + "/repositories/" + imageparts.Repository + "/packages/" + imageparts.Pkg
+	parent := fmt.Sprintf(
+		"projects/%s/locations/%s/repositories/%s/packages/%s",
+		imageparts.Project, imageparts.Location, imageparts.Repository, imageparts.Pkg,
+	)
 	newtag := &artifactregistrypb.Tag{
 		Name:    parent + "/tags/" + tag,
 		Version: parent + "/versions/" + digest,
 	}
+
 	logger.Info("Parent", "parent", parent)
 	logger.Info("Tag", "tag", tag)
 	logger.Info("Digest", "digest", digest)
+
 	req := &artifactregistrypb.UpdateTagRequest{Tag: newtag}
 	_, err = c.UpdateTag(ctx, req)
 
@@ -141,6 +148,7 @@ func (a *Activities) TagGcpImage(ctx context.Context, image string, digest strin
 	}
 
 	logger.Info("Tag updated")
+
 	return nil
 }
 

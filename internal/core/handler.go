@@ -131,9 +131,9 @@ func (s *ServerHandler) CreateResource(ctx echo.Context) error {
 	}
 
 	resource := &Resource{
-		Name:        request.Name,
-		Provider:    request.Provider,
-		StackID:     request.StackID,
+		Name:     request.Name,
+		Provider: request.Provider,
+		StackID:  request.StackID,
 		// TODO: check why assinging directly wasn't working
 		Driver:      Driver(request.Driver),
 		Config:      request.Config,

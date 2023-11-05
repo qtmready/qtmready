@@ -18,7 +18,7 @@ var (
 	registerOnce sync.Once
 )
 
-// Create creates cloud run resource
+// Create creates cloud run resource.
 func (c *Constructor) Create(name string, region string, config string, providerConfig string) (core.CloudResource, error) {
 	cr := &Resource{Name: name, Region: region, Config: config}
 	cr.AllowUnauthenticatedAccess = true
@@ -42,6 +42,7 @@ func (c *Constructor) Create(name string, region string, config string, provider
 	// get gcp project from configuration
 	pconfig := new(GCPConfig)
 	err := json.Unmarshal([]byte(providerConfig), pconfig)
+
 	if err != nil {
 		shared.Logger().Error("Unable to parse provider config for cloudrun")
 		return nil, err
@@ -50,7 +51,9 @@ func (c *Constructor) Create(name string, region string, config string, provider
 	cr.Project = pconfig.Project
 
 	shared.Logger().Info("cloud run", "object", providerConfig, "umarshaled", pconfig, "project", cr.Project)
+
 	w := &workflows{}
+
 	registerOnce.Do(func() {
 		coreWrkr := shared.Temporal().Worker(shared.CoreQueue)
 		coreWrkr.RegisterWorkflow(w.DeployWorkflow)
@@ -60,9 +63,10 @@ func (c *Constructor) Create(name string, region string, config string, provider
 	return cr, nil
 }
 
-// CreateFromJson creates a Resource object from JSON
+// CreateFromJson creates a Resource object from JSON.
 func (c *Constructor) CreateFromJson(data []byte) core.CloudResource {
 	cr := &Resource{}
-	json.Unmarshal(data, cr)
+	_ = json.Unmarshal(data, cr)
+
 	return cr
 }

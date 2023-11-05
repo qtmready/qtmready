@@ -113,7 +113,6 @@ func (t *Config) Client() client.Client {
 // WithQueue adds a new queue and worker to the Config.
 func WithQueue(name queue.Name) ConfigOption {
 	return func(t *Config) {
-
 		options := worker.Options{OnFatalError: func(err error) { t.logger.Error("Fatal error during worker execution %v", err) }}
 		t.queues[name] = queue.NewQueue(queue.WithName(name))
 		t.workers[name] = worker.New(t.client, name.String(), options)

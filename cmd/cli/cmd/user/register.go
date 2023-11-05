@@ -24,6 +24,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+
 	client "go.breu.io/quantm/cmd/cli/apiClient"
 	"go.breu.io/quantm/cmd/cli/utils/models"
 	"go.breu.io/quantm/internal/auth"
@@ -83,7 +84,6 @@ func (o *registerOptions) BindFields(inputs []textinput.Model) {
 }
 
 func (o registerOptions) RunRegister() {
-
 	c := client.Client
 	r, err := c.AuthClient.Register(context.Background(), o.RegisterationRequest)
 

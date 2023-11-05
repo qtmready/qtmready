@@ -1,245 +1,250 @@
 package cloudrun
 
 import (
-  "context"
-  "encoding/json"
-  "errors"
+	"context"
+	"encoding/json"
+	"errors"
 
-  "cloud.google.com/go/iam/apiv1/iampb"
-  run "cloud.google.com/go/run/apiv2"
-  "cloud.google.com/go/run/apiv2/runpb"
-  "github.com/gocql/gocql"
-  "go.temporal.io/sdk/activity"
-  "go.temporal.io/sdk/workflow"
+	"cloud.google.com/go/iam/apiv1/iampb"
+	run "cloud.google.com/go/run/apiv2"
+	"cloud.google.com/go/run/apiv2/runpb"
+	"github.com/gocql/gocql"
+	"go.temporal.io/sdk/activity"
+	"go.temporal.io/sdk/workflow"
 
-  "go.breu.io/quantm/internal/core"
-  "go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
-  Resource struct {
-    ID                         gocql.UUID
-    Cpu                        string
-    Memory                     string
-    Generation                 uint8
-    Port                       int32
-    Envs                       []*runpb.EnvVar
-    OutputEnvs                 map[string]string
-    Region                     string // from blueprint
-    Image                      string // from workload
-    Config                     string
-    Name                       string
-    Revision                   string
-    LastRevision               string
-    MinInstances               int32
-    MaxInstances               int32
-    AllowUnauthenticatedAccess bool
-    CpuIdle                    bool
-    Project                    string
-    ServiceName                string
-  }
+	Resource struct {
+		ID                         gocql.UUID
+		Cpu                        string
+		Memory                     string
+		Generation                 uint8
+		Port                       int32
+		Envs                       []*runpb.EnvVar
+		OutputEnvs                 map[string]string
+		Region                     string // from blueprint
+		Image                      string // from workload
+		Config                     string
+		Name                       string
+		Revision                   string
+		LastRevision               string
+		MinInstances               int32
+		MaxInstances               int32
+		AllowUnauthenticatedAccess bool
+		CpuIdle                    bool
+		Project                    string
+		ServiceName                string
+	}
 
-  Workload struct {
-    Name  string `json:"name"`
-    Image string `json:"image"`
-  }
+	Workload struct {
+		Name  string `json:"name"`
+		Image string `json:"image"`
+	}
 
-  GCPConfig struct {
-    Project string
-  }
+	GCPConfig struct {
+		Project string
+	}
 )
 
 var (
-  activities *Activities
+	activities *Activities
 )
 
-// Marshal marshals the Resource object
+// Marshal marshals the Resource object.
 func (r *Resource) Marshal() ([]byte, error) {
-  return json.Marshal(r)
+	return json.Marshal(r)
 }
 
-// Provision provisions the cloud resource
+// Provision provisions the cloud resource.
 func (r *Resource) Provision(ctx workflow.Context) (workflow.Future, error) {
-
-  // do nothing, the infra will be provisioned with deployment
-  return nil, nil
+	// do nothing, the infra will be provisioned with deployment
+	return nil, nil
 }
 
-// DeProvision deprovisions the cloudrun resource
+// DeProvision deprovisions the cloudrun resource.
 func (r *Resource) DeProvision() error {
-
-  return nil
+	return nil
 }
 
 // UpdateTraffic updates the traffic distribution on latest and previous revision as per the input
-// parameter trafficpcnt is the percentage traffic to be deployed on latest revision
+// parameter trafficpcnt is the percentage traffic to be deployed on latest revision.
+// UpdateTraffic will execute a workflow to update the resource. This workflow is not directly called
+// from provisioninfra workflow to avoid passing resource interface as argument.
 func (r *Resource) UpdateTraffic(ctx workflow.Context, percent int32) error {
-  // UpdateTraffic will execute a workflow to update the resource. This workflow is not directly called
-  // from provisioninfra workflow to avoid passing resource interface as argument
-  opts := shared.Temporal().
-    Queue(shared.CoreQueue).
-    ChildWorkflowOptions(
-      shared.WithWorkflowParent(ctx),
-      shared.WithWorkflowBlock("Resource"),
-      shared.WithWorkflowBlockID(r.Name),
-      shared.WithWorkflowElement("UpdateTraffic"),
-    )
+	opts := shared.Temporal().
+		Queue(shared.CoreQueue).
+		ChildWorkflowOptions(
+			shared.WithWorkflowParent(ctx),
+			shared.WithWorkflowBlock("Resource"),
+			shared.WithWorkflowBlockID(r.Name),
+			shared.WithWorkflowElement("UpdateTraffic"),
+		)
 
-  cctx := workflow.WithChildOptions(ctx, opts)
+	cctx := workflow.WithChildOptions(ctx, opts)
 
-  shared.Logger().Info("Executing Update traffic workflow")
+	shared.Logger().Info("Executing Update traffic workflow")
 
-  w := &workflows{}
-  err := workflow.
-    ExecuteChildWorkflow(cctx, w.UpdateTraffic, r, percent).Get(cctx, nil)
+	w := &workflows{}
+	err := workflow.
+		ExecuteChildWorkflow(cctx, w.UpdateTraffic, r, percent).Get(cctx, nil)
 
-  if err != nil {
-    shared.Logger().Error("Could not execute UpdateTraffic workflow", "error", err)
-    return err
-  }
-  return nil
+	if err != nil {
+		shared.Logger().Error("Could not execute UpdateTraffic workflow", "error", err)
+		return err
+	}
+
+	return nil
 }
 
 // Deploy deploys the resource with the given changeset ID.
 func (r *Resource) Deploy(ctx workflow.Context, wl []core.Workload, changesetID gocql.UUID) error {
-  shared.Logger().Info("deploying", "cloudrun", r, "workload", wl)
+	shared.Logger().Info("deploying", "cloudrun", r, "workload", wl)
 
-  if len(wl) != 1 {
-    shared.Logger().Error("Cannot deploy more than one workloads on cloud run", "number of workloads", len(wl))
-    return errors.New("multiple workloads defined for cloud run")
-  }
+	if len(wl) != 1 {
+		shared.Logger().Error("Cannot deploy more than one workloads on cloud run", "number of workloads", len(wl))
+		return errors.New("multiple workloads defined for cloud run")
+	}
 
-  // provision with execute a workflow to provision the resources. This workflow is not directly called
-  // from provisioninfra workflow to avoid passing resource interface as argument
+	// provision with execute a workflow to provision the resources. This workflow is not directly called
+	// from provisioninfra workflow to avoid passing resource interface as argument
 
-  workload := &Workload{}
-  if err := json.Unmarshal([]byte(wl[0].Container), workload); err != nil {
-    return err
-  }
+	workload := &Workload{}
+	if err := json.Unmarshal([]byte(wl[0].Container), workload); err != nil {
+		return err
+	}
 
-  workload.Image = workload.Image + ":" + changesetID.String()
-  workload.Name = wl[0].Name
+	workload.Image = workload.Image + ":" + changesetID.String()
+	workload.Name = wl[0].Name
 
-  opts := shared.Temporal().
-    Queue(shared.CoreQueue).
-    ChildWorkflowOptions(
-      shared.WithWorkflowParent(ctx),
-      shared.WithWorkflowBlock("Resource"),
-      shared.WithWorkflowBlockID(r.Name),
-      shared.WithWorkflowElement("Deploy"),
-    )
+	opts := shared.Temporal().
+		Queue(shared.CoreQueue).
+		ChildWorkflowOptions(
+			shared.WithWorkflowParent(ctx),
+			shared.WithWorkflowBlock("Resource"),
+			shared.WithWorkflowBlockID(r.Name),
+			shared.WithWorkflowElement("Deploy"),
+		)
 
-  cctx := workflow.WithChildOptions(ctx, opts)
+	cctx := workflow.WithChildOptions(ctx, opts)
 
-  shared.Logger().Info("starting DeployCloudRun workflow")
+	shared.Logger().Info("starting DeployCloudRun workflow")
 
-  w := &workflows{}
-  err := workflow.
-    ExecuteChildWorkflow(cctx, w.DeployWorkflow, r, workload).Get(cctx, r)
+	w := &workflows{}
+	err := workflow.
+		ExecuteChildWorkflow(cctx, w.DeployWorkflow, r, workload).Get(cctx, r)
 
-  if err != nil {
-    shared.Logger().Error("Could not start DeployCloudRun workflow", "error", err)
-    return err
-  }
-  return nil
+	if err != nil {
+		shared.Logger().Error("Could not start DeployCloudRun workflow", "error", err)
+		return err
+	}
+
+	return nil
 }
 
 func (r *Resource) GetServiceClient() (*run.ServicesClient, error) {
-  client, err := run.NewServicesRESTClient(context.Background())
-  if err != nil {
-    shared.Logger().Error("New service rest client", "error", err)
-    return nil, err
-  }
+	client, err := run.NewServicesRESTClient(context.Background())
+	if err != nil {
+		shared.Logger().Error("New service rest client", "error", err)
+		return nil, err
+	}
 
-  return client, err
+	return client, err
 }
 
-// GetService gets a cloud run service from GCP
+// GetService gets a cloud run service from GCP.
 func (r *Resource) GetService(ctx context.Context) *runpb.Service {
-  logger := activity.GetLogger(ctx)
-  serviceClient, err := run.NewServicesRESTClient(ctx)
-  if err != nil {
-    shared.Logger().Error("New service rest client", "Error", err)
-    return nil
-  }
-  defer serviceClient.Close()
+	logger := activity.GetLogger(ctx)
 
-  svcpath := r.GetParent() + "/services/" + r.ServiceName
-  req := &runpb.GetServiceRequest{Name: svcpath}
+	serviceClient, err := run.NewServicesRESTClient(ctx)
+	if err != nil {
+		shared.Logger().Error("New service rest client", "Error", err)
+		return nil
+	}
 
-  svc, err := serviceClient.GetService(ctx, req)
+	defer serviceClient.Close()
 
-  if err != nil {
-    logger.Error("Get Service", "Error, returning nil", err)
-    return nil
-  }
+	svcpath := r.GetParent() + "/services/" + r.ServiceName
+	req := &runpb.GetServiceRequest{Name: svcpath}
 
-  logger.Debug("Get service", "service", svc, "error", err)
-  return svc
+	svc, err := serviceClient.GetService(ctx, req)
+
+	if err != nil {
+		logger.Error("Get Service", "Error, returning nil", err)
+		return nil
+	}
+
+	logger.Debug("Get service", "service", svc, "error", err)
+
+	return svc
 }
 
-// AllowAccessToAll Sets IAM policy to allow access to all users
+// AllowAccessToAll Sets IAM policy to allow access to all users.
 func (r *Resource) AllowAccessToAll(ctx context.Context) error {
-  logger := activity.GetLogger(ctx)
+	logger := activity.GetLogger(ctx)
 
-  client, err := run.NewServicesRESTClient(context.Background())
-  if err != nil {
-    logger.Error("New service rest client", "Error", err)
-    return nil
-  }
+	client, err := run.NewServicesRESTClient(context.Background())
+	if err != nil {
+		logger.Error("New service rest client", "Error", err)
+		return nil
+	}
 
-  defer func() { _ = client.Close() }()
+	defer func() { _ = client.Close() }()
 
-  rsc := r.GetParent() + "/services/" + r.ServiceName
+	rsc := r.GetParent() + "/services/" + r.ServiceName
 
-  binding := new(iampb.Binding)
-  binding.Members = []string{"allUsers"}
-  binding.Role = "roles/run.invoker"
+	binding := new(iampb.Binding)
+	binding.Members = []string{"allUsers"}
+	binding.Role = "roles/run.invoker"
 
-  _, err = client.SetIamPolicy(
-    context.Background(),
-    &iampb.SetIamPolicyRequest{Resource: rsc, Policy: &iampb.Policy{Bindings: []*iampb.Binding{binding}}},
-  )
-  if err != nil {
-    logger.Error("Set policy", "Error", err)
-    return err
-  }
+	_, err = client.SetIamPolicy(
+		context.Background(),
+		&iampb.SetIamPolicyRequest{Resource: rsc, Policy: &iampb.Policy{Bindings: []*iampb.Binding{binding}}},
+	)
+	if err != nil {
+		logger.Error("Set policy", "Error", err)
+		return err
+	}
 
-  return nil
+	return nil
 }
 
 // GetServiceTemplate creates and returns the revision template for cloud run from the workload to be deployed
 // revision template specifies the resource requirements, image to be deployed and traffic distribution etc.
 // this template will be used for first deployment only, from next deployments the already deployed template will be
-// fetched from cloudrun and the same will be used for next revision
-// TODO: the above design will not work if resource definition is changed
+// fetched from cloudrun and the same will be used for next revision.
+// TODO: the above design will not work if resource definition is changed.
 func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.Service {
-  activity.GetLogger(ctx).Info("setting service template for", "revision", r.Revision)
-  resources := &runpb.ResourceRequirements{Limits: map[string]string{"cpu": r.Cpu, "memory": r.Memory}, CpuIdle: r.CpuIdle}
+	activity.GetLogger(ctx).Info("setting service template for", "revision", r.Revision)
+	resources := &runpb.ResourceRequirements{Limits: map[string]string{"cpu": r.Cpu, "memory": r.Memory}, CpuIdle: r.CpuIdle}
 
-  // unmarshaling the container here assuming that container definition will be specific to a resource
-  // this can be done at a common location if the container definition turns out to be same for all resources
+	// unmarshaling the container here assuming that container definition will be specific to a resource
+	// this can be done at a common location if the container definition turns out to be same for all resources
 
-  containerPort := &runpb.ContainerPort{ContainerPort: r.Port}
-  container := &runpb.Container{Name: wl.Name, Image: wl.Image, Resources: resources, Ports: []*runpb.ContainerPort{containerPort}, Env: r.Envs}
+	containerPort := &runpb.ContainerPort{ContainerPort: r.Port}
+	container := &runpb.Container{
+		Name: wl.Name, Image: wl.Image, Resources: resources, Ports: []*runpb.ContainerPort{containerPort}, Env: r.Envs,
+	}
 
-  scaling := &runpb.RevisionScaling{MinInstanceCount: r.MinInstances, MaxInstanceCount: r.MaxInstances}
+	scaling := &runpb.RevisionScaling{MinInstanceCount: r.MinInstances, MaxInstanceCount: r.MaxInstances}
 
-  rt := &runpb.RevisionTemplate{Containers: []*runpb.Container{container}, Scaling: scaling,
-    ExecutionEnvironment: runpb.ExecutionEnvironment(r.Generation), Revision: r.Revision}
+	rt := &runpb.RevisionTemplate{Containers: []*runpb.Container{container}, Scaling: scaling,
+		ExecutionEnvironment: runpb.ExecutionEnvironment(r.Generation), Revision: r.Revision}
 
-  service := &runpb.Service{Template: rt}
+	service := &runpb.Service{Template: rt}
 
-  tt := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: 100}
-  service.Traffic = []*runpb.TrafficTarget{tt}
+	tt := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: 100}
+	service.Traffic = []*runpb.TrafficTarget{tt}
 
-  return service
+	return service
 }
 
 func (r *Resource) GetParent() string {
-  return "projects/" + r.Project + "/locations/" + r.Region
+	return "projects/" + r.Project + "/locations/" + r.Region
 }
 
 func (r *Resource) GetFirstRevision() string {
-  return r.ServiceName + "-0"
+	return r.ServiceName + "-0"
 }
