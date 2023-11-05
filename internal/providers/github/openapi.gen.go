@@ -49,7 +49,7 @@ const (
 	OCIImageRegistryGCPContainerRegistry OCIImageRegistry = "GCPContainerRegistry"
 )
 
-// OCIImageRegistryValues returns all known values for OCIImageRegistry.
+// OCIImageRegistryMap returns all known values for OCIImageRegistry.
 var (
 	OCIImageRegistryMap = OCIImageRegistryMapType{
 		OCIImageRegistryGCPArtifactRegistry.String():  OCIImageRegistryGCPArtifactRegistry,
@@ -89,7 +89,7 @@ const (
 	SetupActionUpdated SetupAction = "updated"
 )
 
-// SetupActionValues returns all known values for SetupAction.
+// SetupActionMap returns all known values for SetupAction.
 var (
 	SetupActionMap = SetupActionMapType{
 		SetupActionCreated.String(): SetupActionCreated,
@@ -132,7 +132,7 @@ const (
 	WorkflowStatusSuccess  WorkflowStatus = "success"
 )
 
-// WorkflowStatusValues returns all known values for WorkflowStatus.
+// WorkflowStatusMap returns all known values for WorkflowStatus.
 var (
 	WorkflowStatusMap = WorkflowStatusMapType{
 		WorkflowStatusFailure.String():  WorkflowStatusFailure,

@@ -25,7 +25,7 @@ const (
 {{end}}
 )
 
-// {{$Enum.TypeName}}Values returns all known values for {{$Enum.TypeName}}.
+// {{$Enum.TypeName}}Map returns all known values for {{$Enum.TypeName}}.
 var (
   {{$Enum.TypeName}}Map = {{$Enum.TypeName}}MapType{
     {{range $name, $value := $Enum.GetValues}}{{$name}}.String(): {{$name}},
