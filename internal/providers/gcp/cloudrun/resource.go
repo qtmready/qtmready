@@ -23,7 +23,7 @@ type (
 		Memory                     string
 		Generation                 uint8
 		Port                       int32
-		Envs                       []*runpb.EnvVar
+		Envs                       map[string]string
 		OutputEnvs                 map[string]string
 		Region                     string // from blueprint
 		Image                      string // from workload
@@ -224,8 +224,14 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 	// this can be done at a common location if the container definition turns out to be same for all resources
 
 	containerPort := &runpb.ContainerPort{ContainerPort: r.Port}
+	Envs := []*runpb.EnvVar{}
+
+	for key, val := range r.Envs {
+		Envs = append(Envs, &runpb.EnvVar{Name: key, Values: &runpb.EnvVar_Value{Value: val}})
+	}
+
 	container := &runpb.Container{
-		Name: wl.Name, Image: wl.Image, Resources: resources, Ports: []*runpb.ContainerPort{containerPort}, Env: r.Envs,
+		Name: wl.Name, Image: wl.Image, Resources: resources, Ports: []*runpb.ContainerPort{containerPort}, Env: Envs,
 	}
 
 	scaling := &runpb.RevisionScaling{MinInstanceCount: r.MinInstances, MaxInstanceCount: r.MaxInstances}
