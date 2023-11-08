@@ -11,6 +11,7 @@ import (
 	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/workflow"
+	api "google.golang.org/genproto/googleapis/api"
 
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/shared"
@@ -227,21 +228,53 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 	Envs := []*runpb.EnvVar{}
 
 	for key, val := range r.Envs {
-		Envs = append(Envs, &runpb.EnvVar{Name: key, Values: &runpb.EnvVar_Value{Value: val}})
+		Envs = append(Envs, &runpb.EnvVar{
+			Name: key, Values: &runpb.EnvVar_Value{Value: val},
+		})
+	}
+
+	networkInterfaceArray := []*runpb.VpcAccess_NetworkInterface{
+		{
+			Network:    "cargoflo-dev-8abebbf2",
+			Subnetwork: "europe-west3-cargoflo-dev-8abebbf2",
+		},
+	}
+	vpcAccess := &runpb.VpcAccess{
+		Egress:            runpb.VpcAccess_PRIVATE_RANGES_ONLY,
+		NetworkInterfaces: networkInterfaceArray,
 	}
 
 	container := &runpb.Container{
-		Name: wl.Name, Image: wl.Image, Resources: resources, Ports: []*runpb.ContainerPort{containerPort}, Env: Envs,
+		Name:      wl.Name,
+		Image:     wl.Image,
+		Resources: resources,
+		Ports:     []*runpb.ContainerPort{containerPort},
+		Env:       Envs,
 	}
 
-	scaling := &runpb.RevisionScaling{MinInstanceCount: r.MinInstances, MaxInstanceCount: r.MaxInstances}
+	scaling := &runpb.RevisionScaling{
+		MinInstanceCount: r.MinInstances,
+		MaxInstanceCount: r.MaxInstances,
+	}
 
-	rt := &runpb.RevisionTemplate{Containers: []*runpb.Container{container}, Scaling: scaling,
-		ExecutionEnvironment: runpb.ExecutionEnvironment(r.Generation), Revision: r.Revision}
+	rt := &runpb.RevisionTemplate{
+		Containers:           []*runpb.Container{container},
+		Scaling:              scaling,
+		ExecutionEnvironment: runpb.ExecutionEnvironment(r.Generation),
+		Revision:             r.Revision,
+		VpcAccess:            vpcAccess,
+	}
 
-	service := &runpb.Service{Template: rt}
+	service := &runpb.Service{
+		Template:    rt,
+		LaunchStage: api.LaunchStage_BETA,
+		Ingress:     runpb.IngressTraffic_INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER,
+	}
 
-	tt := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: 100}
+	tt := &runpb.TrafficTarget{
+		Type:    runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST,
+		Percent: 100,
+	}
 	service.Traffic = []*runpb.TrafficTarget{tt}
 
 	return service
