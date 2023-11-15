@@ -18,7 +18,8 @@ var (
 
 // Create creates cloud run resource.
 func (c *Constructor) Create(name string, region string, config string, providerConfig string) (core.CloudResource, error) {
-	cr := &Resource{Name: name, Region: region, Config: config}
+	cr := &Resource{Name: name, Region: region}
+	json.Unmarshal([]byte(config), &cr.Config)
 	cr.AllowUnauthenticatedAccess = true
 	cr.Cpu = "2000m"
 	cr.Memory = "1024Mi"
