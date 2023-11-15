@@ -264,7 +264,9 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 		NetworkInterfaces: networkInterfaceArray,
 	}
 
-	containerPort := &runpb.ContainerPort{ContainerPort: r.Port}
+	containerPortConfig := templateContainersConfig["ports"].(map[string]interface{})["container_port"].(string)
+	containerPort64bit, _ := strconv.ParseInt(containerPortConfig, 10, 32)
+	containerPort := &runpb.ContainerPort{ContainerPort: int32(containerPort64bit)}
 
 	container := &runpb.Container{
 		Name:      wl.Name,
