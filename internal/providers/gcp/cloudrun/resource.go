@@ -238,10 +238,11 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 		})
 	}
 
+	network_interfaces := r.Config["template"].(map[string]interface{})["vpc_access"].(map[string]interface{})["network_interfaces"].(map[string]interface{})
 	networkInterfaceArray := []*runpb.VpcAccess_NetworkInterface{
 		{
-			Network:    "cargoflo-dev-8abebbf2",
-			Subnetwork: "europe-west3-cargoflo-dev-8abebbf2",
+			Network:    fmt.Sprint(network_interfaces["network"]),
+			Subnetwork: fmt.Sprint(network_interfaces["subnetwork"]),
 		},
 	}
 	vpcAccess := &runpb.VpcAccess{
