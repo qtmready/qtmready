@@ -40,7 +40,7 @@ config_resources = {
         "containers": {
             "image": "europe-west3-docker.pkg.dev/cargoflo-dev-400720/cloud-run-source-deploy/cargoflo/api",
             "ports": {
-                "container_port": 8000
+                "container_port": "8000"
             },
             "resources": {
                 "cpu_idle": "true"
