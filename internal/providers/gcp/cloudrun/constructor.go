@@ -30,17 +30,6 @@ func (c *Constructor) Create(name string, region string, config string, provider
 	cr.Port = 8000
 	cr.CpuIdle = true
 
-	// TODO: Get env values from config
-	cr.Envs = map[string]string{
-		"CARGOFLO_DEBUG":                   "false",
-		"CARGOFLO_TEMPORAL_HOST":           "10.10.0.3",
-		"CARGOFLO_DB_HOST":                 "10.69.49.8",
-		"CARGOFLO_DB_NAME":                 "cargoflo",
-		"CARGOFLO_DB_USER":                 "cargoflo",
-		"CARGOFLO_DB_PASS":                 "cargoflo",
-		"CARGOFLO_DB_MAX_OPEN_CONNECTIONS": "25",
-	}
-
 	// get gcp project from configuration
 	pconfig := new(GCPConfig)
 	err := json.Unmarshal([]byte(providerConfig), pconfig)
