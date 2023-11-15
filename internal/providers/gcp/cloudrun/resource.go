@@ -220,7 +220,12 @@ func (r *Resource) AllowAccessToAll(ctx context.Context) error {
 // TODO: the above design will not work if resource definition is changed.
 func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.Service {
 	activity.GetLogger(ctx).Info("setting service template for", "revision", r.Revision)
-	resources := &runpb.ResourceRequirements{Limits: map[string]string{"cpu": r.Cpu, "memory": r.Memory}, CpuIdle: r.CpuIdle}
+	resources := &runpb.ResourceRequirements{
+		Limits: map[string]string{
+			"cpu":    r.Cpu,
+			"memory": r.Memory},
+		CpuIdle: r.CpuIdle,
+	}
 
 	// unmarshaling the container here assuming that container definition will be specific to a resource
 	// this can be done at a common location if the container definition turns out to be same for all resources
@@ -238,15 +243,17 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 		})
 	}
 
-	network_interfaces := r.Config["template"].(map[string]interface{})["vpc_access"].(map[string]interface{})["network_interfaces"].(map[string]interface{})
+	networkInterfaces := r.Config["template"].(map[string]interface{})["vpc_access"].(map[string]interface{})["network_interfaces"].(map[string]interface{})
 	networkInterfaceArray := []*runpb.VpcAccess_NetworkInterface{
 		{
-			Network:    fmt.Sprint(network_interfaces["network"]),
-			Subnetwork: fmt.Sprint(network_interfaces["subnetwork"]),
+			Network:    fmt.Sprint(networkInterfaces["network"]),
+			Subnetwork: fmt.Sprint(networkInterfaces["subnetwork"]),
 		},
 	}
+
+	egress := r.Config["template"].(map[string]interface{})["vpc_access"].(map[string]interface{})["egress"].(string)
 	vpcAccess := &runpb.VpcAccess{
-		Egress:            runpb.VpcAccess_PRIVATE_RANGES_ONLY,
+		Egress:            runpb.VpcAccess_VpcEgress(runpb.VpcAccess_VpcEgress_value[egress]),
 		NetworkInterfaces: networkInterfaceArray,
 	}
 
