@@ -222,7 +222,11 @@ func (r *Resource) AllowAccessToAll(ctx context.Context) error {
 func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.Service {
 	activity.GetLogger(ctx).Info("setting service template for", "revision", r.Revision)
 
-	cpuIdleStr := r.Config["template"].(map[string]interface{})["containers"].(map[string]interface{})["resources"].(map[string]interface{})["cpu_idle"].(string)
+	templateConfig := r.Config["template"].(map[string]interface{})
+	templateContainersConfig := templateConfig["containers"].(map[string]interface{})
+	templateVpcAccessConfig := templateConfig["vpc_access"].(map[string]interface{})
+
+	cpuIdleStr := templateContainersConfig["resources"].(map[string]interface{})["cpu_idle"].(string)
 	cpuIdle, _ := strconv.ParseBool(cpuIdleStr)
 	resources := &runpb.ResourceRequirements{
 		Limits: map[string]string{
@@ -236,7 +240,7 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 
 	Envs := []*runpb.EnvVar{}
 
-	env := r.Config["template"].(map[string]interface{})["containers"].(map[string]interface{})["env"].([]interface{})
+	env := templateContainersConfig["env"].([]interface{})
 	for _, val := range env {
 		envVal := val.(map[string]interface{})
 		Envs = append(Envs, &runpb.EnvVar{
@@ -246,7 +250,7 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 		})
 	}
 
-	networkInterfaces := r.Config["template"].(map[string]interface{})["vpc_access"].(map[string]interface{})["network_interfaces"].(map[string]interface{})
+	networkInterfaces := templateVpcAccessConfig["network_interfaces"].(map[string]interface{})
 	networkInterfaceArray := []*runpb.VpcAccess_NetworkInterface{
 		{
 			Network:    fmt.Sprint(networkInterfaces["network"]),
@@ -254,7 +258,7 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 		},
 	}
 
-	egress := r.Config["template"].(map[string]interface{})["vpc_access"].(map[string]interface{})["egress"].(string)
+	egress := templateVpcAccessConfig["egress"].(string)
 	vpcAccess := &runpb.VpcAccess{
 		Egress:            runpb.VpcAccess_VpcEgress(runpb.VpcAccess_VpcEgress_value[egress]),
 		NetworkInterfaces: networkInterfaceArray,
