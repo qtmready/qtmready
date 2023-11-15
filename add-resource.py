@@ -50,6 +50,26 @@ config_resources = {
                 {
                     "name": "CARGOFLO_TEMPORAL_HOST", 
                     "value": "10.10.0.3"
+                },
+                {
+                    "name": "CARGOFLO_DB_HOST", 
+                    "value": "110.69.49.8"
+                },
+                {
+                    "name": "CARGOFLO_DB_NAME", 
+                    "value": "cargoflo"
+                },
+                {
+                    "name": "CARGOFLO_DB_USER", 
+                    "value": "cargoflo"
+                },
+                {
+                    "name": "CARGOFLO_DB_PASS", 
+                    "value": "cargoflo"
+                },
+                {
+                    "name": "CARGOFLO_DB_MAX_OPEN_CONNECTIONS", 
+                    "value": "25"
                 }
             ],
             "volume_mounts" : {
