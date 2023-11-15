@@ -42,6 +42,9 @@ config_resources = {
             "ports": {
                 "container_port": 8000
             },
+            "resources": {
+                "cpu_idle": "true"
+            },
             "env": [
                 {
                     "name": "CARGOFLO_DEBUG",
