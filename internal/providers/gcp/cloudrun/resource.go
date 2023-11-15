@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 
 	"cloud.google.com/go/iam/apiv1/iampb"
 	run "cloud.google.com/go/run/apiv2"
@@ -220,17 +221,19 @@ func (r *Resource) AllowAccessToAll(ctx context.Context) error {
 // TODO: the above design will not work if resource definition is changed.
 func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.Service {
 	activity.GetLogger(ctx).Info("setting service template for", "revision", r.Revision)
+
+	cpuIdleStr := r.Config["template"].(map[string]interface{})["containers"].(map[string]interface{})["resources"].(map[string]interface{})["cpu_idle"].(string)
+	cpuIdle, _ := strconv.ParseBool(cpuIdleStr)
 	resources := &runpb.ResourceRequirements{
 		Limits: map[string]string{
 			"cpu":    r.Cpu,
 			"memory": r.Memory},
-		CpuIdle: r.CpuIdle,
+		CpuIdle: cpuIdle,
 	}
 
 	// unmarshaling the container here assuming that container definition will be specific to a resource
 	// this can be done at a common location if the container definition turns out to be same for all resources
 
-	containerPort := &runpb.ContainerPort{ContainerPort: r.Port}
 	Envs := []*runpb.EnvVar{}
 
 	env := r.Config["template"].(map[string]interface{})["containers"].(map[string]interface{})["env"].([]interface{})
@@ -256,6 +259,8 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 		Egress:            runpb.VpcAccess_VpcEgress(runpb.VpcAccess_VpcEgress_value[egress]),
 		NetworkInterfaces: networkInterfaceArray,
 	}
+
+	containerPort := &runpb.ContainerPort{ContainerPort: r.Port}
 
 	container := &runpb.Container{
 		Name:      wl.Name,
