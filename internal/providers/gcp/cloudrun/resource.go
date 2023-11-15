@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	"cloud.google.com/go/iam/apiv1/iampb"
 	run "cloud.google.com/go/run/apiv2"
@@ -28,7 +29,7 @@ type (
 		OutputEnvs                 map[string]string
 		Region                     string // from blueprint
 		Image                      string // from workload
-		Config                     string
+		Config                     map[string]interface{}
 		Name                       string
 		Revision                   string
 		LastRevision               string
@@ -227,9 +228,13 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 	containerPort := &runpb.ContainerPort{ContainerPort: r.Port}
 	Envs := []*runpb.EnvVar{}
 
-	for key, val := range r.Envs {
+	env := r.Config["template"].(map[string]interface{})["containers"].(map[string]interface{})["env"].([]interface{})
+	for _, val := range env {
+		envVal := val.(map[string]interface{})
 		Envs = append(Envs, &runpb.EnvVar{
-			Name: key, Values: &runpb.EnvVar_Value{Value: val},
+			Name: fmt.Sprint(envVal["name"]),
+			Values: &runpb.EnvVar_Value{
+				Value: fmt.Sprint(envVal["value"])},
 		})
 	}
 
