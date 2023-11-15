@@ -276,9 +276,15 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 		Env:       Envs,
 	}
 
+	scalingConfig := templateConfig["scaling"].(map[string]interface{})
+	minInstanceConfig := scalingConfig["min_instance_count"].(string)
+	minInstanceConfig64bit, _ := strconv.ParseInt(minInstanceConfig, 10, 32)
+	maxInstanceConfig := scalingConfig["max_instance_count"].(string)
+	maxInstanceConfig64bit, _ := strconv.ParseInt(maxInstanceConfig, 10, 32)
+
 	scaling := &runpb.RevisionScaling{
-		MinInstanceCount: r.MinInstances,
-		MaxInstanceCount: r.MaxInstances,
+		MinInstanceCount: int32(minInstanceConfig64bit),
+		MaxInstanceCount: int32(maxInstanceConfig64bit),
 	}
 
 	rt := &runpb.RevisionTemplate{
