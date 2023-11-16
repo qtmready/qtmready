@@ -55,6 +55,10 @@ config_resources = {
                     "value": "10.10.0.3"
                 },
                 {
+                    "name": "CARGOFLO_TEMPORAL_NAMESPACE", 
+                    "value": "cargoflo-dev"
+                },
+                {
                     "name": "CARGOFLO_DB_HOST", 
                     "value": "110.69.49.8"
                 },
@@ -89,6 +93,13 @@ config_resources = {
         },
         "volumes" : {
             "name": "cloudsql",
+            "cloud_sql_instance": {
+                "instances" : [
+                    {
+                        "name": "cargoflo-dev-400720:europe-west3:default-europe-west3-cargoflo-dev-8abebbf2"
+                    }
+                ]
+            }
         }
     }
 }
