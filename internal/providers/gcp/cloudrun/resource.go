@@ -296,11 +296,18 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 		MaxInstanceCount: int32(maxInstanceConfig64bit),
 	}
 
+	volumeName := templateConfig["volumes"].(map[string]interface{})["name"].(string)
+	volumeInstance := templateConfig["volumes"].(map[string]interface{})["cloud_sql_instance"].(map[string]interface{})["instances"].([]interface{})
+	VolumeInstanceArray := []string{}
+	for _, instanceVal := range volumeInstance {
+		val := instanceVal.(map[string]interface{})
+		VolumeInstanceArray = append(VolumeInstanceArray, val["name"].(string))
+	}
 	volume := &runpb.Volume{
-		Name: "cloudsql",
+		Name: volumeName,
 		VolumeType: &runpb.Volume_CloudSqlInstance{
 			CloudSqlInstance: &runpb.CloudSqlInstance{
-				Instances: []string{"cargoflo-dev-400720:europe-west3:default-europe-west3-cargoflo-dev-8abebbf2"},
+				Instances: VolumeInstanceArray,
 			},
 		},
 	}
