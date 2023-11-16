@@ -268,12 +268,21 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 	containerPort64bit, _ := strconv.ParseInt(containerPortConfig, 10, 32)
 	containerPort := &runpb.ContainerPort{ContainerPort: int32(containerPort64bit)}
 
+	volumeMountsName := templateContainersConfig["volume_mounts"].(map[string]interface{})["name"].(string)
+	volumeMountsPath := templateContainersConfig["volume_mounts"].(map[string]interface{})["mount_path"].(string)
+	volumeMounts := &runpb.VolumeMount{
+		Name:      volumeMountsName,
+		MountPath: volumeMountsPath,
+	}
+	volumeMountsArray := []*runpb.VolumeMount{volumeMounts}
+
 	container := &runpb.Container{
-		Name:      wl.Name,
-		Image:     wl.Image,
-		Resources: resources,
-		Ports:     []*runpb.ContainerPort{containerPort},
-		Env:       Envs,
+		Name:         wl.Name,
+		Image:        wl.Image,
+		Resources:    resources,
+		Ports:        []*runpb.ContainerPort{containerPort},
+		Env:          Envs,
+		VolumeMounts: volumeMountsArray,
 	}
 
 	scalingConfig := templateConfig["scaling"].(map[string]interface{})
@@ -287,12 +296,23 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 		MaxInstanceCount: int32(maxInstanceConfig64bit),
 	}
 
+	volume := &runpb.Volume{
+		Name: "cloudsql",
+		VolumeType: &runpb.Volume_CloudSqlInstance{
+			CloudSqlInstance: &runpb.CloudSqlInstance{
+				Instances: []string{"cargoflo-dev-400720:europe-west3:default-europe-west3-cargoflo-dev-8abebbf2"},
+			},
+		},
+	}
+	volumes := []*runpb.Volume{volume}
+
 	rt := &runpb.RevisionTemplate{
 		Containers:           []*runpb.Container{container},
 		Scaling:              scaling,
 		ExecutionEnvironment: runpb.ExecutionEnvironment(r.Generation),
 		Revision:             r.Revision,
 		VpcAccess:            vpcAccess,
+		Volumes:              volumes,
 	}
 
 	service := &runpb.Service{
