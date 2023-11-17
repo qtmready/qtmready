@@ -229,9 +229,6 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 	cpuIdleStr := templateContainersConfig["resources"].(map[string]interface{})["cpu_idle"].(string)
 	cpuIdle, _ := strconv.ParseBool(cpuIdleStr)
 	resources := &runpb.ResourceRequirements{
-		Limits: map[string]string{
-			"cpu":    r.Cpu,
-			"memory": r.Memory},
 		CpuIdle: cpuIdle,
 	}
 
