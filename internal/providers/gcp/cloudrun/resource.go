@@ -284,10 +284,7 @@ func (r *Resource) GetContainerConfig(ctx context.Context, wl *Workload) *runpb.
 	templateContainersConfig := templateConfig["containers"].(map[string]interface{})
 
 	resourceReq := r.GetResourceReqConfig(ctx)
-
-	containerPortConfig := templateContainersConfig["ports"].(map[string]interface{})["container_port"].(string)
-	containerPort64bit, _ := strconv.ParseInt(containerPortConfig, 10, 32)
-	containerPort := &runpb.ContainerPort{ContainerPort: int32(containerPort64bit)}
+	containerPorts := r.GetContainerPortsConfig(ctx)
 
 	Envs := []*runpb.EnvVar{}
 
@@ -313,12 +310,26 @@ func (r *Resource) GetContainerConfig(ctx context.Context, wl *Workload) *runpb.
 		Name:         wl.Name,
 		Image:        wl.Image,
 		Resources:    resourceReq,
-		Ports:        []*runpb.ContainerPort{containerPort},
+		Ports:        containerPorts,
 		Env:          Envs,
 		VolumeMounts: volumeMountsArray,
 	}
 
 	return container
+}
+
+func (r *Resource) GetContainerPortsConfig(ctx context.Context) []*runpb.ContainerPort {
+
+	templateConfig := r.Config["template"].(map[string]interface{})
+	templateContainersConfig := templateConfig["containers"].(map[string]interface{})
+
+	containerPortConfig := templateContainersConfig["ports"].(map[string]interface{})["container_port"].(string)
+	containerPort64bit, _ := strconv.ParseInt(containerPortConfig, 10, 32)
+	containerPort := &runpb.ContainerPort{ContainerPort: int32(containerPort64bit)}
+
+	containerPortArray := []*runpb.ContainerPort{containerPort}
+
+	return containerPortArray
 }
 
 func (r *Resource) GetResourceReqConfig(ctx context.Context) *runpb.ResourceRequirements {
