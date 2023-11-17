@@ -222,6 +222,34 @@ func (r *Resource) AllowAccessToAll(ctx context.Context) error {
 func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.Service {
 	activity.GetLogger(ctx).Info("setting service template for", "revision", r.Revision)
 
+	// unmarshaling the container here assuming that container definition will be specific to a resource
+	// this can be done at a common location if the container definition turns out to be same for all resources
+
+	revisionTemplate := r.GetRevisionTemplate(ctx, wl)
+
+	launchStageConfig := r.Config["launch_stage"].(string)
+	launchStage := api.LaunchStage(api.LaunchStage_value[launchStageConfig])
+
+	ingressConfig := r.Config["ingress"].(string)
+	ingress := runpb.IngressTraffic(runpb.IngressTraffic_value[ingressConfig])
+
+	service := &runpb.Service{
+		Template:    revisionTemplate,
+		LaunchStage: launchStage,
+		Ingress:     ingress,
+	}
+
+	tt := &runpb.TrafficTarget{
+		Type:    runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST,
+		Percent: 100,
+	}
+	service.Traffic = []*runpb.TrafficTarget{tt}
+
+	return service
+}
+
+func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb.RevisionTemplate {
+
 	templateConfig := r.Config["template"].(map[string]interface{})
 	templateContainersConfig := templateConfig["containers"].(map[string]interface{})
 	templateVpcAccessConfig := templateConfig["vpc_access"].(map[string]interface{})
@@ -232,8 +260,9 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 		CpuIdle: cpuIdle,
 	}
 
-	// unmarshaling the container here assuming that container definition will be specific to a resource
-	// this can be done at a common location if the container definition turns out to be same for all resources
+	containerPortConfig := templateContainersConfig["ports"].(map[string]interface{})["container_port"].(string)
+	containerPort64bit, _ := strconv.ParseInt(containerPortConfig, 10, 32)
+	containerPort := &runpb.ContainerPort{ContainerPort: int32(containerPort64bit)}
 
 	Envs := []*runpb.EnvVar{}
 
@@ -246,24 +275,6 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 				Value: fmt.Sprint(envVal["value"])},
 		})
 	}
-
-	networkInterfaces := templateVpcAccessConfig["network_interfaces"].(map[string]interface{})
-	networkInterfaceArray := []*runpb.VpcAccess_NetworkInterface{
-		{
-			Network:    fmt.Sprint(networkInterfaces["network"]),
-			Subnetwork: fmt.Sprint(networkInterfaces["subnetwork"]),
-		},
-	}
-
-	egress := templateVpcAccessConfig["egress"].(string)
-	vpcAccess := &runpb.VpcAccess{
-		Egress:            runpb.VpcAccess_VpcEgress(runpb.VpcAccess_VpcEgress_value[egress]),
-		NetworkInterfaces: networkInterfaceArray,
-	}
-
-	containerPortConfig := templateContainersConfig["ports"].(map[string]interface{})["container_port"].(string)
-	containerPort64bit, _ := strconv.ParseInt(containerPortConfig, 10, 32)
-	containerPort := &runpb.ContainerPort{ContainerPort: int32(containerPort64bit)}
 
 	volumeMountsName := templateContainersConfig["volume_mounts"].(map[string]interface{})["name"].(string)
 	volumeMountsPath := templateContainersConfig["volume_mounts"].(map[string]interface{})["mount_path"].(string)
@@ -293,6 +304,24 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 		MaxInstanceCount: int32(maxInstanceConfig64bit),
 	}
 
+	executionEnvConfig := templateConfig["execution_environment"].(string)
+	executionEnv := runpb.ExecutionEnvironment(
+		runpb.ExecutionEnvironment_value[executionEnvConfig])
+
+	networkInterfaces := templateVpcAccessConfig["network_interfaces"].(map[string]interface{})
+	networkInterfaceArray := []*runpb.VpcAccess_NetworkInterface{
+		{
+			Network:    fmt.Sprint(networkInterfaces["network"]),
+			Subnetwork: fmt.Sprint(networkInterfaces["subnetwork"]),
+		},
+	}
+
+	egress := templateVpcAccessConfig["egress"].(string)
+	vpcAccess := &runpb.VpcAccess{
+		Egress:            runpb.VpcAccess_VpcEgress(runpb.VpcAccess_VpcEgress_value[egress]),
+		NetworkInterfaces: networkInterfaceArray,
+	}
+
 	volumeName := templateConfig["volumes"].(map[string]interface{})["name"].(string)
 	volumeInstance := templateConfig["volumes"].(map[string]interface{})["cloud_sql_instance"].(map[string]interface{})["instances"].([]interface{})
 	VolumeInstanceArray := []string{}
@@ -310,11 +339,7 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 	}
 	volumes := []*runpb.Volume{volume}
 
-	executionEnvConfig := templateConfig["execution_environment"].(string)
-	executionEnv := runpb.ExecutionEnvironment(
-		runpb.ExecutionEnvironment_value[executionEnvConfig])
-
-	rt := &runpb.RevisionTemplate{
+	revisionTemplate := &runpb.RevisionTemplate{
 		Containers:           []*runpb.Container{container},
 		Scaling:              scaling,
 		ExecutionEnvironment: executionEnv,
@@ -323,25 +348,7 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 		Volumes:              volumes,
 	}
 
-	launchStageConfig := r.Config["launch_stage"].(string)
-	launchStage := api.LaunchStage(api.LaunchStage_value[launchStageConfig])
-
-	ingressConfig := r.Config["ingress"].(string)
-	ingress := runpb.IngressTraffic(runpb.IngressTraffic_value[ingressConfig])
-
-	service := &runpb.Service{
-		Template:    rt,
-		LaunchStage: launchStage,
-		Ingress:     ingress,
-	}
-
-	tt := &runpb.TrafficTarget{
-		Type:    runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST,
-		Percent: 100,
-	}
-	service.Traffic = []*runpb.TrafficTarget{tt}
-
-	return service
+	return revisionTemplate
 }
 
 func (r *Resource) GetParent() string {
