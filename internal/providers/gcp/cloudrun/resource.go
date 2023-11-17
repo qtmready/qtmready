@@ -260,14 +260,30 @@ func (r *Resource) GetIngressConfig(ctx context.Context) runpb.IngressTraffic {
 
 func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb.RevisionTemplate {
 
+	container := r.GetContainerConfig(ctx, wl)
+	scaling := r.GetRevisionScalingConfig(ctx)
+	executionEnv := r.GetExecEnvConfig(ctx)
+	vpcAccess := r.GetVpcAccessConfig(ctx)
+	volumes := r.GetVolumesConfig(ctx)
+
+	revisionTemplate := &runpb.RevisionTemplate{
+		Containers:           []*runpb.Container{container},
+		Scaling:              scaling,
+		ExecutionEnvironment: executionEnv,
+		Revision:             r.Revision,
+		VpcAccess:            vpcAccess,
+		Volumes:              volumes,
+	}
+
+	return revisionTemplate
+}
+
+func (r *Resource) GetContainerConfig(ctx context.Context, wl *Workload) *runpb.Container {
+
 	templateConfig := r.Config["template"].(map[string]interface{})
 	templateContainersConfig := templateConfig["containers"].(map[string]interface{})
 
-	cpuIdleStr := templateContainersConfig["resources"].(map[string]interface{})["cpu_idle"].(string)
-	cpuIdle, _ := strconv.ParseBool(cpuIdleStr)
-	resources := &runpb.ResourceRequirements{
-		CpuIdle: cpuIdle,
-	}
+	resourceReq := r.GetResourceReqConfig(ctx)
 
 	containerPortConfig := templateContainersConfig["ports"].(map[string]interface{})["container_port"].(string)
 	containerPort64bit, _ := strconv.ParseInt(containerPortConfig, 10, 32)
@@ -296,27 +312,27 @@ func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb
 	container := &runpb.Container{
 		Name:         wl.Name,
 		Image:        wl.Image,
-		Resources:    resources,
+		Resources:    resourceReq,
 		Ports:        []*runpb.ContainerPort{containerPort},
 		Env:          Envs,
 		VolumeMounts: volumeMountsArray,
 	}
 
-	scaling := r.GetRevisionScalingConfig(ctx)
-	executionEnv := r.GetExecEnvConfig(ctx)
-	vpcAccess := r.GetVpcAccessConfig(ctx)
-	volumes := r.GetVolumesConfig(ctx)
+	return container
+}
 
-	revisionTemplate := &runpb.RevisionTemplate{
-		Containers:           []*runpb.Container{container},
-		Scaling:              scaling,
-		ExecutionEnvironment: executionEnv,
-		Revision:             r.Revision,
-		VpcAccess:            vpcAccess,
-		Volumes:              volumes,
+func (r *Resource) GetResourceReqConfig(ctx context.Context) *runpb.ResourceRequirements {
+
+	templateConfig := r.Config["template"].(map[string]interface{})
+	templateContainersConfig := templateConfig["containers"].(map[string]interface{})
+
+	cpuIdleStr := templateContainersConfig["resources"].(map[string]interface{})["cpu_idle"].(string)
+	cpuIdle, _ := strconv.ParseBool(cpuIdleStr)
+	resources := &runpb.ResourceRequirements{
+		CpuIdle: cpuIdle,
 	}
 
-	return revisionTemplate
+	return resources
 }
 
 func (r *Resource) GetExecEnvConfig(ctx context.Context) runpb.ExecutionEnvironment {
