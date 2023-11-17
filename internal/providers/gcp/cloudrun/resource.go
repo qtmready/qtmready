@@ -286,17 +286,7 @@ func (r *Resource) GetContainerConfig(ctx context.Context, wl *Workload) *runpb.
 	resourceReq := r.GetResourceReqConfig(ctx)
 	containerPorts := r.GetContainerPortsConfig(ctx)
 
-	Envs := []*runpb.EnvVar{}
-
-	env := templateContainersConfig["env"].([]interface{})
-	for _, val := range env {
-		envVal := val.(map[string]interface{})
-		Envs = append(Envs, &runpb.EnvVar{
-			Name: fmt.Sprint(envVal["name"]),
-			Values: &runpb.EnvVar_Value{
-				Value: fmt.Sprint(envVal["value"])},
-		})
-	}
+	Envs := r.GetContainerEnvConfig(ctx)
 
 	volumeMountsName := templateContainersConfig["volume_mounts"].(map[string]interface{})["name"].(string)
 	volumeMountsPath := templateContainersConfig["volume_mounts"].(map[string]interface{})["mount_path"].(string)
@@ -316,6 +306,26 @@ func (r *Resource) GetContainerConfig(ctx context.Context, wl *Workload) *runpb.
 	}
 
 	return container
+}
+
+func (r *Resource) GetContainerEnvConfig(ctx context.Context) []*runpb.EnvVar {
+
+	templateConfig := r.Config["template"].(map[string]interface{})
+	templateContainersConfig := templateConfig["containers"].(map[string]interface{})
+
+	Envs := []*runpb.EnvVar{}
+
+	env := templateContainersConfig["env"].([]interface{})
+	for _, val := range env {
+		envVal := val.(map[string]interface{})
+		Envs = append(Envs, &runpb.EnvVar{
+			Name: fmt.Sprint(envVal["name"]),
+			Values: &runpb.EnvVar_Value{
+				Value: fmt.Sprint(envVal["value"])},
+		})
+	}
+
+	return Envs
 }
 
 func (r *Resource) GetContainerPortsConfig(ctx context.Context) []*runpb.ContainerPort {
