@@ -262,7 +262,6 @@ func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb
 
 	templateConfig := r.Config["template"].(map[string]interface{})
 	templateContainersConfig := templateConfig["containers"].(map[string]interface{})
-	templateVpcAccessConfig := templateConfig["vpc_access"].(map[string]interface{})
 
 	cpuIdleStr := templateContainersConfig["resources"].(map[string]interface{})["cpu_idle"].(string)
 	cpuIdle, _ := strconv.ParseBool(cpuIdleStr)
@@ -309,6 +308,26 @@ func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb
 	executionEnv := runpb.ExecutionEnvironment(
 		runpb.ExecutionEnvironment_value[executionEnvConfig])
 
+	vpcAccess := r.GetVpcAccessConfig(ctx)
+	volumes := r.GetVolumesConfig(ctx)
+
+	revisionTemplate := &runpb.RevisionTemplate{
+		Containers:           []*runpb.Container{container},
+		Scaling:              scaling,
+		ExecutionEnvironment: executionEnv,
+		Revision:             r.Revision,
+		VpcAccess:            vpcAccess,
+		Volumes:              volumes,
+	}
+
+	return revisionTemplate
+}
+
+func (r *Resource) GetVpcAccessConfig(ctx context.Context) *runpb.VpcAccess {
+
+	templateConfig := r.Config["template"].(map[string]interface{})
+	templateVpcAccessConfig := templateConfig["vpc_access"].(map[string]interface{})
+
 	networkInterfaces := templateVpcAccessConfig["network_interfaces"].(map[string]interface{})
 	networkInterfaceArray := []*runpb.VpcAccess_NetworkInterface{
 		{
@@ -322,19 +341,7 @@ func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb
 		Egress:            runpb.VpcAccess_VpcEgress(runpb.VpcAccess_VpcEgress_value[egress]),
 		NetworkInterfaces: networkInterfaceArray,
 	}
-
-	volumes := r.GetVolumesConfig(ctx)
-
-	revisionTemplate := &runpb.RevisionTemplate{
-		Containers:           []*runpb.Container{container},
-		Scaling:              scaling,
-		ExecutionEnvironment: executionEnv,
-		Revision:             r.Revision,
-		VpcAccess:            vpcAccess,
-		Volumes:              volumes,
-	}
-
-	return revisionTemplate
+	return vpcAccess
 }
 
 func (r *Resource) GetVolumesConfig(ctx context.Context) []*runpb.Volume {
