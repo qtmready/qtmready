@@ -313,10 +313,14 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 	}
 	volumes := []*runpb.Volume{volume}
 
+	executionEnvConfig := templateConfig["execution_environment"].(string)
+	executionEnv := runpb.ExecutionEnvironment(
+		runpb.ExecutionEnvironment_value[executionEnvConfig])
+
 	rt := &runpb.RevisionTemplate{
 		Containers:           []*runpb.Container{container},
 		Scaling:              scaling,
-		ExecutionEnvironment: runpb.ExecutionEnvironment(r.Generation),
+		ExecutionEnvironment: executionEnv,
 		Revision:             r.Revision,
 		VpcAccess:            vpcAccess,
 		Volumes:              volumes,
