@@ -323,8 +323,26 @@ func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb
 		NetworkInterfaces: networkInterfaceArray,
 	}
 
+	volumes := r.GetVolumesConfig(ctx)
+
+	revisionTemplate := &runpb.RevisionTemplate{
+		Containers:           []*runpb.Container{container},
+		Scaling:              scaling,
+		ExecutionEnvironment: executionEnv,
+		Revision:             r.Revision,
+		VpcAccess:            vpcAccess,
+		Volumes:              volumes,
+	}
+
+	return revisionTemplate
+}
+
+func (r *Resource) GetVolumesConfig(ctx context.Context) []*runpb.Volume {
+
+	templateConfig := r.Config["template"].(map[string]interface{})
 	volumeName := templateConfig["volumes"].(map[string]interface{})["name"].(string)
 	volumeInstance := templateConfig["volumes"].(map[string]interface{})["cloud_sql_instance"].(map[string]interface{})["instances"].([]interface{})
+
 	VolumeInstanceArray := []string{}
 	for _, instanceVal := range volumeInstance {
 		val := instanceVal.(map[string]interface{})
@@ -339,17 +357,7 @@ func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb
 		},
 	}
 	volumes := []*runpb.Volume{volume}
-
-	revisionTemplate := &runpb.RevisionTemplate{
-		Containers:           []*runpb.Container{container},
-		Scaling:              scaling,
-		ExecutionEnvironment: executionEnv,
-		Revision:             r.Revision,
-		VpcAccess:            vpcAccess,
-		Volumes:              volumes,
-	}
-
-	return revisionTemplate
+	return volumes
 }
 
 func (r *Resource) GetRevisionScalingConfig(ctx context.Context) *runpb.RevisionScaling {
