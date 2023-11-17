@@ -322,9 +322,12 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 		Volumes:              volumes,
 	}
 
+	launchStageConfig := r.Config["launch_stage"].(string)
+	launchStage := api.LaunchStage(api.LaunchStage_value[launchStageConfig])
+
 	service := &runpb.Service{
 		Template:    rt,
-		LaunchStage: api.LaunchStage_BETA,
+		LaunchStage: launchStage,
 		Ingress:     runpb.IngressTraffic_INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER,
 	}
 
