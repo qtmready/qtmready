@@ -226,12 +226,8 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 	// this can be done at a common location if the container definition turns out to be same for all resources
 
 	revisionTemplate := r.GetRevisionTemplate(ctx, wl)
-
-	launchStageConfig := r.Config["launch_stage"].(string)
-	launchStage := api.LaunchStage(api.LaunchStage_value[launchStageConfig])
-
-	ingressConfig := r.Config["ingress"].(string)
-	ingress := runpb.IngressTraffic(runpb.IngressTraffic_value[ingressConfig])
+	launchStage := r.GetLaunchStageConfig(ctx)
+	ingress := r.GetIngressConfig(ctx)
 
 	service := &runpb.Service{
 		Template:    revisionTemplate,
@@ -246,6 +242,20 @@ func (r *Resource) GetServiceTemplate(ctx context.Context, wl *Workload) *runpb.
 	service.Traffic = []*runpb.TrafficTarget{tt}
 
 	return service
+}
+
+func (r *Resource) GetLaunchStageConfig(ctx context.Context) api.LaunchStage {
+	launchStageConfig := r.Config["launch_stage"].(string)
+	launchStage := api.LaunchStage(api.LaunchStage_value[launchStageConfig])
+
+	return launchStage
+}
+
+func (r *Resource) GetIngressConfig(ctx context.Context) runpb.IngressTraffic {
+	ingressConfig := r.Config["ingress"].(string)
+	ingress := runpb.IngressTraffic(runpb.IngressTraffic_value[ingressConfig])
+
+	return ingress
 }
 
 func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb.RevisionTemplate {
