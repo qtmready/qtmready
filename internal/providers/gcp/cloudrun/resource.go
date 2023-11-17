@@ -280,21 +280,10 @@ func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb
 
 func (r *Resource) GetContainerConfig(ctx context.Context, wl *Workload) *runpb.Container {
 
-	templateConfig := r.Config["template"].(map[string]interface{})
-	templateContainersConfig := templateConfig["containers"].(map[string]interface{})
-
 	resourceReq := r.GetResourceReqConfig(ctx)
 	containerPorts := r.GetContainerPortsConfig(ctx)
-
 	Envs := r.GetContainerEnvConfig(ctx)
-
-	volumeMountsName := templateContainersConfig["volume_mounts"].(map[string]interface{})["name"].(string)
-	volumeMountsPath := templateContainersConfig["volume_mounts"].(map[string]interface{})["mount_path"].(string)
-	volumeMounts := &runpb.VolumeMount{
-		Name:      volumeMountsName,
-		MountPath: volumeMountsPath,
-	}
-	volumeMountsArray := []*runpb.VolumeMount{volumeMounts}
+	volumeMountsArray := r.GetContainerVolumeMountConfig(ctx)
 
 	container := &runpb.Container{
 		Name:         wl.Name,
@@ -306,6 +295,22 @@ func (r *Resource) GetContainerConfig(ctx context.Context, wl *Workload) *runpb.
 	}
 
 	return container
+}
+
+func (r *Resource) GetContainerVolumeMountConfig(ctx context.Context) []*runpb.VolumeMount {
+
+	templateConfig := r.Config["template"].(map[string]interface{})
+	templateContainersConfig := templateConfig["containers"].(map[string]interface{})
+
+	volumeMountsName := templateContainersConfig["volume_mounts"].(map[string]interface{})["name"].(string)
+	volumeMountsPath := templateContainersConfig["volume_mounts"].(map[string]interface{})["mount_path"].(string)
+	volumeMounts := &runpb.VolumeMount{
+		Name:      volumeMountsName,
+		MountPath: volumeMountsPath,
+	}
+	volumeMountsArray := []*runpb.VolumeMount{volumeMounts}
+
+	return volumeMountsArray
 }
 
 func (r *Resource) GetContainerEnvConfig(ctx context.Context) []*runpb.EnvVar {
