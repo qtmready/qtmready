@@ -303,16 +303,7 @@ func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb
 		VolumeMounts: volumeMountsArray,
 	}
 
-	scalingConfig := templateConfig["scaling"].(map[string]interface{})
-	minInstanceConfig := scalingConfig["min_instance_count"].(string)
-	minInstanceConfig64bit, _ := strconv.ParseInt(minInstanceConfig, 10, 32)
-	maxInstanceConfig := scalingConfig["max_instance_count"].(string)
-	maxInstanceConfig64bit, _ := strconv.ParseInt(maxInstanceConfig, 10, 32)
-
-	scaling := &runpb.RevisionScaling{
-		MinInstanceCount: int32(minInstanceConfig64bit),
-		MaxInstanceCount: int32(maxInstanceConfig64bit),
-	}
+	scaling := r.GetRevisionScalingConfig(ctx)
 
 	executionEnvConfig := templateConfig["execution_environment"].(string)
 	executionEnv := runpb.ExecutionEnvironment(
@@ -359,6 +350,24 @@ func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb
 	}
 
 	return revisionTemplate
+}
+
+func (r *Resource) GetRevisionScalingConfig(ctx context.Context) *runpb.RevisionScaling {
+
+	templateConfig := r.Config["template"].(map[string]interface{})
+
+	scalingConfig := templateConfig["scaling"].(map[string]interface{})
+	minInstanceConfig := scalingConfig["min_instance_count"].(string)
+	minInstanceConfig64bit, _ := strconv.ParseInt(minInstanceConfig, 10, 32)
+	maxInstanceConfig := scalingConfig["max_instance_count"].(string)
+	maxInstanceConfig64bit, _ := strconv.ParseInt(maxInstanceConfig, 10, 32)
+
+	scaling := &runpb.RevisionScaling{
+		MinInstanceCount: int32(minInstanceConfig64bit),
+		MaxInstanceCount: int32(maxInstanceConfig64bit),
+	}
+
+	return scaling
 }
 
 func (r *Resource) GetParent() string {
