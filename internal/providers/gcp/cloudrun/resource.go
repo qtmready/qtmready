@@ -303,11 +303,7 @@ func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb
 	}
 
 	scaling := r.GetRevisionScalingConfig(ctx)
-
-	executionEnvConfig := templateConfig["execution_environment"].(string)
-	executionEnv := runpb.ExecutionEnvironment(
-		runpb.ExecutionEnvironment_value[executionEnvConfig])
-
+	executionEnv := r.GetExecEnvConfig(ctx)
 	vpcAccess := r.GetVpcAccessConfig(ctx)
 	volumes := r.GetVolumesConfig(ctx)
 
@@ -321,6 +317,17 @@ func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb
 	}
 
 	return revisionTemplate
+}
+
+func (r *Resource) GetExecEnvConfig(ctx context.Context) runpb.ExecutionEnvironment {
+
+	templateConfig := r.Config["template"].(map[string]interface{})
+	executionEnvConfig := templateConfig["execution_environment"].(string)
+	executionEnv := runpb.ExecutionEnvironment(
+		runpb.ExecutionEnvironment_value[executionEnvConfig],
+	)
+
+	return executionEnv
 }
 
 func (r *Resource) GetVpcAccessConfig(ctx context.Context) *runpb.VpcAccess {
