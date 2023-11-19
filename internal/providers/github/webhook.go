@@ -97,6 +97,13 @@ func handlePushEvent(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
 }
 
+func handleLabelEvent(ctx echo.Context) error {
+	shared.Logger().Info("handleLabelEvent")
+	shared.Logger().Info("label added on PR", "", ctx.Request().Body)
+
+	return ctx.JSON(http.StatusOK, &WorkflowResponse{})
+}
+
 // handlePullRequestEvent handles GitHub pull request event.
 func handlePullRequestEvent(ctx echo.Context) error {
 	payload := &PullRequestEvent{}

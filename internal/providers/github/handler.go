@@ -19,6 +19,7 @@ package github
 
 import (
 	"bytes"
+	"encoding/json"
 	"io"
 	"net/http"
 	"strconv"
@@ -159,6 +160,16 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 	}
 
 	shared.Logger().Debug("headerEvent", "headerEvent", headerEvent)
+
+	// Decode the string into a map[string]interface{}
+	var requestBody map[string]interface{}
+	if err := json.Unmarshal(body, &requestBody); err != nil {
+		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+	}
+
+	pull_request, _ := requestBody["pull_request"].(map[string]interface{})
+	shared.Logger().Info("Labels", "current label added", requestBody["label"])
+	shared.Logger().Info("Labels", "labels", pull_request["labels"])
 
 	event := WebhookEvent(headerEvent)
 	handlers := WebhookEventHandlers{
