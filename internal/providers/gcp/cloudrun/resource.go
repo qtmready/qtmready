@@ -20,6 +20,7 @@ import (
 )
 
 type (
+	// TODO: Reconsider the fields in Resource struct.
 	Resource struct {
 		ID                         gocql.UUID
 		Cpu                        string
