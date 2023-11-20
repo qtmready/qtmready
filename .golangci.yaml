@@ -52,7 +52,7 @@ linters-settings:
     sections:
       - standard # Standard section: captures all standard packages.
       - default # Default section: contains all imports that could not be matched to another section type.
-      - prefix(go.breu.io/ctrlplane) # Custom section: groups all imports with the specified Prefix.
+      - prefix(go.breu.io/quantm) # Custom section: groups all imports with the specified Prefix.
       - blank # Blank section: contains all imports that could not be matched to another section type.
     # Default: true
     skip-generated: false
@@ -78,9 +78,3 @@ linters-settings:
           - 140
       - name: use-any
         severity: warning
-
-  custom:
-    kvlogger:
-      path: ./plugins/kvlogger.so
-      description: checks if the logger is used correctly with the right number of arguments
-

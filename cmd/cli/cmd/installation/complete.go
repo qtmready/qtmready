@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
 	client "go.breu.io/quantm/cmd/cli/apiClient"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/shared"
@@ -53,20 +54,25 @@ func CompleteInstallation(cmd *cobra.Command) {
 
 	c := client.Client
 	r, err := c.GithubClient.GithubCompleteInstallation(context.Background(), completeInstallationBody, AddAuthHeader)
+
+	defer func() { _ = r.Body.Close() }()
 	c.CheckError(err)
 	c.CheckStatus(r, 200)
 
 	println("Github app installation complete")
 }
 
+// AddAuthHeader adds the authorization header to the request
+//
+// TODO: get the file path as an environment variable.
 func AddAuthHeader(ctx context.Context, req *http.Request) error {
-
-	//TODO: get the file path as an environment variable
 	b, err := os.ReadFile(shared.CLI().GetConfigFile())
 	if err != nil {
 		panic(err)
 	}
+
 	token := string(b)
 	req.Header.Set("authorization", "Token "+token)
+
 	return nil
 }

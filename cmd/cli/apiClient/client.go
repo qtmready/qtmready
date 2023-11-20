@@ -36,7 +36,7 @@ type client struct {
 	GithubClient *github.Client
 }
 
-// CheckStatus returns false if the status code is other than provided in parameters
+// CheckStatus returns false if the status code is other than provided in parameters.
 func (c *client) CheckStatus(r *http.Response, successCodes ...int) {
 	pass := false
 	for _, c := range successCodes {
@@ -60,7 +60,7 @@ func (c *client) CheckError(err error) {
 	}
 }
 
-// init initializes the auth, github and core clients to connect with quantum
+// init initializes the auth, github and core clients to connect with quantum.
 func (c *client) Init(url string) {
 	c.AuthClient, _ = auth.NewClient(url)
 	c.CoreClient, _ = core.NewClient(url)

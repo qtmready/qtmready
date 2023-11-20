@@ -1,4 +1,5 @@
 openapi: 3.0.0
+
 info:
   title: core
   version: 0.0.1
@@ -28,9 +29,9 @@ paths:
               schema:
                 $ref: "#/components/schemas/Blueprint"
         "400":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
         "500":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
   /core/blueprints/{stack_id}:
     get:
@@ -59,13 +60,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/Blueprint"
         "400":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
         "401":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/Unauthorized"
         "404":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/NotFound"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/NotFound"
         "500":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
   /core/workloads:
     post:
@@ -91,11 +92,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/Workload"
         "400":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
         "401":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/Unauthorized"
         "500":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
   # Enforce user to provide either of the two query parameters
   /core/workloads/:
@@ -133,11 +134,11 @@ paths:
                   - $ref: "#/components/schemas/Workload"
                   - $ref: "#/components/schemas/WorkloadListResponse"
         "400":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
         "401":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/Unauthorized"
         "500":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
   /core/resources:
     post:
@@ -163,11 +164,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/Resource"
         "400":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
         "401":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/Unauthorized"
         "500":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
   /core/resources/{stack_id}:
     get:
@@ -196,13 +197,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/ResourceListResponse"
         "400":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
         "401":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/Unauthorized"
         "404":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/NotFound"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/NotFound"
         "500":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
   /core/stacks:
     post:
@@ -228,11 +229,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/Stack"
         "400":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
         "401":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/Unauthorized"
         "500":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
     get:
       summary: List stacks
@@ -251,11 +252,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/StackListResponse"
         "400":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
         "401":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/Unauthorized"
         "500":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
   /core/stacks/{slug}:
     get:
@@ -283,13 +284,13 @@ paths:
               schema:
                 $ref: "#/components/schemas/Stack"
         "400":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
         "401":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/Unauthorized"
         "404":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/NotFound"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/NotFound"
         "500":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
   /core/repos:
     post:
@@ -315,11 +316,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/Repo"
         "400":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
         "401":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/Unauthorized"
         "500":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
     get:
       summary: List Repos
@@ -338,11 +339,11 @@ paths:
               schema:
                 $ref: "#/components/schemas/RepoListResponse"
         "400":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
         "401":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/Unauthorized"
         "500":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
   /core/repos/{id}:
     get:
@@ -371,20 +372,20 @@ paths:
               schema:
                 $ref: "#/components/schemas/Repo"
         "400":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
         "401":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/Unauthorized"
         "404":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/NotFound"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/NotFound"
         "500":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
 components:
   securitySchemes:
     BearerAuth:
-      $ref: "../shared/openapi.spec.yaml#/components/securitySchemes/BearerAuth"
+      $ref: "../../shared/openapi.spec.yaml#/components/securitySchemes/BearerAuth"
     APIKeyAuth:
-      $ref: "../shared/openapi.spec.yaml#/components/securitySchemes/APIKeyAuth"
+      $ref: "../../shared/openapi.spec.yaml#/components/securitySchemes/APIKeyAuth"
 
   schemas:
     BlueprintCreateRequest:

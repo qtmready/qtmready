@@ -103,7 +103,7 @@ func Temporal() temporal.Temporal {
 				temporal.WithClientCreation(),
 				temporal.WithQueue(CoreQueue),
 				temporal.WithQueue(ProvidersQueue),
-				temporal.WithQueue(MutexQueue), // this should be fixed as it requies options to be in order. WithClientCreation needs to come before with queue
+				temporal.WithQueue(MutexQueue), // FIXME: WithClientCreation needs to come before the queue.
 			)
 		})
 	}

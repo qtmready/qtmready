@@ -24,8 +24,8 @@ import (
 
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/core/mutex"
-	"go.breu.io/quantm/internal/core/resources/gcp"
 	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/providers/gcp/cloudrun"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/shared"
 )
@@ -43,7 +43,7 @@ func main() {
 
 	core.Instance(
 		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
-		core.WithCloudResource(core.CloudProviderGCP, core.DriverCloudrun, &gcp.CloudRunConstructor{}),
+		core.WithCloudResource(core.CloudProviderGCP, core.DriverCloudrun, &cloudrun.Constructor{}),
 	)
 
 	ghwfs := &github.Workflows{}
@@ -70,7 +70,7 @@ func main() {
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.Activities{})
-	coreWrkr.RegisterActivity(&gcp.Activities{})
+	coreWrkr.RegisterActivity(&cloudrun.Activities{})
 
 	// start worker for provider queue
 	err := providerWrkr.Start()

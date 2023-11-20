@@ -22,8 +22,9 @@ import (
 	"sync"
 
 	"github.com/gocql/gocql"
-	"go.breu.io/quantm/internal/shared"
 	"go.temporal.io/sdk/workflow"
+
+	"go.breu.io/quantm/internal/shared"
 )
 
 var (
@@ -35,7 +36,7 @@ type (
 	// Core is the interface that defines the core of the application. It is the main entry point for the application.
 	// It is responsible for registering different providers and exposing them to the rest of the application.
 	//
-	// NOTE: This is not an ideal design, because it only registers activities for the providers. It does not register
+	// NOTE: This is not an ideal design, because it only registers providers for the providers. It does not register
 	// workflows. We may need to revisit this design in the future.
 	Core interface {
 		RegisterRepoProvider(RepoProvider, RepoProviderActivities)
@@ -44,10 +45,10 @@ type (
 
 		RepoProvider(RepoProvider) RepoProviderActivities
 		CloudProvider(CloudProvider) CloudProviderActivities
-		CloudResources(CloudProvider, Driver) ResourceConstructor
+		ResourceConstructor(CloudProvider, Driver) ResourceConstructor
 	}
 
-	CoreOption func(Core)
+	Option func(Core)
 
 	RepoProviderActivities interface {
 		GetLatestCommit(context.Context, string, string) (string, error)
@@ -57,7 +58,7 @@ type (
 		FillMe()
 	}
 
-	ProviderActivities struct {
+	Providers struct {
 		repos map[RepoProvider]RepoProviderActivities
 		cloud map[CloudProvider]CloudProviderActivities
 	}
@@ -76,53 +77,56 @@ type (
 	}
 
 	core struct {
-		activity         ProviderActivities
-		ResourceProvider map[CloudProvider]map[Driver]ResourceConstructor
-		once             sync.Once // responsible for initializing resources once
+		providers Providers
+		resources map[CloudProvider]map[Driver]ResourceConstructor
+		once      sync.Once // Do we really need this?
 	}
 )
 
-// RegisterCloudResource the cloud resource constructor for against a cloud resource
+// RegisterCloudResource the cloud resource constructor for against a cloud resource.
+//
+// All cloud resources workflows can be registered like this but the
+// problem with this approach is that the signature of deploy workflow needs to be generic and part of cloud resource interface
+// e.g DeployWorkflow(ctx workflow.Context, resource CloudResource)
+// but the above won't work without custom data converter as CloudResource is an interface and temporal will not be able to unmarshal it
+// so to solve this problem we have to define workflow like this
+//
+//	DeployWorkflow(ctx workflow.Context, resource []byte)
+//
+// problem with this approach: we have to serialize and deserialize the data every time especially when the resource is modified by
+// the workflow
+//
+//	r := resource.CreateDummy()
+//	wrkr := shared.Temporal().Worker(shared.CoreQueue)
+//	wrkr.RegisterWorkflow(r.DeployWorkflow)
+//	wrkr.RegisterWorkflow(r.UpdateTraffic)
 func (c *core) RegisterCloudResource(provider CloudProvider, driver Driver, resource ResourceConstructor) {
-
 	// TODO: replace this with Once
-	if c.ResourceProvider[provider] == nil {
-		c.ResourceProvider[provider] = make(map[Driver]ResourceConstructor)
+	if c.resources[provider] == nil {
+		c.resources[provider] = make(map[Driver]ResourceConstructor)
 	}
-	c.ResourceProvider[provider][driver] = resource
 
-	// All cloud resources workflows can be registered like this but the
-	// problem with this approach is that the signature of deploy workflow needs to be generic and part of cloud resource interface
-	// e.g DeployWorkflow(ctx workflow.Context, resource CloudResource)
-	// but the above won't work without custom data converter as CloudResource is an interface and temporal will not be able to unmarshal it
-	// so to solve this problem we have to define workflow like this
-	// DeployWorkflow(ctx workflow.Context, resource []byte)
-	// problem with this approach: we have to serialize and deserialize the data every time especially when the resource is modified by the workflow
-
-	// r := resource.CreateDummy()
-	// wrkr := shared.Temporal().Worker(shared.CoreQueue)
-	// wrkr.RegisterWorkflow(r.DeployWorkflow)
-	// wrkr.RegisterWorkflow(r.UpdateTrafficWorkflow)
+	c.resources[provider][driver] = resource
 }
 
 func (c *core) RegisterRepoProvider(provider RepoProvider, activities RepoProviderActivities) {
-	c.activity.repos[provider] = activities
+	c.providers.repos[provider] = activities
 }
 
 func (c *core) RegisterCloudProvider(provider CloudProvider, activities CloudProviderActivities) {
-	c.activity.cloud[provider] = activities
+	c.providers.cloud[provider] = activities
 }
 
 func (c *core) RepoProvider(name RepoProvider) RepoProviderActivities {
-	if p, ok := c.activity.repos[name]; ok {
+	if p, ok := c.providers.repos[name]; ok {
 		return p
 	}
 
 	panic(NewProviderNotFoundError(name.String()))
 }
 
-func (c *core) CloudResources(provider CloudProvider, driver Driver) ResourceConstructor {
-	p, ok := c.ResourceProvider[provider]
+func (c *core) ResourceConstructor(provider CloudProvider, driver Driver) ResourceConstructor {
+	p, ok := c.resources[provider]
 	if !ok {
 		panic(NewProviderNotFoundError(provider.String()))
 	}
@@ -135,7 +139,7 @@ func (c *core) CloudResources(provider CloudProvider, driver Driver) ResourceCon
 }
 
 func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
-	if p, ok := c.activity.cloud[name]; ok {
+	if p, ok := c.providers.cloud[name]; ok {
 		return p
 	}
 
@@ -143,7 +147,7 @@ func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
 }
 
 // WithRepoProvider registers a repo provider with the core.
-func WithRepoProvider(name RepoProvider, provider RepoProviderActivities) CoreOption {
+func WithRepoProvider(name RepoProvider, provider RepoProviderActivities) Option {
 	return func(c Core) {
 		shared.Logger().Info("core: registering repo provider", "name", name.String())
 		c.RegisterRepoProvider(name, provider)
@@ -151,14 +155,14 @@ func WithRepoProvider(name RepoProvider, provider RepoProviderActivities) CoreOp
 }
 
 // WithCloudProvider registers a cloud provider with the core.
-func WithCloudProvider(name CloudProvider, provider CloudProviderActivities) CoreOption {
+func WithCloudProvider(name CloudProvider, provider CloudProviderActivities) Option {
 	return func(c Core) {
 		shared.Logger().Info("core: registering cloud provider", "name", name.String())
 		c.RegisterCloudProvider(name, provider)
 	}
 }
 
-func WithCloudResource(provider CloudProvider, driver Driver, res ResourceConstructor) CoreOption {
+func WithCloudResource(provider CloudProvider, driver Driver, res ResourceConstructor) Option {
 	return func(c Core) {
 		shared.Logger().Info("core: registering cloud resource", "name", driver.String())
 		c.RegisterCloudResource(provider, driver, res)
@@ -166,19 +170,19 @@ func WithCloudResource(provider CloudProvider, driver Driver, res ResourceConstr
 }
 
 // Instance returns a singleton instance of the core. It is best to call this function in the main() function to
-// register the providers available to the service. This is because the core uses workflow and activity implementations
+// register the providers available to the service. This is because the core uses workflow and providers implementations
 // to access the providers.
-func Instance(opts ...CoreOption) Core {
+func Instance(opts ...Option) Core {
 	if instance == nil {
 		shared.Logger().Info("core: instance not initialized, initializing now ...")
 		once.Do(func() {
 			instance = &core{
-				activity: ProviderActivities{
+				providers: Providers{
 					repos: make(map[RepoProvider]RepoProviderActivities),
 					cloud: make(map[CloudProvider]CloudProviderActivities),
 				},
 
-				ResourceProvider: make(map[CloudProvider]map[Driver]ResourceConstructor),
+				resources: make(map[CloudProvider]map[Driver]ResourceConstructor),
 			}
 
 			for _, opt := range opts {
@@ -199,13 +203,14 @@ func getRegion(provider CloudProvider, blueprint *Blueprint) string {
 	case CloudProviderAzure:
 		return blueprint.Regions.Azure[0]
 	}
+
 	return ""
 }
 
 // getProviderConfig gets a specific provider config from blueprint
 
 // TODO: the provider config only has GCP config, this was hardcoded for demo,
-// need to make it generic so we can get any provider config based on its name
+// need to make it generic so we can get any provider config based on its name.
 func getProviderConfig(provider CloudProvider, blueprint *Blueprint) string {
 	switch provider {
 	case CloudProviderAWS:
@@ -215,5 +220,6 @@ func getProviderConfig(provider CloudProvider, blueprint *Blueprint) string {
 	case CloudProviderAzure:
 		return "blueprint.ProviderConfig.Azure"
 	}
+
 	return ""
 }

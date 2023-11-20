@@ -37,7 +37,7 @@ type (
 	}
 
 	startWorkflowError struct {
-		ID string // the workflow contex for the workflow that is requesting to start the distributed mutex.
+		ID string // the workflow context for the workflow that is requesting to start the distributed mutex.
 	}
 )
 
@@ -55,15 +55,15 @@ func (e *startWorkflowError) Error() string {
 
 // NewAcquireLockError creates a new acquire lock error.
 func NewAcquireLockError(id string) error {
-	return &acquireLockError{ID: id}
+	return &acquireLockError{id}
 }
 
 // NewReleaseLockError creates a new release lock error.
 func NewReleaseLockError(id string) error {
-	return &releaseLockError{ID: id}
+	return &releaseLockError{id}
 }
 
 // NewStartWorkflowError creates a new start workflow error.
 func NewStartWorkflowError(id string) error {
-	return &startWorkflowError{ID: id}
+	return &startWorkflowError{id}
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
+
 	client "go.breu.io/quantm/cmd/cli/apiClient"
 	"go.breu.io/quantm/cmd/cli/utils/models"
 	"go.breu.io/quantm/internal/auth"
@@ -75,7 +76,6 @@ func (o *loginOptions) BindFields(inputs []textinput.Model) {
 }
 
 func (o loginOptions) RunLogin() {
-
 	c := client.Client
 	r, err := c.AuthClient.Login(context.Background(), o.LoginRequest)
 	c.CheckError(err)
@@ -87,7 +87,8 @@ func (o loginOptions) RunLogin() {
 	}
 
 	println("Login Successful")
-	err = os.WriteFile(shared.CLI().GetConfigFile(), []byte(pr.JSON200.AccessToken), 0644)
+
+	err = os.WriteFile(shared.CLI().GetConfigFile(), []byte(pr.JSON200.AccessToken), 0400)
 	if err != nil {
 		panic(err)
 	}

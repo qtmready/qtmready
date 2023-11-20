@@ -31,10 +31,10 @@ const (
 	WorkflowSignalReleaseLock  shared.WorkflowSignal = "release_lock"
 
 	// PR workflow signals.
-	WorkflowSignalAssetsRetrieved     shared.WorkflowSignal = "assets_retreived"
+	WorkflowSignalAssetsRetrieved     shared.WorkflowSignal = "assets_retrieved"
 	WorkflowSignalInfraProvisioned    shared.WorkflowSignal = "infra_created"
 	WorkflowSignalDeploymentCompleted shared.WorkflowSignal = "deployment_completed"
-	WorkflowSignalManaulOverride      shared.WorkflowSignal = "manual_override"
+	WorkflowSignalManualOverride      shared.WorkflowSignal = "manual_override"
 )
 
 const (
@@ -67,8 +67,6 @@ type (
 		workflows ChildWorkflows
 		OldInfra  JsonInfra
 		NewInfra  JsonInfra
-		// rwpair    map[string][]Workload // resource name and workloads
-
 	}
 
 	Deployments     map[gocql.UUID]*Deployment // deployments against a changesetID.

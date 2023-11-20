@@ -68,6 +68,7 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 
 	// create and initialize mutex, initializing mutex will start a mutex workflow
 	logger.Info("creating mutex for stack", "stack", stackID)
+
 	lock := mutex.New(
 		mutex.WithCallerContext(ctx),
 		mutex.WithID(lockID),
@@ -79,15 +80,15 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 
 	triggerChannel := workflow.GetSignalChannel(ctx, shared.WorkflowSignalDeploymentStarted.String())
 	assetsChannel := workflow.GetSignalChannel(ctx, WorkflowSignalAssetsRetrieved.String())
-	infrachannel := workflow.GetSignalChannel(ctx, WorkflowSignalInfraProvisioned.String())
-	deploymentchannel := workflow.GetSignalChannel(ctx, WorkflowSignalDeploymentCompleted.String())
-	manualOverrideChannel := workflow.GetSignalChannel(ctx, WorkflowSignalManaulOverride.String())
+	infraChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInfraProvisioned.String())
+	deploymentChannel := workflow.GetSignalChannel(ctx, WorkflowSignalDeploymentCompleted.String())
+	manualOverrideChannel := workflow.GetSignalChannel(ctx, WorkflowSignalManualOverride.String())
 
 	selector := workflow.NewSelector(ctx)
 	selector.AddReceive(triggerChannel, onDeploymentStartedSignal(ctx, stackID, deployments))
-	selector.AddReceive(assetsChannel, onAssetsRetreivedSignal(ctx, stackID, deployments))
-	selector.AddReceive(infrachannel, onInfraProvisionedSignal(ctx, stackID, lock, deployments, activeInfra))
-	selector.AddReceive(deploymentchannel, onDeploymentCompletedSignal(ctx, stackID, deployments))
+	selector.AddReceive(assetsChannel, onAssetsRetrievedSignal(ctx, stackID, deployments))
+	selector.AddReceive(infraChannel, onInfraProvisionedSignal(ctx, stackID, lock, deployments, activeInfra))
+	selector.AddReceive(deploymentChannel, onDeploymentCompletedSignal(ctx, stackID, deployments))
 	selector.AddReceive(manualOverrideChannel, onManualOverrideSignal(ctx, stackID, deployments))
 
 	// var prSignalsCounter int = 0
@@ -106,14 +107,13 @@ func (w *Workflows) DeProvisionInfra(ctx workflow.Context, stackID string, resou
 	return nil
 }
 
-// GetAssets gets assests for stack including resources, workloads and blueprint.
+// GetAssets gets assets for stack including resources, workloads and blueprint.
 func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) error {
 	var (
 		future workflow.Future
 		err    error = nil
 	)
 
-	shared.Logger().Info("Get assets workflow")
 	logger := workflow.GetLogger(ctx)
 	assets := NewAssets()
 	workloads := SlicedResult[Workload]{}
@@ -121,9 +121,12 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	repos := SlicedResult[Repo]{}
 	blueprint := Blueprint{}
 
+	shared.Logger().Info("Get assets workflow")
+
 	selector := workflow.NewSelector(ctx)
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
+
 	providerActivityOpts := workflow.ActivityOptions{
 		StartToCloseTimeout: 60 * time.Second,
 		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
@@ -134,7 +137,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	future = workflow.ExecuteActivity(actx, activities.GetResources, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &resources); err != nil {
-			logger.Error("GetResources activity failed", "error", err)
+			logger.Error("GetResources providers failed", "error", err)
 			return
 		}
 	})
@@ -143,7 +146,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	future = workflow.ExecuteActivity(actx, activities.GetWorkloads, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &workloads); err != nil {
-			logger.Error("GetWorkloads activity failed", "error", err)
+			logger.Error("GetWorkloads providers failed", "error", err)
 			return
 		}
 	})
@@ -152,7 +155,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	future = workflow.ExecuteActivity(actx, activities.GetRepos, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &repos); err != nil {
-			logger.Error("GetRepos activity failed", "error", err)
+			logger.Error("GetRepos providers failed", "error", err)
 			return
 		}
 	})
@@ -161,7 +164,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	future = workflow.ExecuteActivity(actx, activities.GetBluePrint, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &blueprint); err != nil {
-			logger.Error("GetBluePrint activity failed", "error", err)
+			logger.Error("GetBluePrint providers failed", "error", err)
 			return
 		}
 	})
@@ -169,9 +172,9 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	// TODO: come up with a better logic for this
 	for i := 0; i < 4; i++ {
 		selector.Select(ctx)
-		// return if activity failed. TODO: handle race conditions as the 'err' variable is shared among all activities
+		// return if providers failed. TODO: handle race conditions as the 'err' variable is shared among all providers
 		if err != nil {
-			logger.Error("Exiting due to activity failure")
+			logger.Error("Exiting due to providers failure")
 			return err
 		}
 	}
@@ -180,10 +183,12 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	// TODO: update it to tag one or multiple images against every workload
 	switch payload.ImageRegistry {
 	case "GCPArtifactRegistry":
-		workflow.ExecuteActivity(actx, activities.TagGcpImage, payload.Image, payload.Digest, payload.ChangeSetID).Get(ctx, nil)
-		break
+		err := workflow.ExecuteActivity(actx, activities.TagGcpImage, payload.Image, payload.Digest, payload.ChangeSetID).Get(ctx, nil)
+		if err != nil {
+			return err
+		}
 	default:
-		shared.Logger().Error("This image registery is not supported in quantum yet", "registery", payload.ImageRegistry)
+		shared.Logger().Error("This image registry is not supported in quantum yet", "registry", payload.ImageRegistry)
 	}
 
 	// get commits against the repos
@@ -227,7 +232,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 	assets.Repos = append(assets.Repos, repos.Data...)
 	assets.Resources = append(assets.Resources, resources.Data...)
 	assets.Workloads = append(assets.Workloads, workloads.Data...)
-	logger.Debug("Assets retreived", "Assets", assets)
+	logger.Debug("Assets retrieved", "Assets", assets)
 
 	// signal parent workflow
 	parent := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
@@ -240,16 +245,17 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 
 // ProvisionInfra provisions the infrastructure required for stack deployment.
 func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
-
 	logger := workflow.GetLogger(ctx)
-	var children []workflow.Future
+	futures := make([]workflow.Future, 0)
 
 	shared.Logger().Debug("provision infra", "assets", assets)
+
 	for _, rsc := range assets.Resources {
 		logger.Info("Creating resource", "Name", rsc.Name)
 
-		// get the resource contructor specific to the driver e.g gke, cloudrun for GCP, sns, fargate for AWS
-		resconstr := Instance().CloudResources(rsc.Provider, rsc.Driver)
+		// get the resource constructor specific to the driver e.g gke, cloudrun for GCP, sns, fargate for AWS
+		resconstr := Instance().ResourceConstructor(rsc.Provider, rsc.Driver)
+
 		if rsc.IsImmutable {
 			// assuming a single region for now
 			region := getRegion(rsc.Provider, &assets.Blueprint)
@@ -261,23 +267,25 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 				return err
 			}
 
-			// resource is an interface and cannot be sent as a parameter in workflow because workflow cannot unmarshal an interface. So we need to
-			// send the marshalled value in this workflow and then unmarshal and resconstruct the resource again in the Deploy workflow
+			// resource is an interface and cannot be sent as a parameter in workflow because workflow cannot unmarshal an interface.
+			// So we need to send the marshalled value in this workflow and then unmarshal and resconstruct the resource again in the
+			// Deploy workflow
 			ser, err := r.Marshal()
 			if err != nil {
 				logger.Error("could not marshal resource", "ID", rsc.ID, "name", rsc.Name, "Error", err)
 				return err
 			}
+
 			assets.Infra[rsc.ID] = ser
 
 			// TODO: initiate all resource provisions in parallel in child workflows and wait for all child workflows
 			// completion before sending infra provisioned signal
 			if f, err := r.Provision(ctx); err != nil {
 				logger.Error("could not start resource provisioning", "ID", rsc.ID, "name", rsc.Name, "Error", err)
-				return err
 
+				return err
 			} else if f != nil {
-				children = append(children, f)
+				futures = append(futures, f)
 			}
 		}
 	}
@@ -285,11 +293,12 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 	// not tested yet as provision workflow for cloudrun doesn't return any future.
 	// the idea is to run all provision workflows asynchronously and in parallel and wait here for their completion before moving forward
 	// also need to test if we can call child.Get with parent workflow's context
-	for _, child := range children {
-		child.Get(ctx, nil)
+	for _, child := range futures {
+		_ = child.Get(ctx, nil)
 	}
 
 	shared.Logger().Info("Signaling infra provisioned")
+
 	prWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
 	_ = workflow.SignalExternalWorkflow(ctx, prWorkflowID, "", WorkflowSignalInfraProvisioned.String(), assets).Get(ctx, nil)
 
@@ -300,7 +309,7 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Lock, assets *Assets) error {
 	logger := workflow.GetLogger(ctx)
 	logger.Info("Deployment initiated", "changeset", assets.ChangesetID, "infra", assets.Infra)
-	Infra := make(Infra)
+	infra := make(Infra)
 
 	// Acquire lock
 	err := lock.Acquire(ctx)
@@ -313,28 +322,28 @@ func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Loc
 	deployables := make(map[gocql.UUID][]Workload) // map of resource id and workloads
 	for _, w := range assets.Workloads {
 		_, ok := deployables[w.ResourceID]
-		if ok == false {
+		if !ok {
 			deployables[w.ResourceID] = make([]Workload, 0)
 		}
+
 		deployables[w.ResourceID] = append(deployables[w.ResourceID], w)
 	}
 
 	// create the resource object again from marshaled data and deploy workload on resource
 	for _, rsc := range assets.Resources {
-		resconstr := Instance().CloudResources(rsc.Provider, rsc.Driver)
+		resconstr := Instance().ResourceConstructor(rsc.Provider, rsc.Driver)
 		inf := assets.Infra[rsc.ID] // get marshaled resource from ID
 		r := resconstr.CreateFromJson(inf)
-		Infra[rsc.ID] = r
-		r.Deploy(ctx, deployables[rsc.ID], assets.ChangesetID)
+		infra[rsc.ID] = r
+		_ = r.Deploy(ctx, deployables[rsc.ID], assets.ChangesetID)
 	}
 
 	// update traffic on resource from 50 to 100
 	var i int32
 	for i = 50; i <= 100; i += 25 {
-		for id, r := range Infra {
-			shared.Logger().Info("updating traffic", id, r)
-			r.UpdateTraffic(ctx, i)
-			// workflow.Sleep(ctx, 10*time.Second)
+		for id, r := range infra {
+			logger.Info("updating traffic", id, r)
+			_ = r.UpdateTraffic(ctx, i)
 		}
 	}
 
@@ -371,7 +380,7 @@ func onDeploymentStartedSignal(ctx workflow.Context, stackID string, deployments
 		// We want to filter workflows with changeset ID, so create changeset ID here and use it for creating workflow ID
 		changesetID, _ := gocql.RandomUUID()
 
-		// Set childworkflow options
+		// Set child workflow options
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
 			ChildWorkflowOptions(
@@ -411,8 +420,8 @@ func onDeploymentStartedSignal(ctx workflow.Context, stackID string, deployments
 	}
 }
 
-// onAssetsRetreivedSignal will receive assets sent by GetAssets, update deployment state and execute ProvisionInfra.
-func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments Deployments) shared.ChannelHandler {
+// onAssetsRetrievedSignal will receive assets sent by GetAssets, update deployment state and execute ProvisionInfra.
+func onAssetsRetrievedSignal(ctx workflow.Context, stackID string, deployments Deployments) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 	w := &Workflows{}
 
@@ -439,11 +448,11 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 				shared.WithWorkflowElement("provision_infra"),
 			)
 
-		cctx := workflow.WithChildOptions(ctx, opts)
+		ctx = workflow.WithChildOptions(ctx, opts)
 
 		err := workflow.
-			ExecuteChildWorkflow(cctx, w.ProvisionInfra, assets).
-			GetChildWorkflowExecution().Get(cctx, &execution)
+			ExecuteChildWorkflow(ctx, w.ProvisionInfra, assets).
+			GetChildWorkflowExecution().Get(ctx, &execution)
 
 		if err != nil {
 			logger.Error("TODO: Error in executing ProvisionInfra", "Error", err)
@@ -457,7 +466,9 @@ func onAssetsRetreivedSignal(ctx workflow.Context, stackID string, deployments D
 }
 
 // onInfraProvisionedSignal will receive assets by ProvisionInfra, update deployment state and execute Deploy.
-func onInfraProvisionedSignal(ctx workflow.Context, stackID string, lock mutex.Mutex, deployments Deployments, activeinfra Infra) shared.ChannelHandler {
+func onInfraProvisionedSignal(
+	ctx workflow.Context, stackID string, lock mutex.Mutex, deployments Deployments, activeinfra Infra,
+) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 	w := &Workflows{}
 
@@ -473,6 +484,7 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, lock mutex.M
 		deployment.NewInfra = assets.Infra // handling zero traffic, no workload is deployed
 
 		var execution workflow.Execution
+
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
 			ChildWorkflowOptions(
@@ -481,11 +493,11 @@ func onInfraProvisionedSignal(ctx workflow.Context, stackID string, lock mutex.M
 				shared.WithWorkflowBlockID(assets.ChangesetID.String()),
 				shared.WithWorkflowElement("deploy"),
 			)
-		cctx := workflow.WithChildOptions(ctx, opts)
+		ctx = workflow.WithChildOptions(ctx, opts)
 
 		err := workflow.
-			ExecuteChildWorkflow(cctx, w.Deploy, stackID, lock.(*mutex.Lock), assets).
-			GetChildWorkflowExecution().Get(cctx, &execution)
+			ExecuteChildWorkflow(ctx, w.Deploy, stackID, lock.(*mutex.Lock), assets).
+			GetChildWorkflowExecution().Get(ctx, &execution)
 		if err != nil {
 			logger.Error("Error in Executing deployment workflow", "Error", err)
 		}

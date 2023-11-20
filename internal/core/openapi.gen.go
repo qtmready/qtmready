@@ -51,7 +51,7 @@ const (
 	CloudProviderGCP   CloudProvider = "GCP"
 )
 
-// CloudProviderValues returns all known values for CloudProvider.
+// CloudProviderMap returns all known values for CloudProvider.
 var (
 	CloudProviderMap = CloudProviderMapType{
 		CloudProviderAWS.String():   CloudProviderAWS,
@@ -95,7 +95,7 @@ const (
 	DriverSqs      Driver = "sqs"
 )
 
-// DriverValues returns all known values for Driver.
+// DriverMap returns all known values for Driver.
 var (
 	DriverMap = DriverMapType{
 		DriverCloudrun.String(): DriverCloudrun,
@@ -139,7 +139,7 @@ const (
 	RepoProviderGitlab    RepoProvider = "gitlab"
 )
 
-// RepoProviderValues returns all known values for RepoProvider.
+// RepoProviderMap returns all known values for RepoProvider.
 var (
 	RepoProviderMap = RepoProviderMapType{
 		RepoProviderBitbucket.String(): RepoProviderBitbucket,

@@ -50,6 +50,7 @@ func FromEnvironment() ConfigOption {
 
 		path := ""
 		op := runtime.GOOS
+
 		switch op {
 		case "windows":
 			path = os.Getenv("APPDATA") + `\quantum\`
