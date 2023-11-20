@@ -20,15 +20,6 @@ var (
 func (c *Constructor) Create(name string, region string, config string, providerConfig string) (core.CloudResource, error) {
 	cr := &Resource{Name: name, Region: region}
 	json.Unmarshal([]byte(config), &cr.Config)
-	cr.AllowUnauthenticatedAccess = true
-	cr.Cpu = "2000m"
-	cr.Memory = "1024Mi"
-	cr.MinInstances = 0
-	cr.MaxInstances = 5
-	cr.Generation = 2
-
-	cr.Port = 8000
-	cr.CpuIdle = true
 
 	// get gcp project from configuration
 	pconfig := new(GCPConfig)
