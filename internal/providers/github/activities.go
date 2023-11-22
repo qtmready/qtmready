@@ -150,9 +150,9 @@ func (a *Activities) GetLatestCommit(ctx context.Context, providerID string, bra
 		return "", err
 	}
 
-	client, err := Instance().GetClientForInstallation(prepo.InstallationID)
+	client, err := Instance().GetClientFromInstallation(prepo.InstallationID)
 	if err != nil {
-		logger.Error("GetClientForInstallation failed", "Error", err)
+		logger.Error("GetClientFromInstallation failed", "Error", err)
 		return "", err
 	}
 
