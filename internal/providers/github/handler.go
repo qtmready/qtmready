@@ -20,6 +20,7 @@ package github
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -167,9 +168,74 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
 	}
 
-	pull_request, _ := requestBody["pull_request"].(map[string]interface{})
-	shared.Logger().Info("Labels", "current label added", requestBody["label"])
-	shared.Logger().Info("Labels", "labels", pull_request["labels"])
+	// shared.Logger().Info("Body", "Body", requestBody)
+	// pull_request, _ := requestBody["pull_request"].(map[string]interface{})
+	pr_id := requestBody["number"].(float64)
+
+	repo_info, _ := requestBody["repository"].(map[string]interface{})
+	repo_id := repo_info["id"].(float64)
+
+	curr_label_info, _ := requestBody["label"].(map[string]interface{})
+	label := curr_label_info["name"].(string)
+
+	// shared.Logger().Info("Labels", "current label added", requestBody["label"])
+	// shared.Logger().Info("Labels", "labels", pull_request["labels"])
+
+	{
+		shared.Logger().Info("PR info", "repo-id", repo_id)
+		shared.Logger().Info("PR info", "PR-id", pr_id)
+		shared.Logger().Info("PR info", "label", label)
+
+		if label == "quantm ready" {
+
+			// Construct the API endpoint for merging the pull request
+			pr_id_str := strconv.FormatFloat(pr_id, 'f', -1, 64)
+			repo_id_str := strconv.FormatFloat(repo_id, 'f', -1, 64)
+			url := fmt.Sprintf("https://api.github.com/repositories/%s/pulls/%s/merge", repo_id_str, pr_id_str)
+
+			// Prepare the request body (optional parameters can be included here)
+			requestBody := map[string]interface{}{
+				"commit_title": "Merge PR via Quantum",
+			}
+
+			// Convert the request body to JSON
+			jsonBody, err := json.Marshal(requestBody)
+			if err != nil {
+				// return err
+			}
+
+			// Create a new HTTP client
+			client := &http.Client{}
+
+			// Create a new POST request
+			req, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonBody))
+			if err != nil {
+				// return err
+			}
+
+			//TODO:
+			accessToken := "" //TODO: need to add access token using env or some other way
+
+			// Set the request headers
+			req.Header.Set("Content-Type", "application/json")
+			req.Header.Set("Authorization", "Bearer "+accessToken)
+
+			// Perform the request
+			resp, err := client.Do(req)
+			if err != nil {
+				// return err
+			}
+			defer resp.Body.Close()
+
+			// Check the response status
+			if resp.StatusCode != http.StatusOK {
+				// return fmt.Errorf("Failed to merge pull request. Status: %s", resp.Status)
+			}
+
+			fmt.Println("Pull request merged successfully.")
+		}
+		// return nil
+	}
 
 	event := WebhookEvent(headerEvent)
 	handlers := WebhookEventHandlers{
