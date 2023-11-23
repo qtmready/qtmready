@@ -18,14 +18,12 @@
 package github
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strconv"
 
+	gh "github.com/google/go-github/v53/github"
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/quantm/internal/db"
@@ -102,75 +100,41 @@ func handlePushEvent(ctx echo.Context) error {
 }
 
 func handleLabelEvent(ctx echo.Context) error {
-	shared.Logger().Info("handleLabelEvent")
 
-	body, _ := io.ReadAll(ctx.Request().Body)
-	ctx.Request().Body = io.NopCloser(bytes.NewBuffer(body))
-
-	// Decode the string into a map[string]interface{}
-	var requestBody map[string]interface{}
-	if err := json.Unmarshal(body, &requestBody); err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
+	payload := &PullRequestEvent{}
+	if err := ctx.Bind(payload); err != nil {
+		shared.Logger().Error("unable to bind payload ...", "error", err)
+		return err
 	}
 
-	pr_id := requestBody["number"].(float64)
+	prID := int(payload.Number)
+	label := payload.Label.Name
+	repoOwner := payload.Repository.Owner.Login
+	repoName := payload.Repository.Name
+	installationID := payload.Installation.ID
 
-	repo_info, _ := requestBody["repository"].(map[string]interface{})
-	repo_id := repo_info["id"].(float64)
-
-	curr_label_info, _ := requestBody["label"].(map[string]interface{})
-	label := curr_label_info["name"].(string)
-
-	shared.Logger().Info("PR info", "repo-id", repo_id)
-	shared.Logger().Info("PR info", "PR-id", pr_id)
-	shared.Logger().Info("PR info", "label", label)
-
-	if label == "quantm ready" {
-		// Construct the API endpoint for merging the pull request
-		pr_id_str := strconv.FormatFloat(pr_id, 'f', -1, 64)
-		repo_id_str := strconv.FormatFloat(repo_id, 'f', -1, 64)
-		url := fmt.Sprintf("https://api.github.com/repositories/%s/pulls/%s/merge", repo_id_str, pr_id_str)
-
-		// Prepare the request body (optional parameters can be included here)
-		requestBody := map[string]interface{}{
-			"commit_title": "Merge PR via Quantum",
-		}
-
-		// Convert the request body to JSON
-		jsonBody, err := json.Marshal(requestBody)
+	if label == fmt.Sprintf("quantm ready") {
+		client_2, err := Instance().GetClientFromInstallation(installationID)
 		if err != nil {
-			// return err
+			shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+			return err
 		}
 
-		// Create a new HTTP client
-		client := &http.Client{}
-
-		// Create a new POST request
-		req, err := http.NewRequest("PUT", url, bytes.NewBuffer(jsonBody))
+		prOptions := gh.PullRequestOptions{}
+		_, _, err = client_2.PullRequests.Merge(
+			context.Background(),
+			repoOwner,
+			repoName,
+			prID,
+			"",
+			&prOptions,
+		)
 		if err != nil {
-			// return err
+			shared.Logger().Error("Merging Failed", "Error", err)
+			return err
 		}
 
-		//TODO:
-		accessToken := "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" //TODO: need to add access token using env or some other way
-
-		// Set the request headers
-		req.Header.Set("Content-Type", "application/json")
-		req.Header.Set("Authorization", "Bearer "+accessToken)
-
-		// Perform the request
-		resp, err := client.Do(req)
-		if err != nil {
-			// return err
-		}
-		defer resp.Body.Close()
-
-		// Check the response status
-		if resp.StatusCode != http.StatusOK {
-			// return fmt.Errorf("Failed to merge pull request. Status: %s", resp.Status)
-		}
-
-		fmt.Println("Pull request merged successfully.")
+		shared.Logger().Info("Pull Request", "Status", "Merge Succesful")
 	}
 
 	return ctx.JSON(http.StatusOK, &WorkflowResponse{})

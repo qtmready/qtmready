@@ -70,6 +70,7 @@ type (
 		Organization *Organization  `json:"organization"`
 		Installation InstallationID `json:"installation"`
 		Sender       User           `json:"sender"`
+		Label        Label          `json:"label"`
 	}
 
 	InstallationRepositoriesEvent struct {
