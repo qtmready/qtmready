@@ -19,11 +19,9 @@ package github
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"strconv"
 
-	gh "github.com/google/go-github/v53/github"
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/quantm/internal/db"
@@ -99,47 +97,6 @@ func handlePushEvent(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
 }
 
-func handleLabelEvent(ctx echo.Context) error {
-
-	payload := &PullRequestEvent{}
-	if err := ctx.Bind(payload); err != nil {
-		shared.Logger().Error("unable to bind payload ...", "error", err)
-		return err
-	}
-
-	prID := int(payload.Number)
-	label := payload.Label.Name
-	repoOwner := payload.Repository.Owner.Login
-	repoName := payload.Repository.Name
-	installationID := payload.Installation.ID
-
-	if label == fmt.Sprintf("quantm ready") {
-		client_2, err := Instance().GetClientFromInstallation(installationID)
-		if err != nil {
-			shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
-			return err
-		}
-
-		prOptions := gh.PullRequestOptions{}
-		_, _, err = client_2.PullRequests.Merge(
-			context.Background(),
-			repoOwner,
-			repoName,
-			prID,
-			"",
-			&prOptions,
-		)
-		if err != nil {
-			shared.Logger().Error("Merging Failed", "Error", err)
-			return err
-		}
-
-		shared.Logger().Info("Pull Request", "Status", "Merge Succesful")
-	}
-
-	return ctx.JSON(http.StatusOK, &WorkflowResponse{})
-}
-
 // handlePullRequestEvent handles GitHub pull request event.
 func handlePullRequestEvent(ctx echo.Context) error {
 	payload := &PullRequestEvent{}
@@ -170,6 +127,17 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		}
 
 		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
+
+	case "labeled":
+		exe, err := shared.Temporal().
+			Client().
+			ExecuteWorkflow(context.Background(), opts, w.OnLabelEvent, payload)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+
+		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
+
 	default:
 		err := shared.Temporal().
 			Client().

@@ -24,8 +24,11 @@ import (
 
 	"go.temporal.io/sdk/activity"
 
+	gh "github.com/google/go-github/v53/github"
+
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -165,4 +168,29 @@ func (a *Activities) GetLatestCommit(ctx context.Context, providerID string, bra
 	logger.Debug("Repo", "Name", prepo.FullName, "Branch name", gb.Name, "Last commit", gb.Commit.SHA)
 
 	return *gb.Commit.SHA, nil
+}
+
+func (a *Activities) MergePR(ctx context.Context, repoOwner string, repoName string, pullRequestID int, installationID int64) error {
+	client_2, err := Instance().GetClientFromInstallation(installationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	prOptions := gh.PullRequestOptions{}
+	if _, _, err = client_2.PullRequests.Merge(
+		context.Background(),
+		repoOwner,
+		repoName,
+		pullRequestID,
+		"",
+		&prOptions,
+	); err != nil {
+		shared.Logger().Error("Merging Failed", "Error", err)
+		return err
+	}
+
+	shared.Logger().Info("Pull Request", "Status", "Merge Succesful")
+
+	return nil
 }

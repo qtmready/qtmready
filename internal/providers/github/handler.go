@@ -19,7 +19,6 @@ package github
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"net/http"
 	"strconv"
@@ -159,16 +158,6 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
 	}
 
-	// Decode the string into a map[string]interface{}
-	var requestBody map[string]interface{}
-	if err := json.Unmarshal(body, &requestBody); err != nil {
-		return ctx.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid JSON"})
-	}
-
-	if headerEvent == "pull_request" && requestBody["action"].(string) == "labeled" {
-		headerEvent = WebhookEventLabel.String()
-	}
-
 	shared.Logger().Debug("headerEvent", "headerEvent", headerEvent)
 
 	event := WebhookEvent(headerEvent)
@@ -177,7 +166,6 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 		WebhookEventInstallationRepositories: handleInstallationRepositoriesEvent,
 		WebhookEventPush:                     handlePushEvent,
 		WebhookEventPullRequest:              handlePullRequestEvent,
-		WebhookEventLabel:                    handleLabelEvent,
 	}
 
 	if handle, exists := handlers[event]; exists {

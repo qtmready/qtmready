@@ -19,6 +19,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -140,6 +141,34 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error {
 	logger := workflow.GetLogger(ctx)
 	logger.Info("received push event ...")
+
+	return nil
+}
+
+func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent) error {
+	logger := workflow.GetLogger(ctx)
+
+	logger.Info("received PR label event ...")
+
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
+
+	installationID := payload.Installation.ID
+	repoOwner := payload.Repository.Owner.Login
+	repoName := payload.Repository.Name
+	pullRequestID := payload.Number
+	label := payload.Label.Name
+
+	if label == fmt.Sprintf("quantm ready") {
+		var er error
+
+		err := workflow.
+			ExecuteActivity(actx, activities.MergePR, repoOwner, repoName, pullRequestID, installationID).Get(ctx, er)
+		if err != nil {
+			logger.Error("error getting installation", "error", err)
+			return err
+		}
+	}
 
 	return nil
 }
