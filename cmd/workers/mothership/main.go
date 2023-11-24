@@ -61,6 +61,7 @@ func main() {
 
 	// mutex workflow
 	coreWrkr.RegisterWorkflow(mutex.Workflow)
+	providerWrkr.RegisterWorkflow(mutex.Workflow)
 
 	// core workflows
 	coreWrkr.RegisterWorkflow(cwfs.StackController)

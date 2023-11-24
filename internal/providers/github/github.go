@@ -28,11 +28,15 @@ import (
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	gh "github.com/google/go-github/v53/github"
 	"github.com/ilyakaznacheev/cleanenv"
+	"go.temporal.io/sdk/workflow"
+
+	"go.breu.io/quantm/internal/core/mutex"
 )
 
 var (
 	instance *Config
 	once     sync.Once
+	lockRepo map[string]mutex.Mutex
 )
 
 func NewGithub(options ...ConfigOption) *Config {
@@ -94,6 +98,24 @@ func Instance() *Config {
 	}
 
 	return instance
+}
+
+func LockInstance(ctx workflow.Context, repoID string) (mutex.Mutex, error) {
+	lockID := "repo." + repoID
+
+	lock, exists := lockRepo[lockID]
+	if !exists {
+		lock = mutex.New(
+			mutex.WithCallerContext(ctx),
+			mutex.WithID(lockID),
+		)
+
+		if err := lock.Start(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	return lock, nil
 }
 
 type (

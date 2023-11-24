@@ -161,13 +161,25 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 
 	if label == fmt.Sprintf("quantm ready") {
 		var er error
+		lock, err := LockInstance(ctx, fmt.Sprint(installationID))
+		if err != nil {
+			logger.Error("Error in getting lock instance", "Error", err)
+			return err
+		}
 
-		err := workflow.
+		if err = lock.Acquire(ctx); err != nil {
+			logger.Error("Error in acquiring lock", "Error", err)
+			return err
+		}
+
+		err = workflow.
 			ExecuteActivity(actx, activities.MergePR, repoOwner, repoName, pullRequestID, installationID).Get(ctx, er)
 		if err != nil {
 			logger.Error("error getting installation", "error", err)
 			return err
 		}
+
+		_ = lock.Release(ctx)
 	}
 
 	return nil
