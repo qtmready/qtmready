@@ -146,6 +146,8 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 }
 
 func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent) error {
+	shared.Logger().Info("OnLabelEvent", "entry", "workflow started")
+
 	logger := workflow.GetLogger(ctx)
 
 	logger.Info("received PR label event ...")
@@ -196,6 +198,8 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 //
 // After the creation of the idempotency key, we pass the idempotency key as a signal to the Aperture Workflow.
 func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullRequestEvent) error {
+	shared.Logger().Info("OnPullRequestEvent", "entry", "workflow started")
+
 	logger := workflow.GetLogger(ctx)
 	// status := &PullRequestWorkflowStatus{Complete: false}
 
