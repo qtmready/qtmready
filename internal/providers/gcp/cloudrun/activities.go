@@ -44,7 +44,7 @@ func (a *Activities) DeployRevision(ctx context.Context, r *Resource, wl *Worklo
 		_, _ = op.Wait(ctx)
 	} else { // otherwise create a new revision and route 50% traffic to it
 		// Get the already deployed service on cloud run.
-		// TODO: We should be able to construct the service template of currently deployed service by caching the data in quantum
+		// TODO: We should be able to construct the service template of currently deployed service by caching the data in quantm
 		req := &runpb.GetServiceRequest{Name: r.GetParent() + "/services/" + wl.Name}
 		service, err := client.GetService(ctx, req)
 
@@ -136,7 +136,7 @@ func (a *Activities) GetNextRevision(ctx context.Context, r *Resource) (*Resourc
 	r.LastRevision = ""
 
 	// get the deployed service, if not found then it will be first revision
-	//TODO: we should get the revision from the saved cache is quantum. We should not have to Get cloud run service for it
+	//TODO: we should get the revision from the saved cache is quantm. We should not have to Get cloud run service for it
 	svc := r.GetService(ctx)
 
 	if svc != nil {

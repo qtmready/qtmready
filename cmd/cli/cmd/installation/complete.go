@@ -24,7 +24,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	client "go.breu.io/quantm/cmd/cli/apiClient"
+	"go.breu.io/quantm/cmd/cli/api"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/shared"
 )
@@ -52,7 +52,7 @@ func CompleteInstallation(cmd *cobra.Command) {
 		SetupAction:    github.SetupActionCreated,
 	}
 
-	c := client.Client
+	c := api.Client
 	r, err := c.GithubClient.GithubCompleteInstallation(context.Background(), completeInstallationBody, AddAuthHeader)
 
 	defer func() { _ = r.Body.Close() }()

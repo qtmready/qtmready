@@ -1,7 +1,7 @@
 import requests
 import json
 
-stack_name = "quantum poc"
+stack_name = "quantm poc"
 
 #Getting Access Token
 print("Logging in")

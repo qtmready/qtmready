@@ -22,7 +22,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	client "go.breu.io/quantm/cmd/cli/apiClient"
+	"go.breu.io/quantm/cmd/cli/api"
 	"go.breu.io/quantm/cmd/cli/cmd/installation"
 	"go.breu.io/quantm/cmd/cli/cmd/user"
 	"go.breu.io/quantm/internal/shared"
@@ -66,5 +66,5 @@ func Execute() {
 
 func init() {
 	url := shared.CLI().GetURL()
-	client.Client.Init(url) // TODO: change to singleton pattern
+	api.Client.Init(url) // TODO: change to singleton pattern
 }

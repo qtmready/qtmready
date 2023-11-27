@@ -25,7 +25,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	client "go.breu.io/quantm/cmd/cli/apiClient"
+	"go.breu.io/quantm/cmd/cli/api"
 	"go.breu.io/quantm/cmd/cli/utils/models"
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/shared"
@@ -35,7 +35,7 @@ func NewCmdUserLogin() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "login",
 		Short: "Logs in a user",
-		Long:  `logs in the quantum user`,
+		Long:  `logs in the quantm user`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			f := &loginOptions{}
 			if err := tea.NewProgram(models.InitializeInputModel(f)).Start(); err != nil {
@@ -76,7 +76,7 @@ func (o *loginOptions) BindFields(inputs []textinput.Model) {
 }
 
 func (o loginOptions) RunLogin() {
-	c := client.Client
+	c := api.Client
 	r, err := c.AuthClient.Login(context.Background(), o.LoginRequest)
 	c.CheckError(err)
 	c.CheckStatus(r, 200)

@@ -25,7 +25,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	client "go.breu.io/quantm/cmd/cli/apiClient"
+	"go.breu.io/quantm/cmd/cli/api"
 	"go.breu.io/quantm/cmd/cli/utils/models"
 	"go.breu.io/quantm/internal/auth"
 )
@@ -40,7 +40,7 @@ func NewCmdUserRegister() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "register",
 		Short: "Registers a user",
-		Long:  `registers a user with quantum`,
+		Long:  `registers a user with quantm`,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			f := &registerOptions{}
@@ -84,7 +84,7 @@ func (o *registerOptions) BindFields(inputs []textinput.Model) {
 }
 
 func (o registerOptions) RunRegister() {
-	c := client.Client
+	c := api.Client
 	r, err := c.AuthClient.Register(context.Background(), o.RegisterationRequest)
 
 	c.CheckError(err)

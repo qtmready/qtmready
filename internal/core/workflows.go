@@ -188,7 +188,7 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 			return err
 		}
 	default:
-		shared.Logger().Error("This image registry is not supported in quantum yet", "registry", payload.ImageRegistry)
+		shared.Logger().Error("This image registry is not supported in quantm yet", "registry", payload.ImageRegistry)
 	}
 
 	// get commits against the repos

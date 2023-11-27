@@ -15,7 +15,7 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package client
+package api
 
 import (
 	"fmt"
@@ -60,7 +60,7 @@ func (c *client) CheckError(err error) {
 	}
 }
 
-// init initializes the auth, github and core clients to connect with quantum.
+// init initializes the auth, github and core clients to connect with quantm.
 func (c *client) Init(url string) {
 	c.AuthClient, _ = auth.NewClient(url)
 	c.CoreClient, _ = core.NewClient(url)

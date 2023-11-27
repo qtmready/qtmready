@@ -1,7 +1,7 @@
 import requests
 import json
 
-stack_name = "quantum poc"
+stack_name = "quantm poc"
 
 #Getting Access Token
 print("Logging in")
@@ -53,7 +53,7 @@ rsid = requests.request("POST", url, json=payloadx, headers=headers).json()["id"
 print("Creating Workload")
 url = "http://localhost:8000/core/workloads"
 payload = {
-    "Name": "api-quantum",
+    "Name": "api-quantm",
     "kind": "worker",
     "repo_id": repo_id,
     "repo_path": "https://github.com/breuHQ/cargoflo",

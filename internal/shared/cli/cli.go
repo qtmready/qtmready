@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path"
 	"runtime"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -46,26 +47,31 @@ func FromEnvironment() ConfigOption {
 		// }
 		t.BaseURL = "http://localhost:8000"
 
-		// set location for quantum's data file, it will contain the logged in user's access token etc
+		// set location for quantm's data file, it will contain the logged in user's access token etc
 
-		path := ""
-		op := runtime.GOOS
+		configpath := ""
+		hostos := runtime.GOOS
 
-		switch op {
+		switch hostos {
 		case "windows":
-			path = os.Getenv("APPDATA") + `\quantum\`
-			t.CONFIGFILE = path + `access_token`
-		case "darwin":
-		case "linux":
-			path = `~/.config/quantum/`
-			t.CONFIGFILE = path + `access_token`
+			configpath = path.Join(os.Getenv("APPDATA"), "quantm")
+		case "darwin", "linux":
+			home, err := os.UserHomeDir()
+			if err != nil {
+				os.Exit(1)
+			}
+
+			configpath = path.Join(home, ".config", "quantm")
 		default:
-			fmt.Printf("%s OS is not supported by quantum yet\n", op)
+			fmt.Printf("%s OS is not supported by quantm yet\n", hostos)
 		}
 
-		err := os.MkdirAll(path, os.ModePerm)
+		t.CONFIGFILE = path.Join(configpath, "access_token")
+
+		err := os.MkdirAll(configpath, os.ModeDir)
 		if err != nil {
-			fmt.Printf("Unable to create/locate path: %s", path)
+			fmt.Printf(err.Error())
+			fmt.Printf("Unable to create/locate path: %s", configpath)
 			os.Exit(1)
 		}
 	}
