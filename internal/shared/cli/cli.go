@@ -68,7 +68,7 @@ func FromEnvironment() ConfigOption {
 
 		t.CONFIGFILE = path.Join(configpath, "access_token")
 
-		err := os.MkdirAll(configpath, os.ModeDir)
+		err := os.MkdirAll(configpath, 0744) // os.ModeSticky|os.ModePerm
 		if err != nil {
 			fmt.Printf(err.Error())
 			fmt.Printf("Unable to create/locate path: %s", configpath)
