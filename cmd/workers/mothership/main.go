@@ -54,12 +54,14 @@ func main() {
 	providerWrkr.RegisterWorkflow(ghwfs.OnInstallationRepositoriesEvent)
 	providerWrkr.RegisterWorkflow(ghwfs.OnPushEvent)
 	providerWrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
+	providerWrkr.RegisterWorkflow(ghwfs.OnLabelEvent)
 
 	// provider activities
 	providerWrkr.RegisterActivity(&github.Activities{})
 
 	// mutex workflow
 	coreWrkr.RegisterWorkflow(mutex.Workflow)
+	providerWrkr.RegisterWorkflow(mutex.Workflow)
 
 	// core workflows
 	coreWrkr.RegisterWorkflow(cwfs.StackController)

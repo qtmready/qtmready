@@ -19,6 +19,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -105,6 +106,8 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		return err
 	}
 
+	shared.Logger().Info("handlePullRequestEvent executing...")
+
 	w := &Workflows{}
 	opts := shared.Temporal().
 		Queue(shared.ProvidersQueue).
@@ -114,11 +117,16 @@ func handlePullRequestEvent(ctx echo.Context) error {
 			shared.WithWorkflowElement("repo"),
 			shared.WithWorkflowElementID(strconv.FormatInt(payload.Repository.ID, 10)),
 			shared.WithWorkflowMod(WebhookEventPullRequest.String()),
-			shared.WithWorkflowModID(strconv.FormatInt(payload.PullRequest.ID, 10)),
+			shared.WithWorkflowModID(fmt.Sprintf(
+				"%s-%s",
+				strconv.FormatInt(payload.PullRequest.ID, 10),
+				payload.Action,
+			)),
 		)
 
 	switch payload.Action {
 	case "opened":
+		shared.Logger().Info("PR", "status", "open")
 		exe, err := shared.Temporal().
 			Client().
 			ExecuteWorkflow(context.Background(), opts, w.OnPullRequestEvent, payload)
@@ -127,6 +135,18 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		}
 
 		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
+
+	case "labeled":
+		shared.Logger().Info("PR", "status", "label")
+		exe, err := shared.Temporal().
+			Client().
+			ExecuteWorkflow(context.Background(), opts, w.OnLabelEvent, payload)
+		if err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+
+		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
+
 	default:
 		err := shared.Temporal().
 			Client().

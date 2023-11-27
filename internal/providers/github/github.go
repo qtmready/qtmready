@@ -28,11 +28,15 @@ import (
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	gh "github.com/google/go-github/v53/github"
 	"github.com/ilyakaznacheev/cleanenv"
+	"go.temporal.io/sdk/workflow"
+
+	"go.breu.io/quantm/internal/core/mutex"
 )
 
 var (
 	instance *Config
 	once     sync.Once
+	lockRepo map[string]mutex.Mutex
 )
 
 func NewGithub(options ...ConfigOption) *Config {
@@ -96,6 +100,24 @@ func Instance() *Config {
 	return instance
 }
 
+func LockInstance(ctx workflow.Context, repoID string) (mutex.Mutex, error) {
+	lockID := "repo." + repoID
+
+	lock, exists := lockRepo[lockID]
+	if !exists {
+		lock = mutex.New(
+			mutex.WithCallerContext(ctx),
+			mutex.WithID(lockID),
+		)
+
+		if err := lock.Start(ctx); err != nil {
+			return nil, err
+		}
+	}
+
+	return lock, nil
+}
+
 type (
 	Config struct {
 		AppID         int64  `env:"GITHUB_APP_ID"`
@@ -112,7 +134,7 @@ func (g *Config) GetActivities() *Activities {
 	return g.Activities
 }
 
-func (g *Config) GetClientForInstallation(installationID int64) (*gh.Client, error) {
+func (g *Config) GetClientFromInstallation(installationID int64) (*gh.Client, error) {
 	transport, err := ghinstallation.New(http.DefaultTransport, g.AppID, installationID, []byte(g.PrivateKey))
 	if err != nil {
 		return nil, err

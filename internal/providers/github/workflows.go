@@ -19,6 +19,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -144,6 +145,48 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	return nil
 }
 
+func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent) error {
+	shared.Logger().Info("OnLabelEvent", "entry", "workflow started")
+
+	logger := workflow.GetLogger(ctx)
+
+	logger.Info("received PR label event ...")
+
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
+
+	installationID := payload.Installation.ID
+	repoOwner := payload.Repository.Owner.Login
+	repoName := payload.Repository.Name
+	pullRequestID := payload.Number
+	label := payload.Label.Name
+
+	if label == fmt.Sprintf("quantm ready") {
+		var er error
+		lock, err := LockInstance(ctx, fmt.Sprint(installationID))
+		if err != nil {
+			logger.Error("Error in getting lock instance", "Error", err)
+			return err
+		}
+
+		if err = lock.Acquire(ctx); err != nil {
+			logger.Error("Error in acquiring lock", "Error", err)
+			return err
+		}
+
+		err = workflow.
+			ExecuteActivity(actx, activities.MergePR, repoOwner, repoName, pullRequestID, installationID).Get(ctx, er)
+		if err != nil {
+			logger.Error("error getting installation", "error", err)
+			return err
+		}
+
+		_ = lock.Release(ctx)
+	}
+
+	return nil
+}
+
 // OnPullRequestEvent workflow is responsible to get or create the idempotency key for the changeset controller workflow.
 // Regardless of the action on PR, the algorithm needs to arrive at the same idempotency key! One possible way is
 // to calculate the checksum  of different components. The trick would be to handle "synchronize" event as this relates
@@ -155,6 +198,8 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 //
 // After the creation of the idempotency key, we pass the idempotency key as a signal to the Aperture Workflow.
 func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullRequestEvent) error {
+	shared.Logger().Info("OnPullRequestEvent", "entry", "workflow started")
+
 	logger := workflow.GetLogger(ctx)
 	// status := &PullRequestWorkflowStatus{Complete: false}
 
