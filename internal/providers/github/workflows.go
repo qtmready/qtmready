@@ -152,8 +152,8 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 
 	logger.Info("received PR label event ...")
 
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
+	// activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	// actx := workflow.WithActivityOptions(ctx, activityOpts)
 
 	installationID := payload.Installation.ID
 	repoOwner := payload.Repository.Owner.Login
@@ -162,26 +162,27 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 	label := payload.Label.Name
 
 	if label == fmt.Sprintf("quantm ready") {
-		var er error
-		lock, err := LockInstance(ctx, fmt.Sprint(installationID))
-		if err != nil {
-			logger.Error("Error in getting lock instance", "Error", err)
-			return err
-		}
+		// var er error
+		// lock, err := LockInstance(ctx, fmt.Sprint(installationID))
+		// if err != nil {
+		// 	logger.Error("Error in getting lock instance", "Error", err)
+		// 	return err
+		// }
 
-		if err = lock.Acquire(ctx); err != nil {
-			logger.Error("Error in acquiring lock", "Error", err)
-			return err
-		}
+		// if err = lock.Acquire(ctx); err != nil {
+		// 	logger.Error("Error in acquiring lock", "Error", err)
+		// 	return err
+		// }
 
-		err = workflow.
-			ExecuteActivity(actx, activities.MergePR, repoOwner, repoName, pullRequestID, installationID).Get(ctx, er)
-		if err != nil {
-			logger.Error("error getting installation", "error", err)
-			return err
-		}
+		// err = workflow.
+		// 	ExecuteActivity(actx, activities.MergePR, repoOwner, repoName, pullRequestID, installationID).Get(ctx, er)
+		// if err != nil {
+		// 	logger.Error("error getting installation", "error", err)
+		// 	return err
+		// }
 
-		_ = lock.Release(ctx)
+		// _ = lock.Release(ctx)
+
 	}
 
 	return nil
@@ -199,6 +200,8 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 // After the creation of the idempotency key, we pass the idempotency key as a signal to the Aperture Workflow.
 func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullRequestEvent) error {
 	shared.Logger().Info("OnPullRequestEvent", "entry", "workflow started")
+
+	return nil // dont need this feature in this branch (temporarily), so not going to run the statements below
 
 	logger := workflow.GetLogger(ctx)
 	// status := &PullRequestWorkflowStatus{Complete: false}
