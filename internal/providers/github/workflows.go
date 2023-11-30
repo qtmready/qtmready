@@ -18,8 +18,10 @@
 package github
 
 import (
+	"container/list"
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -183,6 +185,14 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 
 		// _ = lock.Release(ctx)
 
+		// send PR to merge queue
+		queueID := "queue-" + fmt.Sprint(installationID)
+		que, exists := mergeQueue[queueID]
+		if !exists {
+			que = list.New()
+		}
+
+		que.PushBack(MergeQueue{pullRequestID, installationID, repoOwner, repoName})
 	}
 
 	return nil
