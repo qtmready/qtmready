@@ -183,5 +183,21 @@ func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
+	// start a workflow here to poll merge queue
+	opts = shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowOptions(
+			shared.WithWorkflowBlock("mergeQueue"),
+			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowElement(WebhookEventInstallationRepositories.String()),
+		)
+
+	_, err = shared.Temporal().
+		Client().
+		ExecuteWorkflow(context.Background(), opts, w.PollMergeQueue, payload.Installation.ID)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
 	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: exe.GetID(), Status: WorkflowStatusQueued})
 }
