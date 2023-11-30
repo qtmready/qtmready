@@ -292,6 +292,54 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 }
 
 func (w *Workflows) PollMergeQueue(ctx workflow.Context, installationID int64) error {
+	mq := mergeQueue["queue-"+fmt.Sprint(installationID)]
+
+	// Create a wait group to wait for goroutines to finish
+	var wg sync.WaitGroup
+
+	stopSignal := make(chan struct{})
+
+	wg.Add(1)
+
+	// Define and start the goroutine for continuous polling
+	pollQueue := func(wg *sync.WaitGroup, mq *list.List, stopChan chan struct{}) {
+		defer wg.Done()
+
+		pollFunction := func() {
+			for {
+				select {
+				case <-stopChan:
+					return
+				default:
+					if mq != nil && mq.Len() > 0 {
+						// pop from merge-queue
+						frontElement := mq.Front()
+						if element, ok := frontElement.Value.(MergeQueue); ok {
+							fmt.Printf("Processing element for %v: {%v, %v, %v}\n",
+								installationID, element.pullRequestID, element.repoName, element.repoOwner)
+
+							// trigger CICD here
+						}
+
+						mq.Remove(frontElement)
+					}
+
+					time.Sleep(time.Millisecond * 500)
+				}
+			}
+		}
+
+		go pollFunction()
+
+		// Close the stop channel when the goroutine is finished processing
+		defer close(stopChan)
+	}
+
+	// Start the goroutine
+	go pollQueue(&wg, mq, stopSignal)
+
+	// Wait for the goroutine to finish
+	wg.Wait()
 
 	return nil
 }
