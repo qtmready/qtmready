@@ -291,6 +291,11 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	return nil
 }
 
+func (w *Workflows) PollMergeQueue(ctx workflow.Context, installationID int64) error {
+
+	return nil
+}
+
 // OnInstallationRepositoriesEvent is responsible when a repository is added or removed from an installation.
 func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payload *InstallationRepositoriesEvent) error {
 	logger := workflow.GetLogger(ctx)
