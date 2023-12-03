@@ -319,6 +319,16 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context, installationID int64) e
 								installationID, element.pullRequestID, element.repoName, element.repoOwner)
 
 							// trigger CICD here
+							activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+							actx := workflow.WithActivityOptions(ctx, activityOpts)
+
+							var er error
+							err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
+								installationID, element.repoOwner, element.repoName).Get(ctx, er)
+							if err != nil {
+								shared.Logger().Error("error triggering github action", "error", err)
+								return
+							}
 						}
 
 						mq.Remove(frontElement)

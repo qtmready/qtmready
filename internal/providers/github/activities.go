@@ -19,6 +19,7 @@ package github
 
 import (
 	"context"
+	"encoding/json"
 	"strconv"
 	"strings"
 
@@ -193,4 +194,35 @@ func (a *Activities) MergePR(ctx context.Context, repoOwner string, repoName str
 	shared.Logger().Info("Pull Request", "Status", "Merge Succesful")
 
 	return nil
+}
+
+func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int64, repoOwner string, repoName string) error {
+	client, err := Instance().GetClientFromInstallation(installationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	event := "remote-trigger"
+
+	// Create the dispatch event payload as a map
+	payload := map[string]interface{}{
+		"event_type": event,
+	}
+
+	// Marshal the payload to JSON
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		return err
+	}
+
+	// Create DispatchRequestOptions with json.RawMessage for ClientPayload
+	options := gh.DispatchRequestOptions{
+		EventType:     event,
+		ClientPayload: (*json.RawMessage)(&payloadJSON),
+	}
+
+	_, _, err = client.Repositories.Dispatch(ctx, repoOwner, repoName, options)
+
+	return err
 }
