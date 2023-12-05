@@ -137,7 +137,6 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		// Temporarily here
 		shared.Logger().Info("here here here...", "queue name", "queue-"+fmt.Sprint(payload.Installation.ID))
 
-
 		// start a workflow here to poll merge queue
 		opts = shared.Temporal().
 			Queue(shared.ProvidersQueue).
