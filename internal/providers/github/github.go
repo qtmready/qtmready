@@ -45,10 +45,11 @@ type (
 )
 
 var (
-	instance   *Config
-	once       sync.Once
-	lockRepo   map[string]mutex.Mutex
-	mergeQueue map[string]*list.List
+	instance        *Config
+	once            sync.Once
+	lockRepo        map[string]mutex.Mutex
+	mergeQueue      list.List
+	mergeQueueMutex sync.Mutex
 )
 
 func NewGithub(options ...ConfigOption) *Config {

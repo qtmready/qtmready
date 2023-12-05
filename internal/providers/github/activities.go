@@ -197,6 +197,8 @@ func (a *Activities) MergePR(ctx context.Context, repoOwner string, repoName str
 }
 
 func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int64, repoOwner string, repoName string) error {
+	shared.Logger().Debug("activity TriggerGithubAction started")
+
 	client, err := Instance().GetClientFromInstallation(installationID)
 	if err != nil {
 		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)

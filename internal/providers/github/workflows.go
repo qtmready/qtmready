@@ -186,13 +186,13 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 		// _ = lock.Release(ctx)
 
 		// send PR to merge queue
-		queueID := "queue-" + fmt.Sprint(installationID)
-		que, exists := mergeQueue[queueID]
-		if !exists {
-			que = list.New()
-		}
+		mergeQueueMutex.Lock()
 
-		que.PushBack(MergeQueue{pullRequestID, installationID, repoOwner, repoName})
+		mergeQueue.PushBack(MergeQueue{pullRequestID, installationID, repoOwner, repoName})
+
+		mergeQueueMutex.Unlock()
+
+		shared.Logger().Info("PR sent to MergeQueue")
 	}
 
 	return nil
@@ -292,28 +292,13 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 }
 
 func (w *Workflows) PollMergeQueue(ctx workflow.Context, installationID int64) error {
-	mq := mergeQueue["queue-"+fmt.Sprint(installationID)]
+	shared.Logger().Info("PollMergeQueue", "entry", "workflow started")
 
-	// Create a wait group to wait for goroutines to finish
-	var wg sync.WaitGroup
+		mergeQueueMutex.Lock()
 
-	stopSignal := make(chan struct{})
-
-	wg.Add(1)
-
-	// Define and start the goroutine for continuous polling
-	pollQueue := func(wg *sync.WaitGroup, mq *list.List, stopChan chan struct{}) {
-		defer wg.Done()
-
-		pollFunction := func() {
-			for {
-				select {
-				case <-stopChan:
-					return
-				default:
-					if mq != nil && mq.Len() > 0 {
+		if mergeQueue.Len() > 0 {
 						// pop from merge-queue
-						frontElement := mq.Front()
+			frontElement := mergeQueue.Front()
 						if element, ok := frontElement.Value.(MergeQueue); ok {
 							fmt.Printf("Processing element for %v: {%v, %v, %v}\n",
 								installationID, element.pullRequestID, element.repoName, element.repoOwner)
@@ -327,30 +312,18 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context, installationID int64) e
 								installationID, element.repoOwner, element.repoName).Get(ctx, er)
 							if err != nil {
 								shared.Logger().Error("error triggering github action", "error", err)
-								return
-							}
+					return err
+				}
+
+				shared.Logger().Info("github action triggered")
 						}
 
-						mq.Remove(frontElement)
-					}
-
-					time.Sleep(time.Millisecond * 500)
-				}
-			}
+			mergeQueue.Remove(frontElement)
 		}
 
-		go pollFunction()
+		mergeQueueMutex.Unlock()
 
-		// Close the stop channel when the goroutine is finished processing
-		defer close(stopChan)
-	}
-
-	// Start the goroutine
-	go pollQueue(&wg, mq, stopSignal)
-
-	// Wait for the goroutine to finish
-	wg.Wait()
-
+		workflow.Sleep(ctx, time.Millisecond*100)
 	return nil
 }
 
