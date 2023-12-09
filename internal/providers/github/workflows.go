@@ -292,36 +292,40 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 func (w *Workflows) PollMergeQueue(ctx workflow.Context, installationID int64) error {
 	shared.Logger().Info("PollMergeQueue", "entry", "workflow started")
 
-	mergeQueueMutex.Lock()
+	for {
+		mergeQueueMutex.Lock()
 
-	if mergeQueue.Len() > 0 {
-		// pop from merge-queue
-		frontElement := mergeQueue.Front()
-		if element, ok := frontElement.Value.(MergeQueue); ok {
-			fmt.Printf("Processing element for %v: {%v, %v, %v}\n",
-				installationID, element.pullRequestID, element.repoName, element.repoOwner)
+		if mergeQueue.Len() > 0 {
+			shared.Logger().Debug("PollMergeQueue", "status", "entry in the merge queue!")
 
-			// trigger CICD here
-			activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-			actx := workflow.WithActivityOptions(ctx, activityOpts)
+			// pop from merge-queue
+			frontElement := mergeQueue.Front()
+			if element, ok := frontElement.Value.(MergeQueue); ok {
+				fmt.Printf("Processing element for %v: {%v, %v, %v}\n",
+					installationID, element.pullRequestID, element.repoName, element.repoOwner)
 
-			var er error
-			err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
-				installationID, element.repoOwner, element.repoName).Get(ctx, er)
-			if err != nil {
-				shared.Logger().Error("error triggering github action", "error", err)
-				return err
+				// trigger CICD here
+				activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+				actx := workflow.WithActivityOptions(ctx, activityOpts)
+
+				var er error
+				err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
+					installationID, element.repoOwner, element.repoName).Get(ctx, er)
+				if err != nil {
+					shared.Logger().Error("error triggering github action", "error", err)
+					return err
+				}
+
+				shared.Logger().Info("github action triggered")
 			}
 
-			shared.Logger().Info("github action triggered")
+			mergeQueue.Remove(frontElement)
 		}
 
-		mergeQueue.Remove(frontElement)
+		mergeQueueMutex.Unlock()
+
+		workflow.Sleep(ctx, time.Millisecond*100)
 	}
-
-	mergeQueueMutex.Unlock()
-
-	workflow.Sleep(ctx, time.Millisecond*100)
 	return nil
 }
 
