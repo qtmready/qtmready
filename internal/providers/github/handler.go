@@ -138,6 +138,14 @@ func (s *ServerHandler) GithubArtifactReady(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
 }
 
+func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
+	shared.Logger().Info("GithubActionResult method triggered.")
+
+	result := make([]Installation, 0) // temporary
+
+	return ctx.JSON(http.StatusOK, result)
+}
+
 func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
 

@@ -4,6 +4,17 @@ info:
   version: 0.0.1
 
 paths:
+  /providers/github/cicd-result:
+    post:
+      summary: Receive result from github action CICD
+      description: Receive result from github action CICD
+      operationId: github-action-result
+      responses:
+        "200":
+          description: OK
+        "500":
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
   /providers/github/webhook:
     post:
       summary: Webhook reciever for github
