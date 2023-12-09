@@ -9,6 +9,12 @@ paths:
       summary: Receive result from github action CICD
       description: Receive result from github action CICD
       operationId: github-action-result
+      requestBody:
+        description: Github action result
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GithubActionResultRequest"
       responses:
         "200":
           description: OK
@@ -293,6 +299,18 @@ components:
         - status
         - created_at
         - updated_at
+
+    GithubActionResultRequest:
+      type: object
+      description: github action result is sent to quantum along with branch name
+      properties:
+        branch:
+          type: string
+        result:
+          type: string
+      required:
+        - branch
+        - result
 
     CompleteInstallationRequest:
       type: object

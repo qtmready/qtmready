@@ -197,6 +197,12 @@ type CompleteInstallationRequest struct {
 	SetupAction    SetupAction `json:"setup_action"`
 }
 
+// GithubActionResultRequest github action result is sent to quantum along with branch name
+type GithubActionResultRequest struct {
+	Branch string `json:"branch"`
+	Result string `json:"result"`
+}
+
 // Installation defines model for GithubInstallation.
 type Installation struct {
 	CreatedAt         time.Time  `cql:"created_at" json:"created_at"`
@@ -276,6 +282,9 @@ type WorkflowStatus string
 
 // GithubArtifactReadyJSONRequestBody defines body for GithubArtifactReady for application/json ContentType.
 type GithubArtifactReadyJSONRequestBody = ArtifactReadyRequest
+
+// GithubActionResultJSONRequestBody defines body for GithubActionResult for application/json ContentType.
+type GithubActionResultJSONRequestBody = GithubActionResultRequest
 
 // GithubCompleteInstallationJSONRequestBody defines body for GithubCompleteInstallation for application/json ContentType.
 type GithubCompleteInstallationJSONRequestBody = CompleteInstallationRequest
@@ -358,8 +367,10 @@ type ClientInterface interface {
 
 	GithubArtifactReady(ctx context.Context, body GithubArtifactReadyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GithubActionResult request
-	GithubActionResult(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GithubActionResultWithBody request with any body
+	GithubActionResultWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GithubActionResult(ctx context.Context, body GithubActionResultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GithubCompleteInstallationWithBody request with any body
 	GithubCompleteInstallationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -400,8 +411,20 @@ func (c *Client) GithubArtifactReady(ctx context.Context, body GithubArtifactRea
 	return c.Client.Do(req)
 }
 
-func (c *Client) GithubActionResult(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGithubActionResultRequest(c.Server)
+func (c *Client) GithubActionResultWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubActionResultRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GithubActionResult(ctx context.Context, body GithubActionResultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubActionResultRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -512,8 +535,19 @@ func NewGithubArtifactReadyRequestWithBody(server string, contentType string, bo
 	return req, nil
 }
 
-// NewGithubActionResultRequest generates requests for GithubActionResult
-func NewGithubActionResultRequest(server string) (*http.Request, error) {
+// NewGithubActionResultRequest calls the generic GithubActionResult builder with application/json body
+func NewGithubActionResultRequest(server string, body GithubActionResultJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGithubActionResultRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGithubActionResultRequestWithBody generates requests for GithubActionResult with any type of body
+func NewGithubActionResultRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -531,10 +565,12 @@ func NewGithubActionResultRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	req, err := http.NewRequest("POST", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -708,8 +744,10 @@ type ClientWithResponsesInterface interface {
 
 	GithubArtifactReadyWithResponse(ctx context.Context, body GithubArtifactReadyJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error)
 
-	// GithubActionResultWithResponse request
-	GithubActionResultWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubActionResultResponse, error)
+	// GithubActionResultWithBodyWithResponse request with any body
+	GithubActionResultWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubActionResultResponse, error)
+
+	GithubActionResultWithResponse(ctx context.Context, body GithubActionResultJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubActionResultResponse, error)
 
 	// GithubCompleteInstallationWithBodyWithResponse request with any body
 	GithubCompleteInstallationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error)
@@ -892,9 +930,17 @@ func (c *ClientWithResponses) GithubArtifactReadyWithResponse(ctx context.Contex
 	return ParseGithubArtifactReadyResponse(rsp)
 }
 
-// GithubActionResultWithResponse request returning *GithubActionResultResponse
-func (c *ClientWithResponses) GithubActionResultWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubActionResultResponse, error) {
-	rsp, err := c.GithubActionResult(ctx, reqEditors...)
+// GithubActionResultWithBodyWithResponse request with arbitrary body returning *GithubActionResultResponse
+func (c *ClientWithResponses) GithubActionResultWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubActionResultResponse, error) {
+	rsp, err := c.GithubActionResultWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubActionResultResponse(rsp)
+}
+
+func (c *ClientWithResponses) GithubActionResultWithResponse(ctx context.Context, body GithubActionResultJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubActionResultResponse, error) {
+	rsp, err := c.GithubActionResult(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}

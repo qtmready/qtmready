@@ -141,9 +141,14 @@ func (s *ServerHandler) GithubArtifactReady(ctx echo.Context) error {
 func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 	shared.Logger().Info("GithubActionResult method triggered.")
 
-	result := make([]Installation, 0) // temporary
+	request := &GithubActionResultRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
 
-	return ctx.JSON(http.StatusOK, result)
+	shared.Logger().Debug("GithubActionResult", "request", request)
+
+	return ctx.JSON(http.StatusOK, nil)
 }
 
 func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
