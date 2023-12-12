@@ -162,6 +162,7 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 	label := payload.Label.Name
 
 	if label == fmt.Sprintf("quantm ready") {
+		logger.Debug("quantm ready label applied")
 		// var er error
 		// lock, err := LockInstance(ctx, fmt.Sprint(installationID))
 		// if err != nil {
@@ -311,6 +312,7 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context, installationID int64) e
 				var er error
 				err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
 					installationID, element.repoOwner, element.repoName).Get(ctx, er)
+
 				if err != nil {
 					shared.Logger().Error("error triggering github action", "error", err)
 					return err
@@ -324,9 +326,8 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context, installationID int64) e
 
 		mergeQueueMutex.Unlock()
 
-		workflow.Sleep(ctx, time.Millisecond*100)
+		_ = workflow.Sleep(ctx, time.Millisecond*100)
 	}
-	return nil
 }
 
 // OnInstallationRepositoriesEvent is responsible when a repository is added or removed from an installation.

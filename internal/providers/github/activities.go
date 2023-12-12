@@ -208,7 +208,7 @@ func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int
 	event := "remote-trigger"
 
 	// Create the dispatch event payload as a map
-	payload := map[string]interface{}{
+	payload := map[string]any{
 		"event_type": event,
 	}
 

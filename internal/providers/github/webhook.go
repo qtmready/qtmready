@@ -130,6 +130,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		exe, err := shared.Temporal().
 			Client().
 			ExecuteWorkflow(context.Background(), opts, w.OnPullRequestEvent, payload)
+
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
@@ -149,6 +150,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		_, err = shared.Temporal().
 			Client().
 			ExecuteWorkflow(context.Background(), opts, w.PollMergeQueue, payload.Installation.ID)
+
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
@@ -161,6 +163,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		exe, err := shared.Temporal().
 			Client().
 			ExecuteWorkflow(context.Background(), opts, w.OnLabelEvent, payload)
+
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
