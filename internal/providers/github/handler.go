@@ -148,7 +148,25 @@ func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 
 	shared.Logger().Debug("GithubActionResult", "request", request)
 
-	return ctx.JSON(http.StatusOK, nil)
+	workflowID := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowID(
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlockID(request.RepoID),
+			shared.WithWorkflowElement("branch"),
+			shared.WithWorkflowElementID(request.Branch),
+		)
+
+	// TODO: right now its hard coded, obtain it from the request variable
+	payload := &GithubActionResult{Branch: "branch-name", PullRequestID: 68, InstallationID: 11111111,
+		RepoName: "HelloWorld", RepoOwner: "umerm64"}
+
+	err := shared.Temporal().Client().SignalWorkflow(ctx.Request().Context(), workflowID, "", WorkflowSignalActionResult.String(), payload)
+	if err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
 }
 
 func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {

@@ -94,6 +94,14 @@ type (
 		Digest   string
 		Registry string
 	}
+
+	GithubActionResult struct {
+		Branch         string
+		PullRequestID  int64
+		InstallationID int64
+		RepoName       string
+		RepoOwner      string
+	}
 )
 
 // Webhook event types. We get this from the header `X-Github-Event`.
@@ -158,4 +166,5 @@ const (
 	WorkflowSignalCompleteInstallation shared.WorkflowSignal = "complete_installation"
 	WorkflowSignalPullRequestProcessed shared.WorkflowSignal = "pull_request_processed"
 	WorkflowSignalArtifactReady        shared.WorkflowSignal = "artifact_ready"
+	WorkflowSignalActionResult         shared.WorkflowSignal = "action_result"
 )
