@@ -145,6 +145,20 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	return nil
 }
 
+func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubActionResult) error {
+	logger := workflow.GetLogger(ctx)
+	logger.Info("OnGithubActionResult", "entry", "workflow started")
+
+	// wait for github action to return success status
+	ch := workflow.GetSignalChannel(ctx, WorkflowSignalActionResult.String())
+	gh_result := &GithubActionResult{}
+	ch.Receive(ctx, gh_result)
+
+	logger.Info("OnGithubActionResult", "action recvd", gh_result)
+
+	return nil
+}
+
 func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent) error {
 	shared.Logger().Info("OnLabelEvent", "entry", "workflow started")
 
