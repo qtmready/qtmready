@@ -41,6 +41,7 @@ type (
 		installationID int64
 		repoOwner      string
 		repoName       string
+		branch         string
 	}
 )
 

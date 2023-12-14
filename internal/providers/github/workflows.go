@@ -174,6 +174,7 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 	repoName := payload.Repository.Name
 	pullRequestID := payload.Number
 	label := payload.Label.Name
+	branch := payload.PullRequest.Head.Ref
 
 	if label == fmt.Sprintf("quantm ready") {
 		logger.Debug("quantm ready label applied")
@@ -201,7 +202,7 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 		// send PR to merge queue
 		mergeQueueMutex.Lock()
 
-		mergeQueue.PushBack(MergeQueue{pullRequestID, installationID, repoOwner, repoName})
+		mergeQueue.PushBack(MergeQueue{pullRequestID, installationID, repoOwner, repoName, branch})
 
 		mergeQueueMutex.Unlock()
 
@@ -316,8 +317,8 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context, installationID int64) e
 			// pop from merge-queue
 			frontElement := mergeQueue.Front()
 			if element, ok := frontElement.Value.(MergeQueue); ok {
-				fmt.Printf("Processing element for %v: {%v, %v, %v}\n",
-					installationID, element.pullRequestID, element.repoName, element.repoOwner)
+				fmt.Printf("Processing element for %v: {%v, %v, %v, %v}\n",
+					installationID, element.pullRequestID, element.repoName, element.repoOwner, element.branch)
 
 				// trigger CICD here
 				activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
@@ -325,7 +326,7 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context, installationID int64) e
 
 				var er error
 				err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
-					installationID, element.repoOwner, element.repoName).Get(ctx, er)
+					installationID, element.repoOwner, element.repoName, element.branch).Get(ctx, er)
 
 				if err != nil {
 					shared.Logger().Error("error triggering github action", "error", err)

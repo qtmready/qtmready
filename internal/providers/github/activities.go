@@ -196,7 +196,8 @@ func (a *Activities) MergePR(ctx context.Context, repoOwner string, repoName str
 	return nil
 }
 
-func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int64, repoOwner string, repoName string) error {
+
+func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int64, repoOwner string, repoName string, targetBranch string) error {
 	shared.Logger().Debug("activity TriggerGithubAction started")
 
 	client, err := Instance().GetClientFromInstallation(installationID)
@@ -205,26 +206,22 @@ func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int
 		return err
 	}
 
-	event := "remote-trigger"
+	workflowName := "cicd_qntm.yaml" //TODO: either fix this or obtain it somehow
 
-	// Create the dispatch event payload as a map
-	payload := map[string]any{
-		"event_type": event,
+	paylod := gh.CreateWorkflowDispatchEventRequest{
+		Ref: targetBranch,
+		Inputs: map[string]any{
+			"target-branch": targetBranch,
+		},
 	}
 
-	// Marshal the payload to JSON
-	payloadJSON, err := json.Marshal(payload)
+	res, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, workflowName, paylod)
 	if err != nil {
+		shared.Logger().Error("TriggerGithubAction", "Error triggering workflow:", err)
 		return err
 	}
 
-	// Create DispatchRequestOptions with json.RawMessage for ClientPayload
-	options := gh.DispatchRequestOptions{
-		EventType:     event,
-		ClientPayload: (*json.RawMessage)(&payloadJSON),
-	}
+	shared.Logger().Debug("TriggerGithubAction", "response", res)
 
-	_, _, err = client.Repositories.Dispatch(ctx, repoOwner, repoName, options)
-
-	return err
+	return nil
 }
