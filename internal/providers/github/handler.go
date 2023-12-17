@@ -158,12 +158,34 @@ func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 		)
 
 	// TODO: right now its hard coded, obtain it from the request variable
-	payload := &GithubActionResult{Branch: "branch-name", PullRequestID: 68, InstallationID: 11111111,
-		RepoName: "HelloWorld", RepoOwner: "umerm64"}
+	installationID := int64(41716466)
+	payload := &GithubActionResult{Branch: request.Branch, RepoName: "HelloWorld", RepoOwner: "umerm64", InstallationID: installationID} //TODO get installationID from db or some other way.
 
-	err := shared.Temporal().Client().SignalWorkflow(ctx.Request().Context(), workflowID, "", WorkflowSignalActionResult.String(), payload)
+	// err := shared.Temporal().Client().SignalWorkflow(ctx.Request().Context(), workflowID, "", WorkflowSignalActionResult.String(), payload)
+
+	workflows := &Workflows{}
+	opts := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowOptions(
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlockID(strconv.FormatInt(installationID, 10)),
+			shared.WithWorkflowElement("repo"),
+			shared.WithWorkflowElementID(request.RepoID),
+			// shared.WithWorkflowElement(WebhookEventInstallation.String()),
+		)
+
+	_, err := shared.Temporal().Client().SignalWithStartWorkflow(
+		ctx.Request().Context(),
+		opts.ID,
+		WorkflowSignalActionResult.String(),
+		payload,
+		opts,
+		workflows.OnGithubActionResult,
+		payload,
+	)
 	if err != nil {
-		return err
+		shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
+		return nil
 	}
 
 	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
