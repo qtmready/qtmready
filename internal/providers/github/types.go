@@ -96,8 +96,8 @@ type (
 	}
 
 	GithubActionResult struct {
-		Branch         string
-		PullRequestID  int64
+		Branch string
+		// PullRequestID  int64
 		InstallationID int64
 		RepoName       string
 		RepoOwner      string

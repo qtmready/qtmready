@@ -144,7 +144,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 			WorkflowOptions(
 				shared.WithWorkflowBlock("mergeQueue"),
 				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
-				shared.WithWorkflowElement(WebhookEventInstallationRepositories.String()),
+				// shared.WithWorkflowElement(WebhookEventInstallationRepositories.String()),
 			)
 
 		_, err = shared.Temporal().
