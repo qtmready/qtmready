@@ -171,32 +171,32 @@ func (a *Activities) GetLatestCommit(ctx context.Context, providerID string, bra
 	return *gb.Commit.SHA, nil
 }
 
-func (a *Activities) MergePR(ctx context.Context, repoOwner string, repoName string, pullRequestID int, installationID int64) error {
-	client, err := Instance().GetClientFromInstallation(installationID)
-	if err != nil {
-		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
-		return err
-	}
+// func (a *Activities) MergePR(ctx context.Context, repoOwner string, repoName string, pullRequestID int, installationID int64) error {
+// 	client, err := Instance().GetClientFromInstallation(installationID)
+// 	if err != nil {
+// 		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+// 		return err
+// 	}
 
-	prOptions := gh.PullRequestOptions{}
-	if _, _, err = client.PullRequests.Merge(
-		context.Background(),
-		repoOwner,
-		repoName,
-		pullRequestID,
-		"",
-		&prOptions,
-	); err != nil {
-		shared.Logger().Error("Merging Failed", "Error", err)
-		return err
-	}
+// 	prOptions := gh.PullRequestOptions{}
+// 	if _, _, err = client.PullRequests.Merge(
+// 		context.Background(),
+// 		repoOwner,
+// 		repoName,
+// 		pullRequestID,
+// 		"",
+// 		&prOptions,
+// 	); err != nil {
+// 		shared.Logger().Error("Merging Failed", "Error", err)
+// 		return err
+// 	}
 
-	shared.Logger().Info("Pull Request", "Status", "Merge Succesful")
+// 	shared.Logger().Info("Pull Request", "Status", "Merge Succesful")
 
-	return nil
-}
+// 	return nil
+// }
 
-func (a *Activities) DuplicateAndRebase(ctx context.Context, repoOwner string, repoName string, targetBranchName string, installationID int64) error {
+func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoName string, targetBranchName string, installationID int64) error {
 	client, err := Instance().GetClientFromInstallation(installationID)
 	if err != nil {
 		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
@@ -206,7 +206,7 @@ func (a *Activities) DuplicateAndRebase(ctx context.Context, repoOwner string, r
 	// Get the default branch (e.g., "main")
 	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
 	if err != nil {
-		shared.Logger().Error("RebaseBranch Activity", "Error getting repository: ", err)
+		shared.Logger().Error("RebaseAndMerge Activity", "Error getting repository: ", err)
 		// fmt.Printf("Error getting repository: %v\n", err)
 		// os.Exit(1)
 	}
@@ -219,14 +219,14 @@ func (a *Activities) DuplicateAndRebase(ctx context.Context, repoOwner string, r
 		SHA: defaultBranch,
 	})
 	if err != nil {
-		shared.Logger().Error("RebaseBranch Activity", "Error getting commits: ", err)
+		shared.Logger().Error("RebaseAndMerge Activity", "Error getting commits: ", err)
 		// fmt.Printf("Error getting commits: %v\n", err)
 		// os.Exit(1)
 	}
 
 	// Use the latest commit SHA
 	if len(commits) == 0 {
-		shared.Logger().Error("RebaseBranch Activity", "No commits found in the default branch.")
+		shared.Logger().Error("RebaseAndMerge Activity", "No commits found in the default branch.")
 		// fmt.Println("No commits found in the default branch.")
 		// os.Exit(1)
 	}
@@ -243,12 +243,12 @@ func (a *Activities) DuplicateAndRebase(ctx context.Context, repoOwner string, r
 
 	_, _, err = client.Git.CreateRef(ctx, repoOwner, repoName, ref)
 	if err != nil {
-		shared.Logger().Error("RebaseBranch Activity", "Error creating branch: ", err)
+		shared.Logger().Error("RebaseAndMerge Activity", "Error creating branch: ", err)
 		// fmt.Printf("Error creating branch: %v\n", err)
 		// os.Exit(1)
 	}
 
-	shared.Logger().Info("RebaseBranch Activity", "Branch created successfully: ", newBranchName)
+	shared.Logger().Info("RebaseAndMerge Activity", "Branch created successfully: ", newBranchName)
 
 	// Perform rebase of the target branch with the new branch
 	rebaseRequest := &gh.RepositoryMergeRequest{
@@ -259,12 +259,28 @@ func (a *Activities) DuplicateAndRebase(ctx context.Context, repoOwner string, r
 
 	_, _, err = client.Repositories.Merge(ctx, repoOwner, repoName, rebaseRequest)
 	if err != nil {
-		shared.Logger().Error("RebaseBranch Activity", "Error rebasing branches: ", err)
+		shared.Logger().Error("RebaseAndMerge Activity", "Error rebasing branches: ", err)
 		// fmt.Printf("Error rebasing branches: %v\n", err)
 		// os.Exit(1)
 	}
 
-	shared.Logger().Info("RebaseBranch Activity", fmt.Sprintf("Branch %s rebased with %s successfully.\n", targetBranchName, newBranchName))
+	shared.Logger().Info("RebaseAndMerge Activity", fmt.Sprintf("Branch %s rebased with %s successfully.\n", targetBranchName, newBranchName))
+
+	// Perform rebase of the new branch with the main branch
+	rebaseRequest = &gh.RepositoryMergeRequest{
+		Base:          &defaultBranch,
+		Head:          &newBranchName,
+		CommitMessage: gh.String("Rebasing " + newBranchName + " with " + defaultBranch),
+	}
+
+	_, _, err = client.Repositories.Merge(ctx, repoOwner, repoName, rebaseRequest)
+	if err != nil {
+		shared.Logger().Error("RebaseAndMerge Activity", "Error rebasing branches: ", err)
+		// fmt.Printf("Error rebasing branches: %v\n", err)
+		// os.Exit(1)
+	}
+
+	shared.Logger().Info("RebaseAndMerge Activity", fmt.Sprintf("Branch %s rebased with %s successfully.\n", newBranchName, defaultBranch))
 
 	return nil
 }
