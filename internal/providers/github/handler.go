@@ -189,7 +189,10 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
 	}
 
-	shared.Logger().Debug("headerEvent", "headerEvent", headerEvent)
+	shared.Logger().Debug("GithubWebhook", "headerEvent", headerEvent)
+	// var jsonMap map[string]interface{}
+	// json.Unmarshal([]byte(string(body)), &jsonMap)
+	// shared.Logger().Debug("GithubWebhook", "body", jsonMap)
 
 	event := WebhookEvent(headerEvent)
 	handlers := WebhookEventHandlers{
