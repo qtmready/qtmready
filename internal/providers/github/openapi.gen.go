@@ -199,8 +199,11 @@ type CompleteInstallationRequest struct {
 
 // GithubActionResultRequest github action result is sent to quantum along with branch name
 type GithubActionResultRequest struct {
-	Branch string `json:"branch"`
-	Result string `json:"result"`
+	Branch    string `json:"branch"`
+	RepoID    string `json:"repo_id"`
+	RepoName  string `json:"repo_name"`
+	RepoOwner string `json:"repo_owner"`
+	Result    string `json:"result"`
 }
 
 // Installation defines model for GithubInstallation.

@@ -304,13 +304,25 @@ components:
       type: object
       description: github action result is sent to quantum along with branch name
       properties:
+        repo_id:
+          type: string
+          x-go-name: RepoID
+        repo_name:
+          type: string
+          x-go-name: RepoName
+        repo_owner:
+          type: string
+          x-go-name: RepoOwner
         branch:
           type: string
         result:
           type: string
       required:
-        - branch
         - result
+        - branch
+        - repo_owner
+        - repo_name
+        - repo_id
 
     CompleteInstallationRequest:
       type: object
