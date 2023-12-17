@@ -19,7 +19,7 @@ package github
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -196,6 +196,78 @@ func (a *Activities) MergePR(ctx context.Context, repoOwner string, repoName str
 	return nil
 }
 
+func (a *Activities) DuplicateAndRebase(ctx context.Context, repoOwner string, repoName string, targetBranchName string, installationID int64) error {
+	client, err := Instance().GetClientFromInstallation(installationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	// Get the default branch (e.g., "main")
+	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
+	if err != nil {
+		shared.Logger().Error("RebaseBranch Activity", "Error getting repository: ", err)
+		// fmt.Printf("Error getting repository: %v\n", err)
+		// os.Exit(1)
+	}
+
+	defaultBranch := *repo.DefaultBranch
+	newBranchName := defaultBranch + "-copy-for-" + targetBranchName
+
+	// Get the latest commit SHA of the default branch
+	commits, _, err := client.Repositories.ListCommits(ctx, repoOwner, repoName, &gh.CommitsListOptions{
+		SHA: defaultBranch,
+	})
+	if err != nil {
+		shared.Logger().Error("RebaseBranch Activity", "Error getting commits: ", err)
+		// fmt.Printf("Error getting commits: %v\n", err)
+		// os.Exit(1)
+	}
+
+	// Use the latest commit SHA
+	if len(commits) == 0 {
+		shared.Logger().Error("RebaseBranch Activity", "No commits found in the default branch.")
+		// fmt.Println("No commits found in the default branch.")
+		// os.Exit(1)
+	}
+
+	latestCommitSHA := *commits[0].SHA
+
+	// Create a new branch based on the latest commit
+	ref := &gh.Reference{
+		Ref: gh.String("refs/heads/" + newBranchName),
+		Object: &gh.GitObject{
+			SHA: &latestCommitSHA,
+		},
+	}
+
+	_, _, err = client.Git.CreateRef(ctx, repoOwner, repoName, ref)
+	if err != nil {
+		shared.Logger().Error("RebaseBranch Activity", "Error creating branch: ", err)
+		// fmt.Printf("Error creating branch: %v\n", err)
+		// os.Exit(1)
+	}
+
+	shared.Logger().Info("RebaseBranch Activity", "Branch created successfully: ", newBranchName)
+
+	// Perform rebase of the target branch with the new branch
+	rebaseRequest := &gh.RepositoryMergeRequest{
+		Base:          &newBranchName,
+		Head:          &targetBranchName,
+		CommitMessage: gh.String("Rebasing " + targetBranchName + " with " + newBranchName),
+	}
+
+	_, _, err = client.Repositories.Merge(ctx, repoOwner, repoName, rebaseRequest)
+	if err != nil {
+		shared.Logger().Error("RebaseBranch Activity", "Error rebasing branches: ", err)
+		// fmt.Printf("Error rebasing branches: %v\n", err)
+		// os.Exit(1)
+	}
+
+	shared.Logger().Info("RebaseBranch Activity", fmt.Sprintf("Branch %s rebased with %s successfully.\n", targetBranchName, newBranchName))
+
+	return nil
+}
 
 func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int64, repoOwner string, repoName string, targetBranch string) error {
 	shared.Logger().Debug("activity TriggerGithubAction started")
