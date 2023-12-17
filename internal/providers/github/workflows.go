@@ -156,6 +156,16 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubAc
 
 	logger.Info("OnGithubActionResult", "action recvd", gh_result)
 
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
+
+	var er error
+	err := workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.RepoOwner, payload.RepoName, payload.Branch, payload.InstallationID).Get(ctx, er)
+	if err != nil {
+		logger.Error("error getting installation", "error", err)
+		return err
+	}
+
 	return nil
 }
 
