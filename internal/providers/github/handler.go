@@ -159,7 +159,7 @@ func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 
 	// TODO: right now its hard coded, obtain it from the request variable
 	installationID := int64(41716466)
-	payload := &GithubActionResult{Branch: request.Branch, RepoName: "HelloWorld", RepoOwner: "umerm64", InstallationID: installationID} //TODO get installationID from db or some other way.
+	payload := &GithubActionResult{Branch: request.Branch, RepoName: request.RepoName, RepoOwner: request.RepoOwner, InstallationID: installationID} //TODO get installationID from db or some other way.
 
 	// err := shared.Temporal().Client().SignalWorkflow(ctx.Request().Context(), workflowID, "", WorkflowSignalActionResult.String(), payload)
 
