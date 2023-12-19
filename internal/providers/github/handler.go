@@ -157,9 +157,22 @@ func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 			shared.WithWorkflowElementID(request.Branch),
 		)
 
-	// TODO: right now its hard coded, obtain it from the request variable
-	installationID := int64(41716466)
-	payload := &GithubActionResult{Branch: request.Branch, RepoName: request.RepoName, RepoOwner: request.RepoOwner, InstallationID: installationID} //TODO get installationID from db or some other way.
+	result := make([]Repo, 0)
+	if err := db.Filter(
+		&Repo{},
+		&result,
+		db.QueryParams{"github_id": request.RepoID},
+	); err != nil {
+		return err
+	}
+	installationID := result[0].InstallationID
+
+	payload := &GithubActionResult{
+		Branch:         request.Branch,
+		RepoName:       request.RepoName,
+		RepoOwner:      request.RepoOwner,
+		InstallationID: installationID,
+	}
 
 	// err := shared.Temporal().Client().SignalWorkflow(ctx.Request().Context(), workflowID, "", WorkflowSignalActionResult.String(), payload)
 
