@@ -148,6 +148,10 @@ func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 
 	shared.Logger().Debug("GithubActionResult", "request", request)
 
+	if request.Branch == "main" {
+		shared.Logger().Info("GithubActionResult", "action", "No action needed")
+		return nil
+	}
 	workflowID := shared.Temporal().
 		Queue(shared.ProvidersQueue).
 		WorkflowID(
