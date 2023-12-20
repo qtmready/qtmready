@@ -167,4 +167,5 @@ const (
 	WorkflowSignalPullRequestProcessed shared.WorkflowSignal = "pull_request_processed"
 	WorkflowSignalArtifactReady        shared.WorkflowSignal = "artifact_ready"
 	WorkflowSignalActionResult         shared.WorkflowSignal = "action_result"
+	WorkflowSignalPullRequestLabeled   shared.WorkflowSignal = "pull_request_labeled"
 )
