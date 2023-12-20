@@ -229,7 +229,14 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 				shared.WithWorkflowModID(fmt.Sprint(pullRequestID)),
 			)
 
-		payload2 := &MergeQueue{pullRequestID, installationID, repoOwner, repoName, branch}
+		payload2 := &MergeQueue{
+			PullRequestID:  pullRequestID,
+			InstallationID: installationID,
+			RepoOwner:      repoOwner,
+			RepoName:       repoName,
+			Branch:         branch,
+		}
+
 		_, err := shared.Temporal().Client().SignalWithStartWorkflow(
 			context.Background(),
 			opts.ID,
@@ -350,12 +357,12 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
 	// wait for github action to return success status
 	ch := workflow.GetSignalChannel(ctx, WorkflowSignalPullRequestLabeled.String())
 	element := &MergeQueue{}
-	ch.Receive(ctx, element)
+	ch.Receive(ctx, &element)
 
 	logger.Info("PollMergeQueue", "data recvd", element)
 
 	// acquiring lock here
-	lock, err := LockInstance(ctx, fmt.Sprint(element.installationID))
+	lock, err := LockInstance(ctx, fmt.Sprint(element.InstallationID))
 	if err != nil {
 		logger.Error("Error in getting lock instance", "Error", err)
 		return err
@@ -367,7 +374,7 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
 
 	var er error
 	err = workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
-		element.installationID, element.repoOwner, element.repoName, element.branch).Get(ctx, er)
+		element.InstallationID, element.RepoOwner, element.RepoName, element.Branch).Get(ctx, er)
 
 	if err != nil {
 		logger.Error("error triggering github action", "error", err)

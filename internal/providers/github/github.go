@@ -37,11 +37,11 @@ import (
 
 type (
 	MergeQueue struct {
-		pullRequestID  int64
-		installationID int64
-		repoOwner      string
-		repoName       string
-		branch         string
+		PullRequestID  int64
+		InstallationID int64
+		RepoOwner      string
+		RepoName       string
+		Branch         string
 	}
 )
 
