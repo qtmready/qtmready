@@ -210,11 +210,39 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 		// _ = lock.Release(ctx)
 
 		// send PR to merge queue
-		mergeQueueMutex.Lock()
+		// mergeQueueMutex.Lock()
 
-		mergeQueue.PushBack(MergeQueue{pullRequestID, installationID, repoOwner, repoName, branch})
+		// mergeQueue.PushBack(MergeQueue{pullRequestID, installationID, repoOwner, repoName, branch})
 
-		mergeQueueMutex.Unlock()
+		// mergeQueueMutex.Unlock()
+
+		workflows := &Workflows{}
+		opts := shared.Temporal().
+			Queue(shared.ProvidersQueue).
+			// GetWorkflowOptions("github", strconv.Itoa(int(payload.InstallationID)), WebhookEventInstallation.String())
+			WorkflowOptions(
+				shared.WithWorkflowBlock("github"),
+				shared.WithWorkflowBlockID(fmt.Sprint(installationID)),
+				shared.WithWorkflowElement("repo"),
+				shared.WithWorkflowElementID(fmt.Sprint(payload.Repository.ID)),
+				shared.WithWorkflowElement("PR"),
+				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
+			)
+
+		payload2 := &MergeQueue{pullRequestID, installationID, repoOwner, repoName, branch}
+		_, err := shared.Temporal().Client().SignalWithStartWorkflow(
+			context.Background(),
+			opts.ID,
+			WorkflowSignalPullRequestLabeled.String(),
+			payload2,
+			opts,
+			workflows.PollMergeQueue,
+		)
+
+		if err != nil {
+			shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
+			return nil
+		}
 
 		shared.Logger().Info("PR sent to MergeQueue")
 	}
