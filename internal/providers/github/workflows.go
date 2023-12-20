@@ -343,44 +343,78 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	return nil
 }
 
-func (w *Workflows) PollMergeQueue(ctx workflow.Context, installationID int64) error {
-	shared.Logger().Info("PollMergeQueue", "entry", "workflow started")
+func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
+	logger := workflow.GetLogger(ctx)
+	logger.Info("PollMergeQueue", "entry", "workflow started")
 
-	for {
-		mergeQueueMutex.Lock()
+	// wait for github action to return success status
+	ch := workflow.GetSignalChannel(ctx, WorkflowSignalPullRequestLabeled.String())
+	element := &MergeQueue{}
+	ch.Receive(ctx, element)
 
-		if mergeQueue.Len() > 0 {
-			shared.Logger().Debug("PollMergeQueue", "status", "entry in the merge queue!")
+	logger.Info("PollMergeQueue", "data recvd", element)
 
-			// pop from merge-queue
-			frontElement := mergeQueue.Front()
-			if element, ok := frontElement.Value.(MergeQueue); ok {
-				fmt.Printf("Processing element for %v: {%v, %v, %v, %v}\n",
-					installationID, element.pullRequestID, element.repoName, element.repoOwner, element.branch)
-
-				// trigger CICD here
-				activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-				actx := workflow.WithActivityOptions(ctx, activityOpts)
-
-				var er error
-				err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
-					installationID, element.repoOwner, element.repoName, element.branch).Get(ctx, er)
-
-				if err != nil {
-					shared.Logger().Error("error triggering github action", "error", err)
-					return err
-				}
-
-				shared.Logger().Info("github action triggered")
-			}
-
-			mergeQueue.Remove(frontElement)
-		}
-
-		mergeQueueMutex.Unlock()
-
-		_ = workflow.Sleep(ctx, time.Millisecond*100)
+	// acquiring lock here
+	lock, err := LockInstance(ctx, fmt.Sprint(element.installationID))
+	if err != nil {
+		logger.Error("Error in getting lock instance", "Error", err)
+		return err
 	}
+
+	// trigger CICD here
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
+
+	var er error
+	err = workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
+		element.installationID, element.repoOwner, element.repoName, element.branch).Get(ctx, er)
+
+	if err != nil {
+		logger.Error("error triggering github action", "error", err)
+		return err
+	}
+
+	_ = lock.Release(ctx)
+
+	logger.Info("github action triggered")
+
+	return nil
+
+	// for {
+	// 	mergeQueueMutex.Lock()
+
+	// 	if mergeQueue.Len() > 0 {
+	// 		shared.Logger().Debug("PollMergeQueue", "status", "entry in the merge queue!")
+
+	// 		// pop from merge-queue
+	// 		frontElement := mergeQueue.Front()
+	// 		if element, ok := frontElement.Value.(MergeQueue); ok {
+	// 			fmt.Printf("Processing element for %v: {%v, %v, %v, %v}\n",
+	// 				element.installationID, element.pullRequestID, element.repoName, element.repoOwner, element.branch)
+
+	// 			// trigger CICD here
+	// 			activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	// 			actx := workflow.WithActivityOptions(ctx, activityOpts)
+
+	// 			var er error
+	// 			err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
+	// 				element.installationID, element.repoOwner, element.repoName, element.branch).Get(ctx, er)
+
+	// 			if err != nil {
+	// 				shared.Logger().Error("error triggering github action", "error", err)
+	// 				return err
+	// 			}
+
+	// 			shared.Logger().Info("github action triggered")
+	// 		}
+
+	// 		mergeQueue.Remove(frontElement)
+	// 	}
+
+	// 	mergeQueueMutex.Unlock()
+
+	// 	_ = workflow.Sleep(ctx, time.Millisecond*100)
+	// }
 }
 
 // OnInstallationRepositoriesEvent is responsible when a repository is added or removed from an installation.
