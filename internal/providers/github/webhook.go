@@ -135,25 +135,25 @@ func handlePullRequestEvent(ctx echo.Context) error {
 			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 		}
 
-		// Temporarily here
-		shared.Logger().Info("here here here...", "queue name", "queue-"+fmt.Sprint(payload.Installation.ID))
+		// // Temporarily here
+		// shared.Logger().Info("here here here...", "queue name", "queue-"+fmt.Sprint(payload.Installation.ID))
 
-		// start a workflow here to poll merge queue
-		opts = shared.Temporal().
-			Queue(shared.ProvidersQueue).
-			WorkflowOptions(
-				shared.WithWorkflowBlock("mergeQueue"),
-				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
-				// shared.WithWorkflowElement(WebhookEventInstallationRepositories.String()),
-			)
+		// // start a workflow here to poll merge queue
+		// opts = shared.Temporal().
+		// 	Queue(shared.ProvidersQueue).
+		// 	WorkflowOptions(
+		// 		shared.WithWorkflowBlock("mergeQueue"),
+		// 		shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
+		// 		// shared.WithWorkflowElement(WebhookEventInstallationRepositories.String()),
+		// 	)
 
-		_, err = shared.Temporal().
-			Client().
-			ExecuteWorkflow(context.Background(), opts, w.PollMergeQueue, payload.Installation.ID)
+		// _, err = shared.Temporal().
+		// 	Client().
+		// 	ExecuteWorkflow(context.Background(), opts, w.PollMergeQueue, payload.Installation.ID)
 
-		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
-		}
+		// if err != nil {
+		// 	return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		// }
 		// Temporarily here
 
 		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
