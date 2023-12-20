@@ -225,8 +225,8 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 				shared.WithWorkflowBlockID(fmt.Sprint(installationID)),
 				shared.WithWorkflowElement("repo"),
 				shared.WithWorkflowElementID(fmt.Sprint(payload.Repository.ID)),
-				shared.WithWorkflowElement("PR"),
-				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
+				shared.WithWorkflowMod("PR"),
+				shared.WithWorkflowModID(fmt.Sprint(pullRequestID)),
 			)
 
 		payload2 := &MergeQueue{pullRequestID, installationID, repoOwner, repoName, branch}
