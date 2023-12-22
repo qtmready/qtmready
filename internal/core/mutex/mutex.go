@@ -36,8 +36,6 @@ const (
 )
 
 type (
-	Release func() error
-
 	// Mutex defines the signature for the workflow mutex. This workflow is meant to control the access to a resource.
 	Mutex interface {
 		Start(ctx workflow.Context) error   // Start the mutex workflow.

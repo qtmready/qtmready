@@ -183,8 +183,8 @@ func DefaultConfigFile() string {
 	return path.Join(home, ".ctrlplane", "config.json")
 }
 
-// NewService creates a new instance of the service.
-func NewService(opts ...ServiceOption) Service {
+// New creates a new instance of the service.
+func New(opts ...ServiceOption) Service {
 	s := &config{}
 	for _, opt := range opts {
 		opt(s)

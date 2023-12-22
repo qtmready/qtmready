@@ -52,68 +52,60 @@ var (
 // default values. The benefit is, you don't need to initialize the service instance in main.go if you don't need to override the
 // default values.
 func Service() service.Service {
-	if svc == nil {
-		svcOnce.Do(func() {
-			svc = service.NewService(
-				service.FromEnvironment(),
-				service.WithVersionFromBuildInfo(),
-			)
-		})
-	}
+	svcOnce.Do(func() {
+		svc = service.New(
+			service.FromEnvironment(),
+			service.WithVersionFromBuildInfo(),
+		)
+	})
 
 	return svc
 }
 
 // Logger returns the global logger instance.
 func Logger() logger.Logger {
-	if lgr == nil {
-		lgrOnce.Do(func() {
-			lgr = logger.NewZapAdapter(Service().GetDebug(), Service().GetLogSkipper())
-		})
-	}
+	lgrOnce.Do(func() {
+		lgr = logger.NewZapAdapter(Service().GetDebug(), Service().GetLogSkipper())
+	})
 
 	return lgr
 }
 
 // Validator returns the global validator instance.
 func Validator() *validator.Validate {
-	if vld == nil {
-		vldOnce.Do(func() {
-			vld = validator.New()
-			vld.RegisterTagNameFunc(func(fld reflect.StructField) string {
-				name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
-				if name == "-" {
-					return ""
-				}
-				return name
-			})
+	vldOnce.Do(func() {
+		vld = validator.New()
+		vld.RegisterTagNameFunc(func(fld reflect.StructField) string {
+			name := strings.SplitN(fld.Tag.Get("json"), ",", 2)[0]
+			if name == "-" {
+				return ""
+			}
+			return name
 		})
-	}
+	})
 
 	return vld
 }
 
 // Temporal returns the global temporal instance.
 func Temporal() temporal.Temporal {
-	if tmprl == nil {
-		tmprlOnce.Do(func() {
-			tmprl = temporal.NewTemporal(
-				temporal.FromEnvironment(),
-				temporal.WithLogger(Logger()),
-				temporal.WithClientCreation(),
-				temporal.WithQueue(CoreQueue),
-				temporal.WithQueue(ProvidersQueue),
-				temporal.WithQueue(MutexQueue), // FIXME: WithClientCreation needs to come before the queue.
-			)
-		})
-	}
+	tmprlOnce.Do(func() {
+		tmprl = temporal.New(
+			temporal.FromEnvironment(),
+			temporal.WithLogger(Logger()),
+			temporal.WithClientCreation(),
+			temporal.WithQueue(CoreQueue),
+			temporal.WithQueue(ProvidersQueue),
+			temporal.WithQueue(MutexQueue), // FIXME: WithClientCreation needs to come before the queue.
+		)
+	})
 
 	return tmprl
 }
 
 // InitServiceForTest initializes the global service instance for testing.
 func InitServiceForTest() {
-	svc = service.NewService(
+	svc = service.New(
 		service.WithName("test"),
 		service.WithDebug(true),
 		service.WithSecret(password.MustGenerate(32, 8, 0, false, false)),
@@ -121,13 +113,11 @@ func InitServiceForTest() {
 }
 
 func CLI() cli.Cli {
-	if ci == nil {
-		cliOnce.Do(func() {
-			ci = cli.NewCLI(
-				cli.FromEnvironment(),
-			)
-		})
-	}
+	cliOnce.Do(func() {
+		ci = cli.New(
+			cli.FromEnvironment(),
+		)
+	})
 
 	return ci
 }

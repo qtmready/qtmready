@@ -167,8 +167,8 @@ func WithClientCreation() ConfigOption {
 	}
 }
 
-// NewTemporal creates a new Temporal instance.
-func NewTemporal(opts ...ConfigOption) Temporal {
+// New creates a new Temporal instance.
+func New(opts ...ConfigOption) Temporal {
 	t := &Config{queues: make(queue.Queues), workers: make(queue.Workers)}
 	for _, opt := range opts {
 		opt(t)

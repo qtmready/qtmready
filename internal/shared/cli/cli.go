@@ -26,8 +26,8 @@ type (
 
 var ()
 
-// NewCLI returns the global temporal instance.
-func NewCLI(opts ...ConfigOption) Cli {
+// New returns the global temporal instance.
+func New(opts ...ConfigOption) Cli {
 	c := &Config{}
 	for _, opt := range opts {
 		opt(c)

@@ -28,42 +28,27 @@ var (
 )
 
 type (
-	acquireLockError struct {
-		ID string // the workflow context for the mutex itself.
-	}
-
-	releaseLockError struct {
-		ID string // the workflow context for the mutex itself.
-	}
-
-	startWorkflowError struct {
-		ID string // the workflow context for the workflow that is requesting to start the distributed mutex.
+	mutexError struct {
+		id   string // the id of the mutex.
+		kind string // kind of error. can be "acquire lock", "release lock", or "start workflow".
 	}
 )
 
-func (e *acquireLockError) Error() string {
-	return fmt.Sprintf("%s: failed to acquire lock.", e.ID)
-}
-
-func (e *releaseLockError) Error() string {
-	return fmt.Sprintf("%s: failed to release lock.", e.ID)
-}
-
-func (e *startWorkflowError) Error() string {
-	return fmt.Sprintf("%s: failed to start workflow.", e.ID)
+func (e *mutexError) Error() string {
+	return fmt.Sprintf("%s: failed to %s.", e.id, e.kind)
 }
 
 // NewAcquireLockError creates a new acquire lock error.
 func NewAcquireLockError(id string) error {
-	return &acquireLockError{id}
+	return &mutexError{id, "acquire lock"}
 }
 
 // NewReleaseLockError creates a new release lock error.
 func NewReleaseLockError(id string) error {
-	return &releaseLockError{id}
+	return &mutexError{id, "release lock"}
 }
 
 // NewStartWorkflowError creates a new start workflow error.
 func NewStartWorkflowError(id string) error {
-	return &startWorkflowError{id}
+	return &mutexError{id, "start workflow"}
 }
