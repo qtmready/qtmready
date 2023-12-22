@@ -4,6 +4,23 @@ info:
   version: 0.0.1
 
 paths:
+  /providers/github/cicd-result:
+    post:
+      summary: Receive result from github action CICD
+      description: Receive result from github action CICD
+      operationId: github-action-result
+      requestBody:
+        description: Github action result
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GithubActionResultRequest"
+      responses:
+        "200":
+          description: OK
+        "500":
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
   /providers/github/webhook:
     post:
       summary: Webhook reciever for github
@@ -282,6 +299,30 @@ components:
         - status
         - created_at
         - updated_at
+
+    GithubActionResultRequest:
+      type: object
+      description: github action result is sent to quantum along with branch name
+      properties:
+        repo_id:
+          type: string
+          x-go-name: RepoID
+        repo_name:
+          type: string
+          x-go-name: RepoName
+        repo_owner:
+          type: string
+          x-go-name: RepoOwner
+        branch:
+          type: string
+        result:
+          type: string
+      required:
+        - result
+        - branch
+        - repo_owner
+        - repo_name
+        - repo_id
 
     CompleteInstallationRequest:
       type: object

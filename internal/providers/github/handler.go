@@ -138,6 +138,75 @@ func (s *ServerHandler) GithubArtifactReady(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
 }
 
+func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
+	shared.Logger().Info("GithubActionResult method triggered.")
+
+	request := &GithubActionResultRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	shared.Logger().Debug("GithubActionResult", "request", request)
+
+	if request.Branch == "main" {
+		shared.Logger().Info("GithubActionResult", "action", "No action needed")
+		return nil
+	}
+
+	workflowID := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowID(
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlockID(request.RepoID),
+			shared.WithWorkflowElement("branch"),
+			shared.WithWorkflowElementID(request.Branch),
+		)
+
+	result := make([]Repo, 0)
+	if err := db.Filter(
+		&Repo{},
+		&result,
+		db.QueryParams{"github_id": request.RepoID},
+	); err != nil {
+		return err
+	}
+
+	installationID := result[0].InstallationID
+	payload := &GithubActionResult{
+		Branch:         request.Branch,
+		RepoID:         request.RepoID,
+		RepoName:       request.RepoName,
+		RepoOwner:      request.RepoOwner,
+		InstallationID: installationID,
+	}
+
+	workflows := &Workflows{}
+	opts := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowOptions(
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlockID(strconv.FormatInt(installationID, 10)),
+			shared.WithWorkflowElement("repo"),
+			shared.WithWorkflowElementID(request.RepoID),
+		)
+
+	_, err := shared.Temporal().Client().SignalWithStartWorkflow(
+		ctx.Request().Context(),
+		opts.ID,
+		WorkflowSignalActionResult.String(),
+		payload,
+		opts,
+		workflows.OnGithubActionResult,
+		payload,
+	)
+	if err != nil {
+		shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
+		return nil
+	}
+
+	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
+}
+
 func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
 
@@ -158,7 +227,11 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
 	}
 
-	shared.Logger().Debug("headerEvent", "headerEvent", headerEvent)
+	shared.Logger().Debug("GithubWebhook", "headerEvent", headerEvent)
+	// Uncomment for debugging!
+	// var jsonMap map[string]interface{}
+	// json.Unmarshal([]byte(string(body)), &jsonMap)
+	// shared.Logger().Debug("GithubWebhook", "body", jsonMap)
 
 	event := WebhookEvent(headerEvent)
 	handlers := WebhookEventHandlers{

@@ -19,6 +19,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -170,27 +171,118 @@ func (a *Activities) GetLatestCommit(ctx context.Context, providerID string, bra
 	return *gb.Commit.SHA, nil
 }
 
-func (a *Activities) MergePR(ctx context.Context, repoOwner string, repoName string, pullRequestID int, installationID int64) error {
+func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoName string,
+	targetBranchName string, installationID int64) error {
 	client, err := Instance().GetClientFromInstallation(installationID)
 	if err != nil {
 		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
 		return err
 	}
 
-	prOptions := gh.PullRequestOptions{}
-	if _, _, err = client.PullRequests.Merge(
-		context.Background(),
-		repoOwner,
-		repoName,
-		pullRequestID,
-		"",
-		&prOptions,
-	); err != nil {
-		shared.Logger().Error("Merging Failed", "Error", err)
+	// Get the default branch (e.g., "main")
+	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
+	if err != nil {
+		shared.Logger().Error("RebaseAndMerge Activity", "Error getting repository: ", err)
 		return err
 	}
 
-	shared.Logger().Info("Pull Request", "Status", "Merge Succesful")
+	defaultBranch := *repo.DefaultBranch
+	newBranchName := defaultBranch + "-copy-for-" + targetBranchName
+
+	// Get the latest commit SHA of the default branch
+	commits, _, err := client.Repositories.ListCommits(ctx, repoOwner, repoName, &gh.CommitsListOptions{
+		SHA: defaultBranch,
+	})
+	if err != nil {
+		shared.Logger().Error("RebaseAndMerge Activity", "Error getting commits: ", err)
+		return err
+	}
+
+	// Use the latest commit SHA
+	if len(commits) == 0 {
+		shared.Logger().Error("RebaseAndMerge Activity", "No commits found in the default branch.")
+		return err
+	}
+
+	latestCommitSHA := *commits[0].SHA
+
+	// Create a new branch based on the latest commit
+	ref := &gh.Reference{
+		Ref: gh.String("refs/heads/" + newBranchName),
+		Object: &gh.GitObject{
+			SHA: &latestCommitSHA,
+		},
+	}
+
+	_, _, err = client.Git.CreateRef(ctx, repoOwner, repoName, ref)
+	if err != nil {
+		shared.Logger().Error("RebaseAndMerge Activity", "Error creating branch: ", err)
+		return err
+	}
+
+	shared.Logger().Info("RebaseAndMerge Activity", "Branch created successfully: ", newBranchName)
+
+	// Perform rebase of the target branch with the new branch
+	rebaseRequest := &gh.RepositoryMergeRequest{
+		Base:          &newBranchName,
+		Head:          &targetBranchName,
+		CommitMessage: gh.String("Rebasing " + targetBranchName + " with " + newBranchName),
+	}
+
+	_, _, err = client.Repositories.Merge(ctx, repoOwner, repoName, rebaseRequest)
+	if err != nil {
+		shared.Logger().Error("RebaseAndMerge Activity", "Error rebasing branches: ", err)
+		return err
+	}
+
+	shared.Logger().Info("RebaseAndMerge Activity", "status",
+		fmt.Sprintf("Branch %s rebased with %s successfully.\n", targetBranchName, newBranchName))
+
+	// Perform rebase of the new branch with the main branch
+	rebaseRequest = &gh.RepositoryMergeRequest{
+		Base:          &defaultBranch,
+		Head:          &newBranchName,
+		CommitMessage: gh.String("Rebasing " + newBranchName + " with " + defaultBranch),
+	}
+
+	_, _, err = client.Repositories.Merge(ctx, repoOwner, repoName, rebaseRequest)
+	if err != nil {
+		shared.Logger().Error("RebaseAndMerge Activity", "Error rebasing branches: ", err)
+		return err
+	}
+
+	shared.Logger().Info("RebaseAndMerge Activity", "status",
+		fmt.Sprintf("Branch %s rebased with %s successfully.\n", newBranchName, defaultBranch))
+
+	return nil
+}
+
+func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int64, repoOwner string,
+	repoName string, targetBranch string) error {
+	shared.Logger().Debug("activity TriggerGithubAction started")
+
+	client, err := Instance().GetClientFromInstallation(installationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	workflowName := "cicd_qntm.yaml" //TODO: either fix this or obtain it somehow
+
+	paylod := gh.CreateWorkflowDispatchEventRequest{
+		Ref: targetBranch,
+		Inputs: map[string]any{
+			"target-branch": targetBranch,
+		},
+	}
+
+	res, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, workflowName, paylod)
+	if err != nil {
+		shared.Logger().Error("TriggerGithubAction", "Error triggering workflow:", err)
+		return err
+	}
+
+	shared.Logger().Debug("TriggerGithubAction", "response", res)
 
 	return nil
 }

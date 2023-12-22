@@ -145,6 +145,45 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	return nil
 }
 
+func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubActionResult) error {
+	logger := workflow.GetLogger(ctx)
+	logger.Info("OnGithubActionResult", "entry", "workflow started")
+
+	// wait for github action to return success status
+	ch := workflow.GetSignalChannel(ctx, WorkflowSignalActionResult.String())
+	gh_result := &GithubActionResult{}
+	ch.Receive(ctx, gh_result)
+
+	logger.Info("OnGithubActionResult", "action recvd", gh_result)
+
+	// acquiring lock here
+	lock, err := LockInstance(ctx, fmt.Sprint(payload.RepoID))
+	if err != nil {
+		logger.Error("Error in getting lock instance", "Error", err)
+		return err
+	}
+
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
+
+	var er error
+	err = workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.RepoOwner, payload.RepoName,
+		payload.Branch, payload.InstallationID).Get(ctx, er)
+
+	if err != nil {
+		logger.Error("error getting installation", "error", err)
+		return err
+	}
+
+	err = lock.Release(ctx)
+	if err != nil {
+		logger.Error("error releasing lock", "error", err)
+		return err
+	}
+
+	return nil
+}
+
 func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent) error {
 	shared.Logger().Info("OnLabelEvent", "entry", "workflow started")
 
@@ -152,36 +191,51 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 
 	logger.Info("received PR label event ...")
 
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
-
 	installationID := payload.Installation.ID
 	repoOwner := payload.Repository.Owner.Login
 	repoName := payload.Repository.Name
 	pullRequestID := payload.Number
 	label := payload.Label.Name
+	branch := payload.PullRequest.Head.Ref
 
 	if label == fmt.Sprintf("quantm ready") {
-		var er error
-		lock, err := LockInstance(ctx, fmt.Sprint(installationID))
+		logger.Debug("quantm ready label applied")
+
+		workflows := &Workflows{}
+		opts := shared.Temporal().
+			Queue(shared.ProvidersQueue).
+			WorkflowOptions(
+				shared.WithWorkflowBlock("github"),
+				shared.WithWorkflowBlockID(fmt.Sprint(installationID)),
+				shared.WithWorkflowElement("repo"),
+				shared.WithWorkflowElementID(fmt.Sprint(payload.Repository.ID)),
+				shared.WithWorkflowMod("PR"),
+				shared.WithWorkflowModID(fmt.Sprint(pullRequestID)),
+			)
+
+		payload2 := &MergeQueue{
+			PullRequestID:  pullRequestID,
+			InstallationID: installationID,
+			RepoOwner:      repoOwner,
+			RepoName:       repoName,
+			Branch:         branch,
+		}
+
+		_, err := shared.Temporal().Client().SignalWithStartWorkflow(
+			context.Background(),
+			opts.ID,
+			WorkflowSignalPullRequestLabeled.String(),
+			payload2,
+			opts,
+			workflows.PollMergeQueue,
+		)
+
 		if err != nil {
-			logger.Error("Error in getting lock instance", "Error", err)
-			return err
+			shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
+			return nil
 		}
 
-		if err = lock.Acquire(ctx); err != nil {
-			logger.Error("Error in acquiring lock", "Error", err)
-			return err
-		}
-
-		err = workflow.
-			ExecuteActivity(actx, activities.MergePR, repoOwner, repoName, pullRequestID, installationID).Get(ctx, er)
-		if err != nil {
-			logger.Error("error getting installation", "error", err)
-			return err
-		}
-
-		_ = lock.Release(ctx)
+		shared.Logger().Info("PR sent to MergeQueue")
 	}
 
 	return nil
@@ -274,6 +328,35 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	// for !status.Complete {
 	// 	selector.Select(ctx)
 	// }
+
+	return nil
+}
+
+func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
+	logger := workflow.GetLogger(ctx)
+	logger.Info("PollMergeQueue", "entry", "workflow started")
+
+	// wait for github action to return success status
+	ch := workflow.GetSignalChannel(ctx, WorkflowSignalPullRequestLabeled.String())
+	element := &MergeQueue{}
+	ch.Receive(ctx, &element)
+
+	logger.Info("PollMergeQueue", "data recvd", element)
+
+	// trigger CICD here
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
+
+	var er error
+	err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
+		element.InstallationID, element.RepoOwner, element.RepoName, element.Branch).Get(ctx, er)
+
+	if err != nil {
+		logger.Error("error triggering github action", "error", err)
+		return err
+	}
+
+	logger.Info("github action triggered")
 
 	return nil
 }
