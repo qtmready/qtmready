@@ -152,6 +152,7 @@ func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 		shared.Logger().Info("GithubActionResult", "action", "No action needed")
 		return nil
 	}
+
 	workflowID := shared.Temporal().
 		Queue(shared.ProvidersQueue).
 		WorkflowID(
@@ -169,8 +170,8 @@ func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 	); err != nil {
 		return err
 	}
-	installationID := result[0].InstallationID
 
+	installationID := result[0].InstallationID
 	payload := &GithubActionResult{
 		Branch:         request.Branch,
 		RepoID:         request.RepoID,
@@ -178,8 +179,6 @@ func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 		RepoOwner:      request.RepoOwner,
 		InstallationID: installationID,
 	}
-
-	// err := shared.Temporal().Client().SignalWorkflow(ctx.Request().Context(), workflowID, "", WorkflowSignalActionResult.String(), payload)
 
 	workflows := &Workflows{}
 	opts := shared.Temporal().
@@ -189,7 +188,6 @@ func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 			shared.WithWorkflowBlockID(strconv.FormatInt(installationID, 10)),
 			shared.WithWorkflowElement("repo"),
 			shared.WithWorkflowElementID(request.RepoID),
-			// shared.WithWorkflowElement(WebhookEventInstallation.String()),
 		)
 
 	_, err := shared.Temporal().Client().SignalWithStartWorkflow(
@@ -230,6 +228,7 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 	}
 
 	shared.Logger().Debug("GithubWebhook", "headerEvent", headerEvent)
+	// Uncomment for debugging!
 	// var jsonMap map[string]interface{}
 	// json.Unmarshal([]byte(string(body)), &jsonMap)
 	// shared.Logger().Debug("GithubWebhook", "body", jsonMap)

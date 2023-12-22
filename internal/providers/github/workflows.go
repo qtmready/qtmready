@@ -167,7 +167,9 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubAc
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
 	var er error
-	err = workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.RepoOwner, payload.RepoName, payload.Branch, payload.InstallationID).Get(ctx, er)
+	err = workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.RepoOwner, payload.RepoName,
+		payload.Branch, payload.InstallationID).Get(ctx, er)
+
 	if err != nil {
 		logger.Error("error getting installation", "error", err)
 		return err
@@ -189,9 +191,6 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 
 	logger.Info("received PR label event ...")
 
-	// activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	// actx := workflow.WithActivityOptions(ctx, activityOpts)
-
 	installationID := payload.Installation.ID
 	repoOwner := payload.Repository.Owner.Login
 	repoName := payload.Repository.Name
@@ -201,38 +200,10 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 
 	if label == fmt.Sprintf("quantm ready") {
 		logger.Debug("quantm ready label applied")
-		// var er error
-		// lock, err := LockInstance(ctx, fmt.Sprint(installationID))
-		// if err != nil {
-		// 	logger.Error("Error in getting lock instance", "Error", err)
-		// 	return err
-		// }
-
-		// if err = lock.Acquire(ctx); err != nil {
-		// 	logger.Error("Error in acquiring lock", "Error", err)
-		// 	return err
-		// }
-
-		// err = workflow.
-		// 	ExecuteActivity(actx, activities.MergePR, repoOwner, repoName, pullRequestID, installationID).Get(ctx, er)
-		// if err != nil {
-		// 	logger.Error("error getting installation", "error", err)
-		// 	return err
-		// }
-
-		// _ = lock.Release(ctx)
-
-		// send PR to merge queue
-		// mergeQueueMutex.Lock()
-
-		// mergeQueue.PushBack(MergeQueue{pullRequestID, installationID, repoOwner, repoName, branch})
-
-		// mergeQueueMutex.Unlock()
 
 		workflows := &Workflows{}
 		opts := shared.Temporal().
 			Queue(shared.ProvidersQueue).
-			// GetWorkflowOptions("github", strconv.Itoa(int(payload.InstallationID)), WebhookEventInstallation.String())
 			WorkflowOptions(
 				shared.WithWorkflowBlock("github"),
 				shared.WithWorkflowBlockID(fmt.Sprint(installationID)),
@@ -282,8 +253,6 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 // After the creation of the idempotency key, we pass the idempotency key as a signal to the Aperture Workflow.
 func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullRequestEvent) error {
 	shared.Logger().Info("OnPullRequestEvent", "entry", "workflow started")
-
-	return nil // dont need this feature in this branch (temporarily), so not going to run the statements below
 
 	logger := workflow.GetLogger(ctx)
 	// status := &PullRequestWorkflowStatus{Complete: false}
@@ -381,6 +350,7 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
 	var er error
 	err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
 		element.InstallationID, element.RepoOwner, element.RepoName, element.Branch).Get(ctx, er)
+
 	if err != nil {
 		logger.Error("error triggering github action", "error", err)
 		return err
@@ -389,42 +359,6 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
 	logger.Info("github action triggered")
 
 	return nil
-
-	// for {
-	// 	mergeQueueMutex.Lock()
-
-	// 	if mergeQueue.Len() > 0 {
-	// 		shared.Logger().Debug("PollMergeQueue", "status", "entry in the merge queue!")
-
-	// 		// pop from merge-queue
-	// 		frontElement := mergeQueue.Front()
-	// 		if element, ok := frontElement.Value.(MergeQueue); ok {
-	// 			fmt.Printf("Processing element for %v: {%v, %v, %v, %v}\n",
-	// 				element.installationID, element.pullRequestID, element.repoName, element.repoOwner, element.branch)
-
-	// 			// trigger CICD here
-	// 			activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	// 			actx := workflow.WithActivityOptions(ctx, activityOpts)
-
-	// 			var er error
-	// 			err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
-	// 				element.installationID, element.repoOwner, element.repoName, element.branch).Get(ctx, er)
-
-	// 			if err != nil {
-	// 				shared.Logger().Error("error triggering github action", "error", err)
-	// 				return err
-	// 			}
-
-	// 			shared.Logger().Info("github action triggered")
-	// 		}
-
-	// 		mergeQueue.Remove(frontElement)
-	// 	}
-
-	// 	mergeQueueMutex.Unlock()
-
-	// 	_ = workflow.Sleep(ctx, time.Millisecond*100)
-	// }
 }
 
 // OnInstallationRepositoriesEvent is responsible when a repository is added or removed from an installation.
