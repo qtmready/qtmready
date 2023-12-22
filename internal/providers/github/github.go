@@ -31,8 +31,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/mutex"
-
-	"container/list"
 )
 
 type (
@@ -46,11 +44,9 @@ type (
 )
 
 var (
-	instance        *Config
-	once            sync.Once
-	lockRepo        map[string]mutex.Mutex
-	mergeQueue      list.List
-	mergeQueueMutex sync.Mutex
+	instance *Config
+	once     sync.Once
+	lockRepo map[string]mutex.Mutex
 )
 
 func NewGithub(options ...ConfigOption) *Config {
