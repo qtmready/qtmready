@@ -156,13 +156,26 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubAc
 
 	logger.Info("OnGithubActionResult", "action recvd", gh_result)
 
+	// acquiring lock here
+	lock, err := LockInstance(ctx, fmt.Sprint(payload.RepoID))
+	if err != nil {
+		logger.Error("Error in getting lock instance", "Error", err)
+		return err
+	}
+
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
 	var er error
-	err := workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.RepoOwner, payload.RepoName, payload.Branch, payload.InstallationID).Get(ctx, er)
+	err = workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.RepoOwner, payload.RepoName, payload.Branch, payload.InstallationID).Get(ctx, er)
 	if err != nil {
 		logger.Error("error getting installation", "error", err)
+		return err
+	}
+
+	err = lock.Release(ctx)
+	if err != nil {
+		logger.Error("error releasing lock", "error", err)
 		return err
 	}
 
@@ -361,27 +374,17 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
 
 	logger.Info("PollMergeQueue", "data recvd", element)
 
-	// acquiring lock here
-	lock, err := LockInstance(ctx, fmt.Sprint(element.InstallationID))
-	if err != nil {
-		logger.Error("Error in getting lock instance", "Error", err)
-		return err
-	}
-
 	// trigger CICD here
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
 	var er error
-	err = workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
+	err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
 		element.InstallationID, element.RepoOwner, element.RepoName, element.Branch).Get(ctx, er)
-
 	if err != nil {
 		logger.Error("error triggering github action", "error", err)
 		return err
 	}
-
-	_ = lock.Release(ctx)
 
 	logger.Info("github action triggered")
 

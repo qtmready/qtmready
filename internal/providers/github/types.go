@@ -99,6 +99,7 @@ type (
 		Branch string
 		// PullRequestID  int64
 		InstallationID int64
+		RepoID         string
 		RepoName       string
 		RepoOwner      string
 	}

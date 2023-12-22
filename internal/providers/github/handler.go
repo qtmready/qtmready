@@ -173,6 +173,7 @@ func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 
 	payload := &GithubActionResult{
 		Branch:         request.Branch,
+		RepoID:         request.RepoID,
 		RepoName:       request.RepoName,
 		RepoOwner:      request.RepoOwner,
 		InstallationID: installationID,
