@@ -23,18 +23,16 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func NewCmdGit() *cobra.Command {
+func NewCmdMerge() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "git",
-		Short: "command for git operations.",
-		Long:  `command for git operations`,
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Print("error: must specify a resource")
-			fmt.Printf("cmd: git, args: %v", args)
+		Use:   "merge",
+		Short: "Merges the PR of the current branch",
+		Long:  `Merges the PR of the current branch`,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			fmt.Print("Hello World merge")
+			return nil
 		},
 	}
-
-	cmd.AddCommand(NewCmdMerge())
 
 	return cmd
 }
