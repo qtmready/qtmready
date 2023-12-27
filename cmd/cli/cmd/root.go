@@ -23,6 +23,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"go.breu.io/quantm/cmd/cli/api"
+	"go.breu.io/quantm/cmd/cli/cmd/git"
 	"go.breu.io/quantm/cmd/cli/cmd/installation"
 	"go.breu.io/quantm/cmd/cli/cmd/user"
 	"go.breu.io/quantm/internal/shared"
@@ -51,6 +52,7 @@ func Execute() {
 	rootCmd.AddCommand(NewCmdInit())
 	rootCmd.AddCommand(user.NewCmdUser())
 	rootCmd.AddCommand(installation.NewCmdInstallation())
+	rootCmd.AddCommand(git.NewCmdGit())
 	rootCmd.AddCommand(NewCmdVersion())
 	rootCmd.AddCommand(NewCmdCDelete())
 	rootCmd.AddCommand(NewCmdCGet())
