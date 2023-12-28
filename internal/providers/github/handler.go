@@ -138,6 +138,11 @@ func (s *ServerHandler) GithubArtifactReady(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
 }
 
+func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
+
+	return nil
+}
+
 func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 	shared.Logger().Info("GithubActionResult method triggered.")
 
