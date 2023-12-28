@@ -42,7 +42,10 @@ func NewCmdMerge() *cobra.Command {
 				return nil
 			}
 			currBranch, _ := repo.Head()
+			repoConfig, _ := repo.Config()
+			remote := repoConfig.Remotes
 
+			fmt.Print(remote["origin"].URLs[0])
 			fmt.Printf(currBranch.Name().String())
 			return nil
 		},
