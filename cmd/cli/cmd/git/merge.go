@@ -19,7 +19,9 @@ package git
 
 import (
 	"fmt"
+	"os"
 
+	goGit "github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
 )
 
@@ -29,7 +31,19 @@ func NewCmdMerge() *cobra.Command {
 		Short: "Merges the PR of the current branch",
 		Long:  `Merges the PR of the current branch`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			fmt.Print("Hello World merge")
+			dir, _ := os.Getwd()
+			plainOpenOptions := goGit.PlainOpenOptions{
+				DetectDotGit: true,
+			}
+
+			repo, err := goGit.PlainOpenWithOptions(dir, &plainOpenOptions)
+			if err != nil {
+				fmt.Print(err)
+				return nil
+			}
+			currBranch, _ := repo.Head()
+
+			fmt.Printf(currBranch.Name().String())
 			return nil
 		},
 	}
