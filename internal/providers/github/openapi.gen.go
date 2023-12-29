@@ -193,8 +193,9 @@ func (artifactreadyrequest *ArtifactReadyRequest) GetTable() itable.ITable {
 
 // CliGitMerge branch name and repo info is sent to quantm via quantum-cli
 type CliGitMerge struct {
-	Branch   string `json:"branch"`
-	RepoName string `json:"repo_name"`
+	Branch    string `json:"branch"`
+	RepoName  string `json:"repo_name"`
+	RepoOwner string `json:"repo_owner"`
 }
 
 // CompleteInstallationRequest complete the installation given the installation_id & setup_action

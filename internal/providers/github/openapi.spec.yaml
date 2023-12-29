@@ -324,11 +324,15 @@ components:
         repo_name:
           type: string
           x-go-name: RepoName
+        repo_owner:
+          type: string
+          x-go-name: RepoOwner
         branch:
           type: string
           x-go-name: Branch
       required:
         - repo_name
+        - repo_owner
         - branch
 
     GithubActionResultRequest:
