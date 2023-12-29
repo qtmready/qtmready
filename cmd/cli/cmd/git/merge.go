@@ -18,11 +18,15 @@
 package git
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	goGit "github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
+
+	"go.breu.io/quantm/cmd/cli/api"
+	"go.breu.io/quantm/internal/providers/github"
 )
 
 func NewCmdMerge() *cobra.Command {
@@ -47,6 +51,18 @@ func NewCmdMerge() *cobra.Command {
 
 			fmt.Print(remote["origin"].URLs[0])
 			fmt.Printf(currBranch.Name().String())
+
+			mergeDetails := github.CliGitMerge{
+				Branch:   currBranch.Name().String(),
+				RepoName: remote["origin"].URLs[0],
+			}
+			c := api.Client
+			req, err := c.GithubClient.CliGitMerge(context.Background(), mergeDetails)
+			if err != nil {
+				fmt.Print(err)
+			}
+
+			fmt.Println(req)
 			return nil
 		},
 	}
