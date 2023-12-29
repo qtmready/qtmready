@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	goGit "github.com/go-git/go-git/v5"
 	"github.com/spf13/cobra"
@@ -45,21 +46,34 @@ func NewCmdMerge() *cobra.Command {
 				fmt.Print(err)
 				return nil
 			}
-			currBranch, _ := repo.Head()
+			headRef, _ := repo.Head()
+			currBranch := headRef.Name().Short()
 			repoConfig, _ := repo.Config()
 			remote := repoConfig.Remotes
 
-			fmt.Print(remote["origin"].URLs[0])
-			fmt.Printf(currBranch.Name().String())
+			splitURL := func(url string) []string {
+				parts := strings.Split(strings.TrimSuffix(strings.TrimPrefix(url, "https://github.com/"), ".git"), "/")
+				return parts
+			}
+
+			url := remote["origin"].URLs[0]
+			urlParts := splitURL(url)
+			repoOwner := urlParts[0]
+			repoName := urlParts[1]
+
+			fmt.Println(repoName)
+			fmt.Println(repoOwner)
+			fmt.Println(currBranch)
 
 			mergeDetails := github.CliGitMerge{
-				Branch:   currBranch.Name().String(),
-				RepoName: remote["origin"].URLs[0],
+				Branch:    currBranch,
+				RepoName:  repoName,
+				RepoOwner: repoOwner,
 			}
 			c := api.Client
 			req, err := c.GithubClient.CliGitMerge(context.Background(), mergeDetails)
 			if err != nil {
-				fmt.Print(err)
+				fmt.Print(err.Error())
 			}
 
 			fmt.Println(req)
