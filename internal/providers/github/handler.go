@@ -168,7 +168,13 @@ func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
 		return err
 	}
 
-	baseBranch := "main" //TODO: get base branch from go github package
+	// Get repository information to find the default branch
+	repository, _, err := client.Repositories.Get(ctx.Request().Context(), request.RepoOwner, request.RepoName)
+	if err != nil {
+		shared.Logger().Error("client.Repositories.Get", "Error", err)
+	}
+
+	baseBranch := repository.GetDefaultBranch()
 	PROptions := &gh.PullRequestListOptions{
 		Base: baseBranch,
 	}
