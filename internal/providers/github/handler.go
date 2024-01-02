@@ -19,6 +19,7 @@ package github
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -149,14 +150,14 @@ func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
 
 	shared.Logger().Info("CliGitMerge", "request", request)
 
+	RepoFullName := fmt.Sprintf("'%s/%s'", request.RepoOwner, request.RepoName)
 	result := make([]Repo, 0)
 	if err := db.Filter(
 		&Repo{},
 		&result,
-		// db.QueryParams{"github_id": "690461443"},
-		// db.QueryParams{"name": request.RepoName},
-		db.QueryParams{"name": request.RepoName, "full_name": request.RepoOwner + "/" + request.RepoName},
+		db.QueryParams{"full_name": RepoFullName},
 	); err != nil {
+		shared.Logger().Error("Getting Repo data from database failed", "Error", err)
 		return err
 	}
 
