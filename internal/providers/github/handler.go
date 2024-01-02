@@ -214,14 +214,16 @@ func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
 			shared.Logger().Error("CliGitMerge", "Error creating pull request", err)
 		}
 
+		PullRequestID = *pr.Number
+
 		shared.Logger().Info("CliGitMerge", "Pull request created", pr.GetNumber())
-	} else {
-		// Label the PR only
-		_, _, err := client.Issues.AddLabelsToIssue(ctx.Request().Context(), request.RepoOwner, request.RepoName, PullRequestID,
-			[]string{"quantm ready"})
-		if err != nil {
-			shared.Logger().Error("CliGitMerge", "Error adding label to PR", err)
-		}
+	}
+
+	// Label the PR
+	_, _, err = client.Issues.AddLabelsToIssue(ctx.Request().Context(), request.RepoOwner, request.RepoName, PullRequestID,
+		[]string{"quantm ready"})
+	if err != nil {
+		shared.Logger().Error("CliGitMerge", "Error adding label to PR", err)
 	}
 
 	return nil
