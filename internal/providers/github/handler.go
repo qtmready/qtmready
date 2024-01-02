@@ -152,6 +152,7 @@ func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
 
 	RepoFullName := fmt.Sprintf("'%s/%s'", request.RepoOwner, request.RepoName)
 	result := make([]Repo, 0)
+
 	if err := db.Filter(
 		&Repo{},
 		&result,
