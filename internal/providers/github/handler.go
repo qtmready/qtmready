@@ -19,11 +19,13 @@ package github
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/gocql/gocql"
+	gh "github.com/google/go-github/v53/github"
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/quantm/internal/auth"
@@ -136,6 +138,98 @@ func (s *ServerHandler) GithubArtifactReady(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
+}
+
+func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
+	shared.Logger().Info("CliGitMerge method triggered.")
+
+	request := &CliGitMerge{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	shared.Logger().Info("CliGitMerge", "request", request)
+
+	RepoFullName := fmt.Sprintf("'%s/%s'", request.RepoOwner, request.RepoName)
+	result := make([]Repo, 0)
+
+	if err := db.Filter(
+		&Repo{},
+		&result,
+		db.QueryParams{"full_name": RepoFullName},
+	); err != nil {
+		shared.Logger().Error("Getting Repo data from database failed", "Error", err)
+		return err
+	}
+
+	installationID := result[0].InstallationID
+	client, err := Instance().GetClientFromInstallation(installationID)
+
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	// Get repository information to find the default branch
+	repository, _, err := client.Repositories.Get(ctx.Request().Context(), request.RepoOwner, request.RepoName)
+	if err != nil {
+		shared.Logger().Error("client.Repositories.Get", "Error", err)
+	}
+
+	baseBranch := repository.GetDefaultBranch()
+	PROptions := &gh.PullRequestListOptions{
+		Base: baseBranch,
+	}
+
+	PRs, _, err := client.PullRequests.List(ctx.Request().Context(), request.RepoOwner, request.RepoName, PROptions)
+	if err != nil {
+		shared.Logger().Error("client.PullRequests.List failed", "Error", err)
+		return err
+	}
+
+	PullRequestID := -1
+
+	for i := 0; i < len(PRs); i++ {
+		if *PRs[i].Head.Ref == request.Branch {
+			PullRequestID = (*PRs[i].Number)
+			break
+		}
+	}
+
+	// Create PR for this branch and then label it
+	if PullRequestID == -1 {
+		// Specify the title and body for the pull request
+		prTitle := "Pull Request created by Quantum"
+		prBody := "Description of your pull request goes here."
+
+		// Create a new pull request
+		newPR := &gh.NewPullRequest{
+			Title: &prTitle,
+			Body:  &prBody,
+			Head:  &request.Branch,
+			Base:  &baseBranch,
+		}
+
+		pr, _, err := client.PullRequests.Create(ctx.Request().Context(), request.RepoOwner, request.RepoName, newPR)
+		if err != nil {
+			shared.Logger().Error("CliGitMerge", "Error creating pull request", err)
+		}
+
+		PullRequestID = *pr.Number
+
+		shared.Logger().Info("CliGitMerge", "Pull request created", pr.GetNumber())
+	}
+
+	// Label the PR
+	_, _, err = client.Issues.AddLabelsToIssue(ctx.Request().Context(), request.RepoOwner, request.RepoName, PullRequestID,
+		[]string{"quantm ready"})
+	if err != nil {
+		shared.Logger().Error("CliGitMerge", "Error adding label to PR", err)
+	}
+
+	ret := fmt.Sprintf("PR %d is labeled", PullRequestID)
+
+	return ctx.JSON(http.StatusOK, ret)
 }
 
 func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {

@@ -191,6 +191,13 @@ func (artifactreadyrequest *ArtifactReadyRequest) GetTable() itable.ITable {
 	return artifactreadyrequestTable
 }
 
+// CliGitMerge branch name and repo info is sent to quantm via quantum-cli
+type CliGitMerge struct {
+	Branch    string `json:"branch"`
+	RepoName  string `json:"repo_name"`
+	RepoOwner string `json:"repo_owner"`
+}
+
 // CompleteInstallationRequest complete the installation given the installation_id & setup_action
 type CompleteInstallationRequest struct {
 	InstallationID int64       `json:"installation_id"`
@@ -289,6 +296,9 @@ type GithubArtifactReadyJSONRequestBody = ArtifactReadyRequest
 // GithubActionResultJSONRequestBody defines body for GithubActionResult for application/json ContentType.
 type GithubActionResultJSONRequestBody = GithubActionResultRequest
 
+// CliGitMergeJSONRequestBody defines body for CliGitMerge for application/json ContentType.
+type CliGitMergeJSONRequestBody = CliGitMerge
+
 // GithubCompleteInstallationJSONRequestBody defines body for GithubCompleteInstallation for application/json ContentType.
 type GithubCompleteInstallationJSONRequestBody = CompleteInstallationRequest
 
@@ -375,6 +385,11 @@ type ClientInterface interface {
 
 	GithubActionResult(ctx context.Context, body GithubActionResultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
+	// CliGitMergeWithBody request with any body
+	CliGitMergeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CliGitMerge(ctx context.Context, body CliGitMergeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GithubCompleteInstallationWithBody request with any body
 	GithubCompleteInstallationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -428,6 +443,30 @@ func (c *Client) GithubActionResultWithBody(ctx context.Context, contentType str
 
 func (c *Client) GithubActionResult(ctx context.Context, body GithubActionResultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGithubActionResultRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CliGitMergeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCliGitMergeRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CliGitMerge(ctx context.Context, body CliGitMergeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCliGitMergeRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -559,6 +598,46 @@ func NewGithubActionResultRequestWithBody(server string, contentType string, bod
 	}
 
 	operationPath := fmt.Sprintf("/providers/github/cicd-result")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewCliGitMergeRequest calls the generic CliGitMerge builder with application/json body
+func NewCliGitMergeRequest(server string, body CliGitMergeJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCliGitMergeRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCliGitMergeRequestWithBody generates requests for CliGitMerge with any type of body
+func NewCliGitMergeRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/providers/github/cli-git-merge")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -752,6 +831,11 @@ type ClientWithResponsesInterface interface {
 
 	GithubActionResultWithResponse(ctx context.Context, body GithubActionResultJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubActionResultResponse, error)
 
+	// CliGitMergeWithBodyWithResponse request with any body
+	CliGitMergeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CliGitMergeResponse, error)
+
+	CliGitMergeWithResponse(ctx context.Context, body CliGitMergeJSONRequestBody, reqEditors ...RequestEditorFn) (*CliGitMergeResponse, error)
+
 	// GithubCompleteInstallationWithBodyWithResponse request with any body
 	GithubCompleteInstallationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error)
 
@@ -808,6 +892,28 @@ func (r GithubActionResultResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GithubActionResultResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CliGitMergeResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r CliGitMergeResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CliGitMergeResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -950,6 +1056,23 @@ func (c *ClientWithResponses) GithubActionResultWithResponse(ctx context.Context
 	return ParseGithubActionResultResponse(rsp)
 }
 
+// CliGitMergeWithBodyWithResponse request with arbitrary body returning *CliGitMergeResponse
+func (c *ClientWithResponses) CliGitMergeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CliGitMergeResponse, error) {
+	rsp, err := c.CliGitMergeWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCliGitMergeResponse(rsp)
+}
+
+func (c *ClientWithResponses) CliGitMergeWithResponse(ctx context.Context, body CliGitMergeJSONRequestBody, reqEditors ...RequestEditorFn) (*CliGitMergeResponse, error) {
+	rsp, err := c.CliGitMerge(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCliGitMergeResponse(rsp)
+}
+
 // GithubCompleteInstallationWithBodyWithResponse request with arbitrary body returning *GithubCompleteInstallationResponse
 func (c *ClientWithResponses) GithubCompleteInstallationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error) {
 	rsp, err := c.GithubCompleteInstallationWithBody(ctx, contentType, body, reqEditors...)
@@ -1050,6 +1173,32 @@ func ParseGithubActionResultResponse(rsp *http.Response) (*GithubActionResultRes
 	}
 
 	response := &GithubActionResultResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCliGitMergeResponse parses an HTTP response from a CliGitMergeWithResponse call
+func ParseCliGitMergeResponse(rsp *http.Response) (*CliGitMergeResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CliGitMergeResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -1279,6 +1428,10 @@ type ServerInterface interface {
 	// (POST /providers/github/cicd-result)
 	GithubActionResult(ctx echo.Context) error
 
+	// Receive git merge command from quantm cli
+	// (POST /providers/github/cli-git-merge)
+	CliGitMerge(ctx echo.Context) error
+
 	// Complete GitHub App installation
 	// (POST /providers/github/complete-installation)
 	GithubCompleteInstallation(ctx echo.Context) error
@@ -1326,6 +1479,18 @@ func (w *ServerInterfaceWrapper) GithubActionResult(ctx echo.Context) error {
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubActionResult
+	err = handler(ctx)
+
+	return err
+}
+
+// CliGitMerge converts echo context to params.
+
+func (w *ServerInterfaceWrapper) CliGitMerge(ctx echo.Context) error {
+	var err error
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.CliGitMerge
 	err = handler(ctx)
 
 	return err
@@ -1423,6 +1588,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.POST(baseURL+"/providers/github/artifact-ready", wrapper.GithubArtifactReady)
 	router.POST(baseURL+"/providers/github/cicd-result", wrapper.GithubActionResult)
+	router.POST(baseURL+"/providers/github/cli-git-merge", wrapper.CliGitMerge)
 	router.POST(baseURL+"/providers/github/complete-installation", wrapper.GithubCompleteInstallation)
 	router.GET(baseURL+"/providers/github/installations", wrapper.GithubGetInstallations)
 	router.GET(baseURL+"/providers/github/repos", wrapper.GithubGetRepos)

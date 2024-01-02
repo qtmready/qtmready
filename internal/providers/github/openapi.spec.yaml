@@ -171,6 +171,23 @@ paths:
         "500":
           $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
+  /providers/github/cli-git-merge:
+    post:
+      summary: Receive git merge command from quantm cli
+      description: Receive git merge command from quantm cli
+      operationId: cli-git-merge
+      requestBody:
+        description: github repo and branch
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CliGitMerge"
+      responses:
+        "200":
+          description: OK
+        "500":
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
 components:
   securitySchemes:
     BearerAuth:
@@ -299,6 +316,24 @@ components:
         - status
         - created_at
         - updated_at
+
+    CliGitMerge:
+      type: object
+      description: branch name and repo info is sent to quantm via quantum-cli
+      properties:
+        repo_name:
+          type: string
+          x-go-name: RepoName
+        repo_owner:
+          type: string
+          x-go-name: RepoOwner
+        branch:
+          type: string
+          x-go-name: Branch
+      required:
+        - repo_name
+        - repo_owner
+        - branch
 
     GithubActionResultRequest:
       type: object
