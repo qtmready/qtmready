@@ -226,7 +226,9 @@ func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
 		shared.Logger().Error("CliGitMerge", "Error adding label to PR", err)
 	}
 
-	return nil
+	ret := fmt.Sprintf("PR %d is labeled", PullRequestID)
+
+	return ctx.JSON(http.StatusOK, ret)
 }
 
 func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
