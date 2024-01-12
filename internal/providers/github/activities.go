@@ -267,22 +267,22 @@ func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int
 		return err
 	}
 
-	workflowName := "cicd_qntm.yaml" //TODO: either fix this or obtain it somehow
-
-	paylod := gh.CreateWorkflowDispatchEventRequest{
+	payload := gh.CreateWorkflowDispatchEventRequest{
 		Ref: targetBranch,
 		Inputs: map[string]any{
 			"target-branch": targetBranch,
 		},
 	}
 
-	res, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, workflowName, paylod)
-	if err != nil {
-		shared.Logger().Error("TriggerGithubAction", "Error triggering workflow:", err)
-		return err
+	ListWorkflowOpts := gh.ListOptions{}
+	workflowAll, _, _ := client.Actions.ListWorkflows(ctx, repoOwner, repoName, &ListWorkflowOpts)
+	for _, workflow := range workflowAll.Workflows {
+		res, err := client.Actions.CreateWorkflowDispatchEventByID(ctx, repoOwner, repoName, workflow.GetID(), payload)
+		if err != nil {
+			shared.Logger().Error("TriggerGithubAction", "Error triggering workflow:", err)
+		}
+		shared.Logger().Debug("TriggerGithubAction", "response", res)
 	}
-
-	shared.Logger().Debug("TriggerGithubAction", "response", res)
 
 	return nil
 }
