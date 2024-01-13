@@ -65,6 +65,10 @@ func handleInstallationEvent(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
 }
 
+func handleWorkflowRunEvent(ctx echo.Context) error {
+	return nil
+}
+
 // handlePushEvent handles GitHub push event.
 func handlePushEvent(ctx echo.Context) error {
 	payload := &PushEvent{}
