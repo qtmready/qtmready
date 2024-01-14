@@ -66,7 +66,55 @@ func handleInstallationEvent(ctx echo.Context) error {
 }
 
 func handleWorkflowRunEvent(ctx echo.Context) error {
-	return nil
+	shared.Logger().Debug("workflow-run event received.")
+
+	payload := &WorkflowRun{}
+	if err := ctx.Bind(payload); err != nil {
+		shared.Logger().Error("unable to bind payload ...", "error", err)
+		return err
+	}
+
+	if payload.Action != "completed" {
+		shared.Logger().Info("workflow_run event in progress")
+		return nil
+	}
+
+	shared.Logger().Debug("handleWorkflowRunEvent", "payload", payload)
+
+	workflowID := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowID(
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+			shared.WithWorkflowElement("branch"),
+			shared.WithWorkflowElementID(payload.WR.HeadBranch),
+		)
+
+	workflows := &Workflows{}
+	opts := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowOptions(
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowElement("repo"),
+			shared.WithWorkflowElementID(strconv.FormatInt(payload.Repository.ID, 10)),
+		)
+
+	_, err := shared.Temporal().Client().SignalWithStartWorkflow(
+		ctx.Request().Context(),
+		opts.ID,
+		WorkflowSignalActionResult.String(),
+		payload,
+		opts,
+		workflows.OnGithubActionResult,
+		payload,
+	)
+	if err != nil {
+		shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
+		return nil
+	}
+
+	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
 }
 
 // handlePushEvent handles GitHub push event.
