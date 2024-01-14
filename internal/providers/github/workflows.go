@@ -145,7 +145,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	return nil
 }
 
-func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubActionResult) error {
+func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *WorkflowRun) error {
 	logger := workflow.GetLogger(ctx)
 	logger.Info("OnGithubActionResult", "entry", "workflow started")
 
@@ -157,7 +157,7 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubAc
 	logger.Info("OnGithubActionResult", "action recvd", gh_result)
 
 	// acquiring lock here
-	lock, err := LockInstance(ctx, fmt.Sprint(payload.RepoID))
+	lock, err := LockInstance(ctx, fmt.Sprint(payload.Repository.ID))
 	if err != nil {
 		logger.Error("Error in getting lock instance", "Error", err)
 		return err
@@ -167,8 +167,8 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubAc
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
 	var er error
-	err = workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.RepoOwner, payload.RepoName,
-		payload.Branch, payload.InstallationID).Get(ctx, er)
+	err = workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.Repository.Owner.Login, payload.Repository.Name,
+		payload.WR.HeadBranch, payload.Installation.ID).Get(ctx, er)
 
 	if err != nil {
 		logger.Error("error getting installation", "error", err)
