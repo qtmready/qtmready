@@ -62,6 +62,16 @@ type (
 		Installation InstallationID `json:"installation"`
 	}
 
+	WorkflowRun struct {
+		Action       string         `json:"action"`
+		Repository   RepositoryPR   `json:"repository"`
+		Sender       User           `json:"sender"`
+		Installation InstallationID `json:"installation"`
+		WR           struct {
+			HeadBranch string `json:"head_branch"`
+		} `json:"workflow_run"`
+	}
+
 	PullRequestEvent struct {
 		Action       string         `json:"action"`
 		Number       int64          `json:"number"`
@@ -168,4 +178,5 @@ const (
 	WorkflowSignalArtifactReady        shared.WorkflowSignal = "artifact_ready"
 	WorkflowSignalActionResult         shared.WorkflowSignal = "action_result"
 	WorkflowSignalPullRequestLabeled   shared.WorkflowSignal = "pull_request_labeled"
+	WorkflowSignalWorkflowCompleted    shared.WorkflowSignal = "workflow_completed"
 )
