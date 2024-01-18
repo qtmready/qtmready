@@ -92,6 +92,8 @@ func main() {
 		return
 	}
 
+	shared.Service().Banner()
+
 	defer coreWrkr.Stop()
 
 	quit := make(chan os.Signal, 1)                      // create a channel to listen to quit signals.

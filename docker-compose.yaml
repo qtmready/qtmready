@@ -15,16 +15,16 @@
 # CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 # ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-version: '3.9'
+version: "3.9"
 
 services:
   # common
-  
+
   database:
     container_name: database
-    image: scylladb/scylla:5.2
+    image: scylladb/scylla:5.4
     ports:
-      - '9042:9042'
+      - "9042:9042"
     volumes:
       - db-data:/var/lib/scylla
     command: --smp 1 --skip-wait-for-gossip-to-settle 0
@@ -79,15 +79,14 @@ services:
   #   networks:
   #     - ctrlplane
 
-
-  mailslurper:
-    container_name: mailslurper
-    image: oryd/mailslurper:latest-smtps
-    ports:
-      - '4436:4436'
-      - '4437:4437'
-    networks:
-      - ctrlplane
+  # mailslurper:
+  #   container_name: mailslurper
+  #   image: oryd/mailslurper:latest-smtps
+  #   ports:
+  #     - "4436:4436"
+  #     - "4437:4437"
+  #   networks:
+  #     - ctrlplane
 
   # temporal.io
   temporal:
@@ -99,7 +98,7 @@ services:
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-cass.yaml
     image: temporalio/auto-setup:1.20.2
     ports:
-      - '7233:7233'
+      - "7233:7233"
     volumes:
       - ./deploy/temporal/dynamicconfig/:/etc/temporal/config/dynamicconfig/
     networks:
@@ -165,7 +164,7 @@ services:
     env_file:
       - ./.env
     ports:
-      - '8000:8000'
+      - "8000:8000"
     volumes:
       - ./deploy/air/api.toml:/api/.air.toml
       - ./:/api/

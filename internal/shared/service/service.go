@@ -76,10 +76,9 @@ func (s *config) Banner() {
  / __ \/ / / / __ \/ __ \/ __/ __ ˇ__ \
 / /_/ / /_/ / /_/ / / / / /_  / / / / /
 \__, /\__▲_/\__▲_/_/ /_/\__/_/ /_/ /_/ 
-  /_/  
-Fault Tolerant, Progressive Delivery Engine for OpenGitOps.
+  /_/ durable delivery for cloud services.
 
-compoenent: %s
+component: %s
 version: %s
 
 %s
@@ -88,7 +87,7 @@ version: %s
 	blue := color.New(color.FgBlue).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
 
-	fmt.Printf(banner, green(s.Name), blue(s.Version), yellow("https://breu.io"))
+	fmt.Printf(banner, green(s.Name), blue(s.Version), yellow("https://quantm.dev"))
 }
 
 // WithName sets the service name.

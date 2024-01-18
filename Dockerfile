@@ -1,19 +1,32 @@
-FROM golang:1.18-bullseye as base
+FROM cgr.dev/chainguard/go:latest as src
 
-WORKDIR /app
+WORKDIR /src
+COPY . .
 
-ENV GO111MODULE=on CGO_ENABLED=0
+# migrate
 
-ADD . .
+FROM src as build-migrate
+RUN go build -o ./build/migrate ./cmd/jobs/migrate
 
-RUN go build -o /app/main /app/cmd/api/main.go
+FROM cgr.dev/chainguard/glibc-dynamic:latest as migrate
 
-FROM alpine:3
+COPY --from=build-migrate /src/build/migrate /bin/migrate
+CMD ["/bin/migrate"]
 
-WORKDIR /app
+# mothership
 
-COPY --from=base /app/main /app/main
+FROM src as build-mothership
+RUN go build -o ./build/mothership ./cmd/workers/mothership
 
-EXPOSE 8000
+FROM cgr.dev/chainguard/glibc-dynamic:latest as mothership
+CMD ["/bin/mothership"]
 
-CMD ["/app/main"]
+# API
+
+FROM src as build-api
+RUN go build -o ./build/api ./cmd/api
+
+FROM cgr.dev/chainguard/glibc-dynamic:latest as api
+
+COPY --from=build-api /src/build/api /bin/api
+CMD ["/bin/api"]

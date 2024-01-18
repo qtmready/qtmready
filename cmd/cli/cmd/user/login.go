@@ -38,7 +38,7 @@ func NewCmdUserLogin() *cobra.Command {
 		Long:  `logs in the quantm user`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			f := &loginOptions{}
-			if err := tea.NewProgram(models.InitializeInputModel(f)).Start(); err != nil {
+			if _, err := tea.NewProgram(models.InitializeInputModel(f)).Run(); err != nil {
 				return err
 			}
 
