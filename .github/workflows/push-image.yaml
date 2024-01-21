@@ -16,15 +16,6 @@ jobs:
         id: vars
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Build Docker image
-        run: |
-          docker build -t quantm/ctrlplane:latest .
-          docker tag quantm/ctrlplane:latest asia-southeast1-docker.pkg.dev/breu-dev/quantm/ctrlplane:latest
-          docker tag quantm/ctrlplane:latest asia-southeast1-docker.pkg.dev/breu-dev/quantm/ctrlplane:${{ steps.vars.outputs.short_sha }}
-
-      - name: docker ls
-        run: docker image ls
-
       - name: Authenticate with GCP
         id: auth
         uses: "google-github-actions/auth@v1"
@@ -37,15 +28,30 @@ jobs:
       - name: Login into Google Artifact Registry
         uses: docker/login-action@v1
         with:
-          registry: asia-southeast1-docker.pkg.dev/breu-dev/
+          registry: asia-southeast1-docker.pkg.dev/quantm-live/quantm
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
 
-      - id: docker-push-tagged
-        name: Tag Docker image and push to Google Artifact Registry
-        uses: docker/build-push-action@v2
-        with:
-          push: true
-          tags: |
-            asia-southeast1-docker.pkg.dev/breu-dev/quantm/ctrlplane:${{ steps.vars.outputs.short_sha }}
-            asia-southeast1-docker.pkg.dev/breu-dev/quantm/ctrlplane:latest
+      - name: Build & Push docker image for API
+        run: |
+          docker build --target api -t quantm/ctrlplane-api:latest .
+          docker tag quantm/ctrlplane-api:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-api:latest
+          # docker tag quantm/ctrlplane-api:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-api:${{ steps.vars.outputs.short_sha }}
+          docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-api:latest
+
+      - name: Build & Push docker image for migrate
+        run: |
+          docker build --target migrate -t quantm/ctrlplane-migrate:latest .
+          docker tag quantm/ctrlplane-migrate:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-migrate:latest
+          # docker tag quantm/ctrlplane-migrate:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-migrate:${{ steps.vars.outputs.short_sha }}
+          docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-migrate:latest
+
+      - name: Build & Push docker image for mothership
+        run: |
+          docker build --target mothership -t quantm/ctrlplane-mothership:latest .
+          docker tag quantm/ctrlplane-mothership:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-mothership:latest
+          # docker tag quantm/ctrlplane-mothership:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-mothership:${{ steps.vars.outputs.short_sha }}
+          docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-mothership:latest
+
+      - name: docker ls
+        run: docker image ls
