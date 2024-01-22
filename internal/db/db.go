@@ -54,7 +54,7 @@ type (
 		Hosts              []string      `env:"CASSANDRA_HOSTS" env-default:"database"`
 		Port               int           `env:"CASSANDRA_PORT" env-default:"9042"`
 		User               string        `env:"CASSANDRA_USER" env-default:""`
-		Password           string        `env:"CASSANDRA_PASSWORD" env-default:""`
+		Password           string        `env:"CASSANDRA_PASS" env-default:""`
 		Keyspace           string        `env:"CASSANDRA_KEYSPACE" env-default:"ctrlplane"`
 		MigrationSourceURL string        `env:"CASSANDRA_MIGRATION_SOURCE_URL"`
 		Timeout            time.Duration `env:"CASSANDRA_TIMEOUT" env-default:"1m"`
@@ -118,8 +118,7 @@ func WithSessionCreation() ConfigOption {
 		cluster.Timeout = c.Timeout
 		cluster.ConnectTimeout = c.Timeout
 
-		if c.User != "" {
-			shared.Logger().Debug("db: authenticating ...", "user", c.User, "password", c.Password)
+		if c.User != "" && c.Password != "" {
 			cluster.Authenticator = gocql.PasswordAuthenticator{
 				Username: c.User,
 				Password: c.Password,
