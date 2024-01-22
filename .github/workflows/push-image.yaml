@@ -27,7 +27,7 @@ jobs:
         uses: "google-github-actions/auth@v1"
         with:
           token_format: access_token
-          service_account: "${{ secrets.GCP_SA_NAME }}@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com"
+          credentials_json: ${{ secrets.GCP_JSON_KEY }}
           access_token_lifetime: 300s
 
       - name: Login into Google Artifact Registry
