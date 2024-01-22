@@ -5,7 +5,6 @@ on:
   push:
     branches:
       - dev
-      - quantm-push-image-workflow
 
 jobs:
   release-artifact:
