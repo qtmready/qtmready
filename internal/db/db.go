@@ -119,6 +119,7 @@ func WithSessionCreation() ConfigOption {
 		cluster.ConnectTimeout = c.Timeout
 
 		if c.User != "" {
+			shared.Logger().Debug("db: authenticating ...", "user", c.User, "password", c.Password)
 			cluster.Authenticator = gocql.PasswordAuthenticator{
 				Username: c.User,
 				Password: c.Password,
