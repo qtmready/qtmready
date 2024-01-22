@@ -53,6 +53,8 @@ type (
 		Session            igocqlx.ISessionx
 		Hosts              []string      `env:"CASSANDRA_HOSTS" env-default:"database"`
 		Port               int           `env:"CASSANDRA_PORT" env-default:"9042"`
+		User               string        `env:"CASSANDRA_USER" env-default:""`
+		Password           string        `env:"CASSANDRA_PASSWORD" env-default:""`
 		Keyspace           string        `env:"CASSANDRA_KEYSPACE" env-default:"ctrlplane"`
 		MigrationSourceURL string        `env:"CASSANDRA_MIGRATION_SOURCE_URL"`
 		Timeout            time.Duration `env:"CASSANDRA_TIMEOUT" env-default:"1m"`
@@ -115,6 +117,14 @@ func WithSessionCreation() ConfigOption {
 		cluster.Keyspace = c.Keyspace
 		cluster.Timeout = c.Timeout
 		cluster.ConnectTimeout = c.Timeout
+
+		if c.User != "" {
+			cluster.Authenticator = gocql.PasswordAuthenticator{
+				Username: c.User,
+				Password: c.Password,
+			}
+		}
+
 		createSession := func() error {
 			shared.Logger().Info("db: connecting ...", "hosts", c.Hosts, "keyspace", c.Keyspace)
 
