@@ -6,6 +6,10 @@ on:
     branches:
       - dev
 
+env:
+  GCP_PROJECT: quantm-live
+  GCP_ARTIFACT_REPOSITORY: us-docker.pkg.dev/quantm-live/default-live-v1
+
 jobs:
   release-artifact:
     runs-on: ubuntu-20.04
@@ -32,33 +36,33 @@ jobs:
       - name: Login into Google Artifact Registry
         uses: docker/login-action@v1
         with:
-          registry: asia-southeast1-docker.pkg.dev/quantm-live/quantm
+          registry: ${{ env.GCP_ARTIFACT_REPOSITORY }}
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
 
       - name: Build & Push docker image for API
         run: |
-          docker build --target api -t quantm/ctrlplane-api:latest .
-          docker tag quantm/ctrlplane-api:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-api:latest
-          docker tag quantm/ctrlplane-api:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-api:${{ steps.vars.outputs.short_sha }}
-          docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-api:latest
-          docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-api:${{ steps.vars.outputs.short_sha }}
+          docker build --target api -t quantm/api:latest .
+          docker tag quantm/api:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:latest
+          docker tag quantm/api:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
+          docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:latest
+          docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
 
       - name: Build & Push docker image for migrate
         run: |
-          docker build --target migrate -t quantm/ctrlplane-migrate:latest .
-          docker tag quantm/ctrlplane-migrate:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-migrate:latest
-          docker tag quantm/ctrlplane-migrate:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-migrate:${{ steps.vars.outputs.short_sha }}
-          docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-migrate:latest
-          docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-migrate:${{ steps.vars.outputs.short_sha }}
+          docker build --target migrate -t quantm/migrate:latest .
+          docker tag quantm/migrate:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:latest
+          docker tag quantm/migrate:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:${{ steps.vars.outputs.short_sha }}
+          docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:latest
+          docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:${{ steps.vars.outputs.short_sha }}
 
       - name: Build & Push docker image for mothership
         run: |
-          docker build --target mothership -t quantm/ctrlplane-mothership:latest .
-          docker tag quantm/ctrlplane-mothership:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-mothership:latest
-          docker tag quantm/ctrlplane-mothership:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-mothership:${{ steps.vars.outputs.short_sha }}
-          docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-mothership:latest
-          docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-mothership:${{ steps.vars.outputs.short_sha }}
+          docker build --target mothership -t quantm/mothership:latest .
+          docker tag quantm/mothership:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:latest
+          docker tag quantm/mothership:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:${{ steps.vars.outputs.short_sha }}
+          docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:latest
+          docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:${{ steps.vars.outputs.short_sha }}
 
       - name: docker ls
         run: docker image ls
