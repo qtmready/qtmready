@@ -1,5 +1,11 @@
 name: Release quantm
-on: [pull_request, workflow_dispatch]
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+      - quantm-push-image-workflow
 
 jobs:
   release-artifact:
