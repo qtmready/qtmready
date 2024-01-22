@@ -19,6 +19,8 @@ FROM src as build-mothership
 RUN go build -o ./build/mothership ./cmd/workers/mothership
 
 FROM cgr.dev/chainguard/glibc-dynamic:latest as mothership
+
+COPY --from=build-mothership /src/build/mothership /bin/mothership
 CMD ["/bin/mothership"]
 
 # API
