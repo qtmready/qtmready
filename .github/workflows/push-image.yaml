@@ -41,22 +41,25 @@ jobs:
         run: |
           docker build --target api -t quantm/ctrlplane-api:latest .
           docker tag quantm/ctrlplane-api:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-api:latest
-          # docker tag quantm/ctrlplane-api:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-api:${{ steps.vars.outputs.short_sha }}
+          docker tag quantm/ctrlplane-api:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-api:${{ steps.vars.outputs.short_sha }}
           docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-api:latest
+          docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-api:${{ steps.vars.outputs.short_sha }}
 
       - name: Build & Push docker image for migrate
         run: |
           docker build --target migrate -t quantm/ctrlplane-migrate:latest .
           docker tag quantm/ctrlplane-migrate:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-migrate:latest
-          # docker tag quantm/ctrlplane-migrate:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-migrate:${{ steps.vars.outputs.short_sha }}
+          docker tag quantm/ctrlplane-migrate:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-migrate:${{ steps.vars.outputs.short_sha }}
           docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-migrate:latest
+          docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-migrate:${{ steps.vars.outputs.short_sha }}
 
       - name: Build & Push docker image for mothership
         run: |
           docker build --target mothership -t quantm/ctrlplane-mothership:latest .
           docker tag quantm/ctrlplane-mothership:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-mothership:latest
-          # docker tag quantm/ctrlplane-mothership:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-mothership:${{ steps.vars.outputs.short_sha }}
+          docker tag quantm/ctrlplane-mothership:latest asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-mothership:${{ steps.vars.outputs.short_sha }}
           docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-mothership:latest
+          docker push asia-southeast1-docker.pkg.dev/quantm-live/quantm/ctrlplane-mothership:${{ steps.vars.outputs.short_sha }}
 
       - name: docker ls
         run: docker image ls
