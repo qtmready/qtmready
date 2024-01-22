@@ -1,0 +1,68 @@
+name: Release quantm
+on:
+  pull_request:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+
+env:
+  GCP_PROJECT: quantm-live
+  GCP_ARTIFACT_REPOSITORY: us-docker.pkg.dev/quantm-live/default-live-v1
+
+jobs:
+  release-artifact:
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+
+      - name: Set variables
+        id: vars
+        run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Authenticate with GCP
+        id: auth
+        uses: "google-github-actions/auth@v1"
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GCP_JSON_KEY }}
+          access_token_lifetime: 300s
+
+      - name: Login into Google Artifact Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ env.GCP_ARTIFACT_REPOSITORY }}
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - name: Build & Push docker image for API
+        run: |
+          docker build --target api -t quantm/api:latest .
+          docker tag quantm/api:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:latest
+          docker tag quantm/api:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
+          docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:latest
+          docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
+
+      - name: Build & Push docker image for migrate
+        run: |
+          docker build --target migrate -t quantm/migrate:latest .
+          docker tag quantm/migrate:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:latest
+          docker tag quantm/migrate:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:${{ steps.vars.outputs.short_sha }}
+          docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:latest
+          docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:${{ steps.vars.outputs.short_sha }}
+
+      - name: Build & Push docker image for mothership
+        run: |
+          docker build --target mothership -t quantm/mothership:latest .
+          docker tag quantm/mothership:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:latest
+          docker tag quantm/mothership:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:${{ steps.vars.outputs.short_sha }}
+          docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:latest
+          docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:${{ steps.vars.outputs.short_sha }}
+
+      - name: docker ls
+        run: docker image ls
