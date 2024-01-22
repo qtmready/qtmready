@@ -18,7 +18,9 @@
 package db
 
 import (
+	"embed"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -29,6 +31,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/cassandra"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/ilyakaznacheev/cleanenv"
 
 	"go.breu.io/quantm/internal/shared"
@@ -45,6 +48,11 @@ const (
 var (
 	db   *Config
 	once sync.Once
+)
+
+var (
+	//go:embed migrations/*.cql
+	src embed.FS
 )
 
 type (
@@ -191,11 +199,11 @@ func WithMockSession(session *gocqlxmock.SessionxMock) ConfigOption {
 // WithMigrations runs the migrations after the session has been initialized.
 func WithMigrations() ConfigOption {
 	return func(c *Config) {
-		if c.MigrationSourceURL == "" {
-			panic(fmt.Errorf("db: migration source url not set, please set it before running migrations"))
+		dir, err := iofs.New(src, "migrations")
+		if err != nil {
+			shared.Logger().Error("db: failed to initialize migrations ...", "error", err)
+			return
 		}
-
-		shared.Logger().Info("db: running migrations ...", "source", c.MigrationSourceURL)
 
 		logger := shared.Logger()
 		config := &cassandra.Config{KeyspaceName: c.Keyspace, MultiStatementEnabled: true}
@@ -205,9 +213,10 @@ func WithMigrations() ConfigOption {
 			shared.Logger().Error("db: failed to initialize driver for migrations ...", "error", err)
 		}
 
-		migrations, err := migrate.NewWithDatabaseInstance(c.MigrationSourceURL, "cassandra", driver)
+		migrations, err := migrate.NewWithInstance("iofs", dir, "cassandra", driver)
 		if err != nil {
-			shared.Logger().Error("db: failed to initialize migrations ...", "error", err)
+			slog.Error("unable to fetch migrations", slog.Any("error", err.Error()))
+			return
 		}
 
 		migrations.Log = logger
