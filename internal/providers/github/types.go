@@ -112,6 +112,14 @@ type (
 		RepoName       string
 		RepoOwner      string
 	}
+
+	GithubActionPR struct {
+		ID             string
+		RepoID         string
+		PRID           string
+		TotalNumAction int64
+		CurrNumAction  int64
+	}
 )
 
 // Webhook event types. We get this from the header `X-Github-Event`.
