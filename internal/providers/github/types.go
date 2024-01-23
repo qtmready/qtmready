@@ -114,9 +114,9 @@ type (
 	}
 
 	GithubActionPR struct {
-		ID             string
-		RepoID         string
-		PRID           string
+		ID             gocql.UUID
+		RepoID         int64
+		PRID           int64
 		TotalNumAction int64
 		CurrNumAction  int64
 	}
