@@ -132,7 +132,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 			ExecuteWorkflow(context.Background(), opts, w.OnPullRequestEvent, payload)
 
 		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+			return shared.NewAPIError(http.StatusInternalServerError, err)
 		}
 
 		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
@@ -144,7 +144,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 			ExecuteWorkflow(context.Background(), opts, w.OnLabelEvent, payload)
 
 		if err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+			return shared.NewAPIError(http.StatusInternalServerError, err)
 		}
 
 		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
@@ -155,7 +155,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 			SignalWorkflow(context.Background(), opts.ID, "", WebhookEventPullRequest.String(), payload)
 		if err != nil {
 			shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
-			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+			return shared.NewAPIError(http.StatusInternalServerError, err)
 		}
 
 		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: db.NullUUID, Status: WorkflowStatusSkipped})
@@ -182,7 +182,7 @@ func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 		Client().
 		ExecuteWorkflow(context.Background(), opts, w.OnInstallationRepositoriesEvent, payload)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
 	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: exe.GetID(), Status: WorkflowStatusQueued})

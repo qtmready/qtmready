@@ -20,7 +20,6 @@ package db
 import (
 	"embed"
 	"fmt"
-	"log/slog"
 	"sync"
 	"time"
 
@@ -215,8 +214,7 @@ func WithMigrations() ConfigOption {
 
 		migrations, err := migrate.NewWithInstance("iofs", dir, "cassandra", driver)
 		if err != nil {
-			slog.Error("unable to fetch migrations", slog.Any("error", err.Error()))
-			return
+			shared.Logger().Error("db: failed to initialize migrations ...", "error", err)
 		}
 
 		migrations.Log = logger

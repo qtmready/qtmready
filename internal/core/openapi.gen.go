@@ -26,6 +26,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/scylladb/gocqlx/v2/table"
+	"go.breu.io/quantm/internal/shared"
 	externalRef0 "go.breu.io/quantm/internal/shared"
 )
 
@@ -2431,7 +2432,7 @@ func (w *ServerInterfaceWrapper) GetBlueprint(ctx echo.Context) error {
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "stack_id", runtime.ParamLocationPath, ctx.Param("stack_id"), &stackId)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter stack_id: %s", err))
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter stack_id: %s", err))
 	}
 
 	ctx.Set(BearerAuthScopes, []string{})
@@ -2489,7 +2490,7 @@ func (w *ServerInterfaceWrapper) GetRepo(ctx echo.Context) error {
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter id: %s", err))
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter id: %s", err))
 	}
 
 	ctx.Set(BearerAuthScopes, []string{})
@@ -2530,7 +2531,7 @@ func (w *ServerInterfaceWrapper) GetResource(ctx echo.Context) error {
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "stack_id", runtime.ParamLocationPath, ctx.Param("stack_id"), &stackId)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter stack_id: %s", err))
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter stack_id: %s", err))
 	}
 
 	ctx.Set(BearerAuthScopes, []string{})
@@ -2588,7 +2589,7 @@ func (w *ServerInterfaceWrapper) GetStack(ctx echo.Context) error {
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "slug", runtime.ParamLocationPath, ctx.Param("slug"), &slug)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter slug: %s", err))
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter slug: %s", err))
 	}
 
 	ctx.Set(BearerAuthScopes, []string{})
@@ -2635,14 +2636,14 @@ func (w *ServerInterfaceWrapper) GetWorkload(ctx echo.Context) error {
 
 	err = runtime.BindQueryParameter("form", true, false, "repo_id", ctx.QueryParams(), &params.RepoId)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter repo_id: %s", err))
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter repo_id: %s", err))
 	}
 
 	// ------------- Optional query parameter "stack_id" -------------
 
 	err = runtime.BindQueryParameter("form", true, false, "stack_id", ctx.QueryParams(), &params.StackId)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter stack_id: %s", err))
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter stack_id: %s", err))
 	}
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
