@@ -68,7 +68,7 @@ func (s *ServerHandler) GetBlueprint(ctx echo.Context) error {
 	params := db.QueryParams{"stack_id": ctx.Param("stack_id")}
 
 	if err := db.Get(blueprint, params); err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, err)
+		return shared.NewAPIError(http.StatusNotFound, err)
 	}
 
 	return ctx.JSON(http.StatusOK, blueprint)
@@ -106,7 +106,7 @@ func (s *ServerHandler) GetWorkload(ctx echo.Context) error {
 		params := db.QueryParams{"repo_id": repoid}
 
 		if err := db.Get(workload, params); err != nil {
-			return echo.NewHTTPError(http.StatusNotFound, err)
+			return shared.NewAPIError(http.StatusNotFound, err)
 		}
 
 		return ctx.JSON(http.StatusOK, workload)
@@ -115,7 +115,7 @@ func (s *ServerHandler) GetWorkload(ctx echo.Context) error {
 		params := db.QueryParams{"stack_id": stackid}
 
 		if err := db.Filter(&Workload{}, &workloads, params); err != nil {
-			return echo.NewHTTPError(http.StatusInternalServerError, err)
+			return shared.NewAPIError(http.StatusInternalServerError, err)
 		}
 
 		return ctx.JSON(http.StatusOK, workloads)
@@ -141,7 +141,7 @@ func (s *ServerHandler) CreateResource(ctx echo.Context) error {
 	}
 
 	if err := db.Save(resource); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
 	return ctx.JSON(http.StatusCreated, resource)
@@ -152,7 +152,7 @@ func (s *ServerHandler) GetResource(ctx echo.Context) error {
 	params := db.QueryParams{"stack_id": ctx.Param("stack_id")}
 
 	if err := db.Filter(&Resource{}, &resources, params); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
 	return ctx.JSON(http.StatusOK, resources)
@@ -168,7 +168,7 @@ func (s *ServerHandler) CreateStack(ctx echo.Context) error {
 	stack := &Stack{Name: request.Name, TeamID: teamID}
 
 	if err := db.Save(stack); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
 	/*
@@ -188,7 +188,7 @@ func (s *ServerHandler) CreateStack(ctx echo.Context) error {
 	if err != nil {
 		// TODO: remove stack if workflow not started? or always start this workflow with signal so it can be started on pull request
 		// (if not already running)
-		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
 	shared.Logger().Info("started workflow: ", "ID", opts.ID, " Run ID: ", exe.GetRunID())
@@ -201,7 +201,7 @@ func (s *ServerHandler) ListStacks(ctx echo.Context) error {
 	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
 
 	if err := db.Filter(&Stack{}, &stacks, params); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
 	return ctx.JSON(http.StatusOK, stacks)
@@ -212,7 +212,7 @@ func (s *ServerHandler) GetStack(ctx echo.Context) error {
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
 
 	if err := db.Get(stack, params); err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, err)
+		return shared.NewAPIError(http.StatusNotFound, err)
 	}
 
 	return ctx.JSON(http.StatusOK, stack)
@@ -234,7 +234,7 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 	}
 
 	if err := db.Save(repo); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
 	return ctx.JSON(http.StatusCreated, repo)
@@ -245,7 +245,7 @@ func (s *ServerHandler) ListRepos(ctx echo.Context) error {
 	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
 
 	if err := db.Filter(&Repo{}, &repos, params); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, err)
+		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
 	return ctx.JSON(http.StatusOK, repos)
@@ -256,7 +256,7 @@ func (s *ServerHandler) GetRepo(ctx echo.Context) error {
 	params := db.QueryParams{"id": ctx.Param("id")}
 
 	if err := db.Get(repo, params); err != nil {
-		return echo.NewHTTPError(http.StatusNotFound, err)
+		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
 	return ctx.JSON(http.StatusOK, repo)

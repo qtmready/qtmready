@@ -104,7 +104,7 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 			header := ctx.Request().Header.Get(BearerHeaderName)
 			if header == "" {
 				if !requiresKey {
-					return echo.NewHTTPError(http.StatusBadRequest, ErrMissingAuthHeader)
+					return shared.NewAPIError(http.StatusBadRequest, ErrMissingAuthHeader)
 				}
 				// at this point, although the bearer is invalid, we know that endpoint can also be accessed with an API key
 				// so we continue with the API key auth
@@ -114,7 +114,7 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 			parts := strings.Split(header, " ")
 
 			if len(parts) != 2 || parts[0] != BearerPrefix {
-				return echo.NewHTTPError(http.StatusBadRequest, ErrInvalidAuthHeader)
+				return shared.NewAPIError(http.StatusBadRequest, ErrInvalidAuthHeader)
 			}
 
 			return bearerFn(next, ctx, parts[1])
@@ -128,13 +128,13 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 			key := ctx.Request().Header.Get(APIKeyHeaderName)
 			if key == "" {
-				return echo.NewHTTPError(http.StatusBadRequest, ErrMissingAuthHeader)
+				return shared.NewAPIError(http.StatusBadRequest, ErrMissingAuthHeader)
 			}
 
 			return KeyFn(next, ctx, key)
 		}
 
-		return echo.NewHTTPError(http.StatusBadRequest, ErrInvalidAuthHeader)
+		return shared.NewAPIError(http.StatusBadRequest, ErrInvalidAuthHeader)
 	}
 }
 
@@ -142,14 +142,14 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 func bearerFn(next echo.HandlerFunc, ctx echo.Context, token string) error {
 	parsed, err := jwt.ParseWithClaims(token, &JWTClaims{}, SecretFn)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err)
+		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
 	if claims, ok := parsed.Claims.(*JWTClaims); ok && parsed.Valid {
 		ctx.Set("user_id", claims.UserID)
 		ctx.Set("team_id", claims.TeamID)
 	} else {
-		return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidOrExpiredToken)
+		return shared.NewAPIError(http.StatusUnauthorized, ErrInvalidOrExpiredToken)
 	}
 
 	return next(ctx)
@@ -161,7 +161,7 @@ func KeyFn(next echo.HandlerFunc, ctx echo.Context, key string) error {
 	err := guard.VerifyAPIKey(key) // This will always return true if err is nil
 
 	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, err)
+		return shared.NewAPIError(http.StatusUnauthorized, err)
 	}
 
 	switch guard.LookupType {
@@ -171,14 +171,14 @@ func KeyFn(next echo.HandlerFunc, ctx echo.Context, key string) error {
 	case GuardLookupTypeUser: // NOTE: this uses two db queries. we should optimize this. use k/v ?
 		user := &User{}
 		if err := db.Get(user, db.QueryParams{"id": guard.LookupID.String()}); err != nil {
-			return echo.NewHTTPError(http.StatusUnauthorized, ErrInvalidAuthHeader)
+			return shared.NewAPIError(http.StatusUnauthorized, ErrInvalidAuthHeader)
 		}
 
 		ctx.Set("user_id", user.ID.String()) // NOTE: IMHO, we shouldn't be converting to string here
 		ctx.Set("team_id", user.TeamID.String())
 
 	default:
-		return echo.NewHTTPError(http.StatusUnauthorized, ErrMalformedAPIKey)
+		return shared.NewAPIError(http.StatusUnauthorized, ErrMalformedAPIKey)
 	}
 
 	return next(ctx)

@@ -26,6 +26,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/scylladb/gocqlx/v2/table"
+	"go.breu.io/quantm/internal/shared"
 	externalRef0 "go.breu.io/quantm/internal/shared"
 )
 
@@ -1845,7 +1846,7 @@ func (w *ServerInterfaceWrapper) GetTeam(ctx echo.Context) error {
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "slug", runtime.ParamLocationPath, ctx.Param("slug"), &slug)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter slug: %s", err))
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter slug: %s", err))
 	}
 
 	ctx.Set(BearerAuthScopes, []string{})
@@ -1867,7 +1868,7 @@ func (w *ServerInterfaceWrapper) AddUserToTeam(ctx echo.Context) error {
 
 	err = runtime.BindStyledParameterWithLocation("simple", false, "slug", runtime.ParamLocationPath, ctx.Param("slug"), &slug)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter slug: %s", err))
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter slug: %s", err))
 	}
 
 	ctx.Set(BearerAuthScopes, []string{})
