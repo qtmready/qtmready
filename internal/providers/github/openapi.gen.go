@@ -213,6 +213,34 @@ type GithubActionResultRequest struct {
 	Result    string `json:"result"`
 }
 
+// GithubActionState defines model for GithubActionState.
+type GithubActionState struct {
+	Branch        string     `cql:"branch" json:"branch"`
+	CreatedAt     time.Time  `cql:"created_at" json:"created_at"`
+	ID            gocql.UUID `cql:"id" json:"id"`
+	PullRequestID int64      `cql:"pull_request_id" json:"pull_request_id"`
+	RepoName      string     `cql:"repo_name" json:"repo_name"`
+	RepoOwner     string     `cql:"repo_owner" json:"repo_owner"`
+	UpdatedAt     time.Time  `cql:"updated_at" json:"updated_at"`
+}
+
+var (
+	githubactionstateColumns = []string{"branch", "created_at", "id", "pull_request_id", "repo_name", "repo_owner", "updated_at"}
+
+	githubactionstateMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "github_action_state",
+			Columns: githubactionstateColumns,
+		},
+	}
+
+	githubactionstateTable = itable.New(*githubactionstateMeta.M)
+)
+
+func (githubactionstate *GithubActionState) GetTable() itable.ITable {
+	return githubactionstateTable
+}
+
 // Installation defines model for GithubInstallation.
 type Installation struct {
 	CreatedAt         time.Time  `cql:"created_at" json:"created_at"`
@@ -289,6 +317,9 @@ type WorkflowResponse struct {
 
 // WorkflowStatus the workflow status
 type WorkflowStatus string
+
+// GithubActionStateJSONRequestBody defines body for GithubActionState for application/json ContentType.
+type GithubActionStateJSONRequestBody = GithubActionState
 
 // GithubArtifactReadyJSONRequestBody defines body for GithubArtifactReady for application/json ContentType.
 type GithubArtifactReadyJSONRequestBody = ArtifactReadyRequest
@@ -375,6 +406,11 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// GithubActionStateWithBody request with any body
+	GithubActionStateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GithubActionState(ctx context.Context, body GithubActionStateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// GithubArtifactReadyWithBody request with any body
 	GithubArtifactReadyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -403,6 +439,30 @@ type ClientInterface interface {
 
 	// GithubWebhook request
 	GithubWebhook(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) GithubActionStateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubActionStateRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GithubActionState(ctx context.Context, body GithubActionStateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubActionStateRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) GithubArtifactReadyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -535,6 +595,46 @@ func (c *Client) GithubWebhook(ctx context.Context, reqEditors ...RequestEditorF
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewGithubActionStateRequest calls the generic GithubActionState builder with application/json body
+func NewGithubActionStateRequest(server string, body GithubActionStateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGithubActionStateRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGithubActionStateRequestWithBody generates requests for GithubActionState with any type of body
+func NewGithubActionStateRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/providers/github/action")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
 }
 
 // NewGithubArtifactReadyRequest calls the generic GithubArtifactReady builder with application/json body
@@ -821,6 +921,11 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// GithubActionStateWithBodyWithResponse request with any body
+	GithubActionStateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubActionStateResponse, error)
+
+	GithubActionStateWithResponse(ctx context.Context, body GithubActionStateJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubActionStateResponse, error)
+
 	// GithubArtifactReadyWithBodyWithResponse request with any body
 	GithubArtifactReadyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error)
 
@@ -849,6 +954,30 @@ type ClientWithResponsesInterface interface {
 
 	// GithubWebhookWithResponse request
 	GithubWebhookWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubWebhookResponse, error)
+}
+
+type GithubActionStateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubActionStateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubActionStateResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type GithubArtifactReadyResponse struct {
@@ -1022,6 +1151,23 @@ func (r GithubWebhookResponse) StatusCode() int {
 	return 0
 }
 
+// GithubActionStateWithBodyWithResponse request with arbitrary body returning *GithubActionStateResponse
+func (c *ClientWithResponses) GithubActionStateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubActionStateResponse, error) {
+	rsp, err := c.GithubActionStateWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubActionStateResponse(rsp)
+}
+
+func (c *ClientWithResponses) GithubActionStateWithResponse(ctx context.Context, body GithubActionStateJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubActionStateResponse, error) {
+	rsp, err := c.GithubActionState(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubActionStateResponse(rsp)
+}
+
 // GithubArtifactReadyWithBodyWithResponse request with arbitrary body returning *GithubArtifactReadyResponse
 func (c *ClientWithResponses) GithubArtifactReadyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error) {
 	rsp, err := c.GithubArtifactReadyWithBody(ctx, contentType, body, reqEditors...)
@@ -1115,6 +1261,46 @@ func (c *ClientWithResponses) GithubWebhookWithResponse(ctx context.Context, req
 		return nil, err
 	}
 	return ParseGithubWebhookResponse(rsp)
+}
+
+// ParseGithubActionStateResponse parses an HTTP response from a GithubActionStateWithResponse call
+func ParseGithubActionStateResponse(rsp *http.Response) (*GithubActionStateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubActionStateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseGithubArtifactReadyResponse parses an HTTP response from a GithubArtifactReadyWithResponse call
@@ -1420,6 +1606,10 @@ func ParseGithubWebhookResponse(rsp *http.Response) (*GithubWebhookResponse, err
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Get completed github action for the PR's in merge queue
+	// (GET /providers/github/action)
+	GithubActionState(ctx echo.Context) error
+
 	// GitHub release artifact ready
 	// (POST /providers/github/artifact-ready)
 	GithubArtifactReady(ctx echo.Context) error
@@ -1455,6 +1645,18 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// GithubActionState converts echo context to params.
+
+func (w *ServerInterfaceWrapper) GithubActionState(ctx echo.Context) error {
+	var err error
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.GithubActionState
+	err = handler(ctx)
+
+	return err
 }
 
 // GithubArtifactReady converts echo context to params.
@@ -1586,6 +1788,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.GET(baseURL+"/providers/github/action", wrapper.GithubActionState)
 	router.POST(baseURL+"/providers/github/artifact-ready", wrapper.GithubArtifactReady)
 	router.POST(baseURL+"/providers/github/cicd-result", wrapper.GithubActionResult)
 	router.POST(baseURL+"/providers/github/cli-git-merge", wrapper.CliGitMerge)

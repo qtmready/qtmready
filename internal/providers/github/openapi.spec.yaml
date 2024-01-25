@@ -188,6 +188,27 @@ paths:
         "500":
           $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
+  /providers/github/action:
+    get:
+      summary: Get completed github action for the PR's in merge queue
+      description: Get completed github action for a PR's in merge queue
+      operationId: github-action-state
+      requestBody:
+        description: github action state
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GithubActionState"
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "500":
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
 components:
   securitySchemes:
     BearerAuth:
@@ -408,3 +429,41 @@ components:
         - queued
         - signaled
         - skipped
+
+    GithubActionState:
+      type: object
+      x-go-name: GithubActionState
+      x-breu-entity: github_action_state
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+        pull_request_id:
+          type: integer
+          format: int64
+          x-go-name: PullRequestID
+        repo_owner:
+          type: string
+          x-go-name: RepoOwner
+        repo_name:
+          type: string
+          x-go-name: RepoName
+        branch:
+          type: string
+          x-go-name: Branch
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - pull_request_id
+        - repo_owner
+        - repo_name
+        - branch
+        - created_at
+        - updated_at
