@@ -215,17 +215,19 @@ type GithubActionResultRequest struct {
 
 // GithubActionState defines model for GithubActionState.
 type GithubActionState struct {
-	Branch        string     `cql:"branch" json:"branch"`
-	CreatedAt     time.Time  `cql:"created_at" json:"created_at"`
-	ID            gocql.UUID `cql:"id" json:"id"`
-	PullRequestID int64      `cql:"pull_request_id" json:"pull_request_id"`
-	RepoName      string     `cql:"repo_name" json:"repo_name"`
-	RepoOwner     string     `cql:"repo_owner" json:"repo_owner"`
-	UpdatedAt     time.Time  `cql:"updated_at" json:"updated_at"`
+	Branch           string     `cql:"branch" json:"branch"`
+	CreatedAt        time.Time  `cql:"created_at" json:"created_at"`
+	CurrActionCount  int64      `cql:"curr_action_count" json:"curr_action_count"`
+	ID               gocql.UUID `cql:"id" json:"id"`
+	PullRequestID    int64      `cql:"pull_request_id" json:"pull_request_id"`
+	RepoName         string     `cql:"repo_name" json:"repo_name"`
+	RepoOwner        string     `cql:"repo_owner" json:"repo_owner"`
+	TotalActionCount int64      `cql:"total_action_count" json:"total_action_count"`
+	UpdatedAt        time.Time  `cql:"updated_at" json:"updated_at"`
 }
 
 var (
-	githubactionstateColumns = []string{"branch", "created_at", "id", "pull_request_id", "repo_name", "repo_owner", "updated_at"}
+	githubactionstateColumns = []string{"branch", "created_at", "curr_action_count", "id", "pull_request_id", "repo_name", "repo_owner", "total_action_count", "updated_at"}
 
 	githubactionstateMeta = itable.Metadata{
 		M: &table.Metadata{

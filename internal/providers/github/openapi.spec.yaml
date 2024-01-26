@@ -453,6 +453,14 @@ components:
         branch:
           type: string
           x-go-name: Branch
+        total_action_count:
+          type: integer
+          format: int64
+          x-go-name: TotalActionCount
+        curr_action_count:
+          type: integer
+          format: int64
+          x-go-name: CurrActionCount
         created_at:
           type: string
           format: date-time
@@ -465,5 +473,7 @@ components:
         - repo_owner
         - repo_name
         - branch
+        - total_action_count
+        - curr_action_count
         - created_at
         - updated_at
