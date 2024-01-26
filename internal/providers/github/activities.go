@@ -258,7 +258,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 }
 
 func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int64, repoOwner string,
-	repoName string, targetBranch string) error {
+	repoName string, targetBranch string, pullRequestID int64) error {
 	shared.Logger().Debug("activity TriggerGithubAction started")
 
 	client, err := Instance().GetClientFromInstallation(installationID)
@@ -275,13 +275,32 @@ func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int
 	}
 
 	ListWorkflowOpts := gh.ListOptions{}
+
 	workflowAll, _, _ := client.Actions.ListWorkflows(ctx, repoOwner, repoName, &ListWorkflowOpts)
 	for _, workflow := range workflowAll.Workflows {
 		res, err := client.Actions.CreateWorkflowDispatchEventByID(ctx, repoOwner, repoName, workflow.GetID(), payload)
 		if err != nil {
 			shared.Logger().Error("TriggerGithubAction", "Error triggering workflow:", err)
 		}
+
 		shared.Logger().Debug("TriggerGithubAction", "response", res)
+	}
+
+	githubActionState := &GithubActionState{
+		Branch:        targetBranch,
+		RepoName:      repoName,
+		RepoOwner:     repoOwner,
+		PullRequestID: pullRequestID,
+	}
+
+	if err := db.Save(githubActionState); err != nil {
+		shared.Logger().Error(
+			"GithubActionStateDB",
+			"Error saving github action data to db",
+			err,
+		)
+
+		return err
 	}
 
 	return nil

@@ -25,6 +25,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -156,29 +157,51 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *Workflow
 
 	logger.Info("OnGithubActionResult", "action recvd", gh_result)
 
-	// acquiring lock here
-	lock, err := LockInstance(ctx, fmt.Sprint(payload.Repository.ID))
-	if err != nil {
-		logger.Error("Error in getting lock instance", "Error", err)
-		return err
+	githubActionState := &GithubActionState{}
+	params := db.QueryParams{"branch": payload.WR.HeadBranch}
+
+	if err := db.Get(githubActionState, params); err != nil {
+		logger.Error(
+			"Github Action State Database Error",
+			"Error in getting data for target branch",
+			err,
+		)
 	}
 
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
+	if githubActionState.TotalActionCount == githubActionState.CurrActionCount {
+		// acquiring lock here
+		lock, err := LockInstance(ctx, fmt.Sprint(payload.Repository.ID))
+		if err != nil {
+			logger.Error("Error in getting lock instance", "Error", err)
+			return err
+		}
 
-	var er error
-	err = workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.Repository.Owner.Login, payload.Repository.Name,
-		payload.WR.HeadBranch, payload.Installation.ID).Get(ctx, er)
+		activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+		actx := workflow.WithActivityOptions(ctx, activityOpts)
 
-	if err != nil {
-		logger.Error("error getting installation", "error", err)
-		return err
-	}
+		var er error
+		err = workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.Repository.Owner.Login, payload.Repository.Name,
+			payload.WR.HeadBranch, payload.Installation.ID).Get(ctx, er)
 
-	err = lock.Release(ctx)
-	if err != nil {
-		logger.Error("error releasing lock", "error", err)
-		return err
+		if err != nil {
+			logger.Error("error getting installation", "error", err)
+			return err
+		}
+
+		err = lock.Release(ctx)
+		if err != nil {
+			logger.Error("error releasing lock", "error", err)
+			return err
+		}
+	} else {
+		githubActionState.CurrActionCount += 1
+		if err := db.Get(githubActionState, params); err != nil {
+			logger.Error(
+				"Github Action State Database Error",
+				"Error in updating data for target branch",
+				err,
+			)
+		}
 	}
 
 	return nil
@@ -349,7 +372,7 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
 
 	var er error
 	err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
-		element.InstallationID, element.RepoOwner, element.RepoName, element.Branch).Get(ctx, er)
+		element.InstallationID, element.RepoOwner, element.RepoName, element.Branch, element.PullRequestID).Get(ctx, er)
 
 	if err != nil {
 		logger.Error("error triggering github action", "error", err)
