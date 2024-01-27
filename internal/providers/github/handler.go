@@ -232,6 +232,10 @@ func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, ret)
 }
 
+func (s *ServerHandler) GithubActionState(ctx echo.Context) error {
+	return nil
+}
+
 func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 	shared.Logger().Info("GithubActionResult method triggered.")
 
