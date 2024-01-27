@@ -67,18 +67,19 @@ func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *In
 // CreateOrUpdateGithubRepo creates a single row for Repo.
 func (a *Activities) CreateOrUpdateGithubRepo(ctx context.Context, payload *Repo) error {
 	log := activity.GetLogger(ctx)
+	log.Debug("payload", "payload", payload)
 	repo, err := a.GetGithubRepo(ctx, payload)
 
 	// if we get the repo, the error will be nil
 	if err == nil {
-		log.Info("repository found, updating ...")
+		log.Info("repository found", "repo", repo)
 	} else {
 		log.Info("repository not found, creating ...")
-		log.Debug("payload", "payload", payload)
+		return err
 	}
 
 	if err := db.Save(repo); err != nil {
-		log.Error("error saving repository ...", "error", err)
+		log.Error("error saving repository", "error", err)
 		return err
 	}
 
