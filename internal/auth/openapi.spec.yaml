@@ -41,10 +41,6 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/LoginRequest"
-            required:
-              - email
-              - password
-              - confirm_password
       responses:
         "200":
           description: Login response

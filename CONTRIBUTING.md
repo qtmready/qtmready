@@ -120,7 +120,7 @@ At least two reviews are required before one can merge back. Manager approval do
 
 ## Project Planning & Management
 
-The project in its entirety runs around [shortcut](https://shortcut.io/ctrlplane).
+The project in its entirety runs around [shortcut](https://shortcut.io/qtmready).
 
 ### Stories
 

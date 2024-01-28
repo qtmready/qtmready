@@ -53,7 +53,7 @@ type (
 
 	// Lock is the implementation of the Mutex interface.
 	//
-	// Although it gets the job done for now, but it is not an ideal design. The mutex should hold the lock regardless of the caller.
+	// FIXME: Although it gets the job done for now, but it is not an ideal design. The mutex should hold the lock regardless of the caller.
 	// We should be able to call the mutex from any workflow and it should be able to acquire the lock.
 	Lock struct {
 		contexts    *Contexts

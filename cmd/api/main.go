@@ -42,6 +42,7 @@ type (
 )
 
 func main() {
+	shared.Service().SetName("api")
 	// graceful shutdown.
 	// LINK: https://stackoverflow.com/a/46255965/228697.
 	exitcode := 0

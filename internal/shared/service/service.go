@@ -30,7 +30,7 @@ import (
 
 type (
 	config struct {
-		Name       string `env:"SERVICE_NAME" env-default:"default::service"`
+		Name       string `env:"SERVICE_NAME" env-default:"service"`
 		Debug      bool   `env:"DEBUG" env-default:"false"`
 		Secret     string `env:"SECRET" env-default:""`
 		Version    string `env:"VERSION" env-default:"dev"`
@@ -39,6 +39,7 @@ type (
 
 	Service interface {
 		GetName() string
+		SetName(name string)
 		GetVersion() string
 		GetSecret() string
 		GetDebug() bool
@@ -51,6 +52,10 @@ type (
 
 func (s *config) GetName() string {
 	return s.Name
+}
+
+func (s *config) SetName(name string) {
+	s.Name = name
 }
 
 func (s *config) GetVersion() string {
