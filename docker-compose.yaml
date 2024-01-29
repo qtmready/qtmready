@@ -184,12 +184,12 @@ services:
       SERVICE_NAME: mothership::worker
       DEBUG: true
       LOG_SKIPPER: 2
+      GOOGLE_APPLICATION_CREDENTIALS: GOOGLE_APPLICATION_CREDENTIALS
     env_file:
       - ./.env
     volumes:
       - ./deploy/air/mothership.toml:/mothership/.air.toml
       - ./:/mothership/
-      # - C:\Users\DELL\AppData\Roaming\gcloud\application_default_credentials.json:/root/.config/gcloud/application_default_credentials.json
       - worker-mothership-go-pkg-mod:/go/pkg/mod
       - worker-mothership-build-cache:/root/.cache/go-build
     working_dir: /mothership
