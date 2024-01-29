@@ -92,12 +92,15 @@ func EchoAPIErrorHandler(err error, ctx echo.Context) {
 	// We create an APIError from the error if it is not already one.
 	apierr, ok := err.(*APIError)
 	if !ok {
-		apierr = NewAPIError(http.StatusInternalServerError, ErrInternalServerError).WithInternal(err)
+		if echoerr, ok := err.(*echo.HTTPError); ok {
+			apierr = NewAPIError(echoerr.Code, toError(echoerr.Message)).WithInternal(echoerr)
+		} else {
+			apierr = NewAPIError(http.StatusInternalServerError, ErrInternalServerError).WithInternal(err)
+		}
 	}
 
 	// Now we check if the internal error is a validator.ValidationErrors.
-	validerr, ok := apierr.Message.(validator.ValidationErrors)
-	if ok {
+	if validerr, ok := apierr.Message.(validator.ValidationErrors); ok {
 		errs := ErrorMap{}
 		for _, fe := range validerr {
 			errs[fe.Field()] = tagerr(fe.Tag())
@@ -131,4 +134,12 @@ func tagerr(tag string) string {
 	default:
 		return fmt.Sprintf("%s, validation error", tag)
 	}
+}
+
+func toError(message any) error {
+	if err, ok := message.(error); ok {
+		return err
+	}
+
+	return fmt.Errorf("%v", message)
 }
