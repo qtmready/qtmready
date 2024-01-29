@@ -184,7 +184,6 @@ services:
       SERVICE_NAME: mothership::worker
       DEBUG: true
       LOG_SKIPPER: 2
-      GOOGLE_APPLICATION_CREDENTIALS: GOOGLE_APPLICATION_CREDENTIALS
     env_file:
       - ./.env
     volumes:
