@@ -89,13 +89,11 @@ func EchoAPIErrorHandler(err error, ctx echo.Context) {
 		return
 	}
 
-	// Check if the error is an APIError
-	if customErr, ok := err.(*APIError); ok {
-		apierr = customErr
-	} else {
-		// Check if the error is an Echo HTTPError
-		if echoErr, ok := err.(*echo.HTTPError); ok {
-			apierr = NewAPIError(echoErr.Code, toError(echoErr.Message)).WithInternal(echoErr)
+	// We create an APIError from the error if it is not already one.
+	apierr, ok := err.(*APIError)
+	if !ok {
+		if echoerr, ok := err.(*echo.HTTPError); ok {
+			apierr = NewAPIError(echoerr.Code, toError(echoerr.Message)).WithInternal(echoerr)
 		} else {
 			apierr = NewAPIError(http.StatusInternalServerError, ErrInternalServerError).WithInternal(err)
 		}
