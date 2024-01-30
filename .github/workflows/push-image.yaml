@@ -14,8 +14,8 @@ jobs:
   release-artifact:
     runs-on: ubuntu-20.04
     permissions:
-      contents: "read"
-      id-token: "write"
+      contents: 'read'
+      id-token: 'write'
 
     steps:
       - name: checkout
@@ -27,11 +27,11 @@ jobs:
 
       - name: Authenticate with GCP
         id: auth
-        uses: "google-github-actions/auth@v1"
+        uses: 'google-github-actions/auth@v1'
         with:
           token_format: access_token
           credentials_json: ${{ secrets.GCP_JSON_KEY }}
-          access_token_lifetime: 300s
+          access_token_lifetime: 600s
 
       - name: Login into Google Artifact Registry
         uses: docker/login-action@v1
