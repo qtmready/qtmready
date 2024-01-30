@@ -15,10 +15,12 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package core
+// Package github provides functionality for GitHub provider.
+package github
 
 import (
-	_ "github.com/deepmap/oapi-codegen/pkg/codegen" // Required for code generation
+	_ "github.com/deepmap/oapi-codegen/v2/pkg/codegen" // Required for code generation
+	_ "gopkg.in/yaml.v2"
 )
 
-//go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --config _schema/gen.yaml _schema/openapi.yaml
+//go:generate go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen --config openapi.codegen.yaml openapi.spec.yaml
