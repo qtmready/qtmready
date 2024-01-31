@@ -19,16 +19,17 @@ package temporal
 
 import (
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
 	"github.com/avast/retry-go/v4"
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.temporal.io/sdk/client"
-	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/worker"
 
 	"go.breu.io/quantm/internal/shared/queue"
+	"go.breu.io/slog-utils/calldepth"
 )
 
 var (
@@ -57,7 +58,7 @@ type (
 		ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
 		client     client.Client
 		queues     queue.Queues
-		logger     log.Logger
+		logger     *slog.Logger
 		workers    queue.Workers
 	}
 
@@ -80,7 +81,12 @@ func (t *Config) Client() client.Client {
 	if t.client == nil {
 		once.Do(func() {
 			t.logger.Info("temporal instantiating ....")
-			options := client.Options{HostPort: t.GetConnectionString(), Logger: t.logger}
+			logger := calldepth.New(
+				calldepth.WithLogger(t.logger),
+				calldepth.WithCallDepth(6), // exactly pin points from where the task was called.
+			).WithGroup("temporal")
+
+			options := client.Options{HostPort: t.GetConnectionString(), Logger: logger}
 			retryTemporal := func() error {
 				clt, err := client.Dial(options)
 				if err != nil {
@@ -120,7 +126,7 @@ func WithQueue(name queue.Name) ConfigOption {
 }
 
 // WithLogger sets the logger for the Config.
-func WithLogger(logger log.Logger) ConfigOption {
+func WithLogger(logger *slog.Logger) ConfigOption {
 	return func(t *Config) {
 		t.logger = logger
 	}
