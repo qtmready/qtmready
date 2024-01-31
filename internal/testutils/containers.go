@@ -29,7 +29,6 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"go.breu.io/quantm/internal/db"
-	"go.breu.io/quantm/internal/shared"
 )
 
 const (
@@ -101,9 +100,9 @@ func StartDBContainer(ctx context.Context) (*Container, error) {
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
-		Logger:           shared.Logger(),
-		Started:          true,
-		Reuse:            true,
+		// Logger:           shared.Logger(),
+		Started: true,
+		Reuse:   true,
 	})
 	if err != nil {
 		return nil, err
@@ -142,9 +141,9 @@ func StartTemporalContainer(ctx context.Context) (*Container, error) {
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
-		Logger:           shared.Logger(),
-		Started:          true,
-		Reuse:            true,
+		// Logger:           shared.Logger(),
+		Started: true,
+		Reuse:   true,
 	})
 	if err != nil {
 		return nil, err
@@ -166,9 +165,9 @@ func StartNatsIOContainer(ctx context.Context) (*Container, error) {
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
-		Logger:           shared.Logger(),
-		Started:          true,
-		Reuse:            true,
+		// Logger:           shared.Logger(),
+		Started: true,
+		Reuse:   true,
 	})
 	if err != nil {
 		return nil, err
@@ -250,9 +249,9 @@ func StartAirContainer(ctx context.Context, name, secret, workdir, config, port 
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
-		Logger:           shared.Logger(),
-		Started:          true,
-		Reuse:            true,
+		// Logger:           shared.Logger(),
+		Started: true,
+		Reuse:   true,
 	})
 	if err != nil {
 		return nil, err

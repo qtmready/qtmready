@@ -35,7 +35,6 @@ func main() {
 	// graceful shutdown. see https://stackoverflow.com/a/46255965/228697.
 	exitcode := 0
 	defer func() { os.Exit(exitcode) }()
-	defer func() { _ = shared.Logger().Sync() }()
 	defer shared.Temporal().Client().Close()
 	defer db.DB().Session.Close()
 
