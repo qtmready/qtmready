@@ -25,11 +25,11 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/ilyakaznacheev/cleanenv"
+	"go.breu.io/slog-utils/calldepth"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 
 	"go.breu.io/quantm/internal/shared/queue"
-	"go.breu.io/slog-utils/calldepth"
 )
 
 var (

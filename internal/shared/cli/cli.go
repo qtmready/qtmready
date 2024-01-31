@@ -70,7 +70,7 @@ func FromEnvironment() ConfigOption {
 
 		err := os.MkdirAll(configpath, 0744) // os.ModeSticky|os.ModePerm
 		if err != nil {
-			fmt.Printf(err.Error())
+			fmt.Printf("error: %s", err.Error())
 			fmt.Printf("Unable to create/locate path: %s", configpath)
 			os.Exit(1)
 		}

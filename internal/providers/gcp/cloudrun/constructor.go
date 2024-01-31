@@ -19,7 +19,7 @@ var (
 // Create creates cloud run resource.
 func (c *Constructor) Create(name string, region string, config string, providerConfig string) (core.CloudResource, error) {
 	cr := &Resource{Name: name, Region: region}
-	json.Unmarshal([]byte(config), &cr.Config)
+	_ = json.Unmarshal([]byte(config), &cr.Config)
 
 	// get gcp project from configuration
 	pconfig := new(GCPConfig)

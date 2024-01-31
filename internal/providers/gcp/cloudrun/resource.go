@@ -31,7 +31,7 @@ type (
 		OutputEnvs                 map[string]string
 		Region                     string // from blueprint
 		Image                      string // from workload
-		Config                     map[string]interface{}
+		Config                     map[string]any
 		Name                       string
 		Revision                   string
 		LastRevision               string
@@ -260,7 +260,6 @@ func (r *Resource) GetIngressConfig(ctx context.Context) runpb.IngressTraffic {
 }
 
 func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb.RevisionTemplate {
-
 	container := r.GetContainerConfig(ctx, wl)
 	scaling := r.GetRevisionScalingConfig(ctx)
 	executionEnv := r.GetExecEnvConfig(ctx)
@@ -280,7 +279,6 @@ func (r *Resource) GetRevisionTemplate(ctx context.Context, wl *Workload) *runpb
 }
 
 func (r *Resource) GetContainerConfig(ctx context.Context, wl *Workload) *runpb.Container {
-
 	resourceReq := r.GetResourceReqConfig(ctx)
 	containerPorts := r.GetContainerPortsConfig(ctx)
 	Envs := r.GetContainerEnvConfig(ctx)
@@ -299,12 +297,11 @@ func (r *Resource) GetContainerConfig(ctx context.Context, wl *Workload) *runpb.
 }
 
 func (r *Resource) GetContainerVolumeMountConfig(ctx context.Context) []*runpb.VolumeMount {
+	templateConfig := r.Config["template"].(map[string]any)
+	templateContainersConfig := templateConfig["containers"].(map[string]any)
 
-	templateConfig := r.Config["template"].(map[string]interface{})
-	templateContainersConfig := templateConfig["containers"].(map[string]interface{})
-
-	volumeMountsName := templateContainersConfig["volume_mounts"].(map[string]interface{})["name"].(string)
-	volumeMountsPath := templateContainersConfig["volume_mounts"].(map[string]interface{})["mount_path"].(string)
+	volumeMountsName := templateContainersConfig["volume_mounts"].(map[string]any)["name"].(string)
+	volumeMountsPath := templateContainersConfig["volume_mounts"].(map[string]any)["mount_path"].(string)
 	volumeMounts := &runpb.VolumeMount{
 		Name:      volumeMountsName,
 		MountPath: volumeMountsPath,
@@ -315,15 +312,14 @@ func (r *Resource) GetContainerVolumeMountConfig(ctx context.Context) []*runpb.V
 }
 
 func (r *Resource) GetContainerEnvConfig(ctx context.Context) []*runpb.EnvVar {
-
-	templateConfig := r.Config["template"].(map[string]interface{})
-	templateContainersConfig := templateConfig["containers"].(map[string]interface{})
+	templateConfig := r.Config["template"].(map[string]any)
+	templateContainersConfig := templateConfig["containers"].(map[string]any)
 
 	Envs := []*runpb.EnvVar{}
 
-	env := templateContainersConfig["env"].([]interface{})
+	env := templateContainersConfig["env"].([]any)
 	for _, val := range env {
-		envVal := val.(map[string]interface{})
+		envVal := val.(map[string]any)
 		Envs = append(Envs, &runpb.EnvVar{
 			Name: fmt.Sprint(envVal["name"]),
 			Values: &runpb.EnvVar_Value{
@@ -335,11 +331,10 @@ func (r *Resource) GetContainerEnvConfig(ctx context.Context) []*runpb.EnvVar {
 }
 
 func (r *Resource) GetContainerPortsConfig(ctx context.Context) []*runpb.ContainerPort {
+	templateConfig := r.Config["template"].(map[string]any)
+	templateContainersConfig := templateConfig["containers"].(map[string]any)
 
-	templateConfig := r.Config["template"].(map[string]interface{})
-	templateContainersConfig := templateConfig["containers"].(map[string]interface{})
-
-	containerPortConfig := templateContainersConfig["ports"].(map[string]interface{})["container_port"].(string)
+	containerPortConfig := templateContainersConfig["ports"].(map[string]any)["container_port"].(string)
 	containerPort64bit, _ := strconv.ParseInt(containerPortConfig, 10, 32)
 	containerPort := &runpb.ContainerPort{ContainerPort: int32(containerPort64bit)}
 
@@ -349,11 +344,10 @@ func (r *Resource) GetContainerPortsConfig(ctx context.Context) []*runpb.Contain
 }
 
 func (r *Resource) GetResourceReqConfig(ctx context.Context) *runpb.ResourceRequirements {
+	templateConfig := r.Config["template"].(map[string]any)
+	templateContainersConfig := templateConfig["containers"].(map[string]any)
 
-	templateConfig := r.Config["template"].(map[string]interface{})
-	templateContainersConfig := templateConfig["containers"].(map[string]interface{})
-
-	cpuIdleStr := templateContainersConfig["resources"].(map[string]interface{})["cpu_idle"].(string)
+	cpuIdleStr := templateContainersConfig["resources"].(map[string]any)["cpu_idle"].(string)
 	cpuIdle, _ := strconv.ParseBool(cpuIdleStr)
 	resources := &runpb.ResourceRequirements{
 		CpuIdle: cpuIdle,
@@ -363,8 +357,7 @@ func (r *Resource) GetResourceReqConfig(ctx context.Context) *runpb.ResourceRequ
 }
 
 func (r *Resource) GetExecEnvConfig(ctx context.Context) runpb.ExecutionEnvironment {
-
-	templateConfig := r.Config["template"].(map[string]interface{})
+	templateConfig := r.Config["template"].(map[string]any)
 	executionEnvConfig := templateConfig["execution_environment"].(string)
 	executionEnv := runpb.ExecutionEnvironment(
 		runpb.ExecutionEnvironment_value[executionEnvConfig],
@@ -374,11 +367,10 @@ func (r *Resource) GetExecEnvConfig(ctx context.Context) runpb.ExecutionEnvironm
 }
 
 func (r *Resource) GetVpcAccessConfig(ctx context.Context) *runpb.VpcAccess {
+	templateConfig := r.Config["template"].(map[string]any)
+	templateVpcAccessConfig := templateConfig["vpc_access"].(map[string]any)
 
-	templateConfig := r.Config["template"].(map[string]interface{})
-	templateVpcAccessConfig := templateConfig["vpc_access"].(map[string]interface{})
-
-	networkInterfaces := templateVpcAccessConfig["network_interfaces"].(map[string]interface{})
+	networkInterfaces := templateVpcAccessConfig["network_interfaces"].(map[string]any)
 	networkInterfaceArray := []*runpb.VpcAccess_NetworkInterface{
 		{
 			Network:    fmt.Sprint(networkInterfaces["network"]),
@@ -391,20 +383,23 @@ func (r *Resource) GetVpcAccessConfig(ctx context.Context) *runpb.VpcAccess {
 		Egress:            runpb.VpcAccess_VpcEgress(runpb.VpcAccess_VpcEgress_value[egress]),
 		NetworkInterfaces: networkInterfaceArray,
 	}
+
 	return vpcAccess
 }
 
 func (r *Resource) GetVolumesConfig(ctx context.Context) []*runpb.Volume {
-
-	templateConfig := r.Config["template"].(map[string]interface{})
-	volumeName := templateConfig["volumes"].(map[string]interface{})["name"].(string)
-	volumeInstance := templateConfig["volumes"].(map[string]interface{})["cloud_sql_instance"].(map[string]interface{})["instances"].([]interface{})
+	templateConfig := r.Config["template"].(map[string]any)
+	volumeName := templateConfig["volumes"].(map[string]any)["name"].(string)
+	volumeInstance :=
+		templateConfig["volumes"].(map[string]any)["cloud_sql_instance"].(map[string]any)["instances"].([]any)
 
 	VolumeInstanceArray := []string{}
+
 	for _, instanceVal := range volumeInstance {
-		val := instanceVal.(map[string]interface{})
+		val := instanceVal.(map[string]any)
 		VolumeInstanceArray = append(VolumeInstanceArray, val["name"].(string))
 	}
+
 	volume := &runpb.Volume{
 		Name: volumeName,
 		VolumeType: &runpb.Volume_CloudSqlInstance{
@@ -414,14 +409,13 @@ func (r *Resource) GetVolumesConfig(ctx context.Context) []*runpb.Volume {
 		},
 	}
 	volumes := []*runpb.Volume{volume}
+
 	return volumes
 }
 
 func (r *Resource) GetRevisionScalingConfig(ctx context.Context) *runpb.RevisionScaling {
-
-	templateConfig := r.Config["template"].(map[string]interface{})
-
-	scalingConfig := templateConfig["scaling"].(map[string]interface{})
+	templateConfig := r.Config["template"].(map[string]any)
+	scalingConfig := templateConfig["scaling"].(map[string]any)
 	minInstanceConfig := scalingConfig["min_instance_count"].(string)
 	minInstanceConfig64bit, _ := strconv.ParseInt(minInstanceConfig, 10, 32)
 	maxInstanceConfig := scalingConfig["max_instance_count"].(string)
