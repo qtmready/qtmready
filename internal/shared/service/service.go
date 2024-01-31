@@ -81,7 +81,7 @@ func (s *config) Banner() {
  / __ \/ / / / __ \/ __ \/ __/ __ ˇ__ \
 / /_/ / /_/ / /_/ / / / / /_  / / / / /
 \__, /\__▲_/\__▲_/_/ /_/\__/_/ /_/ /_/ 
-  /_/ durable delivery for cloud services.
+  /_/ durable delivery for distributed systems.
 
 component: %s
 version: %s
@@ -92,7 +92,7 @@ version: %s
 	blue := color.New(color.FgBlue).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
 
-	fmt.Printf(banner, green(s.Name), blue(s.Version), yellow("https://quantm.dev"))
+	fmt.Printf(banner, green(s.Name), blue(s.Version), yellow("https://quantm.io"))
 }
 
 // WithName sets the service name.
