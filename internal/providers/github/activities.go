@@ -23,9 +23,8 @@ import (
 	"strconv"
 	"strings"
 
-	"go.temporal.io/sdk/activity"
-
 	gh "github.com/google/go-github/v53/github"
+	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/db"
@@ -200,7 +199,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 
 	// Use the latest commit SHA
 	if len(commits) == 0 {
-		shared.Logger().Error("RebaseAndMerge Activity", "No commits found in the default branch.")
+		shared.Logger().Error("RebaseAndMerge Activity", "No commits found in the default branch.", nil)
 		return err
 	}
 

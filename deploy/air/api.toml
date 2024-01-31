@@ -6,7 +6,7 @@ tmp_dir = "tmp"
 args_bin = []
 bin = "./tmp/api"
 # cmd = "go list -f '{{if not .Standard}}{{.ImportPath}}{{end}}' -deps ./cmd/api  | paste -sd, - > pkgs.txt && go build -cover -coverpkg=`cat pkgs.txt` -gcflags=\"-m=2 -l=0\" -o ./tmp/api ./cmd/api"
-cmd = "go build -coverpkg=go.breu.io/quantm -gcflags=\"-m=2 -l=0\" -o ./tmp/api ./cmd/api"
+cmd = "go build -gcflags=\"-m=2 -l=0\" -o ./tmp/api ./cmd/api"
 delay = 1000
 exclude_dir = ["assets", "tmp", "vendor", "testdata"]
 exclude_file = []

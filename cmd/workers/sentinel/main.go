@@ -28,3 +28,5 @@
 // The only communication channel between sentinel and the mothership is via
 // temporal server. Each sentinel has its own namespae on the server.
 package main
+
+func main() {}

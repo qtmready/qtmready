@@ -1,11 +1,16 @@
 module go.breu.io/quantm
 
-go 1.20
+go 1.21.0
+
+toolchain go1.21.6
 
 require (
 	cloud.google.com/go/artifactregistry v1.14.6
 	cloud.google.com/go/iam v1.1.5
+	cloud.google.com/go/logging v1.9.0
 	cloud.google.com/go/run v1.3.3
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.21.0
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.45.0
 	github.com/Guilospanck/gocqlxmock v1.0.1
 	github.com/Guilospanck/igocqlx v1.0.0
 	github.com/Pallinder/go-randomdata v1.2.0
@@ -37,8 +42,11 @@ require (
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
 	github.com/testcontainers/testcontainers-go v0.27.0
+	go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.47.0
+	go.opentelemetry.io/otel v1.22.0
+	go.opentelemetry.io/otel/sdk v1.21.0
+	go.opentelemetry.io/otel/trace v1.22.0
 	go.temporal.io/sdk v1.25.1
-	go.uber.org/zap v1.26.0
 	golang.org/x/crypto v0.18.0
 	golang.org/x/tools v0.17.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20240125205218-1f4bbc51befe
@@ -48,11 +56,13 @@ require (
 require (
 	cloud.google.com/go v0.111.0 // indirect
 	cloud.google.com/go/compute v1.23.3 // indirect
-	cloud.google.com/go/compute/metadata v0.2.3 // indirect
+	cloud.google.com/go/compute/metadata v0.2.3
 	cloud.google.com/go/longrunning v0.5.4 // indirect
+	cloud.google.com/go/trace v1.10.4 // indirect
 	dario.cat/mergo v1.0.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
 	github.com/BurntSushi/toml v1.3.2 // indirect
+	github.com/GoogleCloudPlatform/opentelemetry-operations-go/internal/resourcemapping v0.45.0 // indirect
 	github.com/Microsoft/go-winio v0.6.1 // indirect
 	github.com/Microsoft/hcsshim v0.11.4 // indirect
 	github.com/ProtonMail/go-crypto v0.0.0-20230828082145-3c4c8a2d2371 // indirect
@@ -78,6 +88,8 @@ require (
 	github.com/getkin/kin-openapi v0.118.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
 	github.com/go-git/go-billy/v5 v5.5.0 // indirect
+	github.com/go-logr/logr v1.4.1 // indirect
+	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/go-openapi/jsonpointer v0.20.0 // indirect
 	github.com/go-openapi/swag v0.22.4 // indirect
@@ -139,7 +151,7 @@ require (
 	github.com/opencontainers/runc v1.1.5 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pjbgf/sha1cd v0.3.0 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/prometheus/client_golang v1.14.0 // indirect
@@ -163,9 +175,9 @@ require (
 	github.com/xanzy/ssh-agent v0.3.3 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	go.opencensus.io v0.24.0 // indirect
+	go.opentelemetry.io/otel/metric v1.22.0 // indirect
 	go.temporal.io/api v1.24.0 // indirect
 	go.uber.org/atomic v1.10.0 // indirect
-	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/exp v0.0.0-20230510235704-dd950f8aeaea // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/net v0.20.0 // indirect
@@ -186,6 +198,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect
 )
+
+require go.breu.io/slog-utils v0.0.3
 
 replace github.com/Guilospanck/igocqlx v1.0.0 => github.com/debuggerpk/igocqlx v1.0.3
 
