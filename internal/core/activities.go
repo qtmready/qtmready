@@ -179,3 +179,23 @@ func ParseArtifactRegistryImage(image string) (*ArtifactRegistryImage, error) {
 
 	return arImage, nil
 }
+
+func (a *Activities) DeployChangeset(ctx context.Context, changeSet *ChangeSet) error {
+	type commitsData struct {
+		CommitID string
+		RepoID   string
+		RepoName string
+	}
+	var multiCommitsData []commitsData
+
+	for ind := range changeSet.RepoMarkers {
+		marker := changeSet.RepoMarkers[ind]
+
+		multiCommitsData[ind].CommitID = marker.CommitID
+		multiCommitsData[ind].RepoID = marker.RepoID
+	}
+
+	gh_action_name := "deploy_quantm" //TODO: fixed it for now
+
+	return nil
+}

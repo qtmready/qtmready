@@ -20,6 +20,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -166,9 +167,9 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubAc
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
-	var er error
+	var mergeCommit string
 	err = workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.RepoOwner, payload.RepoName,
-		payload.Branch, payload.InstallationID).Get(ctx, er)
+		payload.Branch, payload.InstallationID).Get(ctx, mergeCommit)
 
 	if err != nil {
 		logger.Error("error getting installation", "error", err)
@@ -180,6 +181,57 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubAc
 		logger.Error("error releasing lock", "error", err)
 		return err
 	}
+
+	//Signal stack workflow about changeset update
+	//info to be sent: repo, commit
+	//get workflowID for the stack attached to this repo
+
+	// get core repo
+	githubID, _ := strconv.ParseInt(payload.RepoID, 10, 64)
+	repo := &Repo{GithubID: githubID}
+	coreRepo := &core.Repo{}
+
+	err = workflow.ExecuteActivity(actx, activities.GetCoreRepo, repo).Get(ctx, coreRepo)
+	if err != nil {
+		logger.Error("error getting core repo", "error", err)
+		return err
+	}
+
+	// get core workflow ID for this stack
+	coreWorkflowID := shared.Temporal().
+		Queue(shared.CoreQueue).
+		WorkflowID(
+			shared.WithWorkflowBlock("stack"),
+			shared.WithWorkflowBlockID(coreRepo.StackID.String()),
+		)
+
+	// signal core stack workflow
+	logger.Info("core workflow id", "ID", coreWorkflowID)
+
+	signalPayload := &shared.CreateChangesetSignal{
+		RepoTableID: coreRepo.ID,
+		RepoID:      payload.RepoID,
+		// RepoName:    payload.RepoName,
+		CommitID:    mergeCommit,
+	}
+
+	options := shared.Temporal().
+		Queue(shared.CoreQueue).
+		WorkflowOptions(
+			shared.WithWorkflowBlock("stack"),
+			shared.WithWorkflowBlockID(coreRepo.StackID.String()),
+		)
+
+	cw := &core.Workflows{}
+	shared.Temporal().Client().SignalWithStartWorkflow(
+		context.Background(),
+		coreWorkflowID,
+		shared.WorkflowSignalCreateChangeset.String(),
+		signalPayload,
+		options,
+		cw.StackController,
+		coreRepo.StackID.String(),
+	)
 
 	return nil
 }
