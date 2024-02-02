@@ -87,11 +87,14 @@ jobs:
 
       - name: Deploy API to Cloud Run
         id: deployAPI
-        uses: google-github-actions/deploy-cloudrun@v0
+        uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.GCR_SERVICE }}
           region: ${{ env.GCR_REGION }}
-          image: quantm/api:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
+          image: ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
+
+      - name: Use output
+        run: curl ${{ steps.deployAPI.outputs.url }}
 
       - name: docker ls
         run: docker image ls
