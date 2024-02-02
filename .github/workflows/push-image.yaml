@@ -13,7 +13,7 @@ env:
   GCP_ARTIFACT_REPOSITORY: us-docker.pkg.dev/quantm-live/default-live-v1
   GKE_CLUSTER: alpha-live-v1
   GKE_CLUSTER_ZONE: us-central1
-  GCR_SERVICE: cloudrun-quantm-api-live-v1
+  GCR_SERVICE: quantm-api-live-v1
   GCR_REGION: default-live-v1
 
 jobs:
