@@ -89,8 +89,7 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.GCR_SERVICE }}
-          region: ${{ env.GKE_CLUSTER_ZONE }}
-          image: ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
+          image: us-docker.pkg.dev/quantm-live/default-live-v1/api:latest
 
       - name: Use output
         run: curl ${{ steps.deployAPI.outputs.url }}
