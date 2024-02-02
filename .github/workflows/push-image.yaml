@@ -49,7 +49,7 @@ jobs:
         uses: google-github-actions/get-gke-credentials@v1
         with:
           cluster_name: ${{ env.GKE_CLUSTER }}
-          location: ${{ env.GKE_ZONE }}
+          location: ${{ env.GKE_CLUSTER_ZONE }}
 
       - name: Build & Push docker image for API
         run: |
