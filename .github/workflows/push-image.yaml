@@ -1,8 +1,8 @@
 name: Release quantm
 on:
   pull_request:
-    types:
-      - closed
+    # types:
+    #   - closed
   workflow_dispatch:
   push:
     branches:
@@ -13,10 +13,12 @@ env:
   GCP_ARTIFACT_REPOSITORY: us-docker.pkg.dev/quantm-live/default-live-v1
   GKE_CLUSTER: alpha-live-v1
   GKE_CLUSTER_ZONE: us-central1
+  GCR_SERVICE: cloudrun-quantm-api-live-v1
+  GCR_REGION: default-live-v1
 
 jobs:
   release-artifact:
-    if: github.event.pull_request.merged == true
+    # if: github.event.pull_request.merged == true
     runs-on: ubuntu-20.04
     permissions:
       contents: 'read'
@@ -79,13 +81,17 @@ jobs:
         run: |
           kubectl get -n quantm deploy
 
-      # - name: Deploy migrate docker image to the GKE cluster
-      #   run: |
-      #     kubectl patch -n quantm deployment migrate -p '{"spec":{"template":{"spec":{"containers":[{"name":"migrate","image":"us-docker.pkg.dev/quantm-live/default-live-v1/migrate:latest"}]}}}}'
-
       - name: Deploy mothership docker image to the GKE cluster
         run: |
           kubectl patch -n quantm deployment mothership -p '{"spec":{"template":{"spec":{"containers":[{"name":"mothership","image":"us-docker.pkg.dev/quantm-live/default-live-v1/mothership:latest"}]}}}}'
+
+      - name: Deploy API to Cloud Run
+        id: deployAPI
+        uses: google-github-actions/deploy-cloudrun@v0
+        with:
+          service: ${{ env.GCR_SERVICE }}
+          region: ${{ env.GCR_REGION }}
+          image: quantm/api:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
 
       - name: docker ls
         run: docker image ls
