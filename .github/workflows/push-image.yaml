@@ -14,7 +14,6 @@ env:
   GKE_CLUSTER: alpha-live-v1
   GKE_CLUSTER_ZONE: us-central1
   GCR_SERVICE: quantm-api-live-v1
-  GCR_REGION: default-live-v1
 
 jobs:
   release-artifact:
@@ -90,7 +89,7 @@ jobs:
         uses: google-github-actions/deploy-cloudrun@v2
         with:
           service: ${{ env.GCR_SERVICE }}
-          region: ${{ env.GCR_REGION }}
+          region: ${{ env.GKE_CLUSTER_ZONE }}
           image: ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
 
       - name: Use output
