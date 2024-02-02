@@ -79,9 +79,9 @@ jobs:
         run: |
           kubectl get -n quantm deploy
 
-      - name: Deploy migrate docker image to the GKE cluster
-        run: |
-          kubectl patch -n quantm deployment migrate -p '{"spec":{"template":{"spec":{"containers":[{"name":"migrate","image":"us-docker.pkg.dev/quantm-live/default-live-v1/migrate:latest"}]}}}}'
+      # - name: Deploy migrate docker image to the GKE cluster
+      #   run: |
+      #     kubectl patch -n quantm deployment migrate -p '{"spec":{"template":{"spec":{"containers":[{"name":"migrate","image":"us-docker.pkg.dev/quantm-live/default-live-v1/migrate:latest"}]}}}}'
 
       - name: Deploy mothership docker image to the GKE cluster
         run: |
