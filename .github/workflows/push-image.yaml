@@ -1,8 +1,8 @@
 name: Release quantm
 on:
   pull_request:
-    # types:
-    #   - closed
+    types:
+      - closed
   workflow_dispatch:
   push:
     branches:
@@ -16,7 +16,7 @@ env:
 
 jobs:
   release-artifact:
-    # if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-20.04
     permissions:
       contents: 'read'
