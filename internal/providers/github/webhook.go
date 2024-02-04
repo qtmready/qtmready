@@ -150,13 +150,14 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
 
 	default:
-		err := shared.Temporal().
-			Client().
-			SignalWorkflow(context.Background(), opts.ID, "", WebhookEventPullRequest.String(), payload)
-		if err != nil {
-			shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
-			return shared.NewAPIError(http.StatusInternalServerError, err)
-		}
+		shared.Logger().Debug("handlePullRequestEvent default closing...")
+		// err := shared.Temporal().
+		// 	Client().
+		// 	SignalWorkflow(context.Background(), opts.ID, "", WebhookEventPullRequest.String(), payload)
+		// if err != nil {
+		// 	shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
+		// 	return shared.NewAPIError(http.StatusInternalServerError, err)
+		// }
 
 		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: db.NullUUID, Status: WorkflowStatusSkipped})
 	}
