@@ -123,6 +123,8 @@ func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*core.Repo, e
 		"provider":    "'github'",
 	}
 
+	shared.Logger().Debug("GetCoreRepo", "params", params)
+
 	if err := db.Get(r, params); err != nil {
 		return r, err
 	}

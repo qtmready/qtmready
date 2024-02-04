@@ -75,6 +75,8 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 		return err
 	}
 
+	shared.Logger().Debug("StackController : going to create repomarkers")
+
 	// get commits against the repos
 	repoMarkers := make([]ChangeSetRepoMarker, len(repos.Data))
 	for idx, repo := range repos.Data {
@@ -82,6 +84,9 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 		// p := Instance().Provider(repo.Provider) // get the specific provider
 		p := Instance().RepoProvider(repo.Provider) // get the specific provider
 		commitID := ""
+
+		shared.Logger().Debug("StackController", "repo marker index", idx)
+		shared.Logger().Debug("StackController", "provider", repo.Provider)
 
 		if err := workflow.
 			ExecuteActivity(actx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).
@@ -104,6 +109,8 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 
 		shared.Logger().Debug("Repo", "Name", repo.Name, "Repo marker", marker)
 	}
+
+	shared.Logger().Debug("StackController", "repomarkers created", repoMarkers)
 
 	//trigger changeset controller to deploy the updated changeset
 	// changesetID, _ := gocql.RandomUUID()
