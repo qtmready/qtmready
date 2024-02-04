@@ -20,7 +20,6 @@ package github
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -146,7 +145,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	return nil
 }
 
-func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubActionResult) error {
+func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *WorkflowRun) error {
 	logger := workflow.GetLogger(ctx)
 	logger.Info("OnGithubActionResult", "entry", "workflow started")
 
@@ -158,7 +157,7 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubAc
 	logger.Info("OnGithubActionResult", "action recvd", gh_result)
 
 	// acquiring lock here
-	lock, err := LockInstance(ctx, fmt.Sprint(payload.RepoID))
+	lock, err := LockInstance(ctx, fmt.Sprint(payload.Repository.ID))
 	if err != nil {
 		logger.Error("Error in getting lock instance", "Error", err)
 		return err
@@ -168,8 +167,8 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubAc
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
 	var mergeCommit string
-	err = workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.RepoOwner, payload.RepoName,
-		payload.Branch, payload.InstallationID).Get(ctx, mergeCommit)
+	err = workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.Repository.Owner.Login, payload.Repository.Name,
+		payload.WR.HeadBranch, payload.Installation.ID).Get(ctx, &mergeCommit)
 
 	if err != nil {
 		logger.Error("error getting installation", "error", err)
@@ -187,8 +186,8 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubAc
 	//get workflowID for the stack attached to this repo
 
 	// get core repo
-	githubID, _ := strconv.ParseInt(payload.RepoID, 10, 64)
-	repo := &Repo{GithubID: githubID}
+	// githubID, _ := strconv.ParseInt(payload.Repository.ID, 10, 64)
+	repo := &Repo{GithubID: payload.Repository.ID}
 	coreRepo := &core.Repo{}
 
 	err = workflow.ExecuteActivity(actx, activities.GetCoreRepo, repo).Get(ctx, coreRepo)
@@ -210,9 +209,9 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubAc
 
 	signalPayload := &shared.CreateChangesetSignal{
 		RepoTableID: coreRepo.ID,
-		RepoID:      payload.RepoID,
+		RepoID:      fmt.Sprint(payload.Repository.ID),
 		// RepoName:    payload.RepoName,
-		CommitID:    mergeCommit,
+		CommitID: mergeCommit,
 	}
 
 	options := shared.Temporal().
