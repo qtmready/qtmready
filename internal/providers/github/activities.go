@@ -286,3 +286,77 @@ func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int
 
 	return nil
 }
+
+func (a *Activities) DeployChangeset(ctx context.Context, repoID string) error {
+	shared.Logger().Debug("core activity DeployChangeset started")
+
+	// type commitsData struct {
+	// 	CommitID string
+	// 	RepoID   string
+	// 	// RepoName string
+	// }
+	// var multiCommitsData []commitsData
+
+	// for ind := range changeSet.RepoMarkers {
+	// 	marker := changeSet.RepoMarkers[ind]
+
+	// 	// commitDataInst := commitsData{
+	// 	// 	CommitID: marker.CommitID,
+	// 	// 	RepoID:   marker.RepoID,
+	// 	// 	// RepoName: "",
+	// 	// }
+
+	// 	// multiCommitsData[ind].CommitID = marker.CommitID
+	// 	// multiCommitsData[ind].RepoID = marker.RepoID
+
+	// 	// multiCommitsData = append(multiCommitsData, commitDataInst)
+	// }
+
+	// jsonData, err := json.Marshal(multiCommitsData)
+	// if err != nil {
+	// 	shared.Logger().Debug("DeployChangeset", "Error marshaling JSON:", err)
+	// 	return err
+	// }
+
+	gh_action_name := "deploy_quantm.yaml" //TODO: fixed it for now
+
+	//get installationID, repoName, repoOwner from github_repos table
+	githubRepo := &Repo{}
+	params := db.QueryParams{
+		"github_id": repoID,
+	}
+
+	if err := db.Get(githubRepo, params); err != nil {
+		return err
+	}
+
+	client, err := Instance().GetClientFromInstallation(githubRepo.InstallationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	paylod := gh.CreateWorkflowDispatchEventRequest{
+		Ref: "main",
+		// Inputs: map[string]any{
+		// 	"commits_data": jsonData,
+		// },
+	}
+
+	var repoOwner, repoName string
+	parts := strings.Split(githubRepo.FullName, "/")
+	if len(parts) == 2 {
+		repoOwner = parts[0]
+		repoName = parts[1]
+	}
+
+	res, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, gh_action_name, paylod)
+	if err != nil {
+		shared.Logger().Error("DeployChangeset", "Error triggering workflow:", err)
+		return err
+	}
+
+	shared.Logger().Debug("DeployChangeset", "response", res)
+
+	return nil
+}
