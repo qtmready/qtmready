@@ -290,7 +290,7 @@ func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int
 }
 
 func (a *Activities) DeployChangeset(ctx context.Context, repoID string) error {
-	shared.Logger().Debug("core activity DeployChangeset started")
+	shared.Logger().Debug("github activity DeployChangeset started")
 
 	// type commitsData struct {
 	// 	CommitID string
@@ -340,9 +340,10 @@ func (a *Activities) DeployChangeset(ctx context.Context, repoID string) error {
 
 	paylod := gh.CreateWorkflowDispatchEventRequest{
 		Ref: "main",
-		// Inputs: map[string]any{
-		// 	"commits_data": jsonData,
-		// },
+		Inputs: map[string]any{
+			// "commits_data": jsonData,
+			"target-branch": "main",
+		},
 	}
 
 	var repoOwner, repoName string
