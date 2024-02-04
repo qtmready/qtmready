@@ -92,7 +92,6 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 		}
 
 		marker.CommitID = commitID
-		marker.HasChanged = repo.ProviderID == payload.RepoID
 		marker.Provider = repo.Provider.String()
 		marker.RepoID = repo.ID.String()
 
@@ -100,23 +99,35 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 		if marker.RepoID == payload.RepoID {
 			marker.CommitID = payload.CommitID
 			shared.Logger().Debug("Commit ID updated for repo " + marker.RepoID)
+			marker.HasChanged = true //the repo in which commit was made
 		}
 
 		shared.Logger().Debug("Repo", "Name", repo.Name, "Repo marker", marker)
 	}
 
 	//trigger changeset controller to deploy the updated changeset
-	changesetID, _ := gocql.RandomUUID()
-	stackUUID, _ := gocql.ParseUUID(stackID)
-	changeset := &ChangeSet{
-		RepoMarkers: repoMarkers,
-		ID:          changesetID,
-		StackID:     stackUUID,
-	}
+	// changesetID, _ := gocql.RandomUUID()
+	// stackUUID, _ := gocql.ParseUUID(stackID)
+	// changeset := &ChangeSet{
+	// 	RepoMarkers: repoMarkers,
+	// 	ID:          changesetID,
+	// 	StackID:     stackUUID,
+	// }
 
-	err = workflow.ExecuteActivity(actx, activities.DeployChangeset, changeset).Get(ctx, nil)
-	if err != nil {
-		shared.Logger().Error("Error in deploying changeset")
+	//for 1 2 3
+	//A, B, C
+	selector := workflow.NewSelector(ctx)
+
+	for _, repo := range repos.Data {
+		p := Instance().RepoProvider(repo.Provider) // get the specific provider
+
+		future := workflow.ExecuteActivity(actx, p.DeployChangeset, repo.ProviderID)
+		selector.AddFuture(future, func(f workflow.Future) {
+			if err := f.Get(ctx, nil); err != nil {
+				shared.Logger().Error("Error in deploying changeset", "error", err)
+				return
+			}
+		})
 	}
 
 	return nil
