@@ -172,18 +172,18 @@ func (a *Activities) GetLatestCommit(ctx context.Context, providerID string, bra
 }
 
 func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoName string,
-	targetBranchName string, installationID int64) string {
+	targetBranchName string, installationID int64) (string, error) {
 	client, err := Instance().GetClientFromInstallation(installationID)
 	if err != nil {
 		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
-		return ""
+		return err.Error(), err
 	}
 
 	// Get the default branch (e.g., "main")
 	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error getting repository: ", err)
-		return ""
+		return err.Error(), err
 	}
 
 	defaultBranch := *repo.DefaultBranch
@@ -195,13 +195,13 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	})
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error getting commits: ", err)
-		return ""
+		return err.Error(), err
 	}
 
 	// Use the latest commit SHA
 	if len(commits) == 0 {
 		shared.Logger().Error("RebaseAndMerge Activity", "No commits found in the default branch.")
-		return ""
+		return err.Error(), err
 	}
 
 	latestCommitSHA := *commits[0].SHA
@@ -217,7 +217,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	_, _, err = client.Git.CreateRef(ctx, repoOwner, repoName, ref)
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error creating branch: ", err)
-		return ""
+		return err.Error(), err
 	}
 
 	shared.Logger().Info("RebaseAndMerge Activity", "Branch created successfully: ", newBranchName)
@@ -232,7 +232,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	_, _, err = client.Repositories.Merge(ctx, repoOwner, repoName, rebaseRequest)
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error rebasing branches: ", err)
-		return ""
+		return err.Error(), err
 	}
 
 	shared.Logger().Info("RebaseAndMerge Activity", "status",
@@ -248,13 +248,13 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	repoCommit, _, err := client.Repositories.Merge(ctx, repoOwner, repoName, rebaseRequest)
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error rebasing branches: ", err)
-		return ""
+		return err.Error(), err
 	}
 
 	shared.Logger().Info("RebaseAndMerge Activity", "status",
 		fmt.Sprintf("Branch %s rebased with %s successfully.\n", newBranchName, defaultBranch))
 
-	return *repoCommit.SHA
+	return *repoCommit.SHA, nil
 }
 
 func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int64, repoOwner string,
