@@ -77,6 +77,12 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 
 	shared.Logger().Debug("StackController : going to create repomarkers")
 
+	providerActivityOpts := workflow.ActivityOptions{
+		StartToCloseTimeout: 60 * time.Second,
+		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
+	}
+	pctx := workflow.WithActivityOptions(ctx, providerActivityOpts)
+
 	// get commits against the repos
 	repoMarkers := make([]ChangeSetRepoMarker, len(repos.Data))
 	for idx, repo := range repos.Data {
@@ -85,13 +91,12 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 		p := Instance().RepoProvider(repo.Provider) // get the specific provider
 		commitID := ""
 
-		shared.Logger().Debug("StackController", "repo marker index", idx)
-		shared.Logger().Debug("StackController", "provider", repo.Provider)
+		// shared.Logger().Debug("StackController", "repo marker index", idx)
+		// shared.Logger().Debug("StackController", "provider", repo.Provider)
 
 		if err := workflow.
-			ExecuteActivity(actx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).
+			ExecuteActivity(pctx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).
 			Get(ctx, &commitID); err != nil {
-
 			shared.Logger().Error("Error in getting latest commit ID", "repo", repo.Name, "provider", repo.Provider)
 			return fmt.Errorf("Error in getting latest commit ID repo:%s, provider:%s", repo.Name, repo.Provider.String())
 		}
@@ -123,19 +128,28 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 
 	//for 1 2 3
 	//A, B, C
-	selector := workflow.NewSelector(ctx)
+	// selector := workflow.NewSelector(ctx)
 
 	for _, repo := range repos.Data {
 		p := Instance().RepoProvider(repo.Provider) // get the specific provider
 
-		future := workflow.ExecuteActivity(actx, p.DeployChangeset, repo.ProviderID)
-		selector.AddFuture(future, func(f workflow.Future) {
-			if err := f.Get(ctx, nil); err != nil {
-				shared.Logger().Error("Error in deploying changeset", "error", err)
-				return
-			}
-		})
+		// shared.Logger().Debug("StackController", "repo marker index", idx)
+		// shared.Logger().Debug("StackController", "provider", repo.Provider)
+
+		if err := workflow.ExecuteActivity(pctx, p.DeployChangeset, repo.ProviderID).Get(ctx, nil); err != nil {
+			shared.Logger().Error("StackController", "error in deploying for repo", repo.ProviderID, "err", err)
+		}
+
+		// future := workflow.ExecuteActivity(pctx, p.DeployChangeset, repo.ProviderID)
+		// selector.AddFuture(future, func(f workflow.Future) {
+		// 	if err := f.Get(ctx, nil); err != nil {
+		// 		shared.Logger().Error("Error in deploying changeset", "error", err)
+		// 		return
+		// 	}
+		// })
 	}
+
+	shared.Logger().Debug("deployment done........")
 
 	return nil
 }
