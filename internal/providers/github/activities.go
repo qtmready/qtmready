@@ -267,7 +267,7 @@ func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int
 		return err
 	}
 
-	workflowName := "cicd_qntm.yaml" //TODO: either fix this or obtain it somehow
+	workflowName := "cicd_quantm.yaml" //TODO: either fix this or obtain it somehow
 
 	paylod := gh.CreateWorkflowDispatchEventRequest{
 		Ref: targetBranch,
