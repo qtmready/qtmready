@@ -81,6 +81,7 @@ func main() {
 	web.Use(middleware.Recover())
 
 	web.GET("/healthz", healthz)
+	web.GET("/healthx", healthz)
 
 	auth.RegisterHandlers(web, auth.NewServerHandler(auth.Middleware))
 	core.RegisterHandlers(web, core.NewServerHandler(auth.Middleware))
