@@ -1,6 +1,8 @@
 name: Release quantm
 on:
   pull_request:
+    types:
+      - closed
   workflow_dispatch:
   push:
     branches:
@@ -9,9 +11,13 @@ on:
 env:
   GCP_PROJECT: quantm-live
   GCP_ARTIFACT_REPOSITORY: us-docker.pkg.dev/quantm-live/default-live-v1
+  GKE_CLUSTER: alpha-live-v1
+  GKE_CLUSTER_ZONE: us-central1
+  GCR_SERVICE: quantm-api-live-v1
 
 jobs:
   release-artifact:
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-20.04
     permissions:
       contents: 'read'
@@ -40,6 +46,12 @@ jobs:
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
 
+      - name: Set up GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.GKE_CLUSTER }}
+          location: ${{ env.GKE_CLUSTER_ZONE }}
+
       - name: Build & Push docker image for API
         run: |
           docker build --target api -t quantm/api:latest .
@@ -63,6 +75,24 @@ jobs:
           docker tag quantm/mothership:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:${{ steps.vars.outputs.short_sha }}
           docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:latest
           docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:${{ steps.vars.outputs.short_sha }}
+
+      - name: Get deployments
+        run: |
+          kubectl get -n quantm deploy
+
+      - name: Deploy mothership docker image to the GKE cluster
+        run: |
+          kubectl patch -n quantm deployment mothership -p '{"spec":{"template":{"spec":{"containers":[{"name":"mothership","image":"us-docker.pkg.dev/quantm-live/default-live-v1/mothership:latest"}]}}}}'
+
+      - name: Deploy API to Cloud Run
+        id: deployAPI
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.GCR_SERVICE }}
+          image: ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
+
+      - name: Use output
+        run: curl ${{ steps.deployAPI.outputs.url }}
 
       - name: docker ls
         run: docker image ls

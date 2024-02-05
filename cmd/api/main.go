@@ -31,6 +31,7 @@ import (
 
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/shared"
 	"go.breu.io/quantm/internal/shared/logger"
@@ -46,6 +47,8 @@ func main() {
 	ctx := context.Background()
 	quit := make(chan os.Signal, 1) // create a channel to listen to quit signals.
 	errs := make(chan error, 1)     // create a channel to listen to errors.
+
+	defer db.DB().Session.Close()
 
 	// init service
 	shared.Service().SetName("api")
@@ -80,7 +83,7 @@ func main() {
 	web.Use(echoprometheus.NewMiddleware(shared.Service().GetName()))
 	web.Use(middleware.Recover())
 
-	web.GET("/healthz", healthz)
+	web.GET("/healthx", healthz)
 
 	auth.RegisterHandlers(web, auth.NewServerHandler(auth.Middleware))
 	core.RegisterHandlers(web, core.NewServerHandler(auth.Middleware))
