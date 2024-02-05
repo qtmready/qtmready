@@ -83,7 +83,6 @@ func main() {
 	web.Use(echoprometheus.NewMiddleware(shared.Service().GetName()))
 	web.Use(middleware.Recover())
 
-	web.GET("/healthz", healthz)
 	web.GET("/healthx", healthz)
 
 	auth.RegisterHandlers(web, auth.NewServerHandler(auth.Middleware))

@@ -26,7 +26,7 @@ CMD ["/bin/mothership"]
 # API
 
 FROM src as build-api
-RUN go build -o ./build/api ./cmd/api/main.go
+RUN go build -o ./build/api ./cmd/api
 
 FROM cgr.dev/chainguard/glibc-dynamic:latest as api
 
