@@ -47,6 +47,7 @@ func main() {
 	ctx := context.Background()
 	quit := make(chan os.Signal, 1) // create a channel to listen to quit signals.
 	errs := make(chan error, 1)     // create a channel to listen to errors.
+
 	defer db.DB().Session.Close()
 
 	// init service
