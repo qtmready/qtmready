@@ -31,7 +31,6 @@ import (
 
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core"
-	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/shared"
 	"go.breu.io/quantm/internal/shared/logger"
@@ -47,7 +46,6 @@ func main() {
 	ctx := context.Background()
 	quit := make(chan os.Signal, 1) // create a channel to listen to quit signals.
 	errs := make(chan error, 1)     // create a channel to listen to errors.
-
 	defer db.DB().Session.Close()
 
 	// init service
