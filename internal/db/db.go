@@ -253,6 +253,8 @@ func WithMigrations() ConfigOption {
 }
 
 func WithValidator(name string, validator validator.Func) ConfigOption {
+	shared.Logger().Info("db: registering validator", "name", name)
+
 	return func(c *Config) {
 		if err := shared.Validator().RegisterValidation(name, validator); err != nil {
 			panic(fmt.Errorf("db: failed to register validator %s, %v", name, err))
