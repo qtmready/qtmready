@@ -31,6 +31,7 @@ import (
 
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/shared"
 	"go.breu.io/quantm/internal/shared/logger"
