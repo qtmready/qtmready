@@ -72,7 +72,7 @@ jobs:
         with:
           cache-source: go-build-cache
 
-      - name: Build API
+      - name: Build & Push Docker Image - API
         id: build-api
         uses: docker/build-push-action@v5
         with:
@@ -86,57 +86,55 @@ jobs:
             ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:latest
             ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
 
-      # - name: Build & Push docker image for API
-      #   id: build-api
-      #   run: |
-      #     docker pull ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:latest || true
-      #     docker build --target api -t quantm/api:latest --cache-from ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:latest .
-      #     docker tag quantm/api:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:latest
-      #     docker tag quantm/api:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
-      #     docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:latest
-      #     docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
+      - name: Build & Push Docker Image - Mothership
+        id: build-mothership
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: mothership
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
+          push: true
+          tags: |
+            ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:latest
+            ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:${{ steps.vars.outputs.short_sha }}
 
-      # - name: Build & Push docker image for migrate
-      #   id: build-migrate
-      #   run: |
-      #     docker pull ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:latest || true
-      #     docker build --target migrate -t quantm/migrate:latest --cache-from ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:latest .
-      #     docker tag quantm/migrate:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:latest
-      #     docker tag quantm/migrate:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:${{ steps.vars.outputs.short_sha }}
-      #     docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:latest
-      #     docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:${{ steps.vars.outputs.short_sha }}
+      - name: Build & Push Docker Image - Migrate
+        id: build-migrate
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: migrate
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
+          push: true
+          tags: |
+            ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:latest
+            ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:${{ steps.vars.outputs.short_sha }}
 
-      # - name: Build & Push docker image for mothership
-      #   id: build-mothership
-      #   run: |
-      #     docker pull ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:latest || true
-      #     docker build --target mothership -t quantm/mothership:latest --cache-from ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:latest .
-      #     docker tag quantm/mothership:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:latest
-      #     docker tag quantm/mothership:latest ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:${{ steps.vars.outputs.short_sha }}
-      #     docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:latest
-      #     docker push ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:${{ steps.vars.outputs.short_sha }}
+      - name: Get Quantm Deployments in GKE
+        id: get-gke-deployments
+        run: |
+          kubectl get -n quantm deploy
 
-      # - name: Get Quantm Deployments in GKE
-      #   id: get-gke-deployments
-      #   run: |
-      #     kubectl get -n quantm deploy
+      - name: Deploy mothership docker image to the GKE cluster
+        id: deploy-mothership
+        run: |
+          kubectl patch -n quantm deployment mothership -p \
+          '{"spec":{"template":{"spec":{"containers":[{"name":"mothership","image":"us-docker.pkg.dev/quantm-live/default-live-v1/mothership:${{ steps.vars.outputs.short_sha }}"}]}}}}'
 
-      # - name: Deploy mothership docker image to the GKE cluster
-      #   id: deploy-mothership
-      #   run: |
-      #     kubectl patch -n quantm deployment mothership -p \
-      #     '{"spec":{"template":{"spec":{"containers":[{"name":"mothership","image":"us-docker.pkg.dev/quantm-live/default-live-v1/mothership:${{ steps.vars.outputs.short_sha }}"}]}}}}'
+      - name: Deploy API to Cloud Run
+        id: deploy-api
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.GCR_SERVICE }}
+          image: ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
 
-      # - name: Deploy API to Cloud Run
-      #   id: deploy-api
-      #   uses: google-github-actions/deploy-cloudrun@v2
-      #   with:
-      #     service: ${{ env.GCR_SERVICE }}
-      #     image: ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
-
-      # - name: Healthcheck for API
-      #   id: healthcheck-api
-      #   run: curl ${{ steps.deploy-api.outputs.url }}
+      - name: Healthcheck for API
+        id: healthcheck-api
+        run: curl ${{ steps.deploy-api.outputs.url }}
 
       - name: docker ls
         run: docker image ls
