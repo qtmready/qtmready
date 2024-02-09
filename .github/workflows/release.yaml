@@ -1,4 +1,4 @@
-name: Release quantm
+name: release
 on:
   pull_request:
     types:
@@ -20,8 +20,8 @@ jobs:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-20.04
     permissions:
-      contents: 'read'
-      id-token: 'write'
+      contents: "read"
+      id-token: "write"
 
     steps:
       - name: checkout
@@ -33,7 +33,7 @@ jobs:
 
       - name: Authenticate with GCP
         id: auth
-        uses: 'google-github-actions/auth@v1'
+        uses: "google-github-actions/auth@v1"
         with:
           token_format: access_token
           credentials_json: ${{ secrets.GCP_JSON_KEY }}
@@ -82,7 +82,8 @@ jobs:
 
       - name: Deploy mothership docker image to the GKE cluster
         run: |
-          kubectl patch -n quantm deployment mothership -p '{"spec":{"template":{"spec":{"containers":[{"name":"mothership","image":"us-docker.pkg.dev/quantm-live/default-live-v1/mothership:latest"}]}}}}'
+          kubectl patch -n quantm deployment mothership -p \
+          '{"spec":{"template":{"spec":{"containers":[{"name":"mothership","image":"us-docker.pkg.dev/quantm-live/default-live-v1/mothership:${{ steps.vars.outputs.short_sha }}"}]}}}}'
 
       - name: Deploy API to Cloud Run
         id: deployAPI
