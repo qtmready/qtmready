@@ -72,7 +72,7 @@ jobs:
         with:
           cache-source: go-build-cache
 
-      - name: Build & Release Quantm API
+      - name: Build API
         id: build-api
         uses: docker/build-push-action@v5
         with:
@@ -80,7 +80,16 @@ jobs:
           target: api
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:latest,${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
+          push: false
+          tags: api:${{ steps.vars.outputs.short_sha }}
+
+      - name: Release API
+        id: release-api
+        run: |
+          docker buildx imagetools create \
+            --tag ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:latest \
+            --tag ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:latest \
+            api:${{ steps.vars.outputs.short_sha }}
 
       # - name: Build & Push docker image for API
       #   id: build-api
