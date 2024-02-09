@@ -7,7 +7,7 @@ COPY . .
 
 FROM src as build-migrate
 
-ENV GOCACHE=/root/.cache/go-build
+ENV GOCACHE=/tmp/.cache/go-build
 RUN --mount=type=cache,target="/tmp/.cache/go-build" go build -o ./build/migrate ./cmd/jobs/migrate
 
 FROM cgr.dev/chainguard/glibc-dynamic:latest as migrate
@@ -19,7 +19,7 @@ CMD ["/bin/migrate"]
 
 FROM src as build-mothership
 
-ENV GOCACHE=/root/.cache/go-build
+ENV GOCACHE=/tmp/.cache/go-build
 RUN --mount=type=cache,target="/tmp/.cache/go-build" go build -o ./build/mothership ./cmd/workers/mothership
 
 FROM cgr.dev/chainguard/glibc-dynamic:latest as mothership
@@ -31,7 +31,7 @@ CMD ["/bin/mothership"]
 
 FROM src as build-api
 
-ENV GOCACHE=/root/.cache/go-build
+ENV GOCACHE=/tmp/.cache/go-build
 RUN --mount=type=cache,target="/tmp/.cache/go-build" go build -o ./build/api ./cmd/api
 
 FROM cgr.dev/chainguard/glibc-dynamic:latest as api
