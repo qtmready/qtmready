@@ -80,7 +80,6 @@ jobs:
           target: api
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          load: true
           push: true
           tags: |
             ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:latest
@@ -94,7 +93,6 @@ jobs:
           target: mothership
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          load: true
           push: true
           tags: |
             ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:latest
@@ -108,7 +106,6 @@ jobs:
           target: migrate
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          load: true
           push: true
           tags: |
             ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:latest
