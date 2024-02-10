@@ -143,7 +143,7 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 		// shared.Logger().Debug("StackController", "repo marker index", idx)
 		// shared.Logger().Debug("StackController", "provider", repo.Provider)
 
-		if err := workflow.ExecuteActivity(pctx, p.DeployChangeset, repo.ProviderID).Get(ctx, nil); err != nil {
+		if err := workflow.ExecuteActivity(pctx, p.DeployChangeset, repo.ProviderID, changeset.ID).Get(ctx, nil); err != nil {
 			shared.Logger().Error("StackController", "error in deploying for repo", repo.ProviderID, "err", err)
 		}
 

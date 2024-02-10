@@ -25,6 +25,7 @@ import (
 
 	"go.temporal.io/sdk/activity"
 
+	"github.com/gocql/gocql"
 	gh "github.com/google/go-github/v53/github"
 
 	"go.breu.io/quantm/internal/core"
@@ -289,8 +290,8 @@ func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int
 	return nil
 }
 
-func (a *Activities) DeployChangeset(ctx context.Context, repoID string) error {
-	shared.Logger().Debug("github activity DeployChangeset started")
+func (a *Activities) DeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error {
+	shared.Logger().Debug("DeployChangeset", "github activity DeployChangeset started for changeset", changesetID)
 
 	// type commitsData struct {
 	// 	CommitID string
@@ -342,7 +343,8 @@ func (a *Activities) DeployChangeset(ctx context.Context, repoID string) error {
 		Ref: "main",
 		Inputs: map[string]any{
 			// "commits_data": jsonData,
-			"target-branch": "main",
+			// "target-branch": "main",
+			"changesetId": changesetID,
 		},
 	}
 
