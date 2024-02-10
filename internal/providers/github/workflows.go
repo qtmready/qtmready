@@ -220,7 +220,7 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *Workflow
 		)
 
 	cw := &core.Workflows{}
-	shared.Temporal().Client().SignalWithStartWorkflow(
+	_, err = shared.Temporal().Client().SignalWithStartWorkflow(
 		context.Background(),
 		coreWorkflowID,
 		shared.WorkflowSignalCreateChangeset.String(),
@@ -229,6 +229,10 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *Workflow
 		cw.StackController,
 		coreRepo.StackID.String(),
 	)
+
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
