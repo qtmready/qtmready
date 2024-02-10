@@ -159,6 +159,50 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	shared.Logger().Debug("deployment done........")
 
 	return nil
+
+	// // deployment map is designed to be used in OnPullRequestWorkflow only
+	// logger := workflow.GetLogger(ctx)
+	// lockID := "stack." + stackID // stack.<stack id>
+	// deployments := make(Deployments)
+
+	// // the idea is to save active infra which will be serving all the traffic and use this active infra as reference for next deployment
+	// // this is not being used that as active infra for cloud run is being fetched from the cloud which is not an efficient approach
+	// activeInfra := make(Infra)
+
+	// // create and initialize mutex, initializing mutex will start a mutex workflow
+	// logger.Info("creating mutex for stack", "stack", stackID)
+
+	// lock := mutex.New(
+	// 	mutex.WithCallerContext(ctx),
+	// 	mutex.WithID(lockID),
+	// )
+
+	// if err := lock.Start(ctx); err != nil {
+	// 	logger.Debug("unable to start mutex workflow", "error", err)
+	// }
+
+	// triggerChannel := workflow.GetSignalChannel(ctx, shared.WorkflowSignalDeploymentStarted.String())
+	// assetsChannel := workflow.GetSignalChannel(ctx, WorkflowSignalAssetsRetrieved.String())
+	// infraChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInfraProvisioned.String())
+	// deploymentChannel := workflow.GetSignalChannel(ctx, WorkflowSignalDeploymentCompleted.String())
+	// manualOverrideChannel := workflow.GetSignalChannel(ctx, WorkflowSignalManualOverride.String())
+
+	// selector := workflow.NewSelector(ctx)
+	// selector.AddReceive(triggerChannel, onDeploymentStartedSignal(ctx, stackID, deployments))
+	// selector.AddReceive(assetsChannel, onAssetsRetrievedSignal(ctx, stackID, deployments))
+	// selector.AddReceive(infraChannel, onInfraProvisionedSignal(ctx, stackID, lock, deployments, activeInfra))
+	// selector.AddReceive(deploymentChannel, onDeploymentCompletedSignal(ctx, stackID, deployments))
+	// selector.AddReceive(manualOverrideChannel, onManualOverrideSignal(ctx, stackID, deployments))
+
+	// // var prSignalsCounter int = 0
+	// // return continue as new if this workflow has processed signals upto a limit
+	// // if prSignalsCounter >= OnPullRequestWorkflowPRSignalsLimit {
+	// // 	return workflow.NewContinueAsNewError(ctx, w.OnPullRequestWorkflow, stackID)
+	// // }
+	// for {
+	// 	logger.Info("waiting for signals ....")
+	// 	selector.Select(ctx)
+	// }
 }
 
 // DeProvisionInfra de-provisions the infrastructure created for stack deployment.
