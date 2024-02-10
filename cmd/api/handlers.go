@@ -15,31 +15,33 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-#Version: string | *"0.1"
+package main
 
-#ServicePort: {
-  port: number,
-  protocol: string | int,
+import (
+	"errors"
+	"net/http"
+
+	"github.com/labstack/echo/v4"
+	"go.temporal.io/sdk/client"
+
+	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/shared"
+)
+
+type (
+	HealthzResponse struct {
+		Status string `json:"status"`
+	}
+)
+
+func healthz(ctx echo.Context) error {
+	if _, err := shared.Temporal().Client().CheckHealth(ctx.Request().Context(), &client.CheckHealthRequest{}); err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	if db.DB().Session.Session().S.Closed() {
+		return shared.NewAPIError(http.StatusInternalServerError, errors.New("database connection is closed"))
+	}
+
+	return ctx.JSON(http.StatusOK, &HealthzResponse{"ok"})
 }
-
-#Resource: {
-  provider: string | *"aws" | "gcp" | "azure" | "do",
-  name: string,
-  exports: {
-    [string]: string,
-  },
-}
-
-#Service: {
-  name: string,
-  image: {
-    repository: string,
-    name: string,
-  }
-  ports: [...#ServicePort],
-}
-
-
-version: #Version
-resources: [...#Resource]
-services: [...#Service]

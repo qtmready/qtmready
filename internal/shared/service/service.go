@@ -30,11 +30,13 @@ import (
 
 type (
 	config struct {
-		Name       string `env:"SERVICE_NAME" env-default:"service"`
-		Debug      bool   `env:"DEBUG" env-default:"false"`
-		Secret     string `env:"SECRET" env-default:""`
-		Version    string `env:"VERSION" env-default:"dev"`
-		LogSkipper int    `env:"LOG_SKIPPER" env-default:"1"`
+		Name            string `env:"SERVICE_NAME" env-default:"service"`
+		Debug           bool   `env:"DEBUG" env-default:"false"`
+		Secret          string `env:"SECRET" env-default:""`
+		Version         string `env:"VERSION" env-default:"dev"`
+		LogSkipper      int    `env:"LOG_SKIPPER" env-default:"1"`
+		CloudRunService string `env:"K_SERVICE" env-default:"unset"`
+		CloudRunJob     string `env:"CLOUD_RUN_JOB" env-default:"unset"`
 	}
 
 	Service interface {
@@ -45,6 +47,8 @@ type (
 		GetDebug() bool
 		GetLogSkipper() int
 		Banner()
+		GetCloudRunService() string
+		GetCloudRunJob() string
 	}
 
 	ServiceOption func(Service)
@@ -81,7 +85,7 @@ func (s *config) Banner() {
  / __ \/ / / / __ \/ __ \/ __/ __ ˇ__ \
 / /_/ / /_/ / /_/ / / / / /_  / / / / /
 \__, /\__▲_/\__▲_/_/ /_/\__/_/ /_/ /_/ 
-  /_/ durable delivery for cloud services.
+  /_/ durable delivery for distributed systems.
 
 component: %s
 version: %s
@@ -92,7 +96,15 @@ version: %s
 	blue := color.New(color.FgBlue).SprintFunc()
 	yellow := color.New(color.FgYellow).SprintFunc()
 
-	fmt.Printf(banner, green(s.Name), blue(s.Version), yellow("https://quantm.dev"))
+	fmt.Printf(banner, green(s.Name), blue(s.Version), yellow("https://quantm.io"))
+}
+
+func (s *config) GetCloudRunService() string {
+	return s.CloudRunService
+}
+
+func (s *config) GetCloudRunJob() string {
+	return s.CloudRunJob
 }
 
 // WithName sets the service name.

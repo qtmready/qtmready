@@ -150,20 +150,15 @@ func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
 
 	shared.Logger().Info("CliGitMerge", "request", request)
 
-	RepoFullName := fmt.Sprintf("'%s/%s'", request.RepoOwner, request.RepoName)
-	result := make([]Repo, 0)
+	name := fmt.Sprintf("'%s/%s'", request.RepoOwner, request.RepoName)
+	repo := &Repo{}
 
-	if err := db.Filter(
-		&Repo{},
-		&result,
-		db.QueryParams{"full_name": RepoFullName},
-	); err != nil {
+	if err := db.Get(repo, db.QueryParams{"full_name": name}); err != nil {
 		shared.Logger().Error("Getting Repo data from database failed", "Error", err)
 		return err
 	}
 
-	installationID := result[0].InstallationID
-	client, err := Instance().GetClientFromInstallation(installationID)
+	client, err := Instance().GetClientFromInstallation(repo.InstallationID)
 
 	if err != nil {
 		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
@@ -256,22 +251,17 @@ func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 			shared.WithWorkflowElementID(request.Branch),
 		)
 
-	result := make([]Repo, 0)
-	if err := db.Filter(
-		&Repo{},
-		&result,
-		db.QueryParams{"github_id": request.RepoID},
-	); err != nil {
+	repo := &Repo{}
+	if err := db.Get(repo, db.QueryParams{"id": request.RepoID}); err != nil {
 		return err
 	}
 
-	installationID := result[0].InstallationID
 	payload := &GithubActionResult{
 		Branch:         request.Branch,
 		RepoID:         request.RepoID,
 		RepoName:       request.RepoName,
 		RepoOwner:      request.RepoOwner,
-		InstallationID: installationID,
+		InstallationID: repo.InstallationID,
 	}
 
 	workflows := &Workflows{}
@@ -279,7 +269,7 @@ func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(strconv.FormatInt(installationID, 10)),
+			shared.WithWorkflowBlockID(strconv.FormatInt(repo.InstallationID, 10)),
 			shared.WithWorkflowElement("repo"),
 			shared.WithWorkflowElementID(request.RepoID),
 		)

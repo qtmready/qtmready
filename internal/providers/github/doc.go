@@ -15,12 +15,12 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package testdata
+// Package github provides functionality for GitHub provider.
+package github
 
 import (
-	"./shared"
+	_ "github.com/deepmap/oapi-codegen/v2/pkg/codegen" // Required for code generation
+	_ "gopkg.in/yaml.v2"
 )
 
-func singleton_debug() {
-	shared.Logger().Debug("debug")
-}
+//go:generate go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen --config openapi.codegen.yaml openapi.spec.yaml

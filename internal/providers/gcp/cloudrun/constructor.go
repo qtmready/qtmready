@@ -1,3 +1,20 @@
+// Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
+//
+// This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
+// found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
+// THE SOFTWARE, YOU AGREE TO THE TERMS OF THE LICENSE AGREEMENT.
+//
+// The above copyright notice and the subsequent license agreement shall be included in all copies or substantial
+// portions of the software.
+//
+// Breu, Inc. HEREBY DISCLAIMS ANY AND ALL WARRANTIES AND CONDITIONS, EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, AND
+// SPECIFICALLY DISCLAIMS ANY WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, WITH RESPECT TO THE
+// SOFTWARE.
+//
+// Breu, Inc. SHALL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND, INCLUDING BUT NOT LIMITED TO, LOST PROFITS OR ANY
+// CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
+
 package cloudrun
 
 import (
@@ -19,7 +36,7 @@ var (
 // Create creates cloud run resource.
 func (c *Constructor) Create(name string, region string, config string, providerConfig string) (core.CloudResource, error) {
 	cr := &Resource{Name: name, Region: region}
-	json.Unmarshal([]byte(config), &cr.Config)
+	_ = json.Unmarshal([]byte(config), &cr.Config)
 
 	// get gcp project from configuration
 	pconfig := new(GCPConfig)

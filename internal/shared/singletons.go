@@ -18,6 +18,8 @@
 package shared
 
 import (
+	"log/slog"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
@@ -35,8 +37,8 @@ var (
 	svc     service.Service // Global service instance.
 	svcOnce sync.Once       // Global service instance initializer.
 
-	lgr     logger.Logger // Global logger instance.
-	lgrOnce sync.Once     // Global logger instance initializer
+	lgr     *slog.Logger // Global logger instance.
+	lgrOnce sync.Once    // Global logger instance initializer
 
 	vld     *validator.Validate // Global validator instance.
 	vldOnce sync.Once           // Global validator instance initializer
@@ -62,10 +64,32 @@ func Service() service.Service {
 	return svc
 }
 
-// Logger returns the global logger instance.
-func Logger() logger.Logger {
+// Logger returns the global structured logger. If the global structured logger has not been initialized, it will be initialized with
+// default values. This is required if we need to pass the logger to other packages during initialization.
+// NOTE: Do not use this for logging. Use slog.Info, slog.Warn, slog.Error, etc. instead.
+func Logger() *slog.Logger {
+	opts := &slog.HandlerOptions{
+		AddSource: true,
+	}
+
 	lgrOnce.Do(func() {
-		lgr = logger.NewZapAdapter(Service().GetDebug(), Service().GetLogSkipper())
+		var handler slog.Handler
+
+		if Service().GetDebug() {
+			opts.Level = slog.LevelDebug
+		} else {
+			opts.Level = slog.LevelInfo
+		}
+
+		if Service().GetCloudRunJob() != "unset" || Service().GetCloudRunService() != "unset" {
+			handler = logger.NewSimpleCloudRunHandler(os.Stdout, opts)
+		} else {
+			handler = slog.NewJSONHandler(os.Stdout, opts)
+		}
+
+		lgr = slog.New(handler)
+
+		slog.SetDefault(lgr) // Set the default logger.
 	})
 
 	return lgr

@@ -15,11 +15,41 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-// Package github provides functionality for GitHub provider.
-package github
+package main
 
 import (
-	_ "github.com/deepmap/oapi-codegen/pkg/codegen" // Required for code generation
+	"context"
+	"log/slog"
+	"os"
+
+	"github.com/labstack/echo/v4"
 )
 
-//go:generate go run github.com/deepmap/oapi-codegen/cmd/oapi-codegen --config openapi.codegen.yaml openapi.spec.yaml
+// _run runs a function in a goroutine.
+func _run(fn func() error, ch chan error) {
+	if err := fn(); err != nil {
+		ch <- err
+	}
+}
+
+// _serve starts the echo server in a goroutine.
+func _serve(e *echo.Echo, port string) func() error {
+	return func() error { return e.Start(":" + port) }
+}
+
+// _graceful shuts down each goroutine gracefully.
+func _graceful(ctx context.Context, fns []shutdownfn, signals []chan any, code int) {
+	for _, signal := range signals {
+		signal <- true
+	}
+
+	for _, fn := range fns {
+		if err := fn(ctx); err != nil {
+			code = 1
+		}
+	}
+
+	slog.Info("shutdown complete, exiting.")
+
+	os.Exit(code)
+}

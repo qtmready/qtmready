@@ -73,7 +73,17 @@ type (
 	}
 
 	ConfigOption func(*Config)
+
+	MigrationLogger struct{}
 )
+
+func (l *MigrationLogger) Printf(format string, v ...any) {
+	shared.Logger().Info(fmt.Sprintf(format, v...))
+}
+
+func (l *MigrationLogger) Verbose() bool {
+	return false
+}
 
 func (mc *MockConfig) Session() *igocqlx.Session {
 	return nil
@@ -204,7 +214,7 @@ func WithMigrations() ConfigOption {
 			return
 		}
 
-		logger := shared.Logger()
+		logger := &MigrationLogger{}
 		config := &cassandra.Config{KeyspaceName: c.Keyspace, MultiStatementEnabled: true}
 
 		driver, err := cassandra.WithInstance(c.Session.Session().S.Session, config)
@@ -243,6 +253,8 @@ func WithMigrations() ConfigOption {
 }
 
 func WithValidator(name string, validator validator.Func) ConfigOption {
+	shared.Logger().Info("db: registering validator", "name", name)
+
 	return func(c *Config) {
 		if err := shared.Validator().RegisterValidation(name, validator); err != nil {
 			panic(fmt.Errorf("db: failed to register validator %s, %v", name, err))
