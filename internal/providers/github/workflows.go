@@ -181,12 +181,11 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *Workflow
 		return err
 	}
 
-	//Signal stack workflow about changeset update
-	//info to be sent: repo, commit
-	//get workflowID for the stack attached to this repo
+	// Signal stack workflow about changeset update
+	// info to be sent: repo, commit
+	// get workflowID for the stack attached to this repo
 
 	// get core repo
-	// githubID, _ := strconv.ParseInt(payload.Repository.ID, 10, 64)
 	repo := &Repo{GithubID: payload.Repository.ID}
 	coreRepo := &core.Repo{}
 
@@ -210,8 +209,7 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *Workflow
 	signalPayload := &shared.CreateChangesetSignal{
 		RepoTableID: coreRepo.ID,
 		RepoID:      fmt.Sprint(payload.Repository.ID),
-		// RepoName:    payload.RepoName,
-		CommitID: mergeCommit,
+		CommitID:    mergeCommit,
 	}
 
 	options := shared.Temporal().

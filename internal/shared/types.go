@@ -47,8 +47,7 @@ type (
 	CreateChangesetSignal struct {
 		RepoTableID gocql.UUID
 		RepoID      string
-		// RepoName    string
-		CommitID string
+		CommitID    string
 	}
 )
 

@@ -124,7 +124,7 @@ func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*core.Repo, e
 		"provider":    "'github'",
 	}
 
-	shared.Logger().Debug("GetCoreRepo", "params", params)
+	// shared.Logger().Debug("GetCoreRepo", "params", params)
 
 	if err := db.Get(r, params); err != nil {
 		return r, err
@@ -293,37 +293,9 @@ func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int
 func (a *Activities) DeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error {
 	shared.Logger().Debug("DeployChangeset", "github activity DeployChangeset started for changeset", changesetID)
 
-	// type commitsData struct {
-	// 	CommitID string
-	// 	RepoID   string
-	// 	// RepoName string
-	// }
-	// var multiCommitsData []commitsData
-
-	// for ind := range changeSet.RepoMarkers {
-	// 	marker := changeSet.RepoMarkers[ind]
-
-	// 	// commitDataInst := commitsData{
-	// 	// 	CommitID: marker.CommitID,
-	// 	// 	RepoID:   marker.RepoID,
-	// 	// 	// RepoName: "",
-	// 	// }
-
-	// 	// multiCommitsData[ind].CommitID = marker.CommitID
-	// 	// multiCommitsData[ind].RepoID = marker.RepoID
-
-	// 	// multiCommitsData = append(multiCommitsData, commitDataInst)
-	// }
-
-	// jsonData, err := json.Marshal(multiCommitsData)
-	// if err != nil {
-	// 	shared.Logger().Debug("DeployChangeset", "Error marshaling JSON:", err)
-	// 	return err
-	// }
-
 	gh_action_name := "deploy_quantm.yaml" //TODO: fixed it for now
 
-	//get installationID, repoName, repoOwner from github_repos table
+	// get installationID, repoName, repoOwner from github_repos table
 	githubRepo := &Repo{}
 	params := db.QueryParams{
 		"github_id": repoID,
@@ -342,14 +314,14 @@ func (a *Activities) DeployChangeset(ctx context.Context, repoID string, changes
 	paylod := gh.CreateWorkflowDispatchEventRequest{
 		Ref: "main",
 		Inputs: map[string]any{
-			// "commits_data": jsonData,
-			// "target-branch": "main",
 			"changesetId": changesetID,
 		},
 	}
 
 	var repoOwner, repoName string
+
 	parts := strings.Split(githubRepo.FullName, "/")
+
 	if len(parts) == 2 {
 		repoOwner = parts[0]
 		repoName = parts[1]
