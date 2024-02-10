@@ -118,13 +118,20 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	shared.Logger().Debug("StackController", "repomarkers created", repoMarkers)
 
 	//trigger changeset controller to deploy the updated changeset
-	// changesetID, _ := gocql.RandomUUID()
-	// stackUUID, _ := gocql.ParseUUID(stackID)
-	// changeset := &ChangeSet{
-	// 	RepoMarkers: repoMarkers,
-	// 	ID:          changesetID,
-	// 	StackID:     stackUUID,
-	// }
+	changesetID, _ := gocql.RandomUUID()
+	stackUUID, _ := gocql.ParseUUID(stackID)
+	changeset := &ChangeSet{
+		RepoMarkers: repoMarkers,
+		ID:          changesetID,
+		StackID:     stackUUID,
+	}
+
+	err = workflow.ExecuteActivity(actx, activities.CreateChangeset, changeset, changeset.ID).Get(ctx, nil)
+	if err != nil {
+		shared.Logger().Error("Error in creating changeset")
+	}
+
+	shared.Logger().Info("StackController", "Changeset created", changeset.ID)
 
 	//for 1 2 3
 	//A, B, C
