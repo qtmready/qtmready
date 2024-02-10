@@ -57,7 +57,7 @@ func (w *Workflows) ChangesetController(id string) error {
 //
 // The workflow waits for the signals from the git provider. It consumes events for PR created, updated, merged etc.
 func (w *Workflows) StackController(ctx workflow.Context, stackID string) error {
-	//wait for merge signal
+	// wait for merge complete signal
 	ch := workflow.GetSignalChannel(ctx, shared.WorkflowSignalCreateChangeset.String())
 	payload := &shared.CreateChangesetSignal{}
 	ch.Receive(ctx, payload)
@@ -69,8 +69,7 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 
 	// get repos for stack
 	repos := SlicedResult[Repo]{}
-	err := workflow.ExecuteActivity(actx, activities.GetRepos, stackID).Get(ctx, &repos)
-	if err != nil {
+	if err := workflow.ExecuteActivity(actx, activities.GetRepos, stackID).Get(ctx, &repos); err != nil {
 		shared.Logger().Error("GetRepos providers failed", "error", err)
 		return err
 	}
@@ -91,9 +90,6 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 		p := Instance().RepoProvider(repo.Provider) // get the specific provider
 		commitID := ""
 
-		// shared.Logger().Debug("StackController", "repo marker index", idx)
-		// shared.Logger().Debug("StackController", "provider", repo.Provider)
-
 		if err := workflow.
 			ExecuteActivity(pctx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).
 			Get(ctx, &commitID); err != nil {
@@ -109,7 +105,7 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 		if marker.RepoID == payload.RepoID {
 			marker.CommitID = payload.CommitID
 			shared.Logger().Debug("Commit ID updated for repo " + marker.RepoID)
-			marker.HasChanged = true //the repo in which commit was made
+			marker.HasChanged = true // the repo in which commit was made
 		}
 
 		shared.Logger().Debug("Repo", "Name", repo.Name, "Repo marker", marker)
@@ -117,7 +113,7 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 
 	shared.Logger().Debug("StackController", "repomarkers created", repoMarkers)
 
-	//trigger changeset controller to deploy the updated changeset
+	// create changeset before deploying the updated changeset
 	changesetID, _ := gocql.RandomUUID()
 	stackUUID, _ := gocql.ParseUUID(stackID)
 	changeset := &ChangeSet{
@@ -126,39 +122,21 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 		StackID:     stackUUID,
 	}
 
-	err = workflow.ExecuteActivity(actx, activities.CreateChangeset, changeset, changeset.ID).Get(ctx, nil)
-	if err != nil {
+	if err := workflow.ExecuteActivity(actx, activities.CreateChangeset, changeset, changeset.ID).Get(ctx, nil); err != nil {
 		shared.Logger().Error("Error in creating changeset")
 	}
 
 	shared.Logger().Info("StackController", "Changeset created", changeset.ID)
 
-	//for 1 2 3
-	//A, B, C
-	// selector := workflow.NewSelector(ctx)
-
 	for _, repo := range repos.Data {
 		p := Instance().RepoProvider(repo.Provider) // get the specific provider
-
-		// shared.Logger().Debug("StackController", "repo marker index", idx)
-		// shared.Logger().Debug("StackController", "provider", repo.Provider)
 
 		if err := workflow.ExecuteActivity(pctx, p.DeployChangeset, repo.ProviderID, changeset.ID).Get(ctx, nil); err != nil {
 			shared.Logger().Error("StackController", "error in deploying for repo", repo.ProviderID, "err", err)
 		}
-
-		// future := workflow.ExecuteActivity(pctx, p.DeployChangeset, repo.ProviderID)
-		// selector.AddFuture(future, func(f workflow.Future) {
-		// 	if err := f.Get(ctx, nil); err != nil {
-		// 		shared.Logger().Error("Error in deploying changeset", "error", err)
-		// 		return
-		// 	}
-		// })
 	}
 
 	shared.Logger().Debug("deployment done........")
-
-	return nil
 
 	// // deployment map is designed to be used in OnPullRequestWorkflow only
 	// logger := workflow.GetLogger(ctx)
@@ -203,6 +181,8 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	// 	logger.Info("waiting for signals ....")
 	// 	selector.Select(ctx)
 	// }
+
+	return nil
 }
 
 // DeProvisionInfra de-provisions the infrastructure created for stack deployment.
