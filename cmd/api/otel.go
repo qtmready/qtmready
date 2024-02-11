@@ -23,8 +23,6 @@ import (
 	"log/slog"
 	"time"
 
-	"cloud.google.com/go/compute/metadata"
-	cloudtrace "github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace"
 	gcppropagator "github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -117,10 +115,11 @@ func _otel(ctx context.Context, name, version string) (shutdown shutdownfn, err 
 
 // _exporter returns a trace exporter based on the environment. When running on GCE, the cloudtrace exporter is used.
 func _exporter() (trace.SpanExporter, error) {
-	if metadata.OnGCE() {
-		project, _ := metadata.ProjectID()
-		return cloudtrace.New(cloudtrace.WithProjectID(project))
-	}
+	// TODO: will add this later on after testing on GCP
+	// if metadata.OnGCE() {
+	// 	project, _ := metadata.ProjectID()
+	// 	return cloudtrace.New(cloudtrace.WithProjectID(project))
+	// }
 
 	// return stdouttrace.New()
 	return &devnull{}, nil
