@@ -128,8 +128,12 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 
 	shared.Logger().Info("StackController", "Changeset created", changeset.ID)
 
-	for _, repo := range repos.Data {
+	for idx, repo := range repos.Data {
 		p := Instance().RepoProvider(repo.Provider) // get the specific provider
+
+		if err := workflow.ExecuteActivity(pctx, p.TagCommit, repo.ProviderID, repoMarkers[idx].CommitID, changesetID.String(), "Tagged by quantm"); err != nil {
+			shared.Logger().Error("StackController", "error in tagging the repo", repo.ProviderID, "err", err)
+		}
 
 		if err := workflow.ExecuteActivity(pctx, p.DeployChangeset, repo.ProviderID, changeset.ID).Get(ctx, nil); err != nil {
 			shared.Logger().Error("StackController", "error in deploying for repo", repo.ProviderID, "err", err)
