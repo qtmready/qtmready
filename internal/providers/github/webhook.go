@@ -65,6 +65,58 @@ func handleInstallationEvent(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
 }
 
+func handleWorkflowRunEvent(ctx echo.Context) error {
+	shared.Logger().Debug("workflow-run event received.")
+
+	payload := &WorkflowRun{}
+	if err := ctx.Bind(payload); err != nil {
+		shared.Logger().Error("unable to bind payload ...", "error", err)
+		return err
+	}
+
+	if payload.Action != "completed" {
+		shared.Logger().Info("workflow_run event in progress")
+		return nil
+	}
+
+	shared.Logger().Debug("handleWorkflowRunEvent", "payload", payload)
+
+	workflowID := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowID(
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+			shared.WithWorkflowElement("branch"),
+			shared.WithWorkflowElementID(payload.WR.HeadBranch),
+		)
+
+	workflows := &Workflows{}
+	opts := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowOptions(
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowElement("repo"),
+			shared.WithWorkflowElementID(strconv.FormatInt(payload.Repository.ID, 10)),
+		)
+
+	_, err := shared.Temporal().Client().SignalWithStartWorkflow(
+		ctx.Request().Context(),
+		opts.ID,
+		WorkflowSignalActionResult.String(),
+		payload,
+		opts,
+		workflows.OnGithubActionResult,
+		payload,
+	)
+	if err != nil {
+		shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
+		return nil
+	}
+
+	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
+}
+
 // handlePushEvent handles GitHub push event.
 func handlePushEvent(ctx echo.Context) error {
 	payload := &PushEvent{}
@@ -150,13 +202,14 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
 
 	default:
-		err := shared.Temporal().
-			Client().
-			SignalWorkflow(context.Background(), opts.ID, "", WebhookEventPullRequest.String(), payload)
-		if err != nil {
-			shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
-			return shared.NewAPIError(http.StatusInternalServerError, err)
-		}
+		shared.Logger().Debug("handlePullRequestEvent default closing...")
+		// err := shared.Temporal().
+		// 	Client().
+		// 	SignalWorkflow(context.Background(), opts.ID, "", WebhookEventPullRequest.String(), payload)
+		// if err != nil {
+		// 	shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
+		// 	return shared.NewAPIError(http.StatusInternalServerError, err)
+		// }
 
 		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: db.NullUUID, Status: WorkflowStatusSkipped})
 	}

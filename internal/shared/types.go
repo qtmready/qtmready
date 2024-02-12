@@ -43,6 +43,12 @@ type (
 	ChannelHandler func(workflow.ReceiveChannel, bool) // ChannelHandler is the signature of the channel handler function.
 
 	WorkflowOption = queue.WorkflowOptions
+
+	CreateChangesetSignal struct {
+		RepoTableID gocql.UUID
+		RepoID      string
+		CommitID    string
+	}
 )
 
 var (
@@ -67,6 +73,7 @@ const (
 // workflow signal definitions.
 const (
 	WorkflowSignalDeploymentStarted WorkflowSignal = "deployment_trigger"
+	WorkflowSignalCreateChangeset   WorkflowSignal = "create_changeset"
 )
 
 /*

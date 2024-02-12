@@ -145,7 +145,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	return nil
 }
 
-func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubActionResult) error {
+func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *WorkflowRun) error {
 	logger := workflow.GetLogger(ctx)
 	logger.Info("OnGithubActionResult", "entry", "workflow started")
 
@@ -157,7 +157,7 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubAc
 	logger.Info("OnGithubActionResult", "action recvd", gh_result)
 
 	// acquiring lock here
-	lock, err := LockInstance(ctx, fmt.Sprint(payload.RepoID))
+	lock, err := LockInstance(ctx, fmt.Sprint(payload.Repository.ID))
 	if err != nil {
 		logger.Error("Error in getting lock instance", "Error", err)
 		return err
@@ -166,9 +166,9 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubAc
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
-	var er error
-	err = workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.RepoOwner, payload.RepoName,
-		payload.Branch, payload.InstallationID).Get(ctx, er)
+	var mergeCommit string
+	err = workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.Repository.Owner.Login, payload.Repository.Name,
+		payload.WR.HeadBranch, payload.Installation.ID).Get(ctx, &mergeCommit)
 
 	if err != nil {
 		logger.Error("error getting installation", "error", err)
@@ -178,6 +178,59 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *GithubAc
 	err = lock.Release(ctx)
 	if err != nil {
 		logger.Error("error releasing lock", "error", err)
+		return err
+	}
+
+	// Signal stack workflow about changeset update
+	// info to be sent: repo, commit
+	// get workflowID for the stack attached to this repo
+
+	// get core repo
+	repo := &Repo{GithubID: payload.Repository.ID}
+	coreRepo := &core.Repo{}
+
+	err = workflow.ExecuteActivity(actx, activities.GetCoreRepo, repo).Get(ctx, coreRepo)
+	if err != nil {
+		logger.Error("error getting core repo", "error", err)
+		return err
+	}
+
+	// get core workflow ID for this stack
+	coreWorkflowID := shared.Temporal().
+		Queue(shared.CoreQueue).
+		WorkflowID(
+			shared.WithWorkflowBlock("stack"),
+			shared.WithWorkflowBlockID(coreRepo.StackID.String()),
+		)
+
+	// signal core stack workflow
+	logger.Info("core workflow id", "ID", coreWorkflowID)
+
+	signalPayload := &shared.CreateChangesetSignal{
+		RepoTableID: coreRepo.ID,
+		RepoID:      fmt.Sprint(payload.Repository.ID),
+		CommitID:    mergeCommit,
+	}
+
+	options := shared.Temporal().
+		Queue(shared.CoreQueue).
+		WorkflowOptions(
+			shared.WithWorkflowBlock("stack"),
+			shared.WithWorkflowBlockID(coreRepo.StackID.String()),
+		)
+
+	cw := &core.Workflows{}
+	_, err = shared.Temporal().Client().SignalWithStartWorkflow(
+		context.Background(),
+		coreWorkflowID,
+		shared.WorkflowSignalCreateChangeset.String(),
+		signalPayload,
+		options,
+		cw.StackController,
+		coreRepo.StackID.String(),
+	)
+
+	if err != nil {
 		return err
 	}
 

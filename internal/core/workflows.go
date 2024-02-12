@@ -57,49 +57,132 @@ func (w *Workflows) ChangesetController(id string) error {
 //
 // The workflow waits for the signals from the git provider. It consumes events for PR created, updated, merged etc.
 func (w *Workflows) StackController(ctx workflow.Context, stackID string) error {
-	// deployment map is designed to be used in OnPullRequestWorkflow only
-	logger := workflow.GetLogger(ctx)
-	lockID := "stack." + stackID // stack.<stack id>
-	deployments := make(Deployments)
+	// wait for merge complete signal
+	ch := workflow.GetSignalChannel(ctx, shared.WorkflowSignalCreateChangeset.String())
+	payload := &shared.CreateChangesetSignal{}
+	ch.Receive(ctx, payload)
 
-	// the idea is to save active infra which will be serving all the traffic and use this active infra as reference for next deployment
-	// this is not being used that as active infra for cloud run is being fetched from the cloud which is not an efficient approach
-	activeInfra := make(Infra)
+	shared.Logger().Info("StackController", "signal payload", payload)
 
-	// create and initialize mutex, initializing mutex will start a mutex workflow
-	logger.Info("creating mutex for stack", "stack", stackID)
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
-	lock := mutex.New(
-		mutex.WithCallerContext(ctx),
-		mutex.WithID(lockID),
-	)
-
-	if err := lock.Start(ctx); err != nil {
-		logger.Debug("unable to start mutex workflow", "error", err)
+	// get repos for stack
+	repos := SlicedResult[Repo]{}
+	if err := workflow.ExecuteActivity(actx, activities.GetRepos, stackID).Get(ctx, &repos); err != nil {
+		shared.Logger().Error("GetRepos providers failed", "error", err)
+		return err
 	}
 
-	triggerChannel := workflow.GetSignalChannel(ctx, shared.WorkflowSignalDeploymentStarted.String())
-	assetsChannel := workflow.GetSignalChannel(ctx, WorkflowSignalAssetsRetrieved.String())
-	infraChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInfraProvisioned.String())
-	deploymentChannel := workflow.GetSignalChannel(ctx, WorkflowSignalDeploymentCompleted.String())
-	manualOverrideChannel := workflow.GetSignalChannel(ctx, WorkflowSignalManualOverride.String())
+	shared.Logger().Debug("StackController : going to create repomarkers")
 
-	selector := workflow.NewSelector(ctx)
-	selector.AddReceive(triggerChannel, onDeploymentStartedSignal(ctx, stackID, deployments))
-	selector.AddReceive(assetsChannel, onAssetsRetrievedSignal(ctx, stackID, deployments))
-	selector.AddReceive(infraChannel, onInfraProvisionedSignal(ctx, stackID, lock, deployments, activeInfra))
-	selector.AddReceive(deploymentChannel, onDeploymentCompletedSignal(ctx, stackID, deployments))
-	selector.AddReceive(manualOverrideChannel, onManualOverrideSignal(ctx, stackID, deployments))
+	providerActivityOpts := workflow.ActivityOptions{
+		StartToCloseTimeout: 60 * time.Second,
+		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
+	}
+	pctx := workflow.WithActivityOptions(ctx, providerActivityOpts)
 
-	// var prSignalsCounter int = 0
-	// return continue as new if this workflow has processed signals upto a limit
-	// if prSignalsCounter >= OnPullRequestWorkflowPRSignalsLimit {
-	// 	return workflow.NewContinueAsNewError(ctx, w.OnPullRequestWorkflow, stackID)
+	// get commits against the repos
+	repoMarkers := make([]ChangeSetRepoMarker, len(repos.Data))
+	for idx, repo := range repos.Data {
+		marker := &repoMarkers[idx]
+		// p := Instance().Provider(repo.Provider) // get the specific provider
+		p := Instance().RepoProvider(repo.Provider) // get the specific provider
+		commitID := ""
+
+		if err := workflow.
+			ExecuteActivity(pctx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).
+			Get(ctx, &commitID); err != nil {
+			shared.Logger().Error("Error in getting latest commit ID", "repo", repo.Name, "provider", repo.Provider)
+			return fmt.Errorf("Error in getting latest commit ID repo:%s, provider:%s", repo.Name, repo.Provider.String())
+		}
+
+		marker.CommitID = commitID
+		marker.Provider = repo.Provider.String()
+		marker.RepoID = repo.ID.String()
+
+		// update commit id for the recently changed repo
+		if marker.RepoID == payload.RepoID {
+			marker.CommitID = payload.CommitID
+			shared.Logger().Debug("Commit ID updated for repo " + marker.RepoID)
+			marker.HasChanged = true // the repo in which commit was made
+		}
+
+		shared.Logger().Debug("Repo", "Name", repo.Name, "Repo marker", marker)
+	}
+
+	shared.Logger().Debug("StackController", "repomarkers created", repoMarkers)
+
+	// create changeset before deploying the updated changeset
+	changesetID, _ := gocql.RandomUUID()
+	stackUUID, _ := gocql.ParseUUID(stackID)
+	changeset := &ChangeSet{
+		RepoMarkers: repoMarkers,
+		ID:          changesetID,
+		StackID:     stackUUID,
+	}
+
+	if err := workflow.ExecuteActivity(actx, activities.CreateChangeset, changeset, changeset.ID).Get(ctx, nil); err != nil {
+		shared.Logger().Error("Error in creating changeset")
+	}
+
+	shared.Logger().Info("StackController", "Changeset created", changeset.ID)
+
+	for _, repo := range repos.Data {
+		p := Instance().RepoProvider(repo.Provider) // get the specific provider
+
+		if err := workflow.ExecuteActivity(pctx, p.DeployChangeset, repo.ProviderID, changeset.ID).Get(ctx, nil); err != nil {
+			shared.Logger().Error("StackController", "error in deploying for repo", repo.ProviderID, "err", err)
+		}
+	}
+
+	shared.Logger().Debug("deployment done........")
+
+	// // deployment map is designed to be used in OnPullRequestWorkflow only
+	// logger := workflow.GetLogger(ctx)
+	// lockID := "stack." + stackID // stack.<stack id>
+	// deployments := make(Deployments)
+
+	// // the idea is to save active infra which will be serving all the traffic and use this active infra as reference for next deployment
+	// // this is not being used that as active infra for cloud run is being fetched from the cloud which is not an efficient approach
+	// activeInfra := make(Infra)
+
+	// // create and initialize mutex, initializing mutex will start a mutex workflow
+	// logger.Info("creating mutex for stack", "stack", stackID)
+
+	// lock := mutex.New(
+	// 	mutex.WithCallerContext(ctx),
+	// 	mutex.WithID(lockID),
+	// )
+
+	// if err := lock.Start(ctx); err != nil {
+	// 	logger.Debug("unable to start mutex workflow", "error", err)
 	// }
-	for {
-		logger.Info("waiting for signals ....")
-		selector.Select(ctx)
-	}
+
+	// triggerChannel := workflow.GetSignalChannel(ctx, shared.WorkflowSignalDeploymentStarted.String())
+	// assetsChannel := workflow.GetSignalChannel(ctx, WorkflowSignalAssetsRetrieved.String())
+	// infraChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInfraProvisioned.String())
+	// deploymentChannel := workflow.GetSignalChannel(ctx, WorkflowSignalDeploymentCompleted.String())
+	// manualOverrideChannel := workflow.GetSignalChannel(ctx, WorkflowSignalManualOverride.String())
+
+	// selector := workflow.NewSelector(ctx)
+	// selector.AddReceive(triggerChannel, onDeploymentStartedSignal(ctx, stackID, deployments))
+	// selector.AddReceive(assetsChannel, onAssetsRetrievedSignal(ctx, stackID, deployments))
+	// selector.AddReceive(infraChannel, onInfraProvisionedSignal(ctx, stackID, lock, deployments, activeInfra))
+	// selector.AddReceive(deploymentChannel, onDeploymentCompletedSignal(ctx, stackID, deployments))
+	// selector.AddReceive(manualOverrideChannel, onManualOverrideSignal(ctx, stackID, deployments))
+
+	// // var prSignalsCounter int = 0
+	// // return continue as new if this workflow has processed signals upto a limit
+	// // if prSignalsCounter >= OnPullRequestWorkflowPRSignalsLimit {
+	// // 	return workflow.NewContinueAsNewError(ctx, w.OnPullRequestWorkflow, stackID)
+	// // }
+	// for {
+	// 	logger.Info("waiting for signals ....")
+	// 	selector.Select(ctx)
+	// }
+
+	return nil
 }
 
 // DeProvisionInfra de-provisions the infrastructure created for stack deployment.

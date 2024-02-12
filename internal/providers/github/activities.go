@@ -23,6 +23,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/gocql/gocql"
 	gh "github.com/google/go-github/v53/github"
 	"go.temporal.io/sdk/activity"
 
@@ -122,6 +123,8 @@ func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*core.Repo, e
 		"provider":    "'github'",
 	}
 
+	// shared.Logger().Debug("GetCoreRepo", "params", params)
+
 	if err := db.Get(r, params); err != nil {
 		return r, err
 	}
@@ -171,18 +174,18 @@ func (a *Activities) GetLatestCommit(ctx context.Context, providerID string, bra
 }
 
 func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoName string,
-	targetBranchName string, installationID int64) error {
+	targetBranchName string, installationID int64) (string, error) {
 	client, err := Instance().GetClientFromInstallation(installationID)
 	if err != nil {
 		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
-		return err
+		return err.Error(), err
 	}
 
 	// Get the default branch (e.g., "main")
 	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error getting repository: ", err)
-		return err
+		return err.Error(), err
 	}
 
 	defaultBranch := *repo.DefaultBranch
@@ -194,13 +197,13 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	})
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error getting commits: ", err)
-		return err
+		return err.Error(), err
 	}
 
 	// Use the latest commit SHA
 	if len(commits) == 0 {
 		shared.Logger().Error("RebaseAndMerge Activity", "No commits found in the default branch.", nil)
-		return err
+		return err.Error(), err
 	}
 
 	latestCommitSHA := *commits[0].SHA
@@ -216,7 +219,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	_, _, err = client.Git.CreateRef(ctx, repoOwner, repoName, ref)
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error creating branch: ", err)
-		return err
+		return err.Error(), err
 	}
 
 	shared.Logger().Info("RebaseAndMerge Activity", "Branch created successfully: ", newBranchName)
@@ -231,7 +234,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	_, _, err = client.Repositories.Merge(ctx, repoOwner, repoName, rebaseRequest)
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error rebasing branches: ", err)
-		return err
+		return err.Error(), err
 	}
 
 	shared.Logger().Info("RebaseAndMerge Activity", "status",
@@ -244,16 +247,16 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 		CommitMessage: gh.String("Rebasing " + newBranchName + " with " + defaultBranch),
 	}
 
-	_, _, err = client.Repositories.Merge(ctx, repoOwner, repoName, rebaseRequest)
+	repoCommit, _, err := client.Repositories.Merge(ctx, repoOwner, repoName, rebaseRequest)
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error rebasing branches: ", err)
-		return err
+		return err.Error(), err
 	}
 
 	shared.Logger().Info("RebaseAndMerge Activity", "status",
 		fmt.Sprintf("Branch %s rebased with %s successfully.\n", newBranchName, defaultBranch))
 
-	return nil
+	return *repoCommit.SHA, nil
 }
 
 func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int64, repoOwner string,
@@ -266,7 +269,7 @@ func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int
 		return err
 	}
 
-	workflowName := "cicd_qntm.yaml" //TODO: either fix this or obtain it somehow
+	workflowName := "cicd_quantm.yaml" //TODO: either fix this or obtain it somehow
 
 	paylod := gh.CreateWorkflowDispatchEventRequest{
 		Ref: targetBranch,
@@ -282,6 +285,54 @@ func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int
 	}
 
 	shared.Logger().Debug("TriggerGithubAction", "response", res)
+
+	return nil
+}
+
+func (a *Activities) DeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error {
+	shared.Logger().Debug("DeployChangeset", "github activity DeployChangeset started for changeset", changesetID)
+
+	gh_action_name := "deploy_quantm.yaml" //TODO: fixed it for now
+
+	// get installationID, repoName, repoOwner from github_repos table
+	githubRepo := &Repo{}
+	params := db.QueryParams{
+		"github_id": repoID,
+	}
+
+	if err := db.Get(githubRepo, params); err != nil {
+		return err
+	}
+
+	client, err := Instance().GetClientFromInstallation(githubRepo.InstallationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	paylod := gh.CreateWorkflowDispatchEventRequest{
+		Ref: "main",
+		Inputs: map[string]any{
+			"changesetId": changesetID,
+		},
+	}
+
+	var repoOwner, repoName string
+
+	parts := strings.Split(githubRepo.FullName, "/")
+
+	if len(parts) == 2 {
+		repoOwner = parts[0]
+		repoName = parts[1]
+	}
+
+	res, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, gh_action_name, paylod)
+	if err != nil {
+		shared.Logger().Error("DeployChangeset", "Error triggering workflow:", err)
+		return err
+	}
+
+	shared.Logger().Debug("DeployChangeset", "response", res)
 
 	return nil
 }

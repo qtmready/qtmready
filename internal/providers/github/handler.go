@@ -323,6 +323,7 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 		WebhookEventInstallationRepositories: handleInstallationRepositoriesEvent,
 		WebhookEventPush:                     handlePushEvent,
 		WebhookEventPullRequest:              handlePullRequestEvent,
+		WebhookEventWorkflowRun:              handleWorkflowRunEvent,
 	}
 
 	if handle, exists := handlers[event]; exists {
