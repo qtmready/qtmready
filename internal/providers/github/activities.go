@@ -336,3 +336,55 @@ func (a *Activities) DeployChangeset(ctx context.Context, repoID string, changes
 
 	return nil
 }
+
+func (a *Activities) TagCommit(ctx context.Context, repoID string, commitSHA string, tagName string, tagMessage string) error {
+	// get installationID, repoName, repoOwner from github_repos table
+	githubRepo := &Repo{}
+	params := db.QueryParams{
+		"github_id": repoID,
+	}
+
+	if err := db.Get(githubRepo, params); err != nil {
+		return err
+	}
+
+	client, err := Instance().GetClientFromInstallation(githubRepo.InstallationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	tag := &gh.Tag{
+		Tag:     &tagName,
+		Message: &tagMessage,
+		Object: &gh.GitObject{
+			SHA:  &commitSHA,
+			Type: gh.String("commit"), // Specify the type of object being tagged
+		},
+	}
+
+	var repoOwner, repoName string
+
+	parts := strings.Split(githubRepo.FullName, "/")
+
+	if len(parts) == 2 {
+		repoOwner = parts[0]
+		repoName = parts[1]
+	}
+
+	_, _, err = client.Git.CreateTag(ctx, repoOwner, repoName, tag)
+	if err != nil {
+		shared.Logger().Error("TagCommit", "Error creating tag", err)
+	}
+
+	// Push the tag to the remote repository
+	ref := "refs/tags/" + tagName
+	if _, _, err = client.Git.CreateRef(ctx, repoOwner, repoName, &gh.Reference{
+		Ref:    &ref,
+		Object: &gh.GitObject{SHA: &commitSHA},
+	}); err != nil {
+		shared.Logger().Error("TagCommit", "Error pushing tag to remote repository", err)
+	}
+
+	return nil
+}
