@@ -213,6 +213,35 @@ type GithubActionResultRequest struct {
 	Result    string `json:"result"`
 }
 
+// GithubEventsState defines model for GithubEventsState.
+type GithubEventsState struct {
+	CreatedAt           time.Time       `json:"created_at"`
+	EventType           string          `json:"event_type"`
+	EventsData          json.RawMessage `json:"events_data"`
+	GithubWorkflowID    int64           `json:"github_workflow_id"`
+	GithubWorkflowRunID int64           `json:"github_workflow_run_id"`
+	ID                  gocql.UUID      `json:"id"`
+	Status              string          `json:"status"`
+	UpdatedAt           time.Time       `json:"updated_at"`
+}
+
+var (
+	githubeventsstateColumns = []string{"created_at", "event_type", "events_data", "github_workflow_id", "github_workflow_run_id", "id", "status", "updated_at"}
+
+	githubeventsstateMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "github_events_state",
+			Columns: githubeventsstateColumns,
+		},
+	}
+
+	githubeventsstateTable = itable.New(*githubeventsstateMeta.M)
+)
+
+func (githubeventsstate *GithubEventsState) GetTable() itable.ITable {
+	return githubeventsstateTable
+}
+
 // Installation defines model for GithubInstallation.
 type Installation struct {
 	CreatedAt         time.Time  `json:"created_at"`
@@ -301,6 +330,9 @@ type CliGitMergeJSONRequestBody = CliGitMerge
 
 // GithubCompleteInstallationJSONRequestBody defines body for GithubCompleteInstallation for application/json ContentType.
 type GithubCompleteInstallationJSONRequestBody = CompleteInstallationRequest
+
+// GithubEventsStateJSONRequestBody defines body for GithubEventsState for application/json ContentType.
+type GithubEventsStateJSONRequestBody = GithubEventsState
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -394,6 +426,11 @@ type ClientInterface interface {
 	GithubCompleteInstallationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	GithubCompleteInstallation(ctx context.Context, body GithubCompleteInstallationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubEventsStateWithBody request with any body
+	GithubEventsStateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GithubEventsState(ctx context.Context, body GithubEventsStateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GithubGetInstallations request
 	GithubGetInstallations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -491,6 +528,30 @@ func (c *Client) GithubCompleteInstallationWithBody(ctx context.Context, content
 
 func (c *Client) GithubCompleteInstallation(ctx context.Context, body GithubCompleteInstallationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGithubCompleteInstallationRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GithubEventsStateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubEventsStateRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GithubEventsState(ctx context.Context, body GithubEventsStateJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubEventsStateRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -697,6 +758,46 @@ func NewGithubCompleteInstallationRequestWithBody(server string, contentType str
 	return req, nil
 }
 
+// NewGithubEventsStateRequest calls the generic GithubEventsState builder with application/json body
+func NewGithubEventsStateRequest(server string, body GithubEventsStateJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGithubEventsStateRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGithubEventsStateRequestWithBody generates requests for GithubEventsState with any type of body
+func NewGithubEventsStateRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/providers/github/events/state")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewGithubGetInstallationsRequest generates requests for GithubGetInstallations
 func NewGithubGetInstallationsRequest(server string) (*http.Request, error) {
 	var err error
@@ -841,6 +942,11 @@ type ClientWithResponsesInterface interface {
 
 	GithubCompleteInstallationWithResponse(ctx context.Context, body GithubCompleteInstallationJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error)
 
+	// GithubEventsStateWithBodyWithResponse request with any body
+	GithubEventsStateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubEventsStateResponse, error)
+
+	GithubEventsStateWithResponse(ctx context.Context, body GithubEventsStateJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubEventsStateResponse, error)
+
 	// GithubGetInstallationsWithResponse request
 	GithubGetInstallationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubGetInstallationsResponse, error)
 
@@ -941,6 +1047,30 @@ func (r GithubCompleteInstallationResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GithubCompleteInstallationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type GithubEventsStateResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubEventsStateResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubEventsStateResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1088,6 +1218,23 @@ func (c *ClientWithResponses) GithubCompleteInstallationWithResponse(ctx context
 		return nil, err
 	}
 	return ParseGithubCompleteInstallationResponse(rsp)
+}
+
+// GithubEventsStateWithBodyWithResponse request with arbitrary body returning *GithubEventsStateResponse
+func (c *ClientWithResponses) GithubEventsStateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubEventsStateResponse, error) {
+	rsp, err := c.GithubEventsStateWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubEventsStateResponse(rsp)
+}
+
+func (c *ClientWithResponses) GithubEventsStateWithResponse(ctx context.Context, body GithubEventsStateJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubEventsStateResponse, error) {
+	rsp, err := c.GithubEventsState(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubEventsStateResponse(rsp)
 }
 
 // GithubGetInstallationsWithResponse request returning *GithubGetInstallationsResponse
@@ -1277,6 +1424,46 @@ func ParseGithubCompleteInstallationResponse(rsp *http.Response) (*GithubComplet
 	return response, nil
 }
 
+// ParseGithubEventsStateResponse parses an HTTP response from a GithubEventsStateWithResponse call
+func ParseGithubEventsStateResponse(rsp *http.Response) (*GithubEventsStateResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubEventsStateResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGithubGetInstallationsResponse parses an HTTP response from a GithubGetInstallationsWithResponse call
 func ParseGithubGetInstallationsResponse(rsp *http.Response) (*GithubGetInstallationsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1436,6 +1623,10 @@ type ServerInterface interface {
 	// (POST /providers/github/complete-installation)
 	GithubCompleteInstallation(ctx echo.Context) error
 
+	// quantm state based on github events
+	// (POST /providers/github/events/state)
+	GithubEventsState(ctx echo.Context) error
+
 	// Get GitHub installations
 	// (GET /providers/github/installations)
 	GithubGetInstallations(ctx echo.Context) error
@@ -1509,6 +1700,18 @@ func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) er
 	handler := w.Handler.GithubCompleteInstallation
 	secure := w.Handler.SecureHandler
 	err = secure(handler, ctx)
+
+	return err
+}
+
+// GithubEventsState converts echo context to params.
+
+func (w *ServerInterfaceWrapper) GithubEventsState(ctx echo.Context) error {
+	var err error
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.GithubEventsState
+	err = handler(ctx)
 
 	return err
 }
@@ -1590,6 +1793,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/providers/github/cicd-result", wrapper.GithubActionResult)
 	router.POST(baseURL+"/providers/github/cli-git-merge", wrapper.CliGitMerge)
 	router.POST(baseURL+"/providers/github/complete-installation", wrapper.GithubCompleteInstallation)
+	router.POST(baseURL+"/providers/github/events/state", wrapper.GithubEventsState)
 	router.GET(baseURL+"/providers/github/installations", wrapper.GithubGetInstallations)
 	router.GET(baseURL+"/providers/github/repos", wrapper.GithubGetRepos)
 	router.POST(baseURL+"/providers/github/webhook", wrapper.GithubWebhook)

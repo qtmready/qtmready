@@ -188,6 +188,27 @@ paths:
         "500":
           $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
+  /providers/github/events/state:
+    post:
+      summary: quantm state based on github events
+      description: quantm state based on github events
+      operationId: github-events-state
+      requestBody:
+        description: github events state
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GithubEventsState"
+      responses:
+        "200":
+          description: OK
+        "400":
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "500":
+          $ref: "../../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
 components:
   securitySchemes:
     BearerAuth:
@@ -408,3 +429,47 @@ components:
         - queued
         - signaled
         - skipped
+
+    GithubEventsState:
+      type: object
+      x-go-name: GithubEventsState
+      x-breu-entity: github_events_state
+      properties:
+        id:
+          type: string
+          format: uuid
+          x-go-name: ID
+          x-go-type: gocql.UUID
+        event_type:
+          type: string
+          x-go-name: EventType
+        status:
+          type: string
+          x-go-name: Status
+        events_data:
+          type: string
+          format: json
+          x-go-name: EventsData
+        github_workflow_id:
+          type: integer
+          format: int64
+          x-go-name: GithubWorkflowID
+        github_workflow_run_id:
+          type: integer
+          format: int64
+          x-go-name: GithubWorkflowRunID
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - event_type
+        - status
+        - events_data
+        - github_workflow_id
+        - github_workflow_run_id
+        - created_at
+        - updated_at
