@@ -19,6 +19,7 @@ package github
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -259,9 +260,9 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	return *repoCommit.SHA, nil
 }
 
-func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int64, repoOwner string,
-	repoName string, targetBranch string) error {
-	shared.Logger().Debug("activity TriggerGithubAction started")
+func (a *Activities) TriggerGithubCIAction(ctx context.Context, installationID int64, repoOwner string,
+	repoName string, targetBranch string, pullRequestID int64) error {
+	shared.Logger().Debug("activity TriggerGithubCIAction started")
 
 	client, err := Instance().GetClientFromInstallation(installationID)
 	if err != nil {
@@ -269,7 +270,7 @@ func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int
 		return err
 	}
 
-	workflowName := "cicd_quantm.yaml" //TODO: either fix this or obtain it somehow
+	gh_action_name := "cicd_quantm.yaml" //TODO: either fix this or obtain it somehow
 
 	paylod := gh.CreateWorkflowDispatchEventRequest{
 		Ref: targetBranch,
@@ -278,19 +279,128 @@ func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int
 		},
 	}
 
-	res, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, workflowName, paylod)
+	_, err = client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, gh_action_name, paylod)
 	if err != nil {
-		shared.Logger().Error("TriggerGithubAction", "Error triggering workflow:", err)
+		shared.Logger().Error("TriggerGithubCIAction", "Error triggering workflow:", err)
 		return err
 	}
 
-	shared.Logger().Debug("TriggerGithubAction", "response", res)
+	githubEventState := &GithubEventsState{}
+	runs, _, err := client.Actions.ListWorkflowRunsByFileName(ctx, repoOwner, repoName, gh_action_name, nil)
+
+	if err != nil {
+		shared.Logger().Error("TriggerGithubCIAction", "error getting workflow list", err)
+	}
+
+	// Get the latest workflow run ID
+	latestRun := runs.WorkflowRuns[0]
+
+	eventsData := map[string]any{
+		"branch":       targetBranch,
+		"pull_request": pullRequestID,
+	}
+
+	githubEventState.ID, _ = gocql.RandomUUID()
+	githubEventState.Status = "Inprogress"
+	githubEventState.GithubWorkflowID = *latestRun.WorkflowID
+	githubEventState.GithubWorkflowRunID = *latestRun.ID
+	githubEventState.EventType = "CI"
+	githubEventState.EventsData, _ = json.Marshal(eventsData)
+
+	// save the CI event
+	if err = db.Save(githubEventState); err != nil {
+		shared.Logger().Error("error saving to github_events_state")
+		return err
+	}
+
+	shared.Logger().Debug("TriggerGithubCIAction done.")
 
 	return nil
 }
 
-func (a *Activities) DeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error {
-	shared.Logger().Debug("DeployChangeset", "github activity DeployChangeset started for changeset", changesetID)
+func (a *Activities) TriggerGithubBuildImage(ctx context.Context, repoID string, changesetID *gocql.UUID) error {
+	shared.Logger().Debug("TriggerGithubBuildImage", "github build image activity started for changeset", changesetID)
+
+	gh_action_name := "build_quantm.yaml" //TODO: fixed it for now
+
+	// get installationID, repoName, repoOwner from github_repos table
+	githubRepo := &Repo{}
+	params := db.QueryParams{
+		"github_id": repoID,
+	}
+
+	if err := db.Get(githubRepo, params); err != nil {
+		return err
+	}
+
+	client, err := Instance().GetClientFromInstallation(githubRepo.InstallationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	var repoOwner, repoName string
+
+	parts := strings.Split(githubRepo.FullName, "/")
+
+	if len(parts) == 2 {
+		repoOwner = parts[0]
+		repoName = parts[1]
+	}
+
+	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
+	if err != nil {
+		shared.Logger().Error("TriggerGithubBuildImage Activity", "Error getting repository: ", err)
+		return err
+	}
+
+	paylod := gh.CreateWorkflowDispatchEventRequest{
+		Ref: *repo.DefaultBranch,
+		Inputs: map[string]any{
+			"changesetId": changesetID,
+		},
+	}
+
+	_, err = client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, gh_action_name, paylod)
+	if err != nil {
+		shared.Logger().Error("TriggerGithubBuildImage", "Error triggering workflow:", err)
+		return err
+	}
+
+	githubEventState := &GithubEventsState{}
+	runs, _, err := client.Actions.ListWorkflowRunsByFileName(ctx, repoOwner, repoName, gh_action_name, nil)
+
+	if err != nil {
+		shared.Logger().Error("TriggerGithubBuildImage", "error getting workflow list", err)
+	}
+
+	// Get the latest workflow run ID
+	latestRun := runs.WorkflowRuns[0]
+
+	eventsData := map[string]any{
+		"changesetID": changesetID,
+	}
+
+	githubEventState.ID, _ = gocql.RandomUUID()
+	githubEventState.Status = "Inprogress"
+	githubEventState.GithubWorkflowID = *latestRun.WorkflowID
+	githubEventState.GithubWorkflowRunID = *latestRun.ID
+	githubEventState.EventType = "Build"
+	githubEventState.EventsData, _ = json.Marshal(eventsData)
+
+	// save the Build action event
+	if err = db.Save(githubEventState); err != nil {
+		shared.Logger().Error("error saving to github_events_state")
+		return err
+	}
+
+	shared.Logger().Debug("TriggerGithubBuildImage done.")
+
+	return nil
+}
+
+func (a *Activities) TriggerGithubDeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error {
+	shared.Logger().Debug("TriggerGithubDeployChangeset", "github activity DeployChangeset started for changeset", changesetID)
 
 	gh_action_name := "deploy_quantm.yaml" //TODO: fixed it for now
 
@@ -310,13 +420,6 @@ func (a *Activities) DeployChangeset(ctx context.Context, repoID string, changes
 		return err
 	}
 
-	paylod := gh.CreateWorkflowDispatchEventRequest{
-		Ref: "main",
-		Inputs: map[string]any{
-			"changesetId": changesetID,
-		},
-	}
-
 	var repoOwner, repoName string
 
 	parts := strings.Split(githubRepo.FullName, "/")
@@ -326,13 +429,53 @@ func (a *Activities) DeployChangeset(ctx context.Context, repoID string, changes
 		repoName = parts[1]
 	}
 
-	res, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, gh_action_name, paylod)
+	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
 	if err != nil {
-		shared.Logger().Error("DeployChangeset", "Error triggering workflow:", err)
+		shared.Logger().Error("TriggerGithubDeployChangeset Activity", "Error getting repository: ", err)
 		return err
 	}
 
-	shared.Logger().Debug("DeployChangeset", "response", res)
+	paylod := gh.CreateWorkflowDispatchEventRequest{
+		Ref: *repo.DefaultBranch,
+		Inputs: map[string]any{
+			"changesetId": changesetID,
+		},
+	}
+
+	_, err = client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, gh_action_name, paylod)
+	if err != nil {
+		shared.Logger().Error("TriggerGithubDeployChangeset", "Error triggering workflow:", err)
+		return err
+	}
+
+	githubEventState := &GithubEventsState{}
+	runs, _, err := client.Actions.ListWorkflowRunsByFileName(ctx, repoOwner, repoName, gh_action_name, nil)
+
+	if err != nil {
+		shared.Logger().Error("TriggerGithubDeployChangeset", "error getting workflow list", err)
+	}
+
+	// Get the latest workflow run ID
+	latestRun := runs.WorkflowRuns[0]
+
+	eventsData := map[string]any{
+		"changesetID": changesetID,
+	}
+
+	githubEventState.ID, _ = gocql.RandomUUID()
+	githubEventState.Status = "Inprogress"
+	githubEventState.GithubWorkflowID = *latestRun.WorkflowID
+	githubEventState.GithubWorkflowRunID = *latestRun.ID
+	githubEventState.EventType = "Deploy"
+	githubEventState.EventsData, _ = json.Marshal(eventsData)
+
+	// save the Build action event
+	if err = db.Save(githubEventState); err != nil {
+		shared.Logger().Error("error saving to github_events_state")
+		return err
+	}
+
+	shared.Logger().Debug("TriggerGithubDeployChangeset done.")
 
 	return nil
 }
