@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core"
@@ -145,16 +146,37 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	return nil
 }
 
-func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *WorkflowRun) error {
+func (w *Workflows) OnGithubBuildAction(ctx workflow.Context, payload *GithubWorkflowEvent, changesetID *gocql.UUID) error {
+	// start TriggerGithubDeployChangeset for this
 	logger := workflow.GetLogger(ctx)
-	logger.Info("OnGithubActionResult", "entry", "workflow started")
+	logger.Info("OnGithubBuildAction", "entry", "workflow started")
+
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
+
+	if err := workflow.ExecuteActivity(actx, activities.TriggerGithubDeployChangeset, payload.Repository.ID, changesetID).Get(ctx, nil); err != nil {
+		logger.Error("Error triggering GithubDeployChangeset activity")
+	}
+
+	// todo: save db
+
+	return nil
+}
+
+func (w *Workflows) OnGithubDeployAction(ctx workflow.Context, payload *GithubWorkflowEvent, changesetID *gocql.UUID) error {
+	return nil
+}
+
+func (w *Workflows) OnGithubCIAction(ctx workflow.Context, payload *GithubWorkflowEvent) error {
+	logger := workflow.GetLogger(ctx)
+	logger.Info("OnGithubCIAction", "entry", "workflow started")
 
 	// wait for github action to return success status
 	ch := workflow.GetSignalChannel(ctx, WorkflowSignalActionResult.String())
 	gh_result := &GithubActionResult{}
 	ch.Receive(ctx, gh_result)
 
-	logger.Info("OnGithubActionResult", "action recvd", gh_result)
+	logger.Info("OnGithubCIAction", "action recvd", gh_result)
 
 	// acquiring lock here
 	lock, err := LockInstance(ctx, fmt.Sprint(payload.Repository.ID))
@@ -401,8 +423,8 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
 	var er error
-	err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
-		element.InstallationID, element.RepoOwner, element.RepoName, element.Branch).Get(ctx, er)
+	err := workflow.ExecuteActivity(actx, activities.TriggerGithubCIAction,
+		element.InstallationID, element.RepoOwner, element.RepoName, element.Branch, element.PullRequestID).Get(ctx, er)
 
 	if err != nil {
 		logger.Error("error triggering github action", "error", err)
