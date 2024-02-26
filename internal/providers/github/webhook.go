@@ -19,6 +19,7 @@ package github
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -68,53 +69,192 @@ func handleInstallationEvent(ctx echo.Context) error {
 func handleWorkflowRunEvent(ctx echo.Context) error {
 	shared.Logger().Debug("workflow-run event received.")
 
-	payload := &WorkflowRun{}
+	payload := &GithubWorkflowEvent{}
 	if err := ctx.Bind(payload); err != nil {
 		shared.Logger().Error("unable to bind payload ...", "error", err)
 		return err
 	}
+
+	shared.Logger().Debug("handleWorkflowRunEvent", "payload", payload)
 
 	if payload.Action != "completed" {
 		shared.Logger().Info("workflow_run event in progress")
 		return nil
 	}
 
-	shared.Logger().Debug("handleWorkflowRunEvent", "payload", payload)
+	githubEventsState := &GithubEventsState{}
+	params := db.QueryParams{
+		"github_workflow_id":     strconv.FormatInt(*payload.WR.WorkflowID, 10),
+		"github_workflow_run_id": strconv.FormatInt(*payload.WR.ID, 10),
+	}
 
-	workflowID := shared.Temporal().
-		Queue(shared.ProvidersQueue).
-		WorkflowID(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
-			shared.WithWorkflowElement("branch"),
-			shared.WithWorkflowElementID(payload.WR.HeadBranch),
-		)
+	if err := db.Get(githubEventsState, params); err != nil {
+		return err
+	}
 
-	workflows := &Workflows{}
-	opts := shared.Temporal().
-		Queue(shared.ProvidersQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
-			shared.WithWorkflowElement("repo"),
-			shared.WithWorkflowElementID(strconv.FormatInt(payload.Repository.ID, 10)),
-		)
-
-	_, err := shared.Temporal().Client().SignalWithStartWorkflow(
-		ctx.Request().Context(),
-		opts.ID,
-		WorkflowSignalActionResult.String(),
-		payload,
-		opts,
-		workflows.OnGithubActionResult,
-		payload,
-	)
-	if err != nil {
-		shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
+	if githubEventsState.Status != "Inprog" {
+		shared.Logger().Warn("github action workflow in invalid state")
 		return nil
 	}
 
-	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
+	var eventsData map[string]string
+	_ = json.Unmarshal(githubEventsState.EventsData, &eventsData)
+
+	switch githubEventsState.EventType {
+	case "CI":
+		// trigger CI related temporal workflow
+		workflows := &Workflows{}
+		workflowID := shared.Temporal().
+			Queue(shared.ProvidersQueue).
+			WorkflowID(
+				shared.WithWorkflowBlock("CI-github"),
+				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+				shared.WithWorkflowElement("branch"),
+				shared.WithWorkflowElementID(*payload.WR.HeadBranch),
+			)
+		opts := shared.Temporal().
+			Queue(shared.ProvidersQueue).
+			WorkflowOptions(
+				shared.WithWorkflowBlock("CI-github"),
+				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+				shared.WithWorkflowElement("branch"),
+				shared.WithWorkflowElementID(*payload.WR.HeadBranch),
+			)
+
+		if _, err := shared.Temporal().Client().SignalWithStartWorkflow(
+			ctx.Request().Context(),
+			opts.ID,
+			WorkflowSignalActionResult.String(),
+			payload,
+			opts,
+			workflows.OnGithubCIAction,
+			payload,
+		); err != nil {
+			shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
+			return err
+		}
+
+		// save db
+		ghEvents := &GithubEventsState{}
+		params := db.QueryParams{
+			"github_workflow_id":     strconv.FormatInt(*payload.WR.WorkflowID, 10),
+			"github_workflow_run_id": strconv.FormatInt(*payload.WR.ID, 10),
+			"event_type":             "CI",
+		}
+
+		if err := db.Get(ghEvents, params); err != nil {
+			return err
+		}
+
+		ghEvents.Status = "Done"
+		db.Save(ghEvents)
+
+		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
+
+	case "Build":
+		// trigger Build temporal workflow
+		workflows := &Workflows{}
+		workflowID := shared.Temporal().
+			Queue(shared.ProvidersQueue).
+			WorkflowID(
+				shared.WithWorkflowBlock("Build-github"),
+				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+				shared.WithWorkflowElement("changeset"),
+				shared.WithWorkflowElementID(eventsData["changesetID"]),
+			)
+		opts := shared.Temporal().
+			Queue(shared.ProvidersQueue).
+			WorkflowOptions(
+				shared.WithWorkflowBlock("Build-github"),
+				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+				shared.WithWorkflowElement("changeset"),
+				shared.WithWorkflowElementID(eventsData["changesetID"]),
+			)
+
+		if _, err := shared.Temporal().Client().SignalWithStartWorkflow(
+			ctx.Request().Context(),
+			opts.ID,
+			WorkflowSignalActionResult.String(),
+			payload,
+			opts,
+			workflows.OnGithubBuildAction,
+			payload,
+			eventsData["changesetID"],
+		); err != nil {
+			shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
+			return err
+		}
+
+		// save db
+		ghEvents := &GithubEventsState{}
+		params := db.QueryParams{
+			"github_workflow_id":     strconv.FormatInt(*payload.WR.WorkflowID, 10),
+			"github_workflow_run_id": strconv.FormatInt(*payload.WR.ID, 10),
+			"event_type":             "CI",
+		}
+
+		if err := db.Get(ghEvents, params); err != nil {
+			return err
+		}
+
+		ghEvents.Status = "Done"
+		db.Save(ghEvents)
+
+		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
+
+	case "Deploy":
+		// trigger deploy temporal workflow
+		workflows := &Workflows{}
+		workflowID := shared.Temporal().
+			Queue(shared.ProvidersQueue).
+			WorkflowID(
+				shared.WithWorkflowBlock("Deploy-github"),
+				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+				shared.WithWorkflowElement("changeset"),
+				shared.WithWorkflowElementID(eventsData["changesetID"]),
+			)
+		opts := shared.Temporal().
+			Queue(shared.ProvidersQueue).
+			WorkflowOptions(
+				shared.WithWorkflowBlock("Deploy-github"),
+				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+				shared.WithWorkflowElement("changeset"),
+				shared.WithWorkflowElementID(eventsData["changesetID"]),
+			)
+
+		if _, err := shared.Temporal().Client().SignalWithStartWorkflow(
+			ctx.Request().Context(),
+			opts.ID,
+			WorkflowSignalActionResult.String(),
+			payload,
+			opts,
+			workflows.OnGithubDeployAction,
+			payload,
+			eventsData["changesetID"],
+		); err != nil {
+			shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
+			return err
+		}
+
+		// save db
+		ghEvents := &GithubEventsState{}
+		params := db.QueryParams{
+			"github_workflow_id":     strconv.FormatInt(*payload.WR.WorkflowID, 10),
+			"github_workflow_run_id": strconv.FormatInt(*payload.WR.ID, 10),
+			"event_type":             "CI",
+		}
+
+		if err := db.Get(ghEvents, params); err != nil {
+			return err
+		}
+
+		ghEvents.Status = "Done"
+		db.Save(ghEvents)
+
+		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
+	}
+
+	return nil
 }
 
 // handlePushEvent handles GitHub push event.
