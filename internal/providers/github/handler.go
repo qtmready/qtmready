@@ -233,67 +233,68 @@ func (s *ServerHandler) GithubEventsState(ctx echo.Context) error {
 
 // TODO: Remove this function completely - unused
 func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
-	shared.Logger().Info("GithubActionResult method triggered.")
+	// shared.Logger().Info("GithubActionResult method triggered.")
 
-	request := &GithubActionResultRequest{}
-	if err := ctx.Bind(request); err != nil {
-		return err
-	}
+	// request := &GithubActionResultRequest{}
+	// if err := ctx.Bind(request); err != nil {
+	// 	return err
+	// }
 
-	shared.Logger().Debug("GithubActionResult", "request", request)
+	// shared.Logger().Debug("GithubActionResult", "request", request)
 
-	if request.Branch == "main" {
-		shared.Logger().Info("GithubActionResult", "action", "No action needed")
-		return nil
-	}
+	// if request.Branch == "main" {
+	// 	shared.Logger().Info("GithubActionResult", "action", "No action needed")
+	// 	return nil
+	// }
 
-	workflowID := shared.Temporal().
-		Queue(shared.ProvidersQueue).
-		WorkflowID(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(request.RepoID),
-			shared.WithWorkflowElement("branch"),
-			shared.WithWorkflowElementID(request.Branch),
-		)
+	// workflowID := shared.Temporal().
+	// 	Queue(shared.ProvidersQueue).
+	// 	WorkflowID(
+	// 		shared.WithWorkflowBlock("github"),
+	// 		shared.WithWorkflowBlockID(request.RepoID),
+	// 		shared.WithWorkflowElement("branch"),
+	// 		shared.WithWorkflowElementID(request.Branch),
+	// 	)
 
-	repo := &Repo{}
-	if err := db.Get(repo, db.QueryParams{"id": request.RepoID}); err != nil {
-		return err
-	}
+	// repo := &Repo{}
+	// if err := db.Get(repo, db.QueryParams{"id": request.RepoID}); err != nil {
+	// 	return err
+	// }
 
-	payload := &GithubActionResult{
-		Branch:         request.Branch,
-		RepoID:         request.RepoID,
-		RepoName:       request.RepoName,
-		RepoOwner:      request.RepoOwner,
-		InstallationID: repo.InstallationID,
-	}
+	// payload := &GithubActionResult{
+	// 	Branch:         request.Branch,
+	// 	RepoID:         request.RepoID,
+	// 	RepoName:       request.RepoName,
+	// 	RepoOwner:      request.RepoOwner,
+	// 	InstallationID: repo.InstallationID,
+	// }
 
-	workflows := &Workflows{}
-	opts := shared.Temporal().
-		Queue(shared.ProvidersQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(strconv.FormatInt(repo.InstallationID, 10)),
-			shared.WithWorkflowElement("repo"),
-			shared.WithWorkflowElementID(request.RepoID),
-		)
+	// workflows := &Workflows{}
+	// opts := shared.Temporal().
+	// 	Queue(shared.ProvidersQueue).
+	// 	WorkflowOptions(
+	// 		shared.WithWorkflowBlock("github"),
+	// 		shared.WithWorkflowBlockID(strconv.FormatInt(repo.InstallationID, 10)),
+	// 		shared.WithWorkflowElement("repo"),
+	// 		shared.WithWorkflowElementID(request.RepoID),
+	// 	)
 
-	_, err := shared.Temporal().Client().SignalWithStartWorkflow(
-		ctx.Request().Context(),
-		opts.ID,
-		WorkflowSignalActionResult.String(),
-		payload,
-		opts,
-		workflows.OnGithubActionResult,
-		payload,
-	)
-	if err != nil {
-		shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
-		return nil
-	}
+	// _, err := shared.Temporal().Client().SignalWithStartWorkflow(
+	// 	ctx.Request().Context(),
+	// 	opts.ID,
+	// 	WorkflowSignalActionResult.String(),
+	// 	payload,
+	// 	opts,
+	// 	workflows.OnGithubActionResult,
+	// 	payload,
+	// )
+	// if err != nil {
+	// 	shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
+	// 	return nil
+	// }
 
-	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
+	// return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
+	return nil
 }
 
 func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
