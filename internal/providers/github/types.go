@@ -19,6 +19,7 @@ package github
 
 import (
 	"github.com/gocql/gocql"
+	gh "github.com/google/go-github/v53/github"
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/quantm/internal/shared"
@@ -62,14 +63,12 @@ type (
 		Installation InstallationID `json:"installation"`
 	}
 
-	WorkflowRun struct {
+	GithubWorkflowEvent struct {
 		Action       string         `json:"action"`
 		Repository   RepositoryPR   `json:"repository"`
 		Sender       User           `json:"sender"`
 		Installation InstallationID `json:"installation"`
-		WR           struct {
-			HeadBranch string `json:"head_branch"`
-		} `json:"workflow_run"`
+		WR           gh.WorkflowRun `json:"workflow_run"`
 	}
 
 	PullRequestEvent struct {
