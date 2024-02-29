@@ -203,6 +203,11 @@ require (
 	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect
 )
 
+require (
+	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/slack-go/slack v0.12.5 // indirect
+)
+
 replace github.com/Guilospanck/igocqlx v1.0.0 => github.com/debuggerpk/igocqlx v1.0.3
 
 replace github.com/deepmap/oapi-codegen/v2 v2.0.0 => github.com/breuHQ/oapi-codegen/v2 v2.0.0-breu

@@ -33,6 +33,7 @@ import (
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/providers/github"
+	s "go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
 	"go.breu.io/quantm/internal/shared/logger"
 )
@@ -99,6 +100,17 @@ func main() {
 
 	go _run(_serve(web, HTTPPort), errs)
 	go _run(_serve(metrics, PrometheusPort), errs)
+
+	// Call slack events and handle potential error.
+	go func() {
+		if err := s.RunSocket(); err != nil {
+			slog.Error("socket event error:", slog.Any("error", err.Error()))
+			errs <- err
+
+			return
+		}
+	}()
+
 	slog.Info("registering quit signals")
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // setting up the signals to listen to.
 
