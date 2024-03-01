@@ -6,21 +6,27 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/socketmode"
+	"golang.org/x/oauth2"
+	oauth "golang.org/x/oauth2/slack"
 
 	"go.breu.io/quantm/internal/shared"
 )
 
 type (
 	config struct {
-		BotToken  string `env:"SLACK_BOT_TOKEN"`
-		UserToken string `env:"SLACK_USER_TOKEN"`
-		AppToken  string `env:"SLACK_APP_TOKEN"`
+		BotToken     string `env:"SLACK_BOT_TOKEN"`
+		UserToken    string `env:"SLACK_USER_TOKEN"`
+		AppToken     string `env:"SLACK_APP_TOKEN"`
+		ClientID     string `env:"SLACK_CLIENT_ID"`
+		ClientSecret string `env:"SLACK_CLIENT_SECRET"`
+		RedirectURL  string `env:"SLACK_REDIRECT_URL"`
 	}
 
 	integration struct {
-		Config *config
-		Client *slack.Client
-		Socket *socketmode.Client
+		Config      *config
+		Client      *slack.Client
+		Socket      *socketmode.Client
+		OauthConfig *oauth2.Config
 	}
 )
 
@@ -57,14 +63,23 @@ func connect(c *config) *integration {
 		socketmode.OptionLog(logger()),
 	)
 
+	oauthConfig := &oauth2.Config{
+		ClientID:     c.ClientID,
+		ClientSecret: c.ClientSecret,
+		RedirectURL:  c.RedirectURL,
+		Scopes:       []string{"channels:read", "chat:write"},
+		Endpoint:     oauth.Endpoint,
+	}
+
 	return &integration{
-		Config: c,
-		Client: client,
-		Socket: socket,
+		Config:      c,
+		Client:      client,
+		Socket:      socket,
+		OauthConfig: oauthConfig,
 	}
 }
 
-func Client() *slack.Client {
+func SlackClient() *slack.Client {
 	return Instance().Client
 }
 

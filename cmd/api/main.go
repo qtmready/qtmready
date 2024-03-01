@@ -89,6 +89,7 @@ func main() {
 	auth.RegisterHandlers(web, auth.NewServerHandler(auth.Middleware))
 	core.RegisterHandlers(web, core.NewServerHandler(auth.Middleware))
 	github.RegisterHandlers(web, github.NewServerHandler(auth.Middleware))
+	slack.RegisterHandlers(web, slack.NewServerHandler(auth.Middleware))
 
 	slog.Info("setting up metrics")
 
