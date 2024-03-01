@@ -33,7 +33,7 @@ import (
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/providers/github"
-	s "go.breu.io/quantm/internal/providers/slack"
+	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
 	"go.breu.io/quantm/internal/shared/logger"
 )
@@ -103,8 +103,8 @@ func main() {
 
 	// Call slack events and handle potential error.
 	go func() {
-		if err := s.RunSocket(); err != nil {
-			slog.Error("socket event error:", slog.Any("error", err.Error()))
+		if err := slack.RunSlack(); err != nil {
+			slog.Error("event error:", slog.Any("error", err.Error()))
 			errs <- err
 
 			return
