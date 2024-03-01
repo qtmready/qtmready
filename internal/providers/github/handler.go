@@ -231,7 +231,7 @@ func (s *ServerHandler) GithubEventsState(ctx echo.Context) error {
 	return nil
 }
 
-// TODO: Remove this function completely - unused
+// TODO: Remove this function completely - unused.
 func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 	// shared.Logger().Info("GithubActionResult method triggered.")
 

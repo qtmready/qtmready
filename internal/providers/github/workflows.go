@@ -154,7 +154,8 @@ func (w *Workflows) OnGithubBuildAction(ctx workflow.Context, payload *GithubWor
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
-	if err := workflow.ExecuteActivity(actx, activities.TriggerGithubDeployChangeset, payload.Repository.ID, changesetID).Get(ctx, nil); err != nil {
+	if err := workflow.ExecuteActivity(actx, activities.TriggerDeployChangeset, payload.Repository.ID, changesetID).
+		Get(ctx, nil); err != nil {
 		logger.Error("Error triggering GithubDeployChangeset activity")
 	}
 

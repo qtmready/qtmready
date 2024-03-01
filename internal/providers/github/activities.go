@@ -174,8 +174,7 @@ func (a *Activities) GetLatestCommit(ctx context.Context, providerID string, bra
 	return *gb.Commit.SHA, nil
 }
 
-func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoName string,
-	targetBranchName string, installationID int64) (string, error) {
+func (a *Activities) RebaseAndMerge(ctx context.Context, owner, repoName, target string, installationID int64) (string, error) {
 	client, err := Instance().GetClientFromInstallation(installationID)
 	if err != nil {
 		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
@@ -183,17 +182,17 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	}
 
 	// Get the default branch (e.g., "main")
-	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
+	repo, _, err := client.Repositories.Get(ctx, owner, repoName)
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error getting repository: ", err)
 		return err.Error(), err
 	}
 
 	defaultBranch := *repo.DefaultBranch
-	newBranchName := defaultBranch + "-copy-for-" + targetBranchName
+	newBranchName := defaultBranch + "-copy-for-" + target
 
 	// Get the latest commit SHA of the default branch
-	commits, _, err := client.Repositories.ListCommits(ctx, repoOwner, repoName, &gh.CommitsListOptions{
+	commits, _, err := client.Repositories.ListCommits(ctx, owner, repoName, &gh.CommitsListOptions{
 		SHA: defaultBranch,
 	})
 	if err != nil {
@@ -204,7 +203,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	// Use the latest commit SHA
 	if len(commits) == 0 {
 		shared.Logger().Error("RebaseAndMerge Activity", "No commits found in the default branch.", nil)
-		return err.Error(), err
+		return "", ErrNoLatestCommit
 	}
 
 	latestCommitSHA := *commits[0].SHA
@@ -217,7 +216,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 		},
 	}
 
-	_, _, err = client.Git.CreateRef(ctx, repoOwner, repoName, ref)
+	_, _, err = client.Git.CreateRef(ctx, owner, repoName, ref)
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error creating branch: ", err)
 		return err.Error(), err
@@ -228,18 +227,18 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	// Perform rebase of the target branch with the new branch
 	rebaseRequest := &gh.RepositoryMergeRequest{
 		Base:          &newBranchName,
-		Head:          &targetBranchName,
-		CommitMessage: gh.String("Rebasing " + targetBranchName + " with " + newBranchName),
+		Head:          &target,
+		CommitMessage: gh.String("Rebasing " + target + " with " + newBranchName),
 	}
 
-	_, _, err = client.Repositories.Merge(ctx, repoOwner, repoName, rebaseRequest)
+	_, _, err = client.Repositories.Merge(ctx, owner, repoName, rebaseRequest)
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error rebasing branches: ", err)
 		return err.Error(), err
 	}
 
 	shared.Logger().Info("RebaseAndMerge Activity", "status",
-		fmt.Sprintf("Branch %s rebased with %s successfully.\n", targetBranchName, newBranchName))
+		fmt.Sprintf("Branch %s rebased with %s successfully.\n", target, newBranchName))
 
 	// Perform rebase of the new branch with the main branch
 	rebaseRequest = &gh.RepositoryMergeRequest{
@@ -248,7 +247,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 		CommitMessage: gh.String("Rebasing " + newBranchName + " with " + defaultBranch),
 	}
 
-	repoCommit, _, err := client.Repositories.Merge(ctx, repoOwner, repoName, rebaseRequest)
+	repoCommit, _, err := client.Repositories.Merge(ctx, owner, repoName, rebaseRequest)
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error rebasing branches: ", err)
 		return err.Error(), err
@@ -318,7 +317,7 @@ func (a *Activities) TriggerGithubCIAction(ctx context.Context, installationID i
 	return nil
 }
 
-func (a *Activities) TriggerGithubBuildImage(ctx context.Context, repoID string, changesetID *gocql.UUID) error {
+func (a *Activities) TriggerBuild(ctx context.Context, repoID string, changesetID *gocql.UUID) error {
 	shared.Logger().Debug("TriggerGithubBuildImage", "github build image activity started for changeset", changesetID)
 
 	gh_action_name := "build_quantm.yaml" //TODO: fixed it for now
@@ -399,7 +398,7 @@ func (a *Activities) TriggerGithubBuildImage(ctx context.Context, repoID string,
 	return nil
 }
 
-func (a *Activities) TriggerGithubDeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error {
+func (a *Activities) TriggerDeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error {
 	shared.Logger().Debug("TriggerGithubDeployChangeset", "github activity DeployChangeset started for changeset", changesetID)
 
 	gh_action_name := "deploy_quantm.yaml" //TODO: fixed it for now

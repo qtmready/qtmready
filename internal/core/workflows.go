@@ -136,7 +136,7 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 			shared.Logger().Error("StackController", "error in tagging the repo", repo.ProviderID, "err", err)
 		}
 
-		if err := workflow.ExecuteActivity(pctx, p.TriggerGithubBuildImage, repo.ProviderID, changeset.ID).Get(ctx, nil); err != nil {
+		if err := workflow.ExecuteActivity(pctx, p.TriggerBuild, repo.ProviderID, changeset.ID).Get(ctx, nil); err != nil {
 			shared.Logger().Error("StackController", "error in deploying for repo", repo.ProviderID, "err", err)
 		}
 	}

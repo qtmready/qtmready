@@ -147,7 +147,7 @@ func handleWorkflowRunEvent(ctx echo.Context) error {
 		}
 
 		ghEvents.Status = "Done"
-		db.Save(ghEvents)
+		_ = db.Save(ghEvents)
 
 		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
 
@@ -198,7 +198,7 @@ func handleWorkflowRunEvent(ctx echo.Context) error {
 		}
 
 		ghEvents.Status = "Done"
-		db.Save(ghEvents)
+		_ = db.Save(ghEvents)
 
 		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
 
@@ -249,7 +249,7 @@ func handleWorkflowRunEvent(ctx echo.Context) error {
 		}
 
 		ghEvents.Status = "Done"
-		db.Save(ghEvents)
+		_ = db.Save(ghEvents)
 
 		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
 	}
