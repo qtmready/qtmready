@@ -181,6 +181,45 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) erro
 	logger := workflow.GetLogger(ctx)
 	logger.Info("EarlyDetection", "entrypoint", "workflow signaled for branch"+branchName)
 
+WAIT_FOR_SIGNAL:
+	// get push event data via workflow signal
+	ch := workflow.GetSignalChannel(ctx, WorkflowSignalPushEvent.String())
+
+	event := &PushEvent{}
+
+	// receive signal payload
+	ch.Receive(ctx, event)
+
+	logger.Info("EarlyDetection", "signal payload", event)
+
+	// get github client
+	client, err := Instance().GetClientFromInstallation(event.Installation.ID)
+	if err != nil {
+		logger.Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	// detect 200+ changes
+	{
+		comparison, _, err := client.Repositories.CompareCommits(context.Background(), event.Repository.Owner.Login,
+			event.Repository.Name, event.Repository.DefaultBranch, branchName, nil)
+		if err != nil {
+			logger.Error("CompareCommits", "Error", err)
+			goto WAIT_FOR_SIGNAL
+		}
+
+		var changes int
+		for _, file := range comparison.Files {
+			changes += file.GetChanges()
+		}
+
+		if changes > 200 {
+			// notify slack
+
+			goto WAIT_FOR_SIGNAL
+		}
+	}
+
 
 	return nil
 }
