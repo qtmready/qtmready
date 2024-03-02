@@ -283,6 +283,34 @@ WAIT_FOR_SIGNAL:
 	return nil
 }
 
+func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID int64, repoOwner string, repoName string,
+	branchName string, lastBranchCommit string) error {
+	// Sleep for 5 days before raising stale detection
+	_ = workflow.Sleep(ctx, time.Hour*24)
+
+	client, err := Instance().GetClientFromInstallation(installationID)
+	if err != nil {
+		shared.Logger().Error("StaleBranchDetection", "error getting client", err)
+		return err
+	}
+
+	// get latest commit of the branch branchName
+	branch, _, err := client.Repositories.GetBranch(context.Background(), repoOwner, repoName, branchName, false)
+	if err != nil {
+		shared.Logger().Error("Early-Detection", "error getting branch", err)
+		return err
+	}
+
+	latestCommitSHA := branch.GetCommit().GetSHA()
+
+	// check if the branchName branch has the lastBranchCommit as the latest commit
+	if lastBranchCommit != latestCommitSHA {
+		// notify slack
+
+		return nil
+	}
+
+	// at this point, the branch is not stale so just return
 
 	return nil
 }
