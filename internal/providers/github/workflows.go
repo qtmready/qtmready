@@ -265,9 +265,12 @@ WAIT_FOR_SIGNAL:
 		}
 		if _, _, err = client.Git.CreateRef(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
 			tempRef); err != nil {
-			logger.Error("Early-Detection", "Error creating branch: ", err)
+			shared.Logger().Error("Early-Detection", "Error creating branch: ", err)
 			goto WAIT_FOR_SIGNAL
 		}
+
+		// flag to track if merge conflicts occurred
+		mergeConflicts := false
 
 		// Perform rebase of the target branch with the new temp branch
 		rebaseRequest := &gh.RepositoryMergeRequest{
@@ -278,16 +281,22 @@ WAIT_FOR_SIGNAL:
 		if _, _, err = client.Repositories.Merge(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
 			rebaseRequest); err != nil {
 			// notify slack here
-			logger.Info("Early-Detection", "slack nofity", "merge conflicts")
+			shared.Logger().Info("Early-Detection", "slack nofity", "merge conflicts")
 
-			logger.Error("Early-Detection", "Error rebasing branches: ", err)
-			goto WAIT_FOR_SIGNAL
+			mergeConflicts = true
+
+			shared.Logger().Error("Early-Detection", "Error rebasing branches: ", err)
+			// goto WAIT_FOR_SIGNAL
 		}
 
 		// delete the temp ref
 		if _, err = client.Git.DeleteRef(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
-			tempRef.String()); err != nil {
-			logger.Error("Early-Detection", "")
+			*tempRef.Ref); err != nil {
+			shared.Logger().Error("Early-Detection", "Error deleting ref"+tempRef.String(), err)
+		}
+
+		if mergeConflicts {
+			goto WAIT_FOR_SIGNAL
 		}
 	}
 
