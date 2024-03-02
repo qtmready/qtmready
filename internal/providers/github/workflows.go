@@ -149,6 +149,11 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 		branchName = parts[len(parts)-1]
 	}
 
+	if branchName == payload.Repository.DefaultBranch || strings.Contains(branchName, "-tempcopy-for-target-") {
+		shared.Logger().Debug("OnPushEvent", "push on default branch or temp branch", branchName)
+		return nil
+	}
+
 	wf := &Workflows{}
 	opts := shared.Temporal().
 		Queue(shared.ProvidersQueue).
@@ -165,7 +170,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 		SignalWithStartWorkflow(
 			context.Background(),
 			opts.ID,
-			WorkflowSignalCompleteInstallation.String(),
+			WorkflowSignalPushEvent.String(),
 			payload,
 			opts,
 			wf.EarlyDetection,
