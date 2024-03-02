@@ -6,16 +6,16 @@ import (
 	"github.com/slack-go/slack"
 )
 
-func notify(client *slack.Client, channelID string) error {
+func notify(client *slack.Client, channelID, message string) error {
 	attachment := slack.Attachment{
-		Pretext: "Github",
-		Text:    "Hello from quantm!",
+		Color: "danger",
+		Title: "Warning from quantm",
+		Text:  message,
 	}
 
 	// Send message
 	_, _, err := client.PostMessage(
 		channelID,
-		slack.MsgOptionText("Hello", false),
 		slack.MsgOptionAttachments(attachment),
 		slack.MsgOptionAsUser(true),
 	)
