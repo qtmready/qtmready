@@ -220,6 +220,65 @@ WAIT_FOR_SIGNAL:
 		}
 	}
 
+	// check merge conflicts
+	{
+		// Get the default branch (e.g., "main")
+		repo, _, err := client.Repositories.Get(context.Background(), event.Repository.Owner.Login, event.Repository.Name)
+		if err != nil {
+			logger.Error("Early-Detection", "Error getting repository: ", err)
+			goto WAIT_FOR_SIGNAL
+		}
+
+		// Get the latest commit SHA of the default branch
+		commits, _, err := client.Repositories.ListCommits(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
+			&gh.CommitsListOptions{
+				SHA: *repo.DefaultBranch,
+			},
+		)
+		if err != nil {
+			logger.Error("Early-Detection", "Error getting commits: ", err)
+			goto WAIT_FOR_SIGNAL
+		}
+
+		latestDefBranchCommitSHA := *commits[0].SHA
+
+		// create a temp branch/ref
+		tempBranchName := event.Repository.DefaultBranch + "-tempcopy-for-target-" + branchName
+
+		// Create a new branch based on the latest defaultBranch commit
+		tempRef := &gh.Reference{
+			Ref: gh.String("refs/heads/" + tempBranchName),
+			Object: &gh.GitObject{
+				SHA: &latestDefBranchCommitSHA,
+			},
+		}
+		if _, _, err = client.Git.CreateRef(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
+			tempRef); err != nil {
+			logger.Error("Early-Detection", "Error creating branch: ", err)
+			goto WAIT_FOR_SIGNAL
+		}
+
+		// Perform rebase of the target branch with the new temp branch
+		rebaseRequest := &gh.RepositoryMergeRequest{
+			Base:          &tempBranchName,
+			Head:          &branchName,
+			CommitMessage: gh.String("Rebasing " + branchName + " with " + tempBranchName),
+		}
+		if _, _, err = client.Repositories.Merge(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
+			rebaseRequest); err != nil {
+			// notify slack here
+
+			logger.Error("Early-Detection", "Error rebasing branches: ", err)
+			goto WAIT_FOR_SIGNAL
+		}
+
+		// delete the temp ref
+		if _, err = client.Git.DeleteRef(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
+			tempRef.String()); err != nil {
+			logger.Error("Early-Detection", "")
+		}
+	}
+
 
 	return nil
 }
