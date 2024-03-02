@@ -192,7 +192,7 @@ WAIT_FOR_SIGNAL:
 	// receive signal payload
 	ch.Receive(ctx, event)
 
-	logger.Info("EarlyDetection", "signal payload", event)
+	logger.Info("Early-Detection", "signal payload", event)
 
 	// get github client
 	client, err := Instance().GetClientFromInstallation(event.Installation.ID)
@@ -217,6 +217,7 @@ WAIT_FOR_SIGNAL:
 
 		if changes > 200 {
 			// notify slack
+			logger.Info("Early-Detection", "slack nofity", "200+ lines changed")
 
 			goto WAIT_FOR_SIGNAL
 		}
@@ -269,6 +270,7 @@ WAIT_FOR_SIGNAL:
 		if _, _, err = client.Repositories.Merge(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
 			rebaseRequest); err != nil {
 			// notify slack here
+			logger.Info("Early-Detection", "slack nofity", "merge conflicts")
 
 			logger.Error("Early-Detection", "Error rebasing branches: ", err)
 			goto WAIT_FOR_SIGNAL
@@ -335,6 +337,7 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID in
 	// check if the branchName branch has the lastBranchCommit as the latest commit
 	if lastBranchCommit != latestCommitSHA {
 		// notify slack
+		shared.Logger().Info("Early-Detection", "slack nofity", "stale branch")
 
 		return nil
 	}
