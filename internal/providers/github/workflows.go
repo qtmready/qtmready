@@ -142,6 +142,15 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	logger := workflow.GetLogger(ctx)
 	logger.Info("received push event ...")
 
+func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) error {
+	logger := workflow.GetLogger(ctx)
+	logger.Info("EarlyDetection", "entrypoint", "workflow signaled for branch"+branchName)
+
+
+	return nil
+}
+
+
 	return nil
 }
 
