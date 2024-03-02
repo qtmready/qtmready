@@ -172,7 +172,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 			branchName,
 		)
 	if err != nil {
-		logger.Error("OnPushEvent", "Error signaling workflow", err)
+		shared.Logger().Error("OnPushEvent", "Error signaling workflow", err)
 		return err
 	}
 
@@ -180,10 +180,11 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 }
 
 func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) error {
-	logger := workflow.GetLogger(ctx)
-	logger.Info("EarlyDetection", "entrypoint", "workflow signaled for branch"+branchName)
+	shared.Logger().Info("EarlyDetection", "entrypoint", "workflow signaled for branch:"+branchName)
 
 WAIT_FOR_SIGNAL:
+	shared.Logger().Debug("Early-Detection", "waiting for signal", WorkflowSignalPushEvent.String())
+
 	// get push event data via workflow signal
 	ch := workflow.GetSignalChannel(ctx, WorkflowSignalPushEvent.String())
 
@@ -192,12 +193,12 @@ WAIT_FOR_SIGNAL:
 	// receive signal payload
 	ch.Receive(ctx, event)
 
-	logger.Info("Early-Detection", "signal payload", event)
+	// shared.Logger().Info("Early-Detection", "signal payload", event)
 
 	// get github client
 	client, err := Instance().GetClientFromInstallation(event.Installation.ID)
 	if err != nil {
-		logger.Error("GetClientFromInstallation failed", "Error", err)
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
 		return err
 	}
 
@@ -206,7 +207,7 @@ WAIT_FOR_SIGNAL:
 		comparison, _, err := client.Repositories.CompareCommits(context.Background(), event.Repository.Owner.Login,
 			event.Repository.Name, event.Repository.DefaultBranch, branchName, nil)
 		if err != nil {
-			logger.Error("CompareCommits", "Error", err)
+			shared.Logger().Error("CompareCommits", "Error", err)
 			goto WAIT_FOR_SIGNAL
 		}
 
@@ -215,9 +216,11 @@ WAIT_FOR_SIGNAL:
 			changes += file.GetChanges()
 		}
 
+		shared.Logger().Debug("Early-Detection", "total changes in branch", changes)
+
 		if changes > 200 {
 			// notify slack
-			logger.Info("Early-Detection", "slack nofity", "200+ lines changed")
+			shared.Logger().Info("Early-Detection", "slack nofity", "200+ lines changed")
 
 			goto WAIT_FOR_SIGNAL
 		}
@@ -228,7 +231,7 @@ WAIT_FOR_SIGNAL:
 		// Get the default branch (e.g., "main")
 		repo, _, err := client.Repositories.Get(context.Background(), event.Repository.Owner.Login, event.Repository.Name)
 		if err != nil {
-			logger.Error("Early-Detection", "Error getting repository: ", err)
+			shared.Logger().Error("Early-Detection", "Error getting repository: ", err)
 			goto WAIT_FOR_SIGNAL
 		}
 
@@ -239,7 +242,7 @@ WAIT_FOR_SIGNAL:
 			},
 		)
 		if err != nil {
-			logger.Error("Early-Detection", "Error getting commits: ", err)
+			shared.Logger().Error("Early-Detection", "Error getting commits: ", err)
 			goto WAIT_FOR_SIGNAL
 		}
 
@@ -289,7 +292,7 @@ WAIT_FOR_SIGNAL:
 		branch, _, err := client.Repositories.GetBranch(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
 			branchName, false)
 		if err != nil {
-			logger.Error("Early-Detection", "error getting branch", err)
+			shared.Logger().Error("Early-Detection", "error getting branch", err)
 			goto WAIT_FOR_SIGNAL
 		}
 
@@ -306,7 +309,7 @@ WAIT_FOR_SIGNAL:
 
 		if _, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, wf.StaleBranchDetection, event.Installation.ID,
 			event.Repository.Owner.Login, event.Repository.Name, branchName, branch.GetCommit().GetSHA()); err != nil {
-			logger.Error("Early-Detection", "error executing child workflow", err)
+			shared.Logger().Error("Early-Detection", "error executing child workflow", err)
 			goto WAIT_FOR_SIGNAL
 		}
 	}
