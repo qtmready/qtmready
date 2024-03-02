@@ -20,12 +20,14 @@ package github
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
-	"go.temporal.io/sdk/workflow"
-
+	gh "github.com/google/go-github/v53/github"
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/shared"
+	"go.temporal.io/sdk/workflow"
 )
 
 var (
@@ -279,6 +281,33 @@ WAIT_FOR_SIGNAL:
 		}
 	}
 
+	// execute child workflow for stale detection
+	{
+		// get latest commit of the target branch
+		branch, _, err := client.Repositories.GetBranch(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
+			branchName, false)
+		if err != nil {
+			logger.Error("Early-Detection", "error getting branch", err)
+			goto WAIT_FOR_SIGNAL
+		}
+
+		wf := &Workflows{}
+		opts := shared.Temporal().
+			Queue(shared.ProvidersQueue).
+			WorkflowOptions(
+				shared.WithWorkflowBlock("repo"),
+				shared.WithWorkflowBlockID(strconv.FormatInt(event.Repository.ID, 10)),
+				shared.WithWorkflowElement("branch"),
+				shared.WithWorkflowElementID(event.Ref),
+				shared.WithWorkflowProp("type", "Stale-Detection"),
+			)
+
+		if _, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, wf.StaleBranchDetection, event.Installation.ID,
+			event.Repository.Owner.Login, event.Repository.Name, branchName, branch.GetCommit().GetSHA()); err != nil {
+			logger.Error("Early-Detection", "error executing child workflow", err)
+			goto WAIT_FOR_SIGNAL
+		}
+	}
 
 	return nil
 }
