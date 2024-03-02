@@ -209,8 +209,11 @@ WAIT_FOR_SIGNAL:
 
 	// detect 200+ changes
 	{
+		shared.Logger().Debug("going to detect 200+ changes")
+
 		comparison, _, err := client.Repositories.CompareCommits(context.Background(), event.Repository.Owner.Login,
 			event.Repository.Name, event.Repository.DefaultBranch, branchName, nil)
+
 		if err != nil {
 			shared.Logger().Error("CompareCommits", "Error", err)
 			goto WAIT_FOR_SIGNAL
@@ -229,10 +232,14 @@ WAIT_FOR_SIGNAL:
 
 			goto WAIT_FOR_SIGNAL
 		}
+
+		shared.Logger().Debug("200+ changes NOT detected")
 	}
 
 	// check merge conflicts
 	{
+		shared.Logger().Debug("going to detect merge conflicts")
+
 		// Get the default branch (e.g., "main")
 		repo, _, err := client.Repositories.Get(context.Background(), event.Repository.Owner.Login, event.Repository.Name)
 		if err != nil {
@@ -298,10 +305,14 @@ WAIT_FOR_SIGNAL:
 		if mergeConflicts {
 			goto WAIT_FOR_SIGNAL
 		}
+
+		shared.Logger().Debug("merge conflicts NOT detected")
 	}
 
 	// execute child workflow for stale detection
 	{
+		shared.Logger().Debug("going to detect stale branch")
+
 		// get latest commit of the target branch
 		branch, _, err := client.Repositories.GetBranch(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
 			branchName, false)
@@ -334,7 +345,8 @@ WAIT_FOR_SIGNAL:
 func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID int64, repoOwner string, repoName string,
 	branchName string, lastBranchCommit string) error {
 	// Sleep for 5 days before raising stale detection
-	_ = workflow.Sleep(ctx, time.Hour*24)
+
+	shared.Logger().Debug("StaleBranchDetection", "woke up from sleep", "checking for stale branch")
 
 	client, err := Instance().GetClientFromInstallation(installationID)
 	if err != nil {
@@ -352,7 +364,7 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID in
 	latestCommitSHA := branch.GetCommit().GetSHA()
 
 	// check if the branchName branch has the lastBranchCommit as the latest commit
-	if lastBranchCommit != latestCommitSHA {
+	if lastBranchCommit == latestCommitSHA {
 		// notify slack
 		shared.Logger().Info("Early-Detection", "slack nofity", "stale branch")
 
@@ -360,6 +372,7 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID in
 	}
 
 	// at this point, the branch is not stale so just return
+	shared.Logger().Debug("stale branch NOT detected")
 
 	return nil
 }
