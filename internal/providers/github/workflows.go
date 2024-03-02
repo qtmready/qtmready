@@ -142,6 +142,41 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	logger := workflow.GetLogger(ctx)
 	logger.Info("received push event ...")
 
+	branchName := payload.Ref
+	if parts := strings.Split(payload.Ref, "/"); len(parts) == 3 {
+		branchName = parts[len(parts)-1]
+	}
+
+	wf := &Workflows{}
+	opts := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowOptions(
+			shared.WithWorkflowBlock("repo"),
+			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+			shared.WithWorkflowElement("branch"),
+			shared.WithWorkflowElementID(payload.Ref),
+			shared.WithWorkflowProp("type", "Early-Detection"),
+		)
+
+	_, err := shared.Temporal().
+		Client().
+		SignalWithStartWorkflow(
+			context.Background(),
+			opts.ID,
+			WorkflowSignalCompleteInstallation.String(),
+			payload,
+			opts,
+			wf.EarlyDetection,
+			branchName,
+		)
+	if err != nil {
+		logger.Error("OnPushEvent", "Error signaling workflow", err)
+		return err
+	}
+
+	return nil
+}
+
 func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) error {
 	logger := workflow.GetLogger(ctx)
 	logger.Info("EarlyDetection", "entrypoint", "workflow signaled for branch"+branchName)
