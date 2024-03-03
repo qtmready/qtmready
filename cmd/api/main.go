@@ -33,6 +33,7 @@ import (
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/providers/github"
+	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
 	"go.breu.io/quantm/internal/shared/logger"
 )
@@ -88,6 +89,7 @@ func main() {
 	auth.RegisterHandlers(web, auth.NewServerHandler(auth.Middleware))
 	core.RegisterHandlers(web, core.NewServerHandler(auth.Middleware))
 	github.RegisterHandlers(web, github.NewServerHandler(auth.Middleware))
+	slack.RegisterHandlers(web, slack.NewServerHandler(auth.Middleware))
 
 	slog.Info("setting up metrics")
 
@@ -99,6 +101,18 @@ func main() {
 
 	go _run(_serve(web, HTTPPort), errs)
 	go _run(_serve(metrics, PrometheusPort), errs)
+
+	// Call slack events and handle potential error.
+	go func() {
+		message := "Your Pull Request contains excessive lines. Please reduce the number of lines to meet the guidelines."
+		if err := slack.NotifyOnSlack(message); err != nil {
+			slog.Error("event error:", slog.Any("error", err.Error()))
+			errs <- err
+
+			return
+		}
+	}()
+
 	slog.Info("registering quit signals")
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // setting up the signals to listen to.
 
