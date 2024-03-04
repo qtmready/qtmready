@@ -18,7 +18,6 @@
 package slack
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -38,7 +37,7 @@ func NewServerHandler(middleware echo.MiddlewareFunc) *ServerHandler {
 }
 
 func (e *ServerHandler) Login(ctx echo.Context) error {
-	url := Instance().OauthConfig.AuthCodeURL("")
+	url := Instance().OauthConfig.AuthCodeURL("state")
 	return ctx.Redirect(http.StatusFound, url)
 }
 
@@ -50,9 +49,7 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 		return err
 	}
 
-	log.Println("token", token)
-
-	return ctx.String(http.StatusOK, "Authorization successful!")
+	return ctx.JSON(http.StatusOK, token)
 }
 
 func (s *ServerHandler) SendNotificationToChannel(ctx echo.Context) error {
