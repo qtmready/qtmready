@@ -104,7 +104,7 @@ func main() {
 
 	// Call slack events and handle potential error.
 	go func() {
-		message := "Your Pull Request contains excessive lines. Please reduce the number of lines to meet the guidelines."
+		message := "API started."
 		if err := slack.NotifyOnSlack(message); err != nil {
 			slog.Error("event error:", slog.Any("error", err.Error()))
 			errs <- err

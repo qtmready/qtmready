@@ -9,7 +9,7 @@ import (
 func notify(client *slack.Client, channelID, message string) error {
 	attachment := slack.Attachment{
 		Color: "danger",
-		Title: "Warning from quantm",
+		Title: "Message from quantm",
 		Text:  message,
 	}
 
