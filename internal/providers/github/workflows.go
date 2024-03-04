@@ -26,6 +26,7 @@ import (
 
 	gh "github.com/google/go-github/v53/github"
 	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
 	"go.temporal.io/sdk/workflow"
 )
@@ -228,6 +229,7 @@ WAIT_FOR_SIGNAL:
 
 		if changes > 200 {
 			// notify slack
+			_ = slack.NotifyOnSlack("200+ lines changed on branch " + branchName)
 			shared.Logger().Info("Early-Detection", "slack nofity", "200+ lines changed")
 
 			goto WAIT_FOR_SIGNAL
@@ -293,8 +295,9 @@ WAIT_FOR_SIGNAL:
 		if _, _, err = client.Repositories.Merge(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
 			rebaseRequest); err != nil {
 			// notify slack here
-			shared.Logger().Info("Early-Detection", "slack nofity", "merge conflicts")
+			slack.NotifyOnSlack("Merge Conflicts are expected on branch " + branchName)
 
+			shared.Logger().Info("Early-Detection", "slack nofity", "merge conflicts")
 			shared.Logger().Error("Early-Detection", "Error rebasing branches: ", err)
 
 			goto WAIT_FOR_SIGNAL
@@ -339,6 +342,7 @@ WAIT_FOR_SIGNAL:
 func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID int64, repoOwner string, repoName string,
 	branchName string, lastBranchCommit string) error {
 	// Sleep for 5 days before raising stale detection
+	_ = workflow.Sleep(ctx, 30*time.Second)
 
 	shared.Logger().Debug("StaleBranchDetection", "woke up from sleep", "checking for stale branch")
 
@@ -360,6 +364,8 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID in
 	// check if the branchName branch has the lastBranchCommit as the latest commit
 	if lastBranchCommit == latestCommitSHA {
 		// notify slack
+		_ = slack.NotifyOnSlack("Stale branch " + branchName)
+
 		shared.Logger().Info("Early-Detection", "slack nofity", "stale branch")
 
 		return nil
