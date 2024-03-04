@@ -342,7 +342,8 @@ WAIT_FOR_SIGNAL:
 func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID int64, repoOwner string, repoName string,
 	branchName string, lastBranchCommit string) error {
 	// Sleep for 5 days before raising stale detection
-	_ = workflow.Sleep(ctx, 30*time.Second)
+	_ = workflow.Sleep(ctx, 5*24*time.Hour)
+	// _ = workflow.Sleep(ctx, 30*time.Second)
 
 	shared.Logger().Debug("StaleBranchDetection", "woke up from sleep", "checking for stale branch")
 
