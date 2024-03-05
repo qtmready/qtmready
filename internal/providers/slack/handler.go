@@ -54,7 +54,3 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 
 	return ctx.String(http.StatusOK, "Authorization successful!")
 }
-
-func (s *ServerHandler) SendNotificationToChannel(ctx echo.Context) error {
-	return ctx.JSON(http.StatusOK, "ok")
-}

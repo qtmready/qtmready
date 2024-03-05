@@ -4,36 +4,6 @@ info:
   version: 0.0.1
 
 paths:
-  /v1/slack/notification:
-    get:
-      summary: |
-        sends a early warning notification to channel
-      description: sends a early warning notification to channel
-      operationId: sendNotificationToChannel
-      tags:
-        - slack
-      security:
-        - BearerAuth: []
-        - APIKeyAuth: []
-      parameters:
-        - name: channelID
-          in: query
-          description: The ID of the Slack channel to send the notification to.
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: send slack notification to user successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SlackNotification'
-        '400':
-          $ref: '../../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '500':
-          $ref: '../../shared/openapi.spec.yaml#/components/responses/InternalServerError'
-
   /v1/auth/slack/login:
     get:
       summary: Initiate slack login
@@ -77,19 +47,6 @@ paths:
 
 components:
   schemas:
-    SlackNotification:
-      type: object
-      properties:
-        message:
-          type: string
-          description: The message content to send to the Slack channel.
-        channelID:
-          type: string
-          description: The ID of the Slack channel where the message will be sent.
-      required:
-        - message
-        - channelID
-
     SlackResponse:
       type: object
       properties:

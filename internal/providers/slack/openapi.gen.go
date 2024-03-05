@@ -25,11 +25,6 @@ import (
 	externalRef0 "go.breu.io/quantm/internal/shared"
 )
 
-const (
-	APIKeyAuthScopes = "APIKeyAuth.Scopes"
-	BearerAuthScopes = "BearerAuth.Scopes"
-)
-
 var (
 	ErrInvalidSlackStatus = errors.New("invalid SlackStatus value")
 )
@@ -73,15 +68,6 @@ func (v *SlackStatus) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// SlackNotification defines model for SlackNotification.
-type SlackNotification struct {
-	// ChannelID The ID of the Slack channel where the message will be sent.
-	ChannelID string `json:"channelID"`
-
-	// Message The message content to send to the Slack channel.
-	Message string `json:"message"`
-}
-
 // SlackResponse defines model for SlackResponse.
 type SlackResponse struct {
 	Errors *map[string]string `json:"errors,omitempty"`
@@ -94,12 +80,6 @@ type SlackStatus string
 // SlackOauthParams defines parameters for SlackOauth.
 type SlackOauthParams struct {
 	Code string `form:"code" json:"code"`
-}
-
-// SendNotificationToChannelParams defines parameters for SendNotificationToChannel.
-type SendNotificationToChannelParams struct {
-	// ChannelID The ID of the Slack channel to send the notification to.
-	ChannelID string `form:"channelID" json:"channelID"`
 }
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
@@ -180,9 +160,6 @@ type ClientInterface interface {
 
 	// SlackOauth request
 	SlackOauth(ctx context.Context, params *SlackOauthParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// SendNotificationToChannel request
-	SendNotificationToChannel(ctx context.Context, params *SendNotificationToChannelParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) Login(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -199,18 +176,6 @@ func (c *Client) Login(ctx context.Context, reqEditors ...RequestEditorFn) (*htt
 
 func (c *Client) SlackOauth(ctx context.Context, params *SlackOauthParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSlackOauthRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) SendNotificationToChannel(ctx context.Context, params *SendNotificationToChannelParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSendNotificationToChannelRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -293,51 +258,6 @@ func NewSlackOauthRequest(server string, params *SlackOauthParams) (*http.Reques
 	return req, nil
 }
 
-// NewSendNotificationToChannelRequest generates requests for SendNotificationToChannel
-func NewSendNotificationToChannelRequest(server string, params *SendNotificationToChannelParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/slack/notification")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "channelID", runtime.ParamLocationQuery, params.ChannelID); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -386,9 +306,6 @@ type ClientWithResponsesInterface interface {
 
 	// SlackOauthWithResponse request
 	SlackOauthWithResponse(ctx context.Context, params *SlackOauthParams, reqEditors ...RequestEditorFn) (*SlackOauthResponse, error)
-
-	// SendNotificationToChannelWithResponse request
-	SendNotificationToChannelWithResponse(ctx context.Context, params *SendNotificationToChannelParams, reqEditors ...RequestEditorFn) (*SendNotificationToChannelResponse, error)
 }
 
 type LoginResponse struct {
@@ -438,30 +355,6 @@ func (r SlackOauthResponse) StatusCode() int {
 	return 0
 }
 
-type SendNotificationToChannelResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *SlackNotification
-	JSON400      *externalRef0.BadRequest
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r SendNotificationToChannelResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r SendNotificationToChannelResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 // LoginWithResponse request returning *LoginResponse
 func (c *ClientWithResponses) LoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*LoginResponse, error) {
 	rsp, err := c.Login(ctx, reqEditors...)
@@ -478,15 +371,6 @@ func (c *ClientWithResponses) SlackOauthWithResponse(ctx context.Context, params
 		return nil, err
 	}
 	return ParseSlackOauthResponse(rsp)
-}
-
-// SendNotificationToChannelWithResponse request returning *SendNotificationToChannelResponse
-func (c *ClientWithResponses) SendNotificationToChannelWithResponse(ctx context.Context, params *SendNotificationToChannelParams, reqEditors ...RequestEditorFn) (*SendNotificationToChannelResponse, error) {
-	rsp, err := c.SendNotificationToChannel(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseSendNotificationToChannelResponse(rsp)
 }
 
 // ParseLoginResponse parses an HTTP response from a LoginWithResponse call
@@ -562,46 +446,6 @@ func ParseSlackOauthResponse(rsp *http.Response) (*SlackOauthResponse, error) {
 	return response, nil
 }
 
-// ParseSendNotificationToChannelResponse parses an HTTP response from a SendNotificationToChannelWithResponse call
-func ParseSendNotificationToChannelResponse(rsp *http.Response) (*SendNotificationToChannelResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &SendNotificationToChannelResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest SlackNotification
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Initiate slack login
@@ -611,13 +455,6 @@ type ServerInterface interface {
 	// Callback after Slack login
 	// (GET /v1/auth/slack/login/callback)
 	SlackOauth(ctx echo.Context) error
-
-	// sends a early warning notification to channel
-	// (GET /v1/slack/notification)
-	SendNotificationToChannel(ctx echo.Context) error
-
-	// SecurityHandler returns the underlying Security Wrapper
-	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -658,32 +495,6 @@ func (w *ServerInterfaceWrapper) SlackOauth(ctx echo.Context) error {
 	return err
 }
 
-// SendNotificationToChannel converts echo context to params.
-
-func (w *ServerInterfaceWrapper) SendNotificationToChannel(ctx echo.Context) error {
-	var err error
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	ctx.Set(APIKeyAuthScopes, []string{})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params SendNotificationToChannelParams
-	// ------------- Required query parameter "channelID" -------------
-
-	err = runtime.BindQueryParameter("form", true, true, "channelID", ctx.QueryParams(), &params.ChannelID)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter channelID: %s", err))
-	}
-
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.SendNotificationToChannel
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
-
-	return err
-}
-
 // EchoRouter is an interface that wraps the methods of echo.Echo & echo.Group to provide a common interface
 // for registering routes.
 type EchoRouter interface {
@@ -713,6 +524,5 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.GET(baseURL+"/v1/auth/slack/login", wrapper.Login)
 	router.GET(baseURL+"/v1/auth/slack/login/callback", wrapper.SlackOauth)
-	router.GET(baseURL+"/v1/slack/notification", wrapper.SendNotificationToChannel)
 
 }
