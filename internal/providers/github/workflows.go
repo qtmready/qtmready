@@ -188,7 +188,6 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) error {
 	shared.Logger().Info("EarlyDetection", "entrypoint", "workflow signaled for branch:"+branchName)
 
-WAIT_FOR_SIGNAL:
 	shared.Logger().Debug("Early-Detection", "waiting for signal", WorkflowSignalPushEvent.String())
 
 	// get push event data via workflow signal
@@ -217,7 +216,9 @@ WAIT_FOR_SIGNAL:
 
 		if err != nil {
 			shared.Logger().Error("CompareCommits", "Error", err)
-			goto WAIT_FOR_SIGNAL
+
+			// dont want to retry this workflow so not returning error, just log and return
+			return nil
 		}
 
 		var changes int
@@ -230,9 +231,11 @@ WAIT_FOR_SIGNAL:
 		if changes > 200 {
 			// notify slack
 			_ = slack.NotifyOnSlack("200+ lines changed on branch " + branchName)
+
 			shared.Logger().Info("Early-Detection", "slack nofity", "200+ lines changed")
 
-			goto WAIT_FOR_SIGNAL
+			// dont want to retry this workflow so not returning error, just log and return
+			return nil
 		}
 
 		shared.Logger().Debug("200+ changes NOT detected")
@@ -246,7 +249,9 @@ WAIT_FOR_SIGNAL:
 		repo, _, err := client.Repositories.Get(context.Background(), event.Repository.Owner.Login, event.Repository.Name)
 		if err != nil {
 			shared.Logger().Error("Early-Detection", "Error getting repository: ", err)
-			goto WAIT_FOR_SIGNAL
+
+			// dont want to retry this workflow so not returning error, just log and return
+			return nil
 		}
 
 		// Get the latest commit SHA of the default branch
@@ -257,7 +262,9 @@ WAIT_FOR_SIGNAL:
 		)
 		if err != nil {
 			shared.Logger().Error("Early-Detection", "Error getting commits: ", err)
-			goto WAIT_FOR_SIGNAL
+
+			// dont want to retry this workflow so not returning error, just log and return
+			return nil
 		}
 
 		latestDefBranchCommitSHA := *commits[0].SHA
@@ -283,7 +290,9 @@ WAIT_FOR_SIGNAL:
 		if _, _, err = client.Git.CreateRef(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
 			tempRef); err != nil {
 			shared.Logger().Error("Early-Detection", "Error creating branch: ", err)
-			goto WAIT_FOR_SIGNAL
+
+			// dont want to retry this workflow so not returning error, just log and return
+			return nil
 		}
 
 		// Perform rebase of the target branch with the new temp branch
@@ -295,12 +304,13 @@ WAIT_FOR_SIGNAL:
 		if _, _, err = client.Repositories.Merge(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
 			rebaseRequest); err != nil {
 			// notify slack here
-			slack.NotifyOnSlack("Merge Conflicts are expected on branch " + branchName)
+			_ = slack.NotifyOnSlack("Merge Conflicts are expected on branch " + branchName)
 
 			shared.Logger().Info("Early-Detection", "slack nofity", "merge conflicts")
 			shared.Logger().Error("Early-Detection", "Error rebasing branches: ", err)
 
-			goto WAIT_FOR_SIGNAL
+			// dont want to retry this workflow so not returning error, just log and return
+			return nil
 		}
 
 		shared.Logger().Debug("merge conflicts NOT detected")
@@ -315,7 +325,9 @@ WAIT_FOR_SIGNAL:
 			branchName, false)
 		if err != nil {
 			shared.Logger().Error("Early-Detection", "error getting branch", err)
-			goto WAIT_FOR_SIGNAL
+
+			// dont want to retry this workflow so not returning error, just log and return
+			return nil
 		}
 
 		wf := &Workflows{}
@@ -332,7 +344,9 @@ WAIT_FOR_SIGNAL:
 		if _, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, wf.StaleBranchDetection, event.Installation.ID,
 			event.Repository.Owner.Login, event.Repository.Name, branchName, branch.GetCommit().GetSHA()); err != nil {
 			shared.Logger().Error("Early-Detection", "error executing child workflow", err)
-			goto WAIT_FOR_SIGNAL
+
+			// dont want to retry this workflow so not returning error, just log and return
+			return nil
 		}
 	}
 
