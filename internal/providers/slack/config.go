@@ -50,17 +50,18 @@ func Instance() *integration {
 }
 
 func connect(c *config) *integration {
+	lgr := &logger{shared.Logger().WithGroup("slack")}
 	client := slack.New(
 		c.BotToken,
 		slack.OptionDebug(shared.Service().GetDebug()),
 		slack.OptionAppLevelToken(c.AppToken),
-		slack.OptionLog(logger()),
+		slack.OptionLog(lgr),
 	)
 
 	socket := socketmode.New(
 		client,
 		socketmode.OptionDebug(shared.Service().GetDebug()),
-		socketmode.OptionLog(logger()),
+		socketmode.OptionLog(lgr),
 	)
 
 	oauthConfig := &oauth2.Config{
