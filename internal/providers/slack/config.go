@@ -7,7 +7,6 @@ import (
 	"github.com/slack-go/slack"
 	"github.com/slack-go/slack/socketmode"
 	"golang.org/x/oauth2"
-	oauth "golang.org/x/oauth2/slack"
 
 	"go.breu.io/quantm/internal/shared"
 )
@@ -69,7 +68,10 @@ func connect(c *config) *integration {
 		ClientSecret: c.ClientSecret,
 		RedirectURL:  c.RedirectURL,
 		Scopes:       []string{"channels:read", "chat:write"},
-		Endpoint:     oauth.Endpoint,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:  "https://slack.com/oauth/v2/authorize",
+			TokenURL: "https://slack.com/api/oauth.v2.access",
+		},
 	}
 
 	return &integration{
@@ -98,4 +100,16 @@ func AppToken() string {
 
 func UserToken() string {
 	return Instance().Config.UserToken
+}
+
+func ClientID() string {
+	return Instance().Config.ClientID
+}
+
+func ClientSecret() string {
+	return Instance().Config.ClientSecret
+}
+
+func ClientRedirectURL() string {
+	return Instance().Config.RedirectURL
 }

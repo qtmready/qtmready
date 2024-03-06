@@ -22,6 +22,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/slack-go/slack"
 
 	"go.breu.io/quantm/internal/auth"
 )
@@ -44,13 +45,31 @@ func (e *ServerHandler) Login(ctx echo.Context) error {
 
 func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 	code := ctx.QueryParam("code")
-	token, err := Instance().OauthConfig.Exchange(ctx.Request().Context(), code)
+	// token, err := Instance().OauthConfig.Exchange(ctx.Request().Context(), code)
 
+	token, _, err := slack.GetOAuthToken(http.DefaultClient, ClientID(), ClientSecret(), code, ClientRedirectURL())
+	if err != nil {
+		return err
+	}
+
+	btoken, _, bot, err := slack.GetBotOAuthToken(http.DefaultClient, ClientID(), ClientSecret(), code, ClientRedirectURL())
+	if err != nil {
+		return err
+	}
+
+	oauth, err := slack.GetOAuthV2Response(http.DefaultClient, ClientID(), ClientSecret(), code, ClientRedirectURL())
 	if err != nil {
 		return err
 	}
 
 	log.Println("token", token)
+	log.Println("btoken", btoken)
+	log.Println("bot", bot)
 
-	return ctx.String(http.StatusOK, "Authorization successful!")
+	return ctx.JSON(http.StatusOK, map[string]any{
+		"oauth":  oauth,
+		"token":  token,
+		"btoken": btoken,
+		"bot":    bot,
+	})
 }
