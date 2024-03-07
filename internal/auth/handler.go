@@ -196,3 +196,59 @@ func (s *ServerHandler) CreateTeam(ctx echo.Context) error {
 func (s *ServerHandler) AddUserToTeam(ctx echo.Context) error {
 	return ctx.JSON(http.StatusNotImplemented, nil)
 }
+
+func (s *ServerHandler) CreateUser(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) GetUserByEmail(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) GetUser(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) UpdateUser(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) LinkAccount(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) GetUserByAccount(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) DeleteUser(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) UnlinkAccount(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) CreateSession(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) GetSessionAndUser(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) UpdateSession(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) DeleteSession(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) CreateVerificationToken(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) UseVerificationToken(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
