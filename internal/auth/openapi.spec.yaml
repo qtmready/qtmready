@@ -462,8 +462,6 @@ paths:
           $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
         '401':
           $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '404':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/NotFound'
         '500':
           $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
   /auth/unlink-account:

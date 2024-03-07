@@ -2111,7 +2111,6 @@ type LinkAccountResponse struct {
 	JSON200      *Accounts
 	JSON400      *externalRef0.BadRequest
 	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
 	JSON500      *externalRef0.InternalServerError
 }
 
@@ -3094,13 +3093,6 @@ func ParseLinkAccountResponse(rsp *http.Response) (*LinkAccountResponse, error) 
 			return nil, err
 		}
 		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest externalRef0.InternalServerError
