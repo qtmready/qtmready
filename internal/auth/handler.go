@@ -19,6 +19,7 @@ package auth
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
@@ -198,15 +199,63 @@ func (s *ServerHandler) AddUserToTeam(ctx echo.Context) error {
 }
 
 func (s *ServerHandler) CreateUser(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
+	request := &UserRequest{}
+
+	// Translating request to json
+	if err := ctx.Bind(request); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	// Validating request
+	if err := ctx.Validate(request); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	names := strings.Split(request.Name, " ")
+
+	user := &User{
+		FirstName: names[0],
+		LastName:  "", // Default value
+		Email:     request.Email,
+		Password:  "", // Default value
+	}
+
+	// Check if names slice has at least 2 elements, if so, assign the second element to LastName
+	if len(names) > 1 {
+		user.LastName = names[1]
+	}
+
+	if err := ctx.Validate(user); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	if err := db.Save(user); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	return ctx.JSON(http.StatusCreated, user)
 }
 
 func (s *ServerHandler) GetUserByEmail(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
+	user := &User{}
+	param := db.QueryParams{"email": "'" + ctx.Param("email") + "'"}
+
+	if err := db.Get(user, param); err != nil {
+		return shared.NewAPIError(http.StatusNotFound, err)
+	}
+
+	return ctx.JSON(http.StatusOK, user)
 }
 
 func (s *ServerHandler) GetUser(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
+	user := &User{}
+	param := db.QueryParams{"id": ctx.Param("id")}
+
+	if err := db.Get(user, param); err != nil {
+		return shared.NewAPIError(http.StatusNotFound, err)
+	}
+
+	return ctx.JSON(http.StatusOK, user)
 }
 
 func (s *ServerHandler) UpdateUser(ctx echo.Context) error {

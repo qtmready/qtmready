@@ -277,10 +277,8 @@ type UserAndSession struct {
 
 // UserRequest defines model for UserRequest.
 type UserRequest struct {
-	Email         string    `json:"email"`
-	EmailVerified time.Time `json:"email_verified"`
-	Image         string    `json:"image"`
-	Name          string    `json:"name"`
+	Email string `json:"email"`
+	Name  string `json:"name"`
 }
 
 // Users defines model for Users.
@@ -1686,7 +1684,7 @@ func NewGetUserByEmailRequest(server string, email string) (*http.Request, error
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/auth/user/%s", pathParam0)
+	operationPath := fmt.Sprintf("/auth/user/email/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -2439,7 +2437,7 @@ func (r GetUserByAccountResponse) StatusCode() int {
 type CreateUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON201      *Users
+	JSON201      *User
 	JSON400      *externalRef0.BadRequest
 	JSON401      *externalRef0.Unauthorized
 	JSON500      *externalRef0.InternalServerError
@@ -2464,7 +2462,7 @@ func (r CreateUserResponse) StatusCode() int {
 type GetUserByEmailResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Users
+	JSON200      *User
 	JSON400      *externalRef0.BadRequest
 	JSON401      *externalRef0.Unauthorized
 	JSON404      *externalRef0.NotFound
@@ -2516,7 +2514,7 @@ func (r DeleteUserResponse) StatusCode() int {
 type GetUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Users
+	JSON200      *User
 	JSON400      *externalRef0.BadRequest
 	JSON401      *externalRef0.Unauthorized
 	JSON404      *externalRef0.NotFound
@@ -3727,7 +3725,7 @@ func ParseCreateUserResponse(rsp *http.Response) (*CreateUserResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest Users
+		var dest User
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -3774,7 +3772,7 @@ func ParseGetUserByEmailResponse(rsp *http.Response) (*GetUserByEmailResponse, e
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Users
+		var dest User
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -3882,7 +3880,7 @@ func ParseGetUserResponse(rsp *http.Response) (*GetUserResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Users
+		var dest User
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -4140,7 +4138,7 @@ type ServerInterface interface {
 	CreateUser(ctx echo.Context) error
 
 	// get user by email
-	// (GET /auth/user/{email})
+	// (GET /auth/user/email/{email})
 	GetUserByEmail(ctx echo.Context) error
 
 	// delete user by id
@@ -4615,7 +4613,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/auth/unlink-account", wrapper.UnlinkAccount)
 	router.GET(baseURL+"/auth/user", wrapper.GetUserByAccount)
 	router.POST(baseURL+"/auth/user", wrapper.CreateUser)
-	router.GET(baseURL+"/auth/user/:email", wrapper.GetUserByEmail)
+	router.GET(baseURL+"/auth/user/email/:email", wrapper.GetUserByEmail)
 	router.DELETE(baseURL+"/auth/user/:id", wrapper.DeleteUser)
 	router.GET(baseURL+"/auth/user/:id", wrapper.GetUser)
 	router.PUT(baseURL+"/auth/user/:id", wrapper.UpdateUser)
