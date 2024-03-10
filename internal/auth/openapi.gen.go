@@ -40,8 +40,8 @@ type APIKeyValidationResponse struct {
 	Message *string `json:"message,omitempty"`
 }
 
-// Accounts defines model for Accounts.
-type Accounts struct {
+// Account defines model for Account.
+type Account struct {
 	AccessToken       string     `json:"access_token"`
 	CreatedAt         time.Time  `json:"created_at"`
 	ExpiresAt         time.Time  `json:"expires_at"`
@@ -59,20 +59,20 @@ type Accounts struct {
 }
 
 var (
-	accountsColumns = []string{"access_token", "created_at", "expires_at", "id", "id_token", "provider", "provider_account_id", "refresh_token", "scope", "session_state", "token_type", "type", "updated_at", "user_id"}
+	accountColumns = []string{"access_token", "created_at", "expires_at", "id", "id_token", "provider", "provider_account_id", "refresh_token", "scope", "session_state", "token_type", "type", "updated_at", "user_id"}
 
-	accountsMeta = itable.Metadata{
+	accountMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "acounts",
-			Columns: accountsColumns,
+			Columns: accountColumns,
 		},
 	}
 
-	accountsTable = itable.New(*accountsMeta.M)
+	accountTable = itable.New(*accountMeta.M)
 )
 
-func (accounts *Accounts) GetTable() itable.ITable {
-	return accountsTable
+func (account *Account) GetTable() itable.ITable {
+	return accountTable
 }
 
 // AddUserToTeamRequest defines model for AddUserToTeamRequest.
@@ -140,39 +140,6 @@ type RegisterationRequest struct {
 type RegisterationResponse struct {
 	Team *Team `json:"team,omitempty"`
 	User *User `json:"user,omitempty"`
-}
-
-// SessionRequest defines model for SessionRequest.
-type SessionRequest struct {
-	Expires      time.Time `json:"expires"`
-	SessionToken string    `json:"session_token"`
-	UserID       string    `json:"user_id"`
-}
-
-// Sessions defines model for Sessions.
-type Sessions struct {
-	CreatedAt    time.Time  `json:"created_at"`
-	Expires      time.Time  `json:"expires"`
-	ID           gocql.UUID `json:"id"`
-	SessionToken string     `json:"session_token"`
-	UserID       string     `json:"user_id"`
-}
-
-var (
-	sessionsColumns = []string{"created_at", "expires", "id", "session_token", "user_id"}
-
-	sessionsMeta = itable.Metadata{
-		M: &table.Metadata{
-			Name:    "sessions",
-			Columns: sessionsColumns,
-		},
-	}
-
-	sessionsTable = itable.New(*sessionsMeta.M)
-)
-
-func (sessions *Sessions) GetTable() itable.ITable {
-	return sessionsTable
 }
 
 // Team defines model for Team.
@@ -269,78 +236,10 @@ func (user *User) GetTable() itable.ITable {
 	return userTable
 }
 
-// UserAndSession defines model for UserAndSession.
-type UserAndSession struct {
-	Session Sessions `json:"session"`
-	User    Users    `json:"user"`
-}
-
 // UserRequest defines model for UserRequest.
 type UserRequest struct {
 	Email string `json:"email"`
 	Name  string `json:"name"`
-}
-
-// Users defines model for Users.
-type Users struct {
-	CreatedAt     time.Time  `json:"created_at"`
-	Email         string     `json:"email"`
-	EmailVerified time.Time  `json:"email_verified"`
-	ID            gocql.UUID `json:"id"`
-	Image         string     `json:"image"`
-	Name          string     `json:"name"`
-	UpdatedAt     time.Time  `json:"updated_at"`
-}
-
-var (
-	usersColumns = []string{"created_at", "email", "email_verified", "id", "image", "name", "updated_at"}
-
-	usersMeta = itable.Metadata{
-		M: &table.Metadata{
-			Name:    "users",
-			Columns: usersColumns,
-		},
-	}
-
-	usersTable = itable.New(*usersMeta.M)
-)
-
-func (users *Users) GetTable() itable.ITable {
-	return usersTable
-}
-
-// VerificationToken defines model for VerificationToken.
-type VerificationToken struct {
-	CreatedAt  time.Time  `json:"created_at"`
-	Expires    time.Time  `json:"expires"`
-	ID         gocql.UUID `json:"id"`
-	Identifier string     `json:"identifier"`
-	Token      string     `json:"token"`
-	UpdatedAt  time.Time  `json:"updated_at"`
-}
-
-var (
-	verificationtokenColumns = []string{"created_at", "expires", "id", "identifier", "token", "updated_at"}
-
-	verificationtokenMeta = itable.Metadata{
-		M: &table.Metadata{
-			Name:    "verification_token",
-			Columns: verificationtokenColumns,
-		},
-	}
-
-	verificationtokenTable = itable.New(*verificationtokenMeta.M)
-)
-
-func (verificationtoken *VerificationToken) GetTable() itable.ITable {
-	return verificationtokenTable
-}
-
-// VerificationTokenRequest defines model for VerificationTokenRequest.
-type VerificationTokenRequest struct {
-	Expires    time.Time `json:"expires"`
-	Identifier string    `json:"identifier"`
-	Token      string    `json:"token"`
 }
 
 // UnlinkAccountParams defines parameters for UnlinkAccount.
@@ -376,12 +275,6 @@ type LoginJSONRequestBody = LoginRequest
 // RegisterJSONRequestBody defines body for Register for application/json ContentType.
 type RegisterJSONRequestBody = RegisterationRequest
 
-// CreateSessionJSONRequestBody defines body for CreateSession for application/json ContentType.
-type CreateSessionJSONRequestBody = SessionRequest
-
-// UpdateSessionJSONRequestBody defines body for UpdateSession for application/json ContentType.
-type UpdateSessionJSONRequestBody = SessionRequest
-
 // CreateTeamJSONRequestBody defines body for CreateTeam for application/json ContentType.
 type CreateTeamJSONRequestBody = CreateTeamRequest
 
@@ -393,9 +286,6 @@ type CreateUserJSONRequestBody = UserRequest
 
 // UpdateUserJSONRequestBody defines body for UpdateUser for application/json ContentType.
 type UpdateUserJSONRequestBody = UserRequest
-
-// CreateVerificationTokenJSONRequestBody defines body for CreateVerificationToken for application/json ContentType.
-type CreateVerificationTokenJSONRequestBody = VerificationTokenRequest
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -498,22 +388,6 @@ type ClientInterface interface {
 
 	Register(ctx context.Context, body RegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// CreateSessionWithBody request with any body
-	CreateSessionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CreateSession(ctx context.Context, body CreateSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// DeleteSession request
-	DeleteSession(ctx context.Context, sessionToken string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetSessionAndUser request
-	GetSessionAndUser(ctx context.Context, sessionToken string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UpdateSessionWithBody request with any body
-	UpdateSessionWithBody(ctx context.Context, sessionToken string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	UpdateSession(ctx context.Context, sessionToken string, body UpdateSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// ListTeams request
 	ListTeams(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -554,14 +428,6 @@ type ClientInterface interface {
 	UpdateUserWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateUser(ctx context.Context, id string, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CreateVerificationTokenWithBody request with any body
-	CreateVerificationTokenWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CreateVerificationToken(ctx context.Context, body CreateVerificationTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UseVerificationToken request
-	UseVerificationToken(ctx context.Context, identifier string, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) CreateTeamAPIKeyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -686,78 +552,6 @@ func (c *Client) RegisterWithBody(ctx context.Context, contentType string, body 
 
 func (c *Client) Register(ctx context.Context, body RegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewRegisterRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) CreateSessionWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateSessionRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) CreateSession(ctx context.Context, body CreateSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateSessionRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) DeleteSession(ctx context.Context, sessionToken string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteSessionRequest(c.Server, sessionToken)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetSessionAndUser(ctx context.Context, sessionToken string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetSessionAndUserRequest(c.Server, sessionToken)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) UpdateSessionWithBody(ctx context.Context, sessionToken string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateSessionRequestWithBody(c.Server, sessionToken, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) UpdateSession(ctx context.Context, sessionToken string, body UpdateSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateSessionRequest(c.Server, sessionToken, body)
 	if err != nil {
 		return nil, err
 	}
@@ -938,42 +732,6 @@ func (c *Client) UpdateUserWithBody(ctx context.Context, id string, contentType 
 
 func (c *Client) UpdateUser(ctx context.Context, id string, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewUpdateUserRequest(c.Server, id, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) CreateVerificationTokenWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateVerificationTokenRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) CreateVerificationToken(ctx context.Context, body CreateVerificationTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCreateVerificationTokenRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) UseVerificationToken(ctx context.Context, identifier string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUseVerificationTokenRequest(c.Server, identifier)
 	if err != nil {
 		return nil, err
 	}
@@ -1202,161 +960,6 @@ func NewRegisterRequestWithBody(server string, contentType string, body io.Reade
 	}
 
 	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewCreateSessionRequest calls the generic CreateSession builder with application/json body
-func NewCreateSessionRequest(server string, body CreateSessionJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateSessionRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewCreateSessionRequestWithBody generates requests for CreateSession with any type of body
-func NewCreateSessionRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/session")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewDeleteSessionRequest generates requests for DeleteSession
-func NewDeleteSessionRequest(server string, sessionToken string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "session_token", runtime.ParamLocationPath, sessionToken)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/session/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetSessionAndUserRequest generates requests for GetSessionAndUser
-func NewGetSessionAndUserRequest(server string, sessionToken string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "session_token", runtime.ParamLocationPath, sessionToken)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/session/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewUpdateSessionRequest calls the generic UpdateSession builder with application/json body
-func NewUpdateSessionRequest(server string, sessionToken string, body UpdateSessionJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewUpdateSessionRequestWithBody(server, sessionToken, "application/json", bodyReader)
-}
-
-// NewUpdateSessionRequestWithBody generates requests for UpdateSession with any type of body
-func NewUpdateSessionRequestWithBody(server string, sessionToken string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "session_token", runtime.ParamLocationPath, sessionToken)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/session/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("PUT", queryURL.String(), body)
 	if err != nil {
 		return nil, err
 	}
@@ -1817,80 +1420,6 @@ func NewUpdateUserRequestWithBody(server string, id string, contentType string, 
 	return req, nil
 }
 
-// NewCreateVerificationTokenRequest calls the generic CreateVerificationToken builder with application/json body
-func NewCreateVerificationTokenRequest(server string, body CreateVerificationTokenJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCreateVerificationTokenRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewCreateVerificationTokenRequestWithBody generates requests for CreateVerificationToken with any type of body
-func NewCreateVerificationTokenRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/verification_token")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewUseVerificationTokenRequest generates requests for UseVerificationToken
-func NewUseVerificationTokenRequest(server string, identifier string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "identifier", runtime.ParamLocationPath, identifier)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/verification_token/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -1962,22 +1491,6 @@ type ClientWithResponsesInterface interface {
 
 	RegisterWithResponse(ctx context.Context, body RegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*RegisterResponse, error)
 
-	// CreateSessionWithBodyWithResponse request with any body
-	CreateSessionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSessionResponse, error)
-
-	CreateSessionWithResponse(ctx context.Context, body CreateSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSessionResponse, error)
-
-	// DeleteSessionWithResponse request
-	DeleteSessionWithResponse(ctx context.Context, sessionToken string, reqEditors ...RequestEditorFn) (*DeleteSessionResponse, error)
-
-	// GetSessionAndUserWithResponse request
-	GetSessionAndUserWithResponse(ctx context.Context, sessionToken string, reqEditors ...RequestEditorFn) (*GetSessionAndUserResponse, error)
-
-	// UpdateSessionWithBodyWithResponse request with any body
-	UpdateSessionWithBodyWithResponse(ctx context.Context, sessionToken string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSessionResponse, error)
-
-	UpdateSessionWithResponse(ctx context.Context, sessionToken string, body UpdateSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSessionResponse, error)
-
 	// ListTeamsWithResponse request
 	ListTeamsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTeamsResponse, error)
 
@@ -2018,14 +1531,6 @@ type ClientWithResponsesInterface interface {
 	UpdateUserWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
 
 	UpdateUserWithResponse(ctx context.Context, id string, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
-
-	// CreateVerificationTokenWithBodyWithResponse request with any body
-	CreateVerificationTokenWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVerificationTokenResponse, error)
-
-	CreateVerificationTokenWithResponse(ctx context.Context, body CreateVerificationTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVerificationTokenResponse, error)
-
-	// UseVerificationTokenWithResponse request
-	UseVerificationTokenWithResponse(ctx context.Context, identifier string, reqEditors ...RequestEditorFn) (*UseVerificationTokenResponse, error)
 }
 
 type CreateTeamAPIKeyResponse struct {
@@ -2106,7 +1611,7 @@ func (r ValidateAPIKeyResponse) StatusCode() int {
 type LinkAccountResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Accounts
+	JSON200      *Account
 	JSON400      *externalRef0.BadRequest
 	JSON401      *externalRef0.Unauthorized
 	JSON500      *externalRef0.InternalServerError
@@ -2171,109 +1676,6 @@ func (r RegisterResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r RegisterResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type CreateSessionResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *Sessions
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateSessionResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateSessionResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type DeleteSessionResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DeleteResponse
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteSessionResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DeleteSessionResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetSessionAndUserResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *UserAndSession
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r GetSessionAndUserResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetSessionAndUserResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type UpdateSessionResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *Sessions
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r UpdateSessionResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UpdateSessionResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -2411,7 +1813,7 @@ func (r UnlinkAccountResponse) StatusCode() int {
 type GetUserByAccountResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Users
+	JSON200      *User
 	JSON400      *externalRef0.BadRequest
 	JSON401      *externalRef0.Unauthorized
 	JSON404      *externalRef0.NotFound
@@ -2540,7 +1942,7 @@ func (r GetUserResponse) StatusCode() int {
 type UpdateUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Users
+	JSON200      *User
 	JSON400      *externalRef0.BadRequest
 	JSON401      *externalRef0.Unauthorized
 	JSON404      *externalRef0.NotFound
@@ -2557,56 +1959,6 @@ func (r UpdateUserResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r UpdateUserResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type CreateVerificationTokenResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *VerificationToken
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r CreateVerificationTokenResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CreateVerificationTokenResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type UseVerificationTokenResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *VerificationToken
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r UseVerificationTokenResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UseVerificationTokenResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -2705,58 +2057,6 @@ func (c *ClientWithResponses) RegisterWithResponse(ctx context.Context, body Reg
 		return nil, err
 	}
 	return ParseRegisterResponse(rsp)
-}
-
-// CreateSessionWithBodyWithResponse request with arbitrary body returning *CreateSessionResponse
-func (c *ClientWithResponses) CreateSessionWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateSessionResponse, error) {
-	rsp, err := c.CreateSessionWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateSessionResponse(rsp)
-}
-
-func (c *ClientWithResponses) CreateSessionWithResponse(ctx context.Context, body CreateSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateSessionResponse, error) {
-	rsp, err := c.CreateSession(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateSessionResponse(rsp)
-}
-
-// DeleteSessionWithResponse request returning *DeleteSessionResponse
-func (c *ClientWithResponses) DeleteSessionWithResponse(ctx context.Context, sessionToken string, reqEditors ...RequestEditorFn) (*DeleteSessionResponse, error) {
-	rsp, err := c.DeleteSession(ctx, sessionToken, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteSessionResponse(rsp)
-}
-
-// GetSessionAndUserWithResponse request returning *GetSessionAndUserResponse
-func (c *ClientWithResponses) GetSessionAndUserWithResponse(ctx context.Context, sessionToken string, reqEditors ...RequestEditorFn) (*GetSessionAndUserResponse, error) {
-	rsp, err := c.GetSessionAndUser(ctx, sessionToken, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetSessionAndUserResponse(rsp)
-}
-
-// UpdateSessionWithBodyWithResponse request with arbitrary body returning *UpdateSessionResponse
-func (c *ClientWithResponses) UpdateSessionWithBodyWithResponse(ctx context.Context, sessionToken string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateSessionResponse, error) {
-	rsp, err := c.UpdateSessionWithBody(ctx, sessionToken, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateSessionResponse(rsp)
-}
-
-func (c *ClientWithResponses) UpdateSessionWithResponse(ctx context.Context, sessionToken string, body UpdateSessionJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateSessionResponse, error) {
-	rsp, err := c.UpdateSession(ctx, sessionToken, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateSessionResponse(rsp)
 }
 
 // ListTeamsWithResponse request returning *ListTeamsResponse
@@ -2888,32 +2188,6 @@ func (c *ClientWithResponses) UpdateUserWithResponse(ctx context.Context, id str
 		return nil, err
 	}
 	return ParseUpdateUserResponse(rsp)
-}
-
-// CreateVerificationTokenWithBodyWithResponse request with arbitrary body returning *CreateVerificationTokenResponse
-func (c *ClientWithResponses) CreateVerificationTokenWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateVerificationTokenResponse, error) {
-	rsp, err := c.CreateVerificationTokenWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateVerificationTokenResponse(rsp)
-}
-
-func (c *ClientWithResponses) CreateVerificationTokenWithResponse(ctx context.Context, body CreateVerificationTokenJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateVerificationTokenResponse, error) {
-	rsp, err := c.CreateVerificationToken(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCreateVerificationTokenResponse(rsp)
-}
-
-// UseVerificationTokenWithResponse request returning *UseVerificationTokenResponse
-func (c *ClientWithResponses) UseVerificationTokenWithResponse(ctx context.Context, identifier string, reqEditors ...RequestEditorFn) (*UseVerificationTokenResponse, error) {
-	rsp, err := c.UseVerificationToken(ctx, identifier, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUseVerificationTokenResponse(rsp)
 }
 
 // ParseCreateTeamAPIKeyResponse parses an HTTP response from a CreateTeamAPIKeyWithResponse call
@@ -3072,7 +2346,7 @@ func ParseLinkAccountResponse(rsp *http.Response) (*LinkAccountResponse, error) 
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Accounts
+		var dest Account
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -3178,215 +2452,6 @@ func ParseRegisterResponse(rsp *http.Response) (*RegisterResponse, error) {
 			return nil, err
 		}
 		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseCreateSessionResponse parses an HTTP response from a CreateSessionWithResponse call
-func ParseCreateSessionResponse(rsp *http.Response) (*CreateSessionResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateSessionResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest Sessions
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseDeleteSessionResponse parses an HTTP response from a DeleteSessionWithResponse call
-func ParseDeleteSessionResponse(rsp *http.Response) (*DeleteSessionResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteSessionResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DeleteResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetSessionAndUserResponse parses an HTTP response from a GetSessionAndUserWithResponse call
-func ParseGetSessionAndUserResponse(rsp *http.Response) (*GetSessionAndUserResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetSessionAndUserResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest UserAndSession
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseUpdateSessionResponse parses an HTTP response from a UpdateSessionWithResponse call
-func ParseUpdateSessionResponse(rsp *http.Response) (*UpdateSessionResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UpdateSessionResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Sessions
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest externalRef0.InternalServerError
@@ -3671,7 +2736,7 @@ func ParseGetUserByAccountResponse(rsp *http.Response) (*GetUserByAccountRespons
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Users
+		var dest User
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -3934,7 +2999,7 @@ func ParseUpdateUserResponse(rsp *http.Response) (*UpdateUserResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Users
+		var dest User
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -3973,100 +3038,6 @@ func ParseUpdateUserResponse(rsp *http.Response) (*UpdateUserResponse, error) {
 	return response, nil
 }
 
-// ParseCreateVerificationTokenResponse parses an HTTP response from a CreateVerificationTokenWithResponse call
-func ParseCreateVerificationTokenResponse(rsp *http.Response) (*CreateVerificationTokenResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CreateVerificationTokenResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest VerificationToken
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseUseVerificationTokenResponse parses an HTTP response from a UseVerificationTokenWithResponse call
-func ParseUseVerificationTokenResponse(rsp *http.Response) (*UseVerificationTokenResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UseVerificationTokenResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest VerificationToken
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Create a new API key for the team
@@ -4092,22 +3063,6 @@ type ServerInterface interface {
 	// Register a new user
 	// (POST /auth/register)
 	Register(ctx echo.Context) error
-
-	// create session
-	// (POST /auth/session)
-	CreateSession(ctx echo.Context) error
-
-	// delete session by session token
-	// (DELETE /auth/session/{session_token})
-	DeleteSession(ctx echo.Context) error
-
-	// get user by session token along with session data
-	// (GET /auth/session/{session_token})
-	GetSessionAndUser(ctx echo.Context) error
-
-	// update session by session_token
-	// (PUT /auth/session/{session_token})
-	UpdateSession(ctx echo.Context) error
 
 	// List all teams the user is a member of
 	// (GET /auth/teams)
@@ -4152,14 +3107,6 @@ type ServerInterface interface {
 	// update user by id
 	// (PUT /auth/user/{id})
 	UpdateUser(ctx echo.Context) error
-
-	// create verification token
-	// (POST /auth/verification_token)
-	CreateVerificationToken(ctx echo.Context) error
-
-	// get the verification token by identifier and then delete from database
-	// (GET /auth/verification_token/{identifier})
-	UseVerificationToken(ctx echo.Context) error
 
 	// SecurityHandler returns the underlying Security Wrapper
 	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
@@ -4246,75 +3193,6 @@ func (w *ServerInterfaceWrapper) Register(ctx echo.Context) error {
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.Register
-	err = handler(ctx)
-
-	return err
-}
-
-// CreateSession converts echo context to params.
-
-func (w *ServerInterfaceWrapper) CreateSession(ctx echo.Context) error {
-	var err error
-
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.CreateSession
-	err = handler(ctx)
-
-	return err
-}
-
-// DeleteSession converts echo context to params.
-
-func (w *ServerInterfaceWrapper) DeleteSession(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "session_token" -------------
-	var sessionToken string
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "session_token", runtime.ParamLocationPath, ctx.Param("session_token"), &sessionToken)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter session_token: %s", err))
-	}
-
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.DeleteSession
-	err = handler(ctx)
-
-	return err
-}
-
-// GetSessionAndUser converts echo context to params.
-
-func (w *ServerInterfaceWrapper) GetSessionAndUser(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "session_token" -------------
-	var sessionToken string
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "session_token", runtime.ParamLocationPath, ctx.Param("session_token"), &sessionToken)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter session_token: %s", err))
-	}
-
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GetSessionAndUser
-	err = handler(ctx)
-
-	return err
-}
-
-// UpdateSession converts echo context to params.
-
-func (w *ServerInterfaceWrapper) UpdateSession(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "session_token" -------------
-	var sessionToken string
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "session_token", runtime.ParamLocationPath, ctx.Param("session_token"), &sessionToken)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter session_token: %s", err))
-	}
-
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.UpdateSession
 	err = handler(ctx)
 
 	return err
@@ -4538,37 +3416,6 @@ func (w *ServerInterfaceWrapper) UpdateUser(ctx echo.Context) error {
 	return err
 }
 
-// CreateVerificationToken converts echo context to params.
-
-func (w *ServerInterfaceWrapper) CreateVerificationToken(ctx echo.Context) error {
-	var err error
-
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.CreateVerificationToken
-	err = handler(ctx)
-
-	return err
-}
-
-// UseVerificationToken converts echo context to params.
-
-func (w *ServerInterfaceWrapper) UseVerificationToken(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "identifier" -------------
-	var identifier string
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "identifier", runtime.ParamLocationPath, ctx.Param("identifier"), &identifier)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter identifier: %s", err))
-	}
-
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.UseVerificationToken
-	err = handler(ctx)
-
-	return err
-}
-
 // EchoRouter is an interface that wraps the methods of echo.Echo & echo.Group to provide a common interface
 // for registering routes.
 type EchoRouter interface {
@@ -4602,10 +3449,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/auth/link-account", wrapper.LinkAccount)
 	router.POST(baseURL+"/auth/login", wrapper.Login)
 	router.POST(baseURL+"/auth/register", wrapper.Register)
-	router.POST(baseURL+"/auth/session", wrapper.CreateSession)
-	router.DELETE(baseURL+"/auth/session/:session_token", wrapper.DeleteSession)
-	router.GET(baseURL+"/auth/session/:session_token", wrapper.GetSessionAndUser)
-	router.PUT(baseURL+"/auth/session/:session_token", wrapper.UpdateSession)
 	router.GET(baseURL+"/auth/teams", wrapper.ListTeams)
 	router.POST(baseURL+"/auth/teams", wrapper.CreateTeam)
 	router.GET(baseURL+"/auth/teams/:slug", wrapper.GetTeam)
@@ -4617,7 +3460,5 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.DELETE(baseURL+"/auth/user/:id", wrapper.DeleteUser)
 	router.GET(baseURL+"/auth/user/:id", wrapper.GetUser)
 	router.PUT(baseURL+"/auth/user/:id", wrapper.UpdateUser)
-	router.POST(baseURL+"/auth/verification_token", wrapper.CreateVerificationToken)
-	router.GET(baseURL+"/auth/verification_token/:identifier", wrapper.UseVerificationToken)
 
 }

@@ -16,18 +16,19 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterationRequest'
+              $ref: "#/components/schemas/RegisterationRequest"
       responses:
-        '201':
+        "201":
           description: User created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RegisterationResponse'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/RegisterationResponse"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
   /auth/login:
     post:
       summary: Login
@@ -40,20 +41,21 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: "#/components/schemas/LoginRequest"
       responses:
-        '200':
+        "200":
           description: Login response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenResponse'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/TokenResponse"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
   /auth/api-keys/user:
     post:
       summary: Create a new API key for the user
@@ -66,22 +68,23 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateAPIKeyRequest'
+              $ref: "#/components/schemas/CreateAPIKeyRequest"
       security:
         - BearerAuth: []
       responses:
-        '201':
+        "201":
           description: API key created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreateAPIKeyResponse'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/CreateAPIKeyResponse"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
   /auth/api-keys/team:
     post:
       summary: Create a new API key for the team
@@ -94,22 +97,23 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateAPIKeyRequest'
+              $ref: "#/components/schemas/CreateAPIKeyRequest"
       security:
         - BearerAuth: []
       responses:
-        '201':
+        "201":
           description: API key created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CreateAPIKeyResponse'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/CreateAPIKeyResponse"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
   /auth/api-keys/validate:
     get:
       summary: Validate an API key
@@ -120,18 +124,19 @@ paths:
       security:
         - APIKeyAuth: []
       responses:
-        '200':
+        "200":
           description: API key validated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/APIKeyValidationResponse'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/APIKeyValidationResponse"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
   /auth/teams:
     get:
       summary: List all teams the user is a member of
@@ -142,18 +147,18 @@ paths:
       security:
         - BearerAuth: []
       responses:
-        '200':
+        "200":
           description: Teams retrieved
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TeamList'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/TeamList"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
     post:
       summary: Create a new team
       description: Create a new team
@@ -165,22 +170,23 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/CreateTeamRequest'
+              $ref: "#/components/schemas/CreateTeamRequest"
       security:
         - BearerAuth: []
       responses:
-        '201':
+        "201":
           description: Team created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Team'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/Team"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
   /auth/teams/{slug}:
     get:
       summary: Get a team
@@ -198,20 +204,21 @@ paths:
       security:
         - BearerAuth: []
       responses:
-        '200':
+        "200":
           description: Team retrieved
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Team'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '404':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/NotFound'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/Team"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "404":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
   /auth/teams/{slug}/users:
     post:
       summary: Add a user to a team
@@ -231,24 +238,24 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AddUserToTeamRequest'
+              $ref: "#/components/schemas/AddUserToTeamRequest"
       security:
         - BearerAuth: []
       responses:
-        '201':
+        "201":
           description: User added to team
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TeamUser'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '404':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/NotFound'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/TeamUser"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "404":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
   /auth/user:
     post:
@@ -263,20 +270,20 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserRequest'
+              $ref: "#/components/schemas/UserRequest"
       responses:
-        '201':
+        "201":
           description: User created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
     get:
       summary: get user by provider and provider account id
       description: get user by provider and provider account id
@@ -298,20 +305,21 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: get user by provider and provider account id
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Users'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '404':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/NotFound'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "404":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
   /auth/user/email/{email}:
     get:
       summary: get user by email
@@ -328,20 +336,21 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Get user by email
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '404':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/NotFound'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "404":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
   /auth/user/{id}:
     get:
       summary: get user by id
@@ -358,20 +367,20 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Get user by id
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '404':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/NotFound'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "404":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
     put:
       summary: update user by id
       description: update user by id
@@ -391,22 +400,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserRequest'
+              $ref: "#/components/schemas/UserRequest"
       responses:
-        '200':
+        "200":
           description: update user by id
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Users'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '404':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/NotFound'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "404":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
     delete:
       summary: delete user by id
       description: delete user by id
@@ -422,20 +431,20 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: Delete user by id
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DeleteResponse'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '404':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/NotFound'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/DeleteResponse"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "404":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
   /auth/link-account:
     post:
@@ -450,20 +459,21 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LinkAccount'
+              $ref: "#/components/schemas/LinkAccount"
       responses:
-        '200':
+        "200":
           description: link user to account
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Accounts'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/Account"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
+
   /auth/unlink-account:
     delete:
       summary: unlink account
@@ -486,206 +496,27 @@ paths:
           schema:
             type: string
       responses:
-        '200':
+        "200":
           description: unlink account
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DeleteResponse'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '404':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/NotFound'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
-
-  /auth/session:
-    post:
-      summary: create session
-      description: create session
-      operationId: create-session
-      tags:
-        - auth
-        - session
-      requestBody:
-        description: session to create
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SessionRequest'
-      responses:
-        '201':
-          description: session created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Sessions'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
-  /auth/session/{session_token}:
-    get:
-      summary: get user by session token along with session data
-      description: get user by session token along with session data
-      operationId: get-session-and-user
-      tags:
-        - auth
-        - user
-        - session
-      parameters:
-        - name: session_token
-          in: path
-          description: session token
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Get user by session token along with session data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/UserAndSession'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '404':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/NotFound'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
-    put:
-      summary: update session by session_token
-      description: update session by session_token
-      operationId: update-session
-      tags:
-        - auth
-        - session
-      parameters:
-        - name: session_token
-          in: path
-          description: session token
-          required: true
-          schema:
-            type: string
-      requestBody:
-        description: Session to update
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SessionRequest'
-      responses:
-        '200':
-          description: update session by session token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Sessions'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '404':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/NotFound'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
-    delete:
-      summary: delete session by session token
-      description: delete user by id
-      operationId: delete-session
-      tags:
-        - auth
-        - user
-      parameters:
-        - name: session_token
-          in: path
-          description: session token
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: Delete session by session token
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeleteResponse'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '404':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/NotFound'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
-
-  /auth/verification_token:
-    post:
-      summary: create verification token
-      description: create verification token
-      operationId: create-verification-token
-      tags:
-        - auth
-        - verification-token
-      requestBody:
-        description: verification token to create
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/VerificationTokenRequest'
-      responses:
-        '201':
-          description: verification token created
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VerificationToken'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
-  /auth/verification_token/{identifier}:
-    get:
-      summary: get the verification token by identifier and then delete from database
-      description: get the verification token by identifier and then delete from database
-      operationId: use-verification-token
-      tags:
-        - auth
-        - verification-token
-      parameters:
-        - name: identifier
-          in: path
-          description: token identifier
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: get verification token for usage
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/VerificationToken'
-        '400':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/BadRequest'
-        '401':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/Unauthorized'
-        '500':
-          $ref: '../shared/openapi.spec.yaml#/components/responses/InternalServerError'
+                $ref: "#/components/schemas/DeleteResponse"
+        "400":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
+        "401":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
+        "404":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/NotFound"
+        "500":
+          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
 components:
   securitySchemes:
     BearerAuth:
-      $ref: '../shared/openapi.spec.yaml#/components/securitySchemes/BearerAuth'
+      $ref: "../shared/openapi.spec.yaml#/components/securitySchemes/BearerAuth"
     APIKeyAuth:
-      $ref: '../shared/openapi.spec.yaml#/components/securitySchemes/APIKeyAuth'
+      $ref: "../shared/openapi.spec.yaml#/components/securitySchemes/APIKeyAuth"
 
   schemas:
     RegisterationRequest:
@@ -719,9 +550,9 @@ components:
       type: object
       properties:
         user:
-          $ref: '#/components/schemas/User'
+          $ref: "#/components/schemas/User"
         team:
-          $ref: '#/components/schemas/Team'
+          $ref: "#/components/schemas/Team"
 
     LoginRequest:
       type: object
@@ -812,7 +643,7 @@ components:
         teams:
           type: array
           items:
-            $ref: '#/components/schemas/Team'
+            $ref: "#/components/schemas/Team"
 
     User:
       type: object
@@ -905,7 +736,7 @@ components:
         - created_at
         - updated_at
 
-    Accounts:
+    Account:
       type: object
       x-breu-entity: acounts
       properties:
@@ -958,96 +789,6 @@ components:
         - scope
         - session_state
         - token_type
-        - created_at
-        - updated_at
-
-    Users:
-      type: object
-      x-breu-entity: users
-      properties:
-        id:
-          type: string
-          format: uuid
-          x-go-name: ID
-          x-go-type: gocql.UUID
-        name:
-          type: string
-        email:
-          type: string
-        email_verified:
-          type: string
-          format: date-time
-        image:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-      required:
-        - id
-        - name
-        - email
-        - email_verified
-        - image
-        - created_at
-        - updated_at
-
-    Sessions:
-      type: object
-      x-breu-entity: sessions
-      properties:
-        id:
-          type: string
-          format: uuid
-          x-go-name: ID
-          x-go-type: gocql.UUID
-        user_id:
-          type: string
-          x-go-name: UserID
-        expires:
-          type: string
-          format: date-time
-        session_token:
-          type: string
-        created_at:
-          type: string
-          format: date-time
-      required:
-        - id
-        - user_id
-        - expires
-        - session_token
-        - created_at
-
-    VerificationToken:
-      type: object
-      x-breu-entity: verification_token
-      properties:
-        id:
-          type: string
-          format: uuid
-          x-go-name: ID
-          x-go-type: gocql.UUID
-        identifier:
-          type: string
-        token:
-          type: string
-        expires:
-          type: string
-          format: date-time
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-      required:
-        - id
-        - identifier
-        - token
-        - expires
         - created_at
         - updated_at
 
@@ -1114,45 +855,3 @@ components:
       required:
         - ok
         - message
-
-    SessionRequest:
-      type: object
-      properties:
-        user_id:
-          type: string
-          x-go-name: UserID
-        expires:
-          type: string
-          format: date-time
-        session_token:
-          type: string
-      required:
-        - user_id
-        - expires
-        - session_token
-
-    UserAndSession:
-      type: object
-      properties:
-        user:
-          $ref: '#/components/schemas/Users'
-        session:
-          $ref: '#/components/schemas/Sessions'
-      required:
-        - user
-        - session
-
-    VerificationTokenRequest:
-      type: object
-      properties:
-        identifier:
-          type: string
-        token:
-          type: string
-        expires:
-          type: string
-          format: date-time
-      required:
-        - identifier
-        - token
-        - expires
