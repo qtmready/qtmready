@@ -304,13 +304,15 @@ func (a *Activities) TriggerGithubCIAction(ctx context.Context, installationID i
 	githubEventState.GithubWorkflowID = *latestRun.WorkflowID
 	githubEventState.GithubWorkflowRunID = *latestRun.ID
 	githubEventState.EventType = "CI"
-	githubEventState.EventsData, _ = json.Marshal(eventsData)
+	jsonData, _ := json.Marshal(eventsData)
+	githubEventState.EventsData = string(jsonData)
 
 	// save the CI event
-	if err = db.Save(githubEventState); err != nil {
-		shared.Logger().Error("error saving to github_events_state")
-		return err
-	}
+	db.Save(githubEventState)
+	// if err = db.Save(githubEventState); err != nil {
+	// 	shared.Logger().Error("error saving to github_events_state", "error", err)
+	// 	return err
+	// }
 
 	shared.Logger().Debug("TriggerGithubCIAction done.")
 
@@ -385,7 +387,8 @@ func (a *Activities) TriggerBuild(ctx context.Context, repoID string, changesetI
 	githubEventState.GithubWorkflowID = *latestRun.WorkflowID
 	githubEventState.GithubWorkflowRunID = *latestRun.ID
 	githubEventState.EventType = "Build"
-	githubEventState.EventsData, _ = json.Marshal(eventsData)
+	jsonData, _ := json.Marshal(eventsData)
+	githubEventState.EventsData = string(jsonData)
 
 	// save the Build action event
 	if err = db.Save(githubEventState); err != nil {
@@ -466,7 +469,8 @@ func (a *Activities) TriggerDeployChangeset(ctx context.Context, repoID string, 
 	githubEventState.GithubWorkflowID = *latestRun.WorkflowID
 	githubEventState.GithubWorkflowRunID = *latestRun.ID
 	githubEventState.EventType = "Deploy"
-	githubEventState.EventsData, _ = json.Marshal(eventsData)
+	jsonData, _ := json.Marshal(eventsData)
+	githubEventState.EventsData = string(jsonData)
 
 	// save the Build action event
 	if err = db.Save(githubEventState); err != nil {

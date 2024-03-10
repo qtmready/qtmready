@@ -431,7 +431,6 @@ components:
           x-go-name: Status
         events_data:
           type: string
-          format: json
           x-go-name: EventsData
         github_workflow_id:
           type: integer

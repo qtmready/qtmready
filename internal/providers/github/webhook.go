@@ -89,6 +89,7 @@ func handleWorkflowRunEvent(ctx echo.Context) error {
 	}
 
 	if err := db.Get(githubEventsState, params); err != nil {
+		shared.Logger().Error("handleWorkflowRunEvent", "error retrieving from db", err)
 		return err
 	}
 
@@ -98,7 +99,7 @@ func handleWorkflowRunEvent(ctx echo.Context) error {
 	}
 
 	var eventsData map[string]string
-	_ = json.Unmarshal(githubEventsState.EventsData, &eventsData)
+	_ = json.Unmarshal([]byte(githubEventsState.EventsData), &eventsData)
 
 	switch githubEventsState.EventType {
 	case "CI":

@@ -206,14 +206,14 @@ type CompleteInstallationRequest struct {
 
 // GithubEventsState defines model for GithubEventsState.
 type GithubEventsState struct {
-	CreatedAt           time.Time       `json:"created_at"`
-	EventType           string          `json:"event_type"`
-	EventsData          json.RawMessage `json:"events_data"`
-	GithubWorkflowID    int64           `json:"github_workflow_id"`
-	GithubWorkflowRunID int64           `json:"github_workflow_run_id"`
-	ID                  gocql.UUID      `json:"id"`
-	Status              string          `json:"status"`
-	UpdatedAt           time.Time       `json:"updated_at"`
+	CreatedAt           time.Time  `json:"created_at"`
+	EventType           string     `json:"event_type"`
+	EventsData          string     `json:"events_data"`
+	GithubWorkflowID    int64      `json:"github_workflow_id"`
+	GithubWorkflowRunID int64      `json:"github_workflow_run_id"`
+	ID                  gocql.UUID `json:"id"`
+	Status              string     `json:"status"`
+	UpdatedAt           time.Time  `json:"updated_at"`
 }
 
 var (
