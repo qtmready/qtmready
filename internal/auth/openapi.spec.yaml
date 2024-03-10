@@ -257,14 +257,13 @@ paths:
         "500":
           $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
-  /auth/user:
+  /auth/users:
     post:
       summary: create user authjs
       description: create user authjs
       operationId: create-user
       tags:
         - auth
-        - user
       requestBody:
         description: User to create
         content:
@@ -285,59 +284,33 @@ paths:
         "500":
           $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
     get:
-      summary: get user by provider and provider account id
+      summary: get users
       description: get user by provider and provider account id
-      operationId: get-user-by-account
+      operationId: list-users
       tags:
         - auth
-        - user
       parameters:
         - name: provider_account_id
           in: query
           description: Provider account ID
-          required: true
+          required: false
           schema:
             type: string
         - name: provider
           in: query
           description: Provider type
-          required: true
+          required: false
           schema:
             type: string
-      responses:
-        "200":
-          description: get user by provider and provider account id
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/User"
-        "400":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
-        "401":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
-        "404":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/NotFound"
-        "500":
-          $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
-
-  /auth/user/email/{email}:
-    get:
-      summary: get user by email
-      description: get user by email
-      operationId: get-user-by-email
-      tags:
-        - auth
-        - user
-      parameters:
         - name: email
-          in: path
+          in: query
           description: user email
-          required: true
+          required: false
           schema:
             type: string
       responses:
         "200":
-          description: Get user by email
+          description: user list
           content:
             application/json:
               schema:
@@ -351,14 +324,13 @@ paths:
         "500":
           $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
-  /auth/user/{id}:
+  /auth/users/{id}:
     get:
       summary: get user by id
       description: get user by id
       operationId: get-user
       tags:
         - auth
-        - user
       parameters:
         - name: id
           in: path
@@ -387,7 +359,6 @@ paths:
       operationId: update-user
       tags:
         - auth
-        - user
       parameters:
         - name: id
           in: path
@@ -446,20 +417,19 @@ paths:
         "500":
           $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
 
-  /auth/link-account:
+  /auth/accounts/link:
     post:
       summary: link user with account
       description: link user with account
       operationId: link-account
       tags:
         - auth
-        - account
       requestBody:
         description: link user to account
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LinkAccount"
+              $ref: "#/components/schemas/LinkAccountRequest"
       responses:
         "200":
           description: link user to account
@@ -473,15 +443,12 @@ paths:
           $ref: "../shared/openapi.spec.yaml#/components/responses/Unauthorized"
         "500":
           $ref: "../shared/openapi.spec.yaml#/components/responses/InternalServerError"
-
-  /auth/unlink-account:
     delete:
       summary: unlink account
       description: unlink account
       operationId: unlink-account
       tags:
         - auth
-        - account
       parameters:
         - name: provider_account_id
           in: query
@@ -747,7 +714,9 @@ components:
           x-go-type: gocql.UUID
         user_id:
           type: string
+          format: uuid
           x-go-name: UserID
+          x-go-type: gocql.UUID
         type:
           type: string
         provider:
@@ -755,21 +724,9 @@ components:
         provider_account_id:
           type: string
           x-go-name: ProviderAccountId
-        refresh_token:
-          type: string
-        access_token:
-          type: string
         expires_at:
           type: string
           format: date-time
-        id_token:
-          type: string
-        scope:
-          type: string
-        session_state:
-          type: string
-        token_type:
-          type: string
         created_at:
           type: string
           format: date-time
@@ -782,13 +739,7 @@ components:
         - type
         - provider
         - provider_account_id
-        - refresh_token
-        - access_token
         - expires_at
-        - id_token
-        - scope
-        - session_state
-        - token_type
         - created_at
         - updated_at
 
@@ -803,45 +754,29 @@ components:
         - name
         - email
 
-    LinkAccount:
+    LinkAccountRequest:
       type: object
       properties:
         user_id:
           type: string
+          format: uuid
           x-go-name: UserID
+          x-go-type: gocql.UUID
         type:
           type: string
         provider:
           type: string
         provider_account_id:
           type: string
-        refresh_token:
-          type: string
-        access_token:
-          type: string
         expires_at:
           type: string
           format: date-time
-        id_token:
-          type: string
-        scope:
-          type: string
-        session_state:
-          type: string
-        token_type:
-          type: string
       required:
         - user_id
         - type
         - provider
         - provider_account_id
-        - refresh_token
-        - access_token
         - expires_at
-        - id_token
-        - scope
-        - session_state
-        - token_type
 
     DeleteResponse:
       type: object

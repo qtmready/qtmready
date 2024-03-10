@@ -42,24 +42,18 @@ type APIKeyValidationResponse struct {
 
 // Account defines model for Account.
 type Account struct {
-	AccessToken       string     `json:"access_token"`
 	CreatedAt         time.Time  `json:"created_at"`
 	ExpiresAt         time.Time  `json:"expires_at"`
 	ID                gocql.UUID `json:"id"`
-	IdToken           string     `json:"id_token"`
 	Provider          string     `json:"provider"`
 	ProviderAccountId string     `json:"provider_account_id"`
-	RefreshToken      string     `json:"refresh_token"`
-	Scope             string     `json:"scope"`
-	SessionState      string     `json:"session_state"`
-	TokenType         string     `json:"token_type"`
 	Type              string     `json:"type"`
 	UpdatedAt         time.Time  `json:"updated_at"`
-	UserID            string     `json:"user_id"`
+	UserID            gocql.UUID `json:"user_id"`
 }
 
 var (
-	accountColumns = []string{"access_token", "created_at", "expires_at", "id", "id_token", "provider", "provider_account_id", "refresh_token", "scope", "session_state", "token_type", "type", "updated_at", "user_id"}
+	accountColumns = []string{"created_at", "expires_at", "id", "provider", "provider_account_id", "type", "updated_at", "user_id"}
 
 	accountMeta = itable.Metadata{
 		M: &table.Metadata{
@@ -105,19 +99,13 @@ type DeleteResponse struct {
 	Ok bool `json:"ok"`
 }
 
-// LinkAccount defines model for LinkAccount.
-type LinkAccount struct {
-	AccessToken       string    `json:"access_token"`
-	ExpiresAt         time.Time `json:"expires_at"`
-	IdToken           string    `json:"id_token"`
-	Provider          string    `json:"provider"`
-	ProviderAccountId string    `json:"provider_account_id"`
-	RefreshToken      string    `json:"refresh_token"`
-	Scope             string    `json:"scope"`
-	SessionState      string    `json:"session_state"`
-	TokenType         string    `json:"token_type"`
-	Type              string    `json:"type"`
-	UserID            string    `json:"user_id"`
+// LinkAccountRequest defines model for LinkAccountRequest.
+type LinkAccountRequest struct {
+	ExpiresAt         time.Time  `json:"expires_at"`
+	Provider          string     `json:"provider"`
+	ProviderAccountId string     `json:"provider_account_id"`
+	Type              string     `json:"type"`
+	UserID            gocql.UUID `json:"user_id"`
 }
 
 // LoginRequest defines model for LoginRequest.
@@ -251,23 +239,26 @@ type UnlinkAccountParams struct {
 	Provider string `form:"provider" json:"provider"`
 }
 
-// GetUserByAccountParams defines parameters for GetUserByAccount.
-type GetUserByAccountParams struct {
+// ListUsersParams defines parameters for ListUsers.
+type ListUsersParams struct {
 	// ProviderAccountId Provider account ID
-	ProviderAccountId string `form:"provider_account_id" json:"provider_account_id"`
+	ProviderAccountId *string `form:"provider_account_id,omitempty" json:"provider_account_id,omitempty"`
 
 	// Provider Provider type
-	Provider string `form:"provider" json:"provider"`
+	Provider *string `form:"provider,omitempty" json:"provider,omitempty"`
+
+	// Email user email
+	Email *string `form:"email,omitempty" json:"email,omitempty"`
 }
+
+// LinkAccountJSONRequestBody defines body for LinkAccount for application/json ContentType.
+type LinkAccountJSONRequestBody = LinkAccountRequest
 
 // CreateTeamAPIKeyJSONRequestBody defines body for CreateTeamAPIKey for application/json ContentType.
 type CreateTeamAPIKeyJSONRequestBody = CreateAPIKeyRequest
 
 // CreateUserAPIKeyJSONRequestBody defines body for CreateUserAPIKey for application/json ContentType.
 type CreateUserAPIKeyJSONRequestBody = CreateAPIKeyRequest
-
-// LinkAccountJSONRequestBody defines body for LinkAccount for application/json ContentType.
-type LinkAccountJSONRequestBody = LinkAccount
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
@@ -360,6 +351,14 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
+	// UnlinkAccount request
+	UnlinkAccount(ctx context.Context, params *UnlinkAccountParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// LinkAccountWithBody request with any body
+	LinkAccountWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	LinkAccount(ctx context.Context, body LinkAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
 	// CreateTeamAPIKeyWithBody request with any body
 	CreateTeamAPIKeyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -372,11 +371,6 @@ type ClientInterface interface {
 
 	// ValidateAPIKey request
 	ValidateAPIKey(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// LinkAccountWithBody request with any body
-	LinkAccountWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	LinkAccount(ctx context.Context, body LinkAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// LoginWithBody request with any body
 	LoginWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -404,19 +398,13 @@ type ClientInterface interface {
 
 	AddUserToTeam(ctx context.Context, slug string, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// UnlinkAccount request
-	UnlinkAccount(ctx context.Context, params *UnlinkAccountParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetUserByAccount request
-	GetUserByAccount(ctx context.Context, params *GetUserByAccountParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// ListUsers request
+	ListUsers(ctx context.Context, params *ListUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateUserWithBody request with any body
 	CreateUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateUser(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetUserByEmail request
-	GetUserByEmail(ctx context.Context, email string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// DeleteUser request
 	DeleteUser(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -428,6 +416,42 @@ type ClientInterface interface {
 	UpdateUserWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	UpdateUser(ctx context.Context, id string, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+}
+
+func (c *Client) UnlinkAccount(ctx context.Context, params *UnlinkAccountParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewUnlinkAccountRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) LinkAccountWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLinkAccountRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) LinkAccount(ctx context.Context, body LinkAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewLinkAccountRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
 }
 
 func (c *Client) CreateTeamAPIKeyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -480,30 +504,6 @@ func (c *Client) CreateUserAPIKey(ctx context.Context, body CreateUserAPIKeyJSON
 
 func (c *Client) ValidateAPIKey(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewValidateAPIKeyRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) LinkAccountWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewLinkAccountRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) LinkAccount(ctx context.Context, body LinkAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewLinkAccountRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -634,20 +634,8 @@ func (c *Client) AddUserToTeam(ctx context.Context, slug string, body AddUserToT
 	return c.Client.Do(req)
 }
 
-func (c *Client) UnlinkAccount(ctx context.Context, params *UnlinkAccountParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUnlinkAccountRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetUserByAccount(ctx context.Context, params *GetUserByAccountParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetUserByAccountRequest(c.Server, params)
+func (c *Client) ListUsers(ctx context.Context, params *ListUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewListUsersRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -672,18 +660,6 @@ func (c *Client) CreateUserWithBody(ctx context.Context, contentType string, bod
 
 func (c *Client) CreateUser(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateUserRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetUserByEmail(ctx context.Context, email string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetUserByEmailRequest(c.Server, email)
 	if err != nil {
 		return nil, err
 	}
@@ -740,6 +716,103 @@ func (c *Client) UpdateUser(ctx context.Context, id string, body UpdateUserJSONR
 		return nil, err
 	}
 	return c.Client.Do(req)
+}
+
+// NewUnlinkAccountRequest generates requests for UnlinkAccount
+func NewUnlinkAccountRequest(server string, params *UnlinkAccountParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/accounts/link")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "provider_account_id", runtime.ParamLocationQuery, params.ProviderAccountId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "provider", runtime.ParamLocationQuery, params.Provider); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewLinkAccountRequest calls the generic LinkAccount builder with application/json body
+func NewLinkAccountRequest(server string, body LinkAccountJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewLinkAccountRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewLinkAccountRequestWithBody generates requests for LinkAccount with any type of body
+func NewLinkAccountRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/accounts/link")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
 }
 
 // NewCreateTeamAPIKeyRequest calls the generic CreateTeamAPIKey builder with application/json body
@@ -845,46 +918,6 @@ func NewValidateAPIKeyRequest(server string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return req, nil
-}
-
-// NewLinkAccountRequest calls the generic LinkAccount builder with application/json body
-func NewLinkAccountRequest(server string, body LinkAccountJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewLinkAccountRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewLinkAccountRequestWithBody generates requests for LinkAccount with any type of body
-func NewLinkAccountRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/link-account")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -1117,8 +1150,8 @@ func NewAddUserToTeamRequestWithBody(server string, slug string, contentType str
 	return req, nil
 }
 
-// NewUnlinkAccountRequest generates requests for UnlinkAccount
-func NewUnlinkAccountRequest(server string, params *UnlinkAccountParams) (*http.Request, error) {
+// NewListUsersRequest generates requests for ListUsers
+func NewListUsersRequest(server string, params *ListUsersParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -1126,7 +1159,7 @@ func NewUnlinkAccountRequest(server string, params *UnlinkAccountParams) (*http.
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/auth/unlink-account")
+	operationPath := fmt.Sprintf("/auth/users")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1139,85 +1172,52 @@ func NewUnlinkAccountRequest(server string, params *UnlinkAccountParams) (*http.
 	if params != nil {
 		queryValues := queryURL.Query()
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "provider_account_id", runtime.ParamLocationQuery, params.ProviderAccountId); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
+		if params.ProviderAccountId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "provider_account_id", runtime.ParamLocationQuery, *params.ProviderAccountId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
 				}
 			}
+
 		}
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "provider", runtime.ParamLocationQuery, params.Provider); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
+		if params.Provider != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "provider", runtime.ParamLocationQuery, *params.Provider); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
 				}
 			}
+
 		}
 
-		queryURL.RawQuery = queryValues.Encode()
-	}
+		if params.Email != nil {
 
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
-// NewGetUserByAccountRequest generates requests for GetUserByAccount
-func NewGetUserByAccountRequest(server string, params *GetUserByAccountParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/user")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "provider_account_id", runtime.ParamLocationQuery, params.ProviderAccountId); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "email", runtime.ParamLocationQuery, *params.Email); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
 				}
 			}
-		}
 
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "provider", runtime.ParamLocationQuery, params.Provider); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
 		}
 
 		queryURL.RawQuery = queryValues.Encode()
@@ -1251,7 +1251,7 @@ func NewCreateUserRequestWithBody(server string, contentType string, body io.Rea
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/auth/user")
+	operationPath := fmt.Sprintf("/auth/users")
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1267,40 +1267,6 @@ func NewCreateUserRequestWithBody(server string, contentType string, body io.Rea
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetUserByEmailRequest generates requests for GetUserByEmail
-func NewGetUserByEmailRequest(server string, email string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "email", runtime.ParamLocationPath, email)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/user/email/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -1321,7 +1287,7 @@ func NewDeleteUserRequest(server string, id string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/auth/user/%s", pathParam0)
+	operationPath := fmt.Sprintf("/auth/users/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1355,7 +1321,7 @@ func NewGetUserRequest(server string, id string) (*http.Request, error) {
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/auth/user/%s", pathParam0)
+	operationPath := fmt.Sprintf("/auth/users/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1400,7 +1366,7 @@ func NewUpdateUserRequestWithBody(server string, id string, contentType string, 
 		return nil, err
 	}
 
-	operationPath := fmt.Sprintf("/auth/user/%s", pathParam0)
+	operationPath := fmt.Sprintf("/auth/users/%s", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1463,6 +1429,14 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
+	// UnlinkAccountWithResponse request
+	UnlinkAccountWithResponse(ctx context.Context, params *UnlinkAccountParams, reqEditors ...RequestEditorFn) (*UnlinkAccountResponse, error)
+
+	// LinkAccountWithBodyWithResponse request with any body
+	LinkAccountWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LinkAccountResponse, error)
+
+	LinkAccountWithResponse(ctx context.Context, body LinkAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*LinkAccountResponse, error)
+
 	// CreateTeamAPIKeyWithBodyWithResponse request with any body
 	CreateTeamAPIKeyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTeamAPIKeyResponse, error)
 
@@ -1475,11 +1449,6 @@ type ClientWithResponsesInterface interface {
 
 	// ValidateAPIKeyWithResponse request
 	ValidateAPIKeyWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ValidateAPIKeyResponse, error)
-
-	// LinkAccountWithBodyWithResponse request with any body
-	LinkAccountWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LinkAccountResponse, error)
-
-	LinkAccountWithResponse(ctx context.Context, body LinkAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*LinkAccountResponse, error)
 
 	// LoginWithBodyWithResponse request with any body
 	LoginWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LoginResponse, error)
@@ -1507,19 +1476,13 @@ type ClientWithResponsesInterface interface {
 
 	AddUserToTeamWithResponse(ctx context.Context, slug string, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error)
 
-	// UnlinkAccountWithResponse request
-	UnlinkAccountWithResponse(ctx context.Context, params *UnlinkAccountParams, reqEditors ...RequestEditorFn) (*UnlinkAccountResponse, error)
-
-	// GetUserByAccountWithResponse request
-	GetUserByAccountWithResponse(ctx context.Context, params *GetUserByAccountParams, reqEditors ...RequestEditorFn) (*GetUserByAccountResponse, error)
+	// ListUsersWithResponse request
+	ListUsersWithResponse(ctx context.Context, params *ListUsersParams, reqEditors ...RequestEditorFn) (*ListUsersResponse, error)
 
 	// CreateUserWithBodyWithResponse request with any body
 	CreateUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
 
 	CreateUserWithResponse(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
-
-	// GetUserByEmailWithResponse request
-	GetUserByEmailWithResponse(ctx context.Context, email string, reqEditors ...RequestEditorFn) (*GetUserByEmailResponse, error)
 
 	// DeleteUserWithResponse request
 	DeleteUserWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error)
@@ -1531,6 +1494,57 @@ type ClientWithResponsesInterface interface {
 	UpdateUserWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
 
 	UpdateUserWithResponse(ctx context.Context, id string, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
+}
+
+type UnlinkAccountResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *DeleteResponse
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON404      *externalRef0.NotFound
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r UnlinkAccountResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r UnlinkAccountResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type LinkAccountResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *Account
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r LinkAccountResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r LinkAccountResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
 }
 
 type CreateTeamAPIKeyResponse struct {
@@ -1602,31 +1616,6 @@ func (r ValidateAPIKeyResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r ValidateAPIKeyResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type LinkAccountResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *Account
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r LinkAccountResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r LinkAccountResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1784,33 +1773,7 @@ func (r AddUserToTeamResponse) StatusCode() int {
 	return 0
 }
 
-type UnlinkAccountResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DeleteResponse
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r UnlinkAccountResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UnlinkAccountResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetUserByAccountResponse struct {
+type ListUsersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *User
@@ -1821,7 +1784,7 @@ type GetUserByAccountResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r GetUserByAccountResponse) Status() string {
+func (r ListUsersResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1829,7 +1792,7 @@ func (r GetUserByAccountResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r GetUserByAccountResponse) StatusCode() int {
+func (r ListUsersResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1855,32 +1818,6 @@ func (r CreateUserResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateUserResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetUserByEmailResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *User
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r GetUserByEmailResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetUserByEmailResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1965,6 +1902,32 @@ func (r UpdateUserResponse) StatusCode() int {
 	return 0
 }
 
+// UnlinkAccountWithResponse request returning *UnlinkAccountResponse
+func (c *ClientWithResponses) UnlinkAccountWithResponse(ctx context.Context, params *UnlinkAccountParams, reqEditors ...RequestEditorFn) (*UnlinkAccountResponse, error) {
+	rsp, err := c.UnlinkAccount(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseUnlinkAccountResponse(rsp)
+}
+
+// LinkAccountWithBodyWithResponse request with arbitrary body returning *LinkAccountResponse
+func (c *ClientWithResponses) LinkAccountWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LinkAccountResponse, error) {
+	rsp, err := c.LinkAccountWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLinkAccountResponse(rsp)
+}
+
+func (c *ClientWithResponses) LinkAccountWithResponse(ctx context.Context, body LinkAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*LinkAccountResponse, error) {
+	rsp, err := c.LinkAccount(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseLinkAccountResponse(rsp)
+}
+
 // CreateTeamAPIKeyWithBodyWithResponse request with arbitrary body returning *CreateTeamAPIKeyResponse
 func (c *ClientWithResponses) CreateTeamAPIKeyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTeamAPIKeyResponse, error) {
 	rsp, err := c.CreateTeamAPIKeyWithBody(ctx, contentType, body, reqEditors...)
@@ -2006,23 +1969,6 @@ func (c *ClientWithResponses) ValidateAPIKeyWithResponse(ctx context.Context, re
 		return nil, err
 	}
 	return ParseValidateAPIKeyResponse(rsp)
-}
-
-// LinkAccountWithBodyWithResponse request with arbitrary body returning *LinkAccountResponse
-func (c *ClientWithResponses) LinkAccountWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LinkAccountResponse, error) {
-	rsp, err := c.LinkAccountWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseLinkAccountResponse(rsp)
-}
-
-func (c *ClientWithResponses) LinkAccountWithResponse(ctx context.Context, body LinkAccountJSONRequestBody, reqEditors ...RequestEditorFn) (*LinkAccountResponse, error) {
-	rsp, err := c.LinkAccount(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseLinkAccountResponse(rsp)
 }
 
 // LoginWithBodyWithResponse request with arbitrary body returning *LoginResponse
@@ -2111,22 +2057,13 @@ func (c *ClientWithResponses) AddUserToTeamWithResponse(ctx context.Context, slu
 	return ParseAddUserToTeamResponse(rsp)
 }
 
-// UnlinkAccountWithResponse request returning *UnlinkAccountResponse
-func (c *ClientWithResponses) UnlinkAccountWithResponse(ctx context.Context, params *UnlinkAccountParams, reqEditors ...RequestEditorFn) (*UnlinkAccountResponse, error) {
-	rsp, err := c.UnlinkAccount(ctx, params, reqEditors...)
+// ListUsersWithResponse request returning *ListUsersResponse
+func (c *ClientWithResponses) ListUsersWithResponse(ctx context.Context, params *ListUsersParams, reqEditors ...RequestEditorFn) (*ListUsersResponse, error) {
+	rsp, err := c.ListUsers(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseUnlinkAccountResponse(rsp)
-}
-
-// GetUserByAccountWithResponse request returning *GetUserByAccountResponse
-func (c *ClientWithResponses) GetUserByAccountWithResponse(ctx context.Context, params *GetUserByAccountParams, reqEditors ...RequestEditorFn) (*GetUserByAccountResponse, error) {
-	rsp, err := c.GetUserByAccount(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetUserByAccountResponse(rsp)
+	return ParseListUsersResponse(rsp)
 }
 
 // CreateUserWithBodyWithResponse request with arbitrary body returning *CreateUserResponse
@@ -2144,15 +2081,6 @@ func (c *ClientWithResponses) CreateUserWithResponse(ctx context.Context, body C
 		return nil, err
 	}
 	return ParseCreateUserResponse(rsp)
-}
-
-// GetUserByEmailWithResponse request returning *GetUserByEmailResponse
-func (c *ClientWithResponses) GetUserByEmailWithResponse(ctx context.Context, email string, reqEditors ...RequestEditorFn) (*GetUserByEmailResponse, error) {
-	rsp, err := c.GetUserByEmail(ctx, email, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetUserByEmailResponse(rsp)
 }
 
 // DeleteUserWithResponse request returning *DeleteUserResponse
@@ -2188,6 +2116,107 @@ func (c *ClientWithResponses) UpdateUserWithResponse(ctx context.Context, id str
 		return nil, err
 	}
 	return ParseUpdateUserResponse(rsp)
+}
+
+// ParseUnlinkAccountResponse parses an HTTP response from a UnlinkAccountWithResponse call
+func ParseUnlinkAccountResponse(rsp *http.Response) (*UnlinkAccountResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &UnlinkAccountResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest DeleteResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest externalRef0.NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseLinkAccountResponse parses an HTTP response from a LinkAccountWithResponse call
+func ParseLinkAccountResponse(rsp *http.Response) (*LinkAccountResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &LinkAccountResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Account
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
 }
 
 // ParseCreateTeamAPIKeyResponse parses an HTTP response from a CreateTeamAPIKeyWithResponse call
@@ -2300,53 +2329,6 @@ func ParseValidateAPIKeyResponse(rsp *http.Response) (*ValidateAPIKeyResponse, e
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
 		var dest APIKeyValidationResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseLinkAccountResponse parses an HTTP response from a LinkAccountWithResponse call
-func ParseLinkAccountResponse(rsp *http.Response) (*LinkAccountResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &LinkAccountResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Account
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -2667,69 +2649,15 @@ func ParseAddUserToTeamResponse(rsp *http.Response) (*AddUserToTeamResponse, err
 	return response, nil
 }
 
-// ParseUnlinkAccountResponse parses an HTTP response from a UnlinkAccountWithResponse call
-func ParseUnlinkAccountResponse(rsp *http.Response) (*UnlinkAccountResponse, error) {
+// ParseListUsersResponse parses an HTTP response from a ListUsersWithResponse call
+func ParseListUsersResponse(rsp *http.Response) (*ListUsersResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &UnlinkAccountResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DeleteResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetUserByAccountResponse parses an HTTP response from a GetUserByAccountWithResponse call
-func ParseGetUserByAccountResponse(rsp *http.Response) (*GetUserByAccountResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetUserByAccountResponse{
+	response := &ListUsersResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -2809,60 +2737,6 @@ func ParseCreateUserResponse(rsp *http.Response) (*CreateUserResponse, error) {
 			return nil, err
 		}
 		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetUserByEmailResponse parses an HTTP response from a GetUserByEmailWithResponse call
-func ParseGetUserByEmailResponse(rsp *http.Response) (*GetUserByEmailResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetUserByEmailResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest User
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest externalRef0.InternalServerError
@@ -3040,6 +2914,14 @@ func ParseUpdateUserResponse(rsp *http.Response) (*UpdateUserResponse, error) {
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// unlink account
+	// (DELETE /auth/accounts/link)
+	UnlinkAccount(ctx echo.Context) error
+
+	// link user with account
+	// (POST /auth/accounts/link)
+	LinkAccount(ctx echo.Context) error
+
 	// Create a new API key for the team
 	// (POST /auth/api-keys/team)
 	CreateTeamAPIKey(ctx echo.Context) error
@@ -3051,10 +2933,6 @@ type ServerInterface interface {
 	// Validate an API key
 	// (GET /auth/api-keys/validate)
 	ValidateAPIKey(ctx echo.Context) error
-
-	// link user with account
-	// (POST /auth/link-account)
-	LinkAccount(ctx echo.Context) error
 
 	// Login
 	// (POST /auth/login)
@@ -3080,32 +2958,24 @@ type ServerInterface interface {
 	// (POST /auth/teams/{slug}/users)
 	AddUserToTeam(ctx echo.Context) error
 
-	// unlink account
-	// (DELETE /auth/unlink-account)
-	UnlinkAccount(ctx echo.Context) error
-
-	// get user by provider and provider account id
-	// (GET /auth/user)
-	GetUserByAccount(ctx echo.Context) error
+	// get users
+	// (GET /auth/users)
+	ListUsers(ctx echo.Context) error
 
 	// create user authjs
-	// (POST /auth/user)
+	// (POST /auth/users)
 	CreateUser(ctx echo.Context) error
 
-	// get user by email
-	// (GET /auth/user/email/{email})
-	GetUserByEmail(ctx echo.Context) error
-
 	// delete user by id
-	// (DELETE /auth/user/{id})
+	// (DELETE /auth/users/{id})
 	DeleteUser(ctx echo.Context) error
 
 	// get user by id
-	// (GET /auth/user/{id})
+	// (GET /auth/users/{id})
 	GetUser(ctx echo.Context) error
 
 	// update user by id
-	// (PUT /auth/user/{id})
+	// (PUT /auth/users/{id})
 	UpdateUser(ctx echo.Context) error
 
 	// SecurityHandler returns the underlying Security Wrapper
@@ -3115,6 +2985,46 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// UnlinkAccount converts echo context to params.
+
+func (w *ServerInterfaceWrapper) UnlinkAccount(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params UnlinkAccountParams
+	// ------------- Required query parameter "provider_account_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "provider_account_id", ctx.QueryParams(), &params.ProviderAccountId)
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter provider_account_id: %s", err))
+	}
+
+	// ------------- Required query parameter "provider" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "provider", ctx.QueryParams(), &params.Provider)
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter provider: %s", err))
+	}
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.UnlinkAccount
+	err = handler(ctx)
+
+	return err
+}
+
+// LinkAccount converts echo context to params.
+
+func (w *ServerInterfaceWrapper) LinkAccount(ctx echo.Context) error {
+	var err error
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.LinkAccount
+	err = handler(ctx)
+
+	return err
 }
 
 // CreateTeamAPIKey converts echo context to params.
@@ -3158,18 +3068,6 @@ func (w *ServerInterfaceWrapper) ValidateAPIKey(ctx echo.Context) error {
 	handler := w.Handler.ValidateAPIKey
 	secure := w.Handler.SecureHandler
 	err = secure(handler, ctx)
-
-	return err
-}
-
-// LinkAccount converts echo context to params.
-
-func (w *ServerInterfaceWrapper) LinkAccount(ctx echo.Context) error {
-	var err error
-
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.LinkAccount
-	err = handler(ctx)
 
 	return err
 }
@@ -3272,57 +3170,36 @@ func (w *ServerInterfaceWrapper) AddUserToTeam(ctx echo.Context) error {
 	return err
 }
 
-// UnlinkAccount converts echo context to params.
+// ListUsers converts echo context to params.
 
-func (w *ServerInterfaceWrapper) UnlinkAccount(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) ListUsers(ctx echo.Context) error {
 	var err error
 
 	// Parameter object where we will unmarshal all parameters from the context
-	var params UnlinkAccountParams
-	// ------------- Required query parameter "provider_account_id" -------------
+	var params ListUsersParams
+	// ------------- Optional query parameter "provider_account_id" -------------
 
-	err = runtime.BindQueryParameter("form", true, true, "provider_account_id", ctx.QueryParams(), &params.ProviderAccountId)
+	err = runtime.BindQueryParameter("form", true, false, "provider_account_id", ctx.QueryParams(), &params.ProviderAccountId)
 	if err != nil {
 		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter provider_account_id: %s", err))
 	}
 
-	// ------------- Required query parameter "provider" -------------
+	// ------------- Optional query parameter "provider" -------------
 
-	err = runtime.BindQueryParameter("form", true, true, "provider", ctx.QueryParams(), &params.Provider)
+	err = runtime.BindQueryParameter("form", true, false, "provider", ctx.QueryParams(), &params.Provider)
 	if err != nil {
 		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter provider: %s", err))
 	}
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.UnlinkAccount
-	err = handler(ctx)
+	// ------------- Optional query parameter "email" -------------
 
-	return err
-}
-
-// GetUserByAccount converts echo context to params.
-
-func (w *ServerInterfaceWrapper) GetUserByAccount(ctx echo.Context) error {
-	var err error
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetUserByAccountParams
-	// ------------- Required query parameter "provider_account_id" -------------
-
-	err = runtime.BindQueryParameter("form", true, true, "provider_account_id", ctx.QueryParams(), &params.ProviderAccountId)
+	err = runtime.BindQueryParameter("form", true, false, "email", ctx.QueryParams(), &params.Email)
 	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter provider_account_id: %s", err))
-	}
-
-	// ------------- Required query parameter "provider" -------------
-
-	err = runtime.BindQueryParameter("form", true, true, "provider", ctx.QueryParams(), &params.Provider)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter provider: %s", err))
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter email: %s", err))
 	}
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GetUserByAccount
+	handler := w.Handler.ListUsers
 	err = handler(ctx)
 
 	return err
@@ -3335,25 +3212,6 @@ func (w *ServerInterfaceWrapper) CreateUser(ctx echo.Context) error {
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CreateUser
-	err = handler(ctx)
-
-	return err
-}
-
-// GetUserByEmail converts echo context to params.
-
-func (w *ServerInterfaceWrapper) GetUserByEmail(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "email" -------------
-	var email string
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "email", runtime.ParamLocationPath, ctx.Param("email"), &email)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter email: %s", err))
-	}
-
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GetUserByEmail
 	err = handler(ctx)
 
 	return err
@@ -3443,22 +3301,21 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.DELETE(baseURL+"/auth/accounts/link", wrapper.UnlinkAccount)
+	router.POST(baseURL+"/auth/accounts/link", wrapper.LinkAccount)
 	router.POST(baseURL+"/auth/api-keys/team", wrapper.CreateTeamAPIKey)
 	router.POST(baseURL+"/auth/api-keys/user", wrapper.CreateUserAPIKey)
 	router.GET(baseURL+"/auth/api-keys/validate", wrapper.ValidateAPIKey)
-	router.POST(baseURL+"/auth/link-account", wrapper.LinkAccount)
 	router.POST(baseURL+"/auth/login", wrapper.Login)
 	router.POST(baseURL+"/auth/register", wrapper.Register)
 	router.GET(baseURL+"/auth/teams", wrapper.ListTeams)
 	router.POST(baseURL+"/auth/teams", wrapper.CreateTeam)
 	router.GET(baseURL+"/auth/teams/:slug", wrapper.GetTeam)
 	router.POST(baseURL+"/auth/teams/:slug/users", wrapper.AddUserToTeam)
-	router.DELETE(baseURL+"/auth/unlink-account", wrapper.UnlinkAccount)
-	router.GET(baseURL+"/auth/user", wrapper.GetUserByAccount)
-	router.POST(baseURL+"/auth/user", wrapper.CreateUser)
-	router.GET(baseURL+"/auth/user/email/:email", wrapper.GetUserByEmail)
-	router.DELETE(baseURL+"/auth/user/:id", wrapper.DeleteUser)
-	router.GET(baseURL+"/auth/user/:id", wrapper.GetUser)
-	router.PUT(baseURL+"/auth/user/:id", wrapper.UpdateUser)
+	router.GET(baseURL+"/auth/users", wrapper.ListUsers)
+	router.POST(baseURL+"/auth/users", wrapper.CreateUser)
+	router.DELETE(baseURL+"/auth/users/:id", wrapper.DeleteUser)
+	router.GET(baseURL+"/auth/users/:id", wrapper.GetUser)
+	router.PUT(baseURL+"/auth/users/:id", wrapper.UpdateUser)
 
 }

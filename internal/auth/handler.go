@@ -236,15 +236,8 @@ func (s *ServerHandler) CreateUser(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, user)
 }
 
-func (s *ServerHandler) GetUserByEmail(ctx echo.Context) error {
-	user := &User{}
-	param := db.QueryParams{"email": "'" + ctx.Param("email") + "'"}
-
-	if err := db.Get(user, param); err != nil {
-		return shared.NewAPIError(http.StatusNotFound, err)
-	}
-
-	return ctx.JSON(http.StatusOK, user)
+func (s *ServerHandler) ListUsers(ctx echo.Context) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
 }
 
 func (s *ServerHandler) GetUser(ctx echo.Context) error {
@@ -275,29 +268,5 @@ func (s *ServerHandler) DeleteUser(ctx echo.Context) error {
 }
 
 func (s *ServerHandler) UnlinkAccount(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
-}
-
-func (s *ServerHandler) CreateSession(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
-}
-
-func (s *ServerHandler) GetSessionAndUser(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
-}
-
-func (s *ServerHandler) UpdateSession(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
-}
-
-func (s *ServerHandler) DeleteSession(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
-}
-
-func (s *ServerHandler) CreateVerificationToken(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
-}
-
-func (s *ServerHandler) UseVerificationToken(ctx echo.Context) error {
 	return ctx.JSON(http.StatusNotImplemented, nil)
 }
