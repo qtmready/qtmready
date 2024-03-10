@@ -3,6 +3,8 @@ info:
   title: shared
   version: 0.0.1
 
+paths: {}
+
 components:
   securitySchemes:
     BearerAuth:

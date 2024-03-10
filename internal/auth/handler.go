@@ -236,8 +236,38 @@ func (s *ServerHandler) CreateUser(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, user)
 }
 
+// ListUsers handles the following use cases
+//
+//   - List all users associated with the team
+//   - Get a user if an email is given in query params
+//   - Get a user if social account id is given in query params
+//
+// TODO: make sure that this is not a security hole.
 func (s *ServerHandler) ListUsers(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
+	provider := ctx.QueryParam("provider")
+	provider_account_id := ctx.QueryParam("provider_account_id")
+	email := ctx.QueryParam("email")
+
+	users := make([]User, 0)
+
+	if email != "" {
+		if err := db.Filter(&User{}, &users, db.QueryParams{"email": "'" + email + "'"}); err != nil {
+			return shared.NewAPIError(http.StatusInternalServerError, err)
+		}
+	}
+
+	if provider != "" && provider_account_id != "" {
+		account := &Account{}
+		if err := db.Get(account, db.QueryParams{"provider": provider, "provider_account_id": provider_account_id}); err != nil {
+			return shared.NewAPIError(http.StatusNotFound, err)
+		}
+
+		if err := db.Filter(&User{}, &users, db.QueryParams{"id": account.UserID.String()}); err != nil {
+			return shared.NewAPIError(http.StatusInternalServerError, err)
+		}
+	}
+
+	return ctx.JSON(http.StatusOK, users)
 }
 
 func (s *ServerHandler) GetUser(ctx echo.Context) error {

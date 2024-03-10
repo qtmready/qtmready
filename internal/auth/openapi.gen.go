@@ -57,7 +57,7 @@ var (
 
 	accountMeta = itable.Metadata{
 		M: &table.Metadata{
-			Name:    "acounts",
+			Name:    "oauth_accounts",
 			Columns: accountColumns,
 		},
 	}
@@ -1776,7 +1776,7 @@ func (r AddUserToTeamResponse) StatusCode() int {
 type ListUsersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *User
+	JSON200      *[]User
 	JSON400      *externalRef0.BadRequest
 	JSON401      *externalRef0.Unauthorized
 	JSON404      *externalRef0.NotFound
@@ -2664,7 +2664,7 @@ func ParseListUsersResponse(rsp *http.Response) (*ListUsersResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest User
+		var dest []User
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

@@ -314,7 +314,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/User"
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
         "400":
           $ref: "../shared/openapi.spec.yaml#/components/responses/BadRequest"
         "401":
@@ -705,7 +707,7 @@ components:
 
     Account:
       type: object
-      x-breu-entity: acounts
+      x-breu-entity: oauth_accounts
       properties:
         id:
           type: string
