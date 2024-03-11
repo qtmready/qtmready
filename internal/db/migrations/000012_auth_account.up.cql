@@ -1,4 +1,4 @@
-create table if not exists outh_accounts
+create table if not exists oauth_accounts
 (
   id                  uuid,
   user_id             uuid,
