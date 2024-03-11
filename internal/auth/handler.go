@@ -300,6 +300,7 @@ func (s *ServerHandler) LinkAccount(ctx echo.Context) error {
 		Provider:          request.Provider,
 		ProviderAccountID: request.ProviderAccountID,
 		ExpiresAt:         request.ExpiresAt,
+		Type:              request.Type,
 	}
 
 	if err := db.Save(account); err != nil {

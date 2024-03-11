@@ -13,6 +13,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -35,6 +36,53 @@ const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
 
+var (
+	ErrInvalidAccountTypeEnum = errors.New("invalid AccountTypeEnum value")
+)
+
+type (
+	AccountTypeEnumMapType map[string]AccountTypeEnum // AccountTypeEnumMapType is a quick lookup map for AccountTypeEnum.
+)
+
+// Defines values for AccountTypeEnum.
+const (
+	AccountTypeEnumEmail    AccountTypeEnum = "email"
+	AccountTypeEnumOauth    AccountTypeEnum = "oauth"
+	AccountTypeEnumOidc     AccountTypeEnum = "oidc"
+	AccountTypeEnumWebauthn AccountTypeEnum = "webauthn"
+)
+
+// AccountTypeEnumMap returns all known values for AccountTypeEnum.
+var (
+	AccountTypeEnumMap = AccountTypeEnumMapType{
+		AccountTypeEnumEmail.String():    AccountTypeEnumEmail,
+		AccountTypeEnumOauth.String():    AccountTypeEnumOauth,
+		AccountTypeEnumOidc.String():     AccountTypeEnumOidc,
+		AccountTypeEnumWebauthn.String(): AccountTypeEnumWebauthn,
+	}
+)
+
+/*
+ * Helper methods for AccountTypeEnum for easy marshalling and unmarshalling.
+ */
+func (v AccountTypeEnum) String() string               { return string(v) }
+func (v AccountTypeEnum) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
+func (v *AccountTypeEnum) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	val, ok := AccountTypeEnumMap[s]
+	if !ok {
+		return ErrInvalidAccountTypeEnum
+	}
+
+	*v = val
+
+	return nil
+}
+
 // APIKeyValidationResponse defines model for APIKeyValidationResponse.
 type APIKeyValidationResponse struct {
 	Message *string `json:"message,omitempty"`
@@ -47,9 +95,11 @@ type Account struct {
 	ID                gocql.UUID `json:"id"`
 	Provider          string     `json:"provider"`
 	ProviderAccountID string     `json:"provider_account_id"`
-	Type              string     `json:"type"`
-	UpdatedAt         time.Time  `json:"updated_at"`
-	UserID            gocql.UUID `json:"user_id"`
+
+	// Type oauth account type enum
+	Type      AccountTypeEnum `json:"type"`
+	UpdatedAt time.Time       `json:"updated_at"`
+	UserID    gocql.UUID      `json:"user_id"`
 }
 
 var (
@@ -68,6 +118,9 @@ var (
 func (account *Account) GetTable() itable.ITable {
 	return accountTable
 }
+
+// AccountTypeEnum oauth account type enum
+type AccountTypeEnum string
 
 // AddUserToTeamRequest defines model for AddUserToTeamRequest.
 type AddUserToTeamRequest struct {
@@ -101,11 +154,13 @@ type DeleteResponse struct {
 
 // LinkAccountRequest defines model for LinkAccountRequest.
 type LinkAccountRequest struct {
-	ExpiresAt         time.Time  `json:"expires_at"`
-	Provider          string     `json:"provider"`
-	ProviderAccountID string     `json:"provider_account_id"`
-	Type              string     `json:"type"`
-	UserID            gocql.UUID `json:"user_id"`
+	ExpiresAt         time.Time `json:"expires_at"`
+	Provider          string    `json:"provider"`
+	ProviderAccountID string    `json:"provider_account_id"`
+
+	// Type oauth account type enum
+	Type   AccountTypeEnum `json:"type"`
+	UserID gocql.UUID      `json:"user_id"`
 }
 
 // LoginRequest defines model for LoginRequest.
