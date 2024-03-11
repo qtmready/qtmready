@@ -395,7 +395,6 @@ paths:
       operationId: delete-user
       tags:
         - auth
-        - user
       parameters:
         - name: id
           in: path
