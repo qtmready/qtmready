@@ -221,8 +221,8 @@ func (s *ServerHandler) CreateUser(ctx echo.Context) error {
 	}
 
 	// Check if names slice has at least 2 elements, if so, assign the second element to LastName
-	if len(names) > 1 {
-		user.LastName = names[1]
+	if len(names) >= 2 {
+		user.LastName = strings.Join(names[1:], " ")
 	}
 
 	if err := ctx.Validate(user); err != nil {
