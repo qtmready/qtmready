@@ -46,7 +46,7 @@ type Account struct {
 	ExpiresAt         time.Time  `json:"expires_at"`
 	ID                gocql.UUID `json:"id"`
 	Provider          string     `json:"provider"`
-	ProviderAccountId string     `json:"provider_account_id"`
+	ProviderAccountID string     `json:"provider_account_id"`
 	Type              string     `json:"type"`
 	UpdatedAt         time.Time  `json:"updated_at"`
 	UserID            gocql.UUID `json:"user_id"`
@@ -103,7 +103,7 @@ type DeleteResponse struct {
 type LinkAccountRequest struct {
 	ExpiresAt         time.Time  `json:"expires_at"`
 	Provider          string     `json:"provider"`
-	ProviderAccountId string     `json:"provider_account_id"`
+	ProviderAccountID string     `json:"provider_account_id"`
 	Type              string     `json:"type"`
 	UserID            gocql.UUID `json:"user_id"`
 }

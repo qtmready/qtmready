@@ -286,7 +286,27 @@ func (s *ServerHandler) UpdateUser(ctx echo.Context) error {
 }
 
 func (s *ServerHandler) LinkAccount(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
+	request := &LinkAccountRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	if err := ctx.Validate(request); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	account := &Account{
+		UserID:            request.UserID,
+		Provider:          request.Provider,
+		ProviderAccountID: request.ProviderAccountID,
+		ExpiresAt:         request.ExpiresAt,
+	}
+
+	if err := db.Save(account); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	return ctx.JSON(http.StatusCreated, account)
 }
 
 func (s *ServerHandler) GetUserByAccount(ctx echo.Context) error {

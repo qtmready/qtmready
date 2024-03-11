@@ -725,7 +725,7 @@ components:
           type: string
         provider_account_id:
           type: string
-          x-go-name: ProviderAccountId
+          x-go-name: ProviderAccountID
         expires_at:
           type: string
           format: date-time
@@ -770,6 +770,7 @@ components:
           type: string
         provider_account_id:
           type: string
+          x-go-name: ProviderAccountID
         expires_at:
           type: string
           format: date-time
