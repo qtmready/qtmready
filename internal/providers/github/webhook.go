@@ -457,18 +457,31 @@ func handlePullRequestEvent(ctx echo.Context) error {
 
 	switch payload.Action {
 	case "opened":
+		// e := &events.Event{
+		// 	Provider:   "github",
+		// 	ProviderID: payload.Repository.ID,
+		// 	Name:       "PR opened event received",
+		// }
+		// e.Save()
 		shared.Logger().Info("PR", "status", "open")
-		exe, err := shared.Temporal().
-			Client().
-			ExecuteWorkflow(context.Background(), opts, w.OnPullRequestEvent, payload)
+		// exe, err := shared.Temporal().
+		// 	Client().
+		// 	ExecuteWorkflow(context.Background(), opts, w.OnPullRequestEvent, payload)
 
-		if err != nil {
-			return shared.NewAPIError(http.StatusInternalServerError, err)
-		}
+		// if err != nil {
+		// 	return shared.NewAPIError(http.StatusInternalServerError, err)
+		// }
 
-		return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
+		// return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
+		return nil
 
 	case "labeled":
+		// e := &events.Event{
+		// 	Provider:   "github",
+		// 	ProviderID: payload.Repository.ID,
+		// 	Name:       "PR labeled event received",
+		// }
+		// e.Save()
 		shared.Logger().Info("PR", "status", "label")
 		exe, err := shared.Temporal().
 			Client().
@@ -482,6 +495,13 @@ func handlePullRequestEvent(ctx echo.Context) error {
 
 	default:
 		shared.Logger().Debug("handlePullRequestEvent default closing...")
+
+		// e := &events.Event{
+		// 	Provider:   "github",
+		// 	ProviderID: payload.Repository.ID,
+		// 	Name:       "Unregistered PR event received",
+		// }
+		// e.Save()
 		// err := shared.Temporal().
 		// 	Client().
 		// 	SignalWorkflow(context.Background(), opts.ID, "", WebhookEventPullRequest.String(), payload)
