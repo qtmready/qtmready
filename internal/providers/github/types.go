@@ -69,6 +69,7 @@ type (
 		Sender       User           `json:"sender"`
 		Installation InstallationID `json:"installation"`
 		WR           gh.WorkflowRun `json:"workflow_run"`
+		Workflow     gh.Workflow    `json:"workflow"`
 	}
 
 	PullRequestEvent struct {
