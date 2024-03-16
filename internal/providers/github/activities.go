@@ -19,7 +19,6 @@ package github
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -284,31 +283,31 @@ func (a *Activities) TriggerGithubCIAction(ctx context.Context, installationID i
 		return err
 	}
 
-	githubEventState := &GithubEventsState{}
-	runs, _, err := client.Actions.ListWorkflowRunsByFileName(ctx, repoOwner, repoName, gh_action_name, nil)
+	// githubEventState := &GithubEventsState{}
+	// runs, _, err := client.Actions.ListWorkflowRunsByFileName(ctx, repoOwner, repoName, gh_action_name, nil)
 
-	if err != nil {
-		shared.Logger().Error("TriggerGithubCIAction", "error getting workflow list", err)
-	}
+	// if err != nil {
+	// 	shared.Logger().Error("TriggerGithubCIAction", "error getting workflow list", err)
+	// }
 
-	// Get the latest workflow run ID
-	latestRun := runs.WorkflowRuns[0]
+	// // Get the latest workflow run ID
+	// latestRun := runs.WorkflowRuns[0]
 
-	eventsData := map[string]any{
-		"branch":       targetBranch,
-		"pull_request": pullRequestID,
-	}
+	// eventsData := map[string]any{
+	// 	"branch":       targetBranch,
+	// 	"pull_request": pullRequestID,
+	// }
 
-	githubEventState.ID, _ = gocql.RandomUUID()
-	githubEventState.Status = "Inprogress"
-	githubEventState.GithubWorkflowID = *latestRun.WorkflowID
-	githubEventState.GithubWorkflowRunID = *latestRun.ID
-	githubEventState.EventType = "CI"
-	jsonData, _ := json.Marshal(eventsData)
-	githubEventState.EventsData = string(jsonData)
+	// // githubEventState.ID, _ = gocql.RandomUUID()
+	// githubEventState.Status = "Inprogress"
+	// githubEventState.GithubWorkflowID = *latestRun.WorkflowID
+	// githubEventState.GithubWorkflowRunID = *latestRun.ID
+	// githubEventState.EventType = "CI"
+	// jsonData, _ := json.Marshal(eventsData)
+	// githubEventState.EventsData = string(jsonData)
 
-	// save the CI event
-	db.Save(githubEventState)
+	// // save the CI event
+	// // db.Save(githubEventState)
 	// if err = db.Save(githubEventState); err != nil {
 	// 	shared.Logger().Error("error saving to github_events_state", "error", err)
 	// 	return err
@@ -368,40 +367,40 @@ func (a *Activities) TriggerBuild(ctx context.Context, repoID string, changesetI
 		return err
 	}
 
-	githubEventState := &GithubEventsState{}
-	runs, _, err := client.Actions.ListWorkflowRunsByFileName(ctx, repoOwner, repoName, gh_action_name, nil)
+	// githubEventState := &GithubEventsState{}
+	// runs, _, err := client.Actions.ListWorkflowRunsByFileName(ctx, repoOwner, repoName, gh_action_name, nil)
 
-	if err != nil {
-		shared.Logger().Error("TriggerGithubBuildImage", "error getting workflow list", err)
-	}
+	// if err != nil {
+	// 	shared.Logger().Error("TriggerGithubBuildImage", "error getting workflow list", err)
+	// }
 
-	// Get the latest workflow run ID
-	latestRun := runs.WorkflowRuns[0]
+	// // Get the latest workflow run ID
+	// latestRun := runs.WorkflowRuns[0]
 
-	eventsData := map[string]any{
-		"changesetID": changesetID,
-	}
+	// eventsData := map[string]any{
+	// 	"changesetID": changesetID,
+	// }
 
-	githubEventState.ID, _ = gocql.RandomUUID()
-	githubEventState.Status = "Inprogress"
-	githubEventState.GithubWorkflowID = *latestRun.WorkflowID
-	githubEventState.GithubWorkflowRunID = *latestRun.ID
-	githubEventState.EventType = "Build"
-	jsonData, _ := json.Marshal(eventsData)
-	githubEventState.EventsData = string(jsonData)
+	// // githubEventState.ID, _ = gocql.RandomUUID()
+	// githubEventState.Status = "Inprogress"
+	// githubEventState.GithubWorkflowID = *latestRun.WorkflowID
+	// githubEventState.GithubWorkflowRunID = *latestRun.ID
+	// githubEventState.EventType = "Build"
+	// jsonData, _ := json.Marshal(eventsData)
+	// githubEventState.EventsData = string(jsonData)
 
-	// save the Build action event
-	if err = db.Save(githubEventState); err != nil {
-		shared.Logger().Error("error saving to github_events_state")
-		return err
-	}
+	// // save the Build action event
+	// if err = db.Save(githubEventState); err != nil {
+	// 	shared.Logger().Error("error saving to github_events_state")
+	// 	return err
+	// }
 
 	shared.Logger().Debug("TriggerGithubBuildImage done.")
 
 	return nil
 }
 
-func (a *Activities) TriggerDeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error {
+func (a *Activities) TriggerDeployChangeset(ctx context.Context, repoID string, changesetID string) error {
 	shared.Logger().Debug("TriggerGithubDeployChangeset", "github activity DeployChangeset started for changeset", changesetID)
 
 	gh_action_name := "deploy_quantm.yaml" //TODO: fixed it for now
@@ -450,33 +449,33 @@ func (a *Activities) TriggerDeployChangeset(ctx context.Context, repoID string, 
 		return err
 	}
 
-	githubEventState := &GithubEventsState{}
-	runs, _, err := client.Actions.ListWorkflowRunsByFileName(ctx, repoOwner, repoName, gh_action_name, nil)
+	// githubEventState := &GithubEventsState{}
+	// runs, _, err := client.Actions.ListWorkflowRunsByFileName(ctx, repoOwner, repoName, gh_action_name, nil)
 
-	if err != nil {
-		shared.Logger().Error("TriggerGithubDeployChangeset", "error getting workflow list", err)
-	}
+	// if err != nil {
+	// 	shared.Logger().Error("TriggerGithubDeployChangeset", "error getting workflow list", err)
+	// }
 
-	// Get the latest workflow run ID
-	latestRun := runs.WorkflowRuns[0]
+	// // Get the latest workflow run ID
+	// latestRun := runs.WorkflowRuns[0]
 
-	eventsData := map[string]any{
-		"changesetID": changesetID,
-	}
+	// eventsData := map[string]any{
+	// 	"changesetID": changesetID,
+	// }
 
-	githubEventState.ID, _ = gocql.RandomUUID()
-	githubEventState.Status = "Inprogress"
-	githubEventState.GithubWorkflowID = *latestRun.WorkflowID
-	githubEventState.GithubWorkflowRunID = *latestRun.ID
-	githubEventState.EventType = "Deploy"
-	jsonData, _ := json.Marshal(eventsData)
-	githubEventState.EventsData = string(jsonData)
+	// githubEventState.ID, _ = gocql.RandomUUID()
+	// githubEventState.Status = "Inprogress"
+	// githubEventState.GithubWorkflowID = *latestRun.WorkflowID
+	// githubEventState.GithubWorkflowRunID = *latestRun.ID
+	// githubEventState.EventType = "Deploy"
+	// jsonData, _ := json.Marshal(eventsData)
+	// githubEventState.EventsData = string(jsonData)
 
-	// save the Build action event
-	if err = db.Save(githubEventState); err != nil {
-		shared.Logger().Error("error saving to github_events_state")
-		return err
-	}
+	// // save the Build action event
+	// if err = db.Save(githubEventState); err != nil {
+	// 	shared.Logger().Error("error saving to github_events_state")
+	// 	return err
+	// }
 
 	shared.Logger().Debug("TriggerGithubDeployChangeset done.")
 
@@ -531,6 +530,8 @@ func (a *Activities) TagCommit(ctx context.Context, repoID string, commitSHA str
 	}); err != nil {
 		shared.Logger().Error("TagCommit", "Error pushing tag to remote repository", err)
 	}
+
+	shared.Logger().Debug("TagCommit", "commitSHA", commitSHA, "tag", tagName)
 
 	return nil
 }
