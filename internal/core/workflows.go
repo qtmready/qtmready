@@ -132,7 +132,7 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 		p := Instance().RepoProvider(repo.Provider) // get the specific provider
 
 		if err := workflow.ExecuteActivity(pctx, p.TagCommit, repo.ProviderID, repoMarkers[idx].CommitID, changesetID.String(),
-			"Tagged by quantm"); err != nil {
+			"Tagged by quantm").Get(ctx, nil); err != nil {
 			shared.Logger().Error("StackController", "error in tagging the repo", repo.ProviderID, "err", err)
 		}
 
@@ -141,7 +141,7 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 		}
 	}
 
-	shared.Logger().Debug("deployment done........")
+	shared.Logger().Debug("building scripts done........")
 
 	// // deployment map is designed to be used in OnPullRequestWorkflow only
 	// logger := workflow.GetLogger(ctx)
