@@ -23,11 +23,19 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
+	gh "github.com/google/go-github/v53/github"
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
+)
+
+const (
+	CIEvent     = "CI"
+	BuildEvent  = "Build"
+	DeployEvent = "Deploy"
 )
 
 // handleInstallationEvent handles GitHub App installation event.
