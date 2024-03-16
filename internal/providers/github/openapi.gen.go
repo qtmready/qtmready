@@ -212,12 +212,13 @@ type GithubEventsState struct {
 	GithubWorkflowID    int64      `json:"github_workflow_id"`
 	GithubWorkflowRunID int64      `json:"github_workflow_run_id"`
 	ID                  gocql.UUID `json:"id"`
+	RepoName            string     `json:"repo_name"`
 	Status              string     `json:"status"`
 	UpdatedAt           time.Time  `json:"updated_at"`
 }
 
 var (
-	githubeventsstateColumns = []string{"created_at", "event_type", "events_data", "github_workflow_id", "github_workflow_run_id", "id", "status", "updated_at"}
+	githubeventsstateColumns = []string{"created_at", "event_type", "events_data", "github_workflow_id", "github_workflow_run_id", "id", "repo_name", "status", "updated_at"}
 
 	githubeventsstateMeta = itable.Metadata{
 		M: &table.Metadata{

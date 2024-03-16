@@ -440,6 +440,9 @@ components:
           type: integer
           format: int64
           x-go-name: GithubWorkflowRunID
+        repo_name:
+          type: string
+          x-go-name: RepoName
         created_at:
           type: string
           format: date-time
@@ -453,5 +456,6 @@ components:
         - events_data
         - github_workflow_id
         - github_workflow_run_id
+        - repo_name
         - created_at
         - updated_at
