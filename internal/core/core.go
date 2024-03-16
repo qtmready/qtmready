@@ -53,7 +53,7 @@ type (
 	RepoProviderActivities interface {
 		GetLatestCommit(context.Context, string, string) (string, error)
 		TriggerBuild(ctx context.Context, repoID string, changesetID *gocql.UUID) error
-		TriggerDeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error
+		TriggerDeployChangeset(ctx context.Context, repoID string, changesetID string) error
 		TagCommit(ctx context.Context, repoID string, commitSHA string, tagName string, tagMessage string) error
 	}
 
