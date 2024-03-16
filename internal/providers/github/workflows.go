@@ -20,12 +20,13 @@ package github
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"time"
 
-	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -146,7 +147,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	return nil
 }
 
-func (w *Workflows) OnGithubBuildAction(ctx workflow.Context, payload *GithubWorkflowEvent, changesetID *gocql.UUID) error {
+func (w *Workflows) OnGithubBuildAction(ctx workflow.Context, payload *GithubWorkflowEvent, changesetID string) error {
 	// start TriggerGithubDeployChangeset for this
 	logger := workflow.GetLogger(ctx)
 	logger.Info("OnGithubBuildAction", "entry", "workflow started")
@@ -154,17 +155,47 @@ func (w *Workflows) OnGithubBuildAction(ctx workflow.Context, payload *GithubWor
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
-	if err := workflow.ExecuteActivity(actx, activities.TriggerDeployChangeset, payload.Repository.ID, changesetID).
+	// fmt.Printf("payload.repo.id %s\t changesetid %s\n\n", strconv.FormatInt(payload.Repository.ID, 10), changesetID)
+
+	if err := workflow.ExecuteActivity(actx, activities.TriggerDeployChangeset, strconv.FormatInt(payload.Repository.ID, 10), changesetID).
 		Get(ctx, nil); err != nil {
 		logger.Error("Error triggering GithubDeployChangeset activity")
 	}
 
-	// todo: save db
+	// save db
+	ghEvents := &GithubEventsState{}
+	params := db.QueryParams{
+		// "github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
+		"github_workflow_run_id": strconv.FormatInt(*payload.WR.ID, 10),
+		// "event_type":             "CI",
+	}
+	if err := db.Get(ghEvents, params); err != nil {
+		return err
+	}
+
+	ghEvents.Status = "Done"
+	_ = db.Save(ghEvents)
 
 	return nil
 }
 
-func (w *Workflows) OnGithubDeployAction(ctx workflow.Context, payload *GithubWorkflowEvent, changesetID *gocql.UUID) error {
+func (w *Workflows) OnGithubDeployAction(ctx workflow.Context, payload *GithubWorkflowEvent, changesetID string) error {
+	shared.Logger().Info("OnGithubDeployAction", "entry", "workflow started")
+
+	// save db
+	ghEvents := &GithubEventsState{}
+	params := db.QueryParams{
+		// "github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
+		"github_workflow_run_id": strconv.FormatInt(*payload.WR.ID, 10),
+		// "event_type":             "CI",
+	}
+	if err := db.Get(ghEvents, params); err != nil {
+		return err
+	}
+
+	ghEvents.Status = "Done"
+	_ = db.Save(ghEvents)
+
 	return nil
 }
 
@@ -178,6 +209,27 @@ func (w *Workflows) OnGithubCIAction(ctx workflow.Context, payload *GithubWorkfl
 	ch.Receive(ctx, gh_result)
 
 	logger.Info("OnGithubCIAction", "action recvd", gh_result)
+
+	// save to db
+	ghEvents := &GithubEventsState{}
+	params := db.QueryParams{
+		// "github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
+		"github_workflow_run_id": strconv.FormatInt(*payload.WR.ID, 10),
+		// "event_type":             "CI",
+	}
+	if err := db.Get(ghEvents, params); err != nil {
+		return err
+	}
+
+	ghEvents.Status = "Done"
+	_ = db.Save(ghEvents)
+
+	// e := &events.Event{
+	// 	Provider:   "github",
+	// 	ProviderID: payload.Repository.ID,
+	// 	Name:       "CI Action result received",
+	// }
+	// e.Save()
 
 	// acquiring lock here
 	lock, err := LockInstance(ctx, fmt.Sprint(payload.Repository.ID))
@@ -203,6 +255,9 @@ func (w *Workflows) OnGithubCIAction(ctx workflow.Context, payload *GithubWorkfl
 		logger.Error("error releasing lock", "error", err)
 		return err
 	}
+
+	// e.Name = "merge done"
+	// e.Save()
 
 	// Signal stack workflow about changeset update
 	// info to be sent: repo, commit
@@ -252,8 +307,8 @@ func (w *Workflows) OnGithubCIAction(ctx workflow.Context, payload *GithubWorkfl
 		cw.StackController,
 		coreRepo.StackID.String(),
 	)
-
 	if err != nil {
+		shared.Logger().Error("OnGithubCIAction", "error signaling workflow", err)
 		return err
 	}
 
@@ -276,6 +331,13 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 
 	if label == fmt.Sprintf("quantm ready") {
 		logger.Debug("quantm ready label applied")
+
+		// e := &events.Event{
+		// 	Provider:   "github",
+		// 	ProviderID: payload.Repository.ID,
+		// 	Name:       "quantm ready label applied",
+		// }
+		// e.Save()
 
 		workflows := &Workflows{}
 		opts := shared.Temporal().
@@ -419,6 +481,13 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
 
 	logger.Info("PollMergeQueue", "data recvd", element)
 
+	// e := &events.Event{
+	// 	Provider: "github",
+	// 	// ProviderID: payload.Repository.ID,
+	// 	Name: "Merge Queue started",
+	// }
+	// e.Save()
+
 	// trigger CICD here
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
@@ -433,6 +502,9 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
 	}
 
 	logger.Info("github action triggered")
+
+	// e.Name = "CI action triggered."
+	// e.Save()
 
 	return nil
 }
