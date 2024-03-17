@@ -320,14 +320,11 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) erro
 	{
 		shared.Logger().Debug("going to detect stale branch")
 
-		// get latest commit of the target branch
-		branch, _, err := client.Repositories.GetBranch(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
-			branchName, false)
-		if err != nil {
-			shared.Logger().Error("Early-Detection", "error getting branch", err)
-
-			// dont want to retry this workflow so not returning error, just log and return
-			return nil
+		latestDefBranchCommitSHA := ""
+		if err := workflow.ExecuteActivity(actx, activities.GetLatestCommit, strconv.FormatInt(event.Repository.ID, 10),
+			branchName).Get(ctx, &latestDefBranchCommitSHA); err != nil {
+			shared.Logger().Error("EarlyDetection", "error from GetLatestCommit activity", err)
+			return err
 		}
 
 		wf := &Workflows{}
@@ -341,8 +338,12 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) erro
 				shared.WithWorkflowProp("type", "Stale-Detection"),
 			)
 
-		if _, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, wf.StaleBranchDetection, event.Installation.ID,
-			event.Repository.Owner.Login, event.Repository.Name, branchName, branch.GetCommit().GetSHA()); err != nil {
+		if _, err := shared.Temporal().Client().ExecuteWorkflow(
+			context.Background(),
+			opts,
+			wf.StaleBranchDetection,
+			event.Installation.ID, strconv.FormatInt(event.Repository.ID, 10), event.Repository.Owner.Login, event.Repository.Name,
+			branchName, latestDefBranchCommitSHA); err != nil {
 			shared.Logger().Error("Early-Detection", "error executing child workflow", err)
 
 			// dont want to retry this workflow so not returning error, just log and return
@@ -353,7 +354,7 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) erro
 	return nil
 }
 
-func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID int64, repoOwner string, repoName string,
+func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID int64, repoID string, repoOwner string, repoName string,
 	branchName string, lastBranchCommit string) error {
 	// Sleep for 5 days before raising stale detection
 	_ = workflow.Sleep(ctx, 5*24*time.Hour)
@@ -361,20 +362,14 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID in
 
 	shared.Logger().Debug("StaleBranchDetection", "woke up from sleep", "checking for stale branch")
 
-	client, err := Instance().GetClientFromInstallation(installationID)
-	if err != nil {
-		shared.Logger().Error("StaleBranchDetection", "error getting client", err)
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
+
+	latestCommitSHA := ""
+	if err := workflow.ExecuteActivity(actx, activities.GetLatestCommit, repoID, branchName).Get(ctx, &latestCommitSHA); err != nil {
+		shared.Logger().Error("EarlyDetection", "error from GetLatestCommit activity", err)
 		return err
 	}
-
-	// get latest commit of the branch branchName
-	branch, _, err := client.Repositories.GetBranch(context.Background(), repoOwner, repoName, branchName, false)
-	if err != nil {
-		shared.Logger().Error("Early-Detection", "error getting branch", err)
-		return err
-	}
-
-	latestCommitSHA := branch.GetCommit().GetSHA()
 
 	// check if the branchName branch has the lastBranchCommit as the latest commit
 	if lastBranchCommit == latestCommitSHA {
