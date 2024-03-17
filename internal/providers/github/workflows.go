@@ -200,6 +200,9 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) erro
 
 	// shared.Logger().Info("Early-Detection", "signal payload", event)
 
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
+
 	// get github client
 	client, err := Instance().GetClientFromInstallation(event.Installation.ID)
 	if err != nil {
@@ -245,54 +248,28 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) erro
 	{
 		shared.Logger().Debug("going to detect merge conflicts")
 
-		// Get the default branch (e.g., "main")
-		repo, _, err := client.Repositories.Get(context.Background(), event.Repository.Owner.Login, event.Repository.Name)
-		if err != nil {
-			shared.Logger().Error("Early-Detection", "Error getting repository: ", err)
-
-			// dont want to retry this workflow so not returning error, just log and return
-			return nil
+		latestDefBranchCommitSHA := ""
+		if err = workflow.ExecuteActivity(actx, activities.GetLatestCommit, strconv.FormatInt(event.Repository.ID, 10),
+			event.Repository.DefaultBranch).Get(ctx, &latestDefBranchCommitSHA); err != nil {
+			shared.Logger().Error("EarlyDetection", "error from GetLatestCommit activity", err)
+			return err
 		}
-
-		// Get the latest commit SHA of the default branch
-		commits, _, err := client.Repositories.ListCommits(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
-			&gh.CommitsListOptions{
-				SHA: *repo.DefaultBranch,
-			},
-		)
-		if err != nil {
-			shared.Logger().Error("Early-Detection", "Error getting commits: ", err)
-
-			// dont want to retry this workflow so not returning error, just log and return
-			return nil
-		}
-
-		latestDefBranchCommitSHA := *commits[0].SHA
 
 		// create a temp branch/ref
 		tempBranchName := event.Repository.DefaultBranch + "-tempcopy-for-target-" + branchName
 
-		// Create a new branch based on the latest defaultBranch commit
-		tempRef := &gh.Reference{
-			Ref: gh.String("refs/heads/" + tempBranchName),
-			Object: &gh.GitObject{
-				SHA: &latestDefBranchCommitSHA,
-			},
-		}
-
-		// delete the temp ref if its present before
-		if _, err = client.Git.DeleteRef(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
-			*tempRef.Ref); err != nil {
-			shared.Logger().Error("Early-Detection", "Error deleting ref"+*tempRef.Ref, err)
+		// delete the branch if it is present already
+		if err = workflow.ExecuteActivity(actx, activities.DeleteBranch, event.Installation.ID, event.Repository.Name,
+			event.Repository.Owner.Login, tempBranchName).Get(ctx, nil); err != nil {
+			shared.Logger().Error("EarlyDetection", "error from DeleteBranch activity", err)
+			return err
 		}
 
 		// create new ref
-		if _, _, err = client.Git.CreateRef(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
-			tempRef); err != nil {
-			shared.Logger().Error("Early-Detection", "Error creating branch: ", err)
-
-			// dont want to retry this workflow so not returning error, just log and return
-			return nil
+		if err = workflow.ExecuteActivity(actx, activities.CreateBranch, event.Installation.ID, event.Repository.ID, event.Repository.Name,
+			event.Repository.Owner.Login, latestDefBranchCommitSHA, tempBranchName).Get(ctx, nil); err != nil {
+			shared.Logger().Error("EarlyDetection", "error from DeleteBranch activity", err)
+			return err
 		}
 
 		// Perform rebase of the target branch with the new temp branch
