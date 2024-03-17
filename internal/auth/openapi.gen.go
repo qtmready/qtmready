@@ -90,16 +90,16 @@ type APIKeyValidationResponse struct {
 
 // Account defines model for Account.
 type Account struct {
-	CreatedAt         time.Time  `json:"created_at"`
-	ExpiresAt         time.Time  `json:"expires_at"`
-	ID                gocql.UUID `json:"id"`
-	Provider          string     `json:"provider"`
-	ProviderAccountID string     `json:"provider_account_id"`
+	CreatedAt         time.Time  `cql:"created_at" json:"created_at"`
+	ExpiresAt         time.Time  `cql:"expires_at" json:"expires_at"`
+	ID                gocql.UUID `cql:"id" json:"id"`
+	Provider          string     `cql:"provider" json:"provider"`
+	ProviderAccountID string     `cql:"provider_account_id" json:"provider_account_id"`
 
 	// Type oauth account type enum
-	Type      AccountTypeEnum `json:"type"`
-	UpdatedAt time.Time       `json:"updated_at"`
-	UserID    gocql.UUID      `json:"user_id"`
+	Type      AccountTypeEnum `cql:"type" json:"type"`
+	UpdatedAt time.Time       `cql:"updated_at" json:"updated_at"`
+	UserID    gocql.UUID      `cql:"user_id" json:"user_id"`
 }
 
 var (
@@ -139,8 +139,7 @@ type CreateAPIKeyResponse struct {
 
 // CreateTeamRequest defines model for CreateTeamRequest.
 type CreateTeamRequest struct {
-	Name *string `json:"name,omitempty" validate:"required"`
-	Slug *string `json:"slug,omitempty"`
+	Name string `json:"name"`
 }
 
 // DeleteResponse defines model for DeleteResponse.
@@ -187,11 +186,11 @@ type RegisterationResponse struct {
 
 // Team defines model for Team.
 type Team struct {
-	CreatedAt time.Time  `json:"created_at"`
-	ID        gocql.UUID `json:"id"`
-	Name      string     `json:"name" validate:"required"`
-	Slug      string     `json:"slug"`
-	UpdatedAt time.Time  `json:"updated_at"`
+	CreatedAt time.Time  `cql:"created_at" json:"created_at"`
+	ID        gocql.UUID `cql:"id" json:"id"`
+	Name      string     `cql:"name" json:"name" validate:"required"`
+	Slug      string     `cql:"slug" json:"slug"`
+	UpdatedAt time.Time  `cql:"updated_at" json:"updated_at"`
 }
 
 var (
@@ -218,11 +217,11 @@ type TeamList struct {
 
 // TeamUser defines model for TeamUser.
 type TeamUser struct {
-	CreatedAt time.Time  `json:"created_at"`
-	ID        gocql.UUID `json:"id"`
-	TeamID    gocql.UUID `json:"team_id"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	UserID    gocql.UUID `json:"user_id"`
+	CreatedAt time.Time  `cql:"created_at" json:"created_at"`
+	ID        gocql.UUID `cql:"id" json:"id"`
+	TeamID    gocql.UUID `cql:"team_id" json:"team_id"`
+	UpdatedAt time.Time  `cql:"updated_at" json:"updated_at"`
+	UserID    gocql.UUID `cql:"user_id" json:"user_id"`
 }
 
 var (
@@ -250,16 +249,16 @@ type TokenResponse struct {
 
 // User defines model for User.
 type User struct {
-	CreatedAt  time.Time  `json:"created_at"`
-	Email      string     `json:"email" validate:"email,required,db_unique"`
-	FirstName  string     `json:"first_name"`
-	ID         gocql.UUID `json:"id"`
-	IsActive   bool       `json:"is_active"`
-	IsVerified bool       `json:"is_verified"`
-	LastName   string     `json:"last_name"`
-	Password   string     `json:"-"`
-	TeamID     gocql.UUID `json:"team_id"`
-	UpdatedAt  time.Time  `json:"updated_at"`
+	CreatedAt  time.Time  `cql:"created_at" json:"created_at"`
+	Email      string     `cql:"email" json:"email" validate:"email,required,db_unique"`
+	FirstName  string     `cql:"first_name" json:"first_name"`
+	ID         gocql.UUID `cql:"id" json:"id"`
+	IsActive   bool       `cql:"is_active" json:"is_active"`
+	IsVerified bool       `cql:"is_verified" json:"is_verified"`
+	LastName   string     `cql:"last_name" json:"last_name"`
+	Password   string     `cql:"password" json:"-"`
+	TeamID     gocql.UUID `cql:"team_id" json:"team_id"`
+	UpdatedAt  time.Time  `cql:"updated_at" json:"updated_at"`
 }
 
 var (

@@ -18,6 +18,7 @@
 package auth
 
 import (
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -178,7 +179,7 @@ func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 
 // ValidateAPIKey validates the X-API-KEY header and return a boolean. This is mainly required for otel collector.
 func (s *ServerHandler) ValidateAPIKey(ctx echo.Context) error {
-	valid := "valid"
+	valid := "valid" // FIXME: this is not correct.
 	return ctx.JSON(http.StatusOK, &APIKeyValidationResponse{Message: &valid})
 }
 
@@ -191,7 +192,42 @@ func (s *ServerHandler) GetTeam(ctx echo.Context) error {
 }
 
 func (s *ServerHandler) CreateTeam(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
+	request := &CreateTeamRequest{}
+
+	if err := ctx.Bind(request); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	id := ctx.Get("user_id").(string)
+
+	user := &User{}
+	team := &Team{Name: request.Name}
+
+	if err := db.Get(user, db.QueryParams{"id": id}); err != nil {
+		slog.Error("error getting user", "error", err)
+		return shared.NewAPIError(http.StatusNotFound, err)
+	}
+
+	if err := db.Save(team); err != nil {
+		slog.Error("error saving team", "error", err)
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	user.TeamID = team.ID
+	// user.SetPassword("multiscan")
+
+	// stmnt, names := qb.Update("users").Set("team_id").Where(qb.Eq("id")).ToCql()
+	// if err := db.DB().Session.Query(stmnt, names).BindStruct(user).ExecRelease(); err != nil {
+	// 	slog.Error("error updating user", "error", err)
+	// 	return shared.NewAPIError(http.StatusBadRequest, err)
+	// }
+
+	if err := db.Save(user); err != nil {
+		slog.Error("error saving user", "error", err)
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	return ctx.JSON(http.StatusCreated, team)
 }
 
 func (s *ServerHandler) AddUserToTeam(ctx echo.Context) error {
@@ -258,7 +294,9 @@ func (s *ServerHandler) ListUsers(ctx echo.Context) error {
 
 	if provider != "" && provider_account_id != "" {
 		account := &Account{}
-		if err := db.Get(account, db.QueryParams{"provider": provider, "provider_account_id": provider_account_id}); err != nil {
+		params := db.QueryParams{"provider": quote(provider), "provider_account_id": quote(provider_account_id)}
+
+		if err := db.Get(account, params); err != nil {
 			return shared.NewAPIError(http.StatusNotFound, err)
 		}
 
