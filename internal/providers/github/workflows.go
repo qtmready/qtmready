@@ -26,7 +26,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core"
-	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -163,18 +162,18 @@ func (w *Workflows) OnGithubBuildAction(ctx workflow.Context, payload *GithubWor
 	}
 
 	// save db
-	ghEvents := &GithubEventsState{}
-	params := db.QueryParams{
-		// "github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
-		"github_workflow_run_id": strconv.FormatInt(*payload.WR.ID, 10),
-		// "event_type":             "CI",
-	}
-	if err := db.Get(ghEvents, params); err != nil {
-		return err
-	}
+	// ghEvents := &GithubEventsState{}
+	// params := db.QueryParams{
+	// 	// "github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
+	// 	"github_workflow_run_id": strconv.FormatInt(*payload.WR.ID, 10),
+	// 	// "event_type":             "CI",
+	// }
+	// if err := db.Get(ghEvents, params); err != nil {
+	// 	return err
+	// }
 
-	ghEvents.Status = "Done"
-	_ = db.Save(ghEvents)
+	// ghEvents.Status = "Done"
+	// _ = db.Save(ghEvents)
 
 	return nil
 }
@@ -183,18 +182,18 @@ func (w *Workflows) OnGithubDeployAction(ctx workflow.Context, payload *GithubWo
 	shared.Logger().Info("OnGithubDeployAction", "entry", "workflow started")
 
 	// save db
-	ghEvents := &GithubEventsState{}
-	params := db.QueryParams{
-		// "github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
-		"github_workflow_run_id": strconv.FormatInt(*payload.WR.ID, 10),
-		// "event_type":             "CI",
-	}
-	if err := db.Get(ghEvents, params); err != nil {
-		return err
-	}
+	// ghEvents := &GithubEventsState{}
+	// params := db.QueryParams{
+	// 	// "github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
+	// 	"github_workflow_run_id": strconv.FormatInt(*payload.WR.ID, 10),
+	// 	// "event_type":             "CI",
+	// }
+	// if err := db.Get(ghEvents, params); err != nil {
+	// 	return err
+	// }
 
-	ghEvents.Status = "Done"
-	_ = db.Save(ghEvents)
+	// ghEvents.Status = "Done"
+	// _ = db.Save(ghEvents)
 
 	return nil
 }
@@ -211,18 +210,18 @@ func (w *Workflows) OnGithubCIAction(ctx workflow.Context, payload *GithubWorkfl
 	logger.Info("OnGithubCIAction", "action recvd", gh_result)
 
 	// save to db
-	ghEvents := &GithubEventsState{}
-	params := db.QueryParams{
-		// "github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
-		"github_workflow_run_id": strconv.FormatInt(*payload.WR.ID, 10),
-		// "event_type":             "CI",
-	}
-	if err := db.Get(ghEvents, params); err != nil {
-		return err
-	}
+	// ghEvents := &GithubEventsState{}
+	// params := db.QueryParams{
+	// 	// "github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
+	// 	"github_workflow_run_id": strconv.FormatInt(*payload.WR.ID, 10),
+	// 	// "event_type":             "CI",
+	// }
+	// if err := db.Get(ghEvents, params); err != nil {
+	// 	return err
+	// }
 
-	ghEvents.Status = "Done"
-	_ = db.Save(ghEvents)
+	// ghEvents.Status = "Done"
+	// _ = db.Save(ghEvents)
 
 	// e := &events.Event{
 	// 	Provider:   "github",
