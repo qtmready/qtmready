@@ -207,7 +207,21 @@ func processCompletedWorkflowRun(ctx echo.Context, ghWorkflowEvent *GithubWorkfl
 			return err
 		}
 
-		if err := db.Save(githubEventsState); err != nil {
+		// save db
+		// ghEvents := &GithubEventsState{}
+		// params := db.QueryParams{
+		// 	// "github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
+		// 	"github_workflow_run_id": strconv.FormatInt(*ghWorkflowEvent.WR.ID, 10),
+		// 	// "event_type":             "CI",
+		// }
+
+		// if err := db.Get(ghEvents, params); err != nil {
+		// 	shared.Logger().Error("processCompletedWorkflowRun", "error getting data from db", err)
+		// 	return err
+		// }
+
+		githubEventsState.Status = "Done"
+		if err := db.Update(githubEventsState); err != nil {
 			shared.Logger().Error("processCompletedWorkflowRun "+eventType, "error updating db", err)
 		}
 
@@ -247,7 +261,20 @@ func processCompletedWorkflowRun(ctx echo.Context, ghWorkflowEvent *GithubWorkfl
 			return err
 		}
 
-		if err := db.Save(githubEventsState); err != nil {
+		// save db
+		// ghEvents := &GithubEventsState{}
+		// params := db.QueryParams{
+		// 	"github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
+		// 	"github_workflow_run_id": strconv.FormatInt(*ghWorkflowEvent.WR.ID, 10),
+		// 	"event_type":             "CI",
+		// }
+
+		// if err := db.Get(ghEvents, params); err != nil {
+		// 	return err
+		// }
+
+		githubEventsState.Status = "Done"
+		if err := db.Update(githubEventsState); err != nil {
 			shared.Logger().Error("processCompletedWorkflowRun "+eventType, "error updating db", err)
 		}
 
@@ -287,7 +314,20 @@ func processCompletedWorkflowRun(ctx echo.Context, ghWorkflowEvent *GithubWorkfl
 			return err
 		}
 
-		if err := db.Save(githubEventsState); err != nil {
+		// // save db
+		// ghEvents := &GithubEventsState{}
+		// params := db.QueryParams{
+		// 	"github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
+		// 	"github_workflow_run_id": strconv.FormatInt(*ghWorkflowEvent.WR.ID, 10),
+		// 	"event_type":             "CI",
+		// }
+
+		// if err := db.Get(ghEvents, params); err != nil {
+		// 	return err
+		// }
+
+		githubEventsState.Status = "Done"
+		if err := db.Update(githubEventsState); err != nil {
 			shared.Logger().Error("processCompletedWorkflowRun "+eventType, "error updating db", err)
 		}
 
