@@ -225,7 +225,7 @@ func processCompletedWorkflowRun(ctx echo.Context, ghWorkflowEvent *GithubWorkfl
 		// }
 
 		githubEventsState.Status = "Done"
-		if err := db.Save(githubEventsState); err != nil {
+		if err := db.Update(githubEventsState); err != nil {
 			shared.Logger().Error("processCompletedWorkflowRun "+eventType, "error updating db", err)
 		}
 
@@ -278,7 +278,7 @@ func processCompletedWorkflowRun(ctx echo.Context, ghWorkflowEvent *GithubWorkfl
 		// }
 
 		githubEventsState.Status = "Done"
-		if err := db.Save(githubEventsState); err != nil {
+		if err := db.Update(githubEventsState); err != nil {
 			shared.Logger().Error("processCompletedWorkflowRun "+eventType, "error updating db", err)
 		}
 
@@ -331,7 +331,7 @@ func processCompletedWorkflowRun(ctx echo.Context, ghWorkflowEvent *GithubWorkfl
 		// }
 
 		githubEventsState.Status = "Done"
-		if err := db.Save(githubEventsState); err != nil {
+		if err := db.Update(githubEventsState); err != nil {
 			shared.Logger().Error("processCompletedWorkflowRun "+eventType, "error updating db", err)
 		}
 
