@@ -22,4 +22,4 @@ import (
 	_ "gopkg.in/yaml.v2"
 )
 
-//go:generate go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen --config _schema/gen.yaml _schema/openapi.yaml
+//go:generate go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen --config openapi.codegen.yaml ../../api/openapi/core/v1/schema.yaml

@@ -18,12 +18,18 @@
 package auth
 
 import (
+	"crypto/sha256"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/labstack/echo/v4"
+	"go.step.sm/crypto/jose"
+	"golang.org/x/crypto/hkdf"
 
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
@@ -31,10 +37,19 @@ import (
 
 const (
 	BearerHeaderName    = "Authorization"
-	BearerPrefix        = "Token"
 	APIKeyHeaderName    = "X-API-KEY"
 	GuardLookupTypeTeam = "team"
 	GuardLookupTypeUser = "user"
+)
+
+var (
+	BearerPrefixes = []string{"Token", "Bearer"}
+)
+
+// TODO: handle salt.
+const (
+	prefix = "Auth.js Generated Encryption Key"
+	salt   = "authjs.session-token"
 )
 
 type (
@@ -113,7 +128,7 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 			parts := strings.Split(header, " ")
 
-			if len(parts) != 2 || parts[0] != BearerPrefix {
+			if len(parts) != 2 || !isValidPrefix(parts[0]) {
 				return shared.NewAPIError(http.StatusBadRequest, ErrInvalidAuthHeader)
 			}
 
@@ -140,16 +155,26 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 
 // bearerFn is the function that handles the JWT token authentication.
 func bearerFn(next echo.HandlerFunc, ctx echo.Context, token string) error {
-	parsed, err := jwt.ParseWithClaims(token, &JWTClaims{}, SecretFn)
+	enc, err := jose.Decrypt(
+		[]byte(token),
+		jose.WithAlg(string(jose.A256CBC_HS512)),
+		jose.WithPassword(derive()),
+	)
+
 	if err != nil {
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	if claims, ok := parsed.Claims.(*JWTClaims); ok && parsed.Valid {
-		ctx.Set("user_id", claims.UserID)
-		ctx.Set("team_id", claims.TeamID)
-	} else {
-		return shared.NewAPIError(http.StatusUnauthorized, ErrInvalidOrExpiredToken)
+	var result map[string]any
+
+	if err = json.Unmarshal(enc, &result); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	// Set user.id as user_id and team_id from user to the Echo context
+	if info, ok := result["user"].(map[string]any); ok {
+		ctx.Set("user_id", info["id"])
+		ctx.Set("team_id", info["team_id"])
 	}
 
 	return next(ctx)
@@ -182,6 +207,30 @@ func KeyFn(next echo.HandlerFunc, ctx echo.Context, key string) error {
 	}
 
 	return next(ctx)
+}
+
+// TODO: change to other info logger.
+func info() string {
+	return fmt.Sprintf("%s (%s)", prefix, salt)
+}
+
+func derive() []byte {
+	kdf := hkdf.New(sha256.New, []byte(shared.Service().GetSecret()), []byte(salt), []byte(info()))
+	key := make([]byte, 64)
+	_, _ = io.ReadFull(kdf, key)
+
+	return key
+}
+
+// Function to check if the prefix is valid.
+func isValidPrefix(prefix string) bool {
+	for _, valid := range BearerPrefixes {
+		if prefix == valid {
+			return true
+		}
+	}
+
+	return false
 }
 
 // SecretFn provides the secret for the JWT token.

@@ -68,29 +68,30 @@ func Service() service.Service {
 // default values. This is required if we need to pass the logger to other packages during initialization.
 // NOTE: Do not use this for logging. Use slog.Info, slog.Warn, slog.Error, etc. instead.
 func Logger() *slog.Logger {
-	opts := &slog.HandlerOptions{
-		AddSource: true,
-	}
+	var handler slog.Handler
+
+	debug := Service().GetDebug()
+	level := slog.LevelInfo
+	opts := &slog.HandlerOptions{AddSource: !debug}
 
 	lgrOnce.Do(func() {
-		var handler slog.Handler
+		switch {
+		case debug:
+			level = slog.LevelDebug
+			opts.Level = level
+			handler = slog.NewTextHandler(os.Stdout, opts)
 
-		if Service().GetDebug() {
-			opts.Level = slog.LevelDebug
-		} else {
-			opts.Level = slog.LevelInfo
-		}
-
-		if Service().GetCloudRunJob() != "unset" || Service().GetCloudRunService() != "unset" {
+		case Service().GetCloudRunJob() != "unset" || Service().GetCloudRunService() != "unset":
 			handler = logger.NewSimpleCloudRunHandler(os.Stdout, opts)
-		} else {
+
+		default:
 			handler = slog.NewJSONHandler(os.Stdout, opts)
 		}
 
 		lgr = slog.New(handler)
-
-		slog.SetDefault(lgr) // Set the default logger.
 	})
+
+	slog.SetDefault(lgr)
 
 	return lgr
 }
@@ -104,6 +105,7 @@ func Validator() *validator.Validate {
 			if name == "-" {
 				return ""
 			}
+
 			return name
 		})
 	})

@@ -158,9 +158,16 @@ func Update[T Entity](entity T) error {
 	setval(entity, "UpdatedAt", now)
 
 	tbl := entity.GetTable()
-	columns := tbl.Metadata().M.Columns[1:] // Remove the first element. We are assuming it is the primary key.
+	columns := removeIDColumn(tbl.Metadata().M.Columns)
+	stmnt, names := qb.Update(tbl.Name()).
+		Set(columns...).
+		Where(qb.Eq("id")).
+		ToCql()
 
-	return DB().Session.Query(tbl.Update(columns...)).BindStruct(entity).ExecRelease()
+	query := DB().Session.Query(stmnt, names)
+	query = query.BindStruct(entity)
+
+	return query.ExecRelease()
 }
 
 // gets the ID of the entity. The entity value is a pointer to the struct.
@@ -172,4 +179,16 @@ func getID(entity Entity) gocql.UUID {
 func setval(entity Entity, name string, val any) {
 	elem := reflect.ValueOf(entity).Elem()
 	elem.FieldByName(name).Set(reflect.ValueOf(val))
+}
+
+func removeIDColumn(columns []string) []string {
+	result := make([]string, 0)
+
+	for _, col := range columns {
+		if col != "id" {
+			result = append(result, col)
+		}
+	}
+
+	return result
 }
