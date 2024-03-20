@@ -166,12 +166,12 @@ func (v *WorkflowStatus) UnmarshalJSON(data []byte) error {
 
 // ArtifactReadyRequest defines model for ArtifactReadyRequest.
 type ArtifactReadyRequest struct {
-	Digest         string           `json:"digest"`
-	Image          string           `json:"image"`
-	InstallationID string           `json:"installation_id"`
-	PullRequestID  string           `json:"pull_request_id"`
-	Registry       OCIImageRegistry `json:"registry"`
-	RepoID         string           `json:"repo_id"`
+	Digest         string           `cql:"digest" json:"digest"`
+	Image          string           `cql:"image" json:"image"`
+	InstallationID string           `cql:"installation_id" json:"installation_id"`
+	PullRequestID  string           `cql:"pull_request_id" json:"pull_request_id"`
+	Registry       OCIImageRegistry `cql:"registry" json:"registry"`
+	RepoID         string           `cql:"repo_id" json:"repo_id"`
 }
 
 var (
@@ -215,16 +215,16 @@ type GithubActionResultRequest struct {
 
 // Installation defines model for GithubInstallation.
 type Installation struct {
-	CreatedAt         time.Time  `json:"created_at"`
-	ID                gocql.UUID `json:"id"`
-	InstallationID    int64      `json:"installation_id" validate:"required,db_unique"`
-	InstallationLogin string     `json:"installation_login"`
-	InstallationType  string     `json:"installation_type"`
-	SenderID          int64      `json:"sender_id"`
-	SenderLogin       string     `json:"sender_login"`
-	Status            string     `json:"status"`
-	TeamID            gocql.UUID `json:"team_id"`
-	UpdatedAt         time.Time  `json:"updated_at"`
+	CreatedAt         time.Time  `cql:"created_at" json:"created_at"`
+	ID                gocql.UUID `cql:"id" json:"id"`
+	InstallationID    int64      `cql:"installation_id" json:"installation_id" validate:"required,db_unique"`
+	InstallationLogin string     `cql:"installation_login" json:"installation_login"`
+	InstallationType  string     `cql:"installation_type" json:"installation_type"`
+	SenderID          int64      `cql:"sender_id" json:"sender_id"`
+	SenderLogin       string     `cql:"sender_login" json:"sender_login"`
+	Status            string     `cql:"status" json:"status"`
+	TeamID            gocql.UUID `cql:"team_id" json:"team_id"`
+	UpdatedAt         time.Time  `cql:"updated_at" json:"updated_at"`
 }
 
 var (
@@ -246,14 +246,14 @@ func (githubinstallation *Installation) GetTable() itable.ITable {
 
 // Repo defines model for GithubRepo.
 type Repo struct {
-	CreatedAt      time.Time  `json:"created_at"`
-	FullName       string     `json:"full_name"`
-	GithubID       int64      `json:"github_id"`
-	ID             gocql.UUID `json:"id"`
-	InstallationID int64      `json:"installation_id"`
-	Name           string     `json:"name"`
-	TeamID         gocql.UUID `json:"team_id"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	CreatedAt      time.Time  `cql:"created_at" json:"created_at"`
+	FullName       string     `cql:"full_name" json:"full_name"`
+	GithubID       int64      `cql:"github_id" json:"github_id"`
+	ID             gocql.UUID `cql:"id" json:"id"`
+	InstallationID int64      `cql:"installation_id" json:"installation_id"`
+	Name           string     `cql:"name" json:"name"`
+	TeamID         gocql.UUID `cql:"team_id" json:"team_id"`
+	UpdatedAt      time.Time  `cql:"updated_at" json:"updated_at"`
 }
 
 var (
