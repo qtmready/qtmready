@@ -46,6 +46,9 @@ type (
 		RepoProvider(RepoProvider) RepoProviderActivities
 		CloudProvider(CloudProvider) CloudProviderActivities
 		ResourceConstructor(CloudProvider, Driver) ResourceConstructor
+
+		ResgiterMessagingProvider(MessagingProvider, MessagingProviderActivities)
+		MessagingProvider(MessagingProvider) MessagingProviderActivities
 	}
 
 	Option func(Core)
@@ -60,9 +63,14 @@ type (
 		FillMe()
 	}
 
+	MessagingProviderActivities interface {
+		SendChannelMessage(ctx context.Context, msg string) error // TODO: figure out the signature
+	}
+
 	Providers struct {
-		repos map[RepoProvider]RepoProviderActivities
-		cloud map[CloudProvider]CloudProviderActivities
+		repos     map[RepoProvider]RepoProviderActivities
+		cloud     map[CloudProvider]CloudProviderActivities
+		messaging map[MessagingProvider]MessagingProviderActivities
 	}
 
 	CloudResource interface {
@@ -148,6 +156,18 @@ func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
 	panic(NewProviderNotFoundError(name.String()))
 }
 
+func (c *core) ResgiterMessagingProvider(provider MessagingProvider, activities MessagingProviderActivities) {
+	c.providers.messaging[provider] = activities
+}
+
+func (c *core) MessagingProvider(name MessagingProvider) MessagingProviderActivities {
+	if p, ok := c.providers.messaging[name]; ok {
+		return p
+	}
+
+	panic(NewProviderNotFoundError(name.String()))
+}
+
 // WithRepoProvider registers a repo provider with the core.
 func WithRepoProvider(name RepoProvider, provider RepoProviderActivities) Option {
 	return func(c Core) {
@@ -180,8 +200,9 @@ func Instance(opts ...Option) Core {
 		once.Do(func() {
 			instance = &core{
 				providers: Providers{
-					repos: make(map[RepoProvider]RepoProviderActivities),
-					cloud: make(map[CloudProvider]CloudProviderActivities),
+					repos:     make(map[RepoProvider]RepoProviderActivities),
+					cloud:     make(map[CloudProvider]CloudProviderActivities),
+					messaging: make(map[MessagingProvider]MessagingProviderActivities),
 				},
 
 				resources: make(map[CloudProvider]map[Driver]ResourceConstructor),
