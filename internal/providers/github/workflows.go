@@ -25,11 +25,10 @@ import (
 	"time"
 
 	gh "github.com/google/go-github/v53/github"
+	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core"
-	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
-	"go.temporal.io/sdk/workflow"
 )
 
 var (
@@ -283,12 +282,17 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) erro
 		}
 		if _, _, err = client.Repositories.Merge(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
 			rebaseRequest); err != nil {
-			// notify slack here
-			_ = slack.NotifyOnSlack("Merge Conflicts are expected on branch " + branchName)
+			message := "Merge Conflicts are expected on branch " + branchName
+			if err = workflow.ExecuteActivity(
+				actx,
+				activities.NotifySlack,
+				message,
+			).Get(ctx, nil); err != nil {
+				shared.Logger().Error("Error notifying Slack", "error", err.Error())
+				return err
+			}
 
-			shared.Logger().Info("Early-Detection", "slack nofity", "merge conflicts")
 			shared.Logger().Error("Early-Detection", "Error rebasing branches: ", err)
-
 			// dont want to retry this workflow so not returning error, just log and return
 			return nil
 		}
@@ -353,10 +357,15 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID in
 
 	// check if the branchName branch has the lastBranchCommit as the latest commit
 	if lastBranchCommit == latestCommitSHA {
-		// notify slack
-		_ = slack.NotifyOnSlack("Stale branch " + branchName)
-
-		shared.Logger().Info("Early-Detection", "slack nofity", "stale branch")
+		message := "Stale branch " + branchName
+		if err := workflow.ExecuteActivity(
+			actx,
+			activities.NotifySlack,
+			message,
+		).Get(ctx, nil); err != nil {
+			shared.Logger().Error("Error notifying Slack", "error", err.Error())
+			return err
+		}
 
 		return nil
 	}

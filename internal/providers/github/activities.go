@@ -446,6 +446,7 @@ func (a *Activities) CreateBranch(ctx context.Context, installationID int64, rep
 	return nil
 }
 
+// TODO: for now NotifySlack is inside github activities move to slack activities.
 func (a *Activities) NotifySlack(message string) error {
 	err := slack.NotifyOnSlack(message)
 	if err != nil {
