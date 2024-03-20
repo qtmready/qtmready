@@ -25,6 +25,7 @@ import (
 	"time"
 
 	gh "github.com/google/go-github/v53/github"
+
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
@@ -232,13 +233,15 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) erro
 		shared.Logger().Debug("Early-Detection", "total changes in branch", changes)
 
 		if changes > 200 {
-			// notify slack
-			_ = slack.NotifyOnSlack("200+ lines changed on branch " + branchName)
-
-			shared.Logger().Info("Early-Detection", "slack nofity", "200+ lines changed")
-
-			// dont want to retry this workflow so not returning error, just log and return
-			return nil
+			message := "200+ lines changed on branch " + event.Repository.DefaultBranch
+			if err := workflow.ExecuteActivity(
+				actx,
+				activities.NotifySlack,
+				message,
+			).Get(ctx, nil); err != nil {
+				shared.Logger().Error("Error notifying Slack", "error", err.Error())
+				return err
+			}
 		}
 
 		shared.Logger().Debug("200+ changes NOT detected")
