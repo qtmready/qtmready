@@ -47,8 +47,8 @@ type (
 		CloudProvider(CloudProvider) CloudProviderActivities
 		ResourceConstructor(CloudProvider, Driver) ResourceConstructor
 
-		ResgiterMessagingProvider(MessagingProvider, MessagingProviderActivities)
-		MessagingProvider(MessagingProvider) MessagingProviderActivities
+		ResgiterMessageProvider(MessageProvider, MessageProviderActivities)
+		MessageProvider(MessageProvider) MessageProviderActivities
 	}
 
 	Option func(Core)
@@ -63,14 +63,14 @@ type (
 		FillMe()
 	}
 
-	MessagingProviderActivities interface {
+	MessageProviderActivities interface {
 		SendChannelMessage(ctx context.Context, msg string) error // TODO: figure out the signature
 	}
 
 	Providers struct {
-		repos     map[RepoProvider]RepoProviderActivities
-		cloud     map[CloudProvider]CloudProviderActivities
-		messaging map[MessagingProvider]MessagingProviderActivities
+		repos   map[RepoProvider]RepoProviderActivities
+		cloud   map[CloudProvider]CloudProviderActivities
+		message map[MessageProvider]MessageProviderActivities
 	}
 
 	CloudResource interface {
@@ -156,12 +156,12 @@ func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
 	panic(NewProviderNotFoundError(name.String()))
 }
 
-func (c *core) ResgiterMessagingProvider(provider MessagingProvider, activities MessagingProviderActivities) {
-	c.providers.messaging[provider] = activities
+func (c *core) ResgiterMessageProvider(provider MessageProvider, activities MessageProviderActivities) {
+	c.providers.message[provider] = activities
 }
 
-func (c *core) MessagingProvider(name MessagingProvider) MessagingProviderActivities {
-	if p, ok := c.providers.messaging[name]; ok {
+func (c *core) MessageProvider(name MessageProvider) MessageProviderActivities {
+	if p, ok := c.providers.message[name]; ok {
 		return p
 	}
 
@@ -200,9 +200,9 @@ func Instance(opts ...Option) Core {
 		once.Do(func() {
 			instance = &core{
 				providers: Providers{
-					repos:     make(map[RepoProvider]RepoProviderActivities),
-					cloud:     make(map[CloudProvider]CloudProviderActivities),
-					messaging: make(map[MessagingProvider]MessagingProviderActivities),
+					repos:   make(map[RepoProvider]RepoProviderActivities),
+					cloud:   make(map[CloudProvider]CloudProviderActivities),
+					message: make(map[MessageProvider]MessageProviderActivities),
 				},
 
 				resources: make(map[CloudProvider]map[Driver]ResourceConstructor),

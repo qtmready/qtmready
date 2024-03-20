@@ -36,10 +36,10 @@ const (
 )
 
 var (
-	ErrInvalidCloudProvider     = errors.New("invalid CloudProvider value")
-	ErrInvalidDriver            = errors.New("invalid Driver value")
-	ErrInvalidMessagingProvider = errors.New("invalid MessagingProvider value")
-	ErrInvalidRepoProvider      = errors.New("invalid RepoProvider value")
+	ErrInvalidCloudProvider   = errors.New("invalid CloudProvider value")
+	ErrInvalidDriver          = errors.New("invalid Driver value")
+	ErrInvalidMessageProvider = errors.New("invalid MessageProvider value")
+	ErrInvalidRepoProvider    = errors.New("invalid RepoProvider value")
 )
 
 type (
@@ -131,35 +131,35 @@ func (v *Driver) UnmarshalJSON(data []byte) error {
 }
 
 type (
-	MessagingProviderMapType map[string]MessagingProvider // MessagingProviderMapType is a quick lookup map for MessagingProvider.
+	MessageProviderMapType map[string]MessageProvider // MessageProviderMapType is a quick lookup map for MessageProvider.
 )
 
-// Defines values for MessagingProvider.
+// Defines values for MessageProvider.
 const (
-	MessagingProviderSlack MessagingProvider = "slack"
+	MessageProviderSlack MessageProvider = "slack"
 )
 
-// MessagingProviderMap returns all known values for MessagingProvider.
+// MessageProviderMap returns all known values for MessageProvider.
 var (
-	MessagingProviderMap = MessagingProviderMapType{
-		MessagingProviderSlack.String(): MessagingProviderSlack,
+	MessageProviderMap = MessageProviderMapType{
+		MessageProviderSlack.String(): MessageProviderSlack,
 	}
 )
 
 /*
- * Helper methods for MessagingProvider for easy marshalling and unmarshalling.
+ * Helper methods for MessageProvider for easy marshalling and unmarshalling.
  */
-func (v MessagingProvider) String() string               { return string(v) }
-func (v MessagingProvider) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
-func (v *MessagingProvider) UnmarshalJSON(data []byte) error {
+func (v MessageProvider) String() string               { return string(v) }
+func (v MessageProvider) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
+func (v *MessageProvider) UnmarshalJSON(data []byte) error {
 	var s string
 	if err := json.Unmarshal(data, &s); err != nil {
 		return err
 	}
 
-	val, ok := MessagingProviderMap[s]
+	val, ok := MessageProviderMap[s]
 	if !ok {
-		return ErrInvalidMessagingProvider
+		return ErrInvalidMessageProvider
 	}
 
 	*v = val
@@ -264,8 +264,8 @@ type CloudProvider string
 // Driver gke, cloudrun, pubsub, s3, sqs, sns, dynamodb, postgres, mysql etc
 type Driver string
 
-// MessagingProvider defines model for MessagingProvider.
-type MessagingProvider string
+// MessageProvider defines model for MessageProvider.
+type MessageProvider string
 
 // Repo defines model for Repo.
 type Repo struct {
@@ -365,8 +365,8 @@ type ResourceListResponse = []Resource
 
 // SlackMessage defines model for SlackMessage.
 type SlackMessage struct {
-	ChannelID string            `json:"channelID"`
-	Message   MessagingProvider `json:"message"`
+	ChannelID string          `json:"channelID"`
+	Message   MessageProvider `json:"message"`
 }
 
 // Stack defines model for Stack.
