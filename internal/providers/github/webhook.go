@@ -155,7 +155,6 @@ func processInProgressWorkflowRun(ghWorkflowEvent *GithubWorkflowEvent, eventTyp
 func processCompletedWorkflowRun(ctx echo.Context, ghWorkflowEvent *GithubWorkflowEvent, eventType string) error {
 	githubEventsState := &GithubEventsState{}
 	params := db.QueryParams{
-		// "github_workflow_id":     strconv.FormatInt(*payload.WR.WorkflowID, 10),
 		"github_workflow_run_id": strconv.FormatInt(*ghWorkflowEvent.WR.ID, 10),
 	}
 
@@ -166,11 +165,8 @@ func processCompletedWorkflowRun(ctx echo.Context, ghWorkflowEvent *GithubWorkfl
 		return err
 	}
 
+	githubEventsState.Status = "Done"
 	shared.Logger().Debug("processCompletedWorkflowRun"+eventType, "githubEventsState", githubEventsState)
-	// if githubEventsState.Status != "Inprog" {
-	// 	shared.Logger().Warn("github action workflow in invalid state")
-	// 	return nil
-	// }
 
 	var eventsData map[string]string
 	_ = json.Unmarshal([]byte(githubEventsState.EventsData), &eventsData)
@@ -211,20 +207,6 @@ func processCompletedWorkflowRun(ctx echo.Context, ghWorkflowEvent *GithubWorkfl
 			return err
 		}
 
-		// save db
-		// ghEvents := &GithubEventsState{}
-		// params := db.QueryParams{
-		// 	// "github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
-		// 	"github_workflow_run_id": strconv.FormatInt(*ghWorkflowEvent.WR.ID, 10),
-		// 	// "event_type":             "CI",
-		// }
-
-		// if err := db.Get(ghEvents, params); err != nil {
-		// 	shared.Logger().Error("processCompletedWorkflowRun", "error getting data from db", err)
-		// 	return err
-		// }
-
-		githubEventsState.Status = "Done"
 		if err := db.Save(githubEventsState); err != nil {
 			shared.Logger().Error("processCompletedWorkflowRun "+eventType, "error updating db", err)
 		}
@@ -265,19 +247,6 @@ func processCompletedWorkflowRun(ctx echo.Context, ghWorkflowEvent *GithubWorkfl
 			return err
 		}
 
-		// save db
-		// ghEvents := &GithubEventsState{}
-		// params := db.QueryParams{
-		// 	"github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
-		// 	"github_workflow_run_id": strconv.FormatInt(*ghWorkflowEvent.WR.ID, 10),
-		// 	"event_type":             "CI",
-		// }
-
-		// if err := db.Get(ghEvents, params); err != nil {
-		// 	return err
-		// }
-
-		githubEventsState.Status = "Done"
 		if err := db.Save(githubEventsState); err != nil {
 			shared.Logger().Error("processCompletedWorkflowRun "+eventType, "error updating db", err)
 		}
@@ -318,19 +287,6 @@ func processCompletedWorkflowRun(ctx echo.Context, ghWorkflowEvent *GithubWorkfl
 			return err
 		}
 
-		// // save db
-		// ghEvents := &GithubEventsState{}
-		// params := db.QueryParams{
-		// 	"github_workflow_id":     strconv.FormatInt(*ghWorkflowEvent.WR.WorkflowID, 10),
-		// 	"github_workflow_run_id": strconv.FormatInt(*ghWorkflowEvent.WR.ID, 10),
-		// 	"event_type":             "CI",
-		// }
-
-		// if err := db.Get(ghEvents, params); err != nil {
-		// 	return err
-		// }
-
-		githubEventsState.Status = "Done"
 		if err := db.Save(githubEventsState); err != nil {
 			shared.Logger().Error("processCompletedWorkflowRun "+eventType, "error updating db", err)
 		}
