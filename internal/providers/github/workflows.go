@@ -210,6 +210,8 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) erro
 		return err
 	}
 
+	m := core.Instance().MessageProvider(core.MessageProviderSlack)
+
 	// detect 200+ changes
 	{
 		shared.Logger().Debug("going to detect 200+ changes")
@@ -233,9 +235,10 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) erro
 
 		if changes > 200 {
 			message := "200+ lines changed on branch " + event.Repository.DefaultBranch
+
 			if err := workflow.ExecuteActivity(
 				actx,
-				activities.NotifySlack,
+				m.SendChannelMessage,
 				message,
 			).Get(ctx, nil); err != nil {
 				shared.Logger().Error("Error notifying Slack", "error", err.Error())
@@ -285,7 +288,7 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) erro
 			message := "Merge Conflicts are expected on branch " + branchName
 			if err = workflow.ExecuteActivity(
 				actx,
-				activities.NotifySlack,
+				m.SendChannelMessage,
 				message,
 			).Get(ctx, nil); err != nil {
 				shared.Logger().Error("Error notifying Slack", "error", err.Error())
@@ -348,6 +351,7 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID in
 
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
+	m := core.Instance().MessageProvider(core.MessageProviderSlack)
 
 	latestCommitSHA := ""
 	if err := workflow.ExecuteActivity(actx, activities.GetLatestCommit, repoID, branchName).Get(ctx, &latestCommitSHA); err != nil {
@@ -360,7 +364,7 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID in
 		message := "Stale branch " + branchName
 		if err := workflow.ExecuteActivity(
 			actx,
-			activities.NotifySlack,
+			m.SendChannelMessage,
 			message,
 		).Get(ctx, nil); err != nil {
 			shared.Logger().Error("Error notifying Slack", "error", err.Error())

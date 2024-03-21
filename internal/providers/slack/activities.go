@@ -18,6 +18,8 @@
 package slack
 
 import (
+	"context"
+
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -26,9 +28,7 @@ type (
 	Activities struct{}
 )
 
-// TODO: need to figureout how to call this activity in github workflow.
-// possiable solution -> create a slack worflow and trigger slack workflow inside github workflow.
-func (a *Activities) NotifySlack(message string) error {
+func (a *Activities) SendChannelMessage(ctx context.Context, message string) error {
 	err := NotifyOnSlack(message)
 	if err != nil {
 		shared.Logger().Error("Error notifying Slack", "error", err.Error())
