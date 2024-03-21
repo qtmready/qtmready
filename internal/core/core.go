@@ -46,6 +46,9 @@ type (
 		RepoProvider(RepoProvider) RepoProviderActivities
 		CloudProvider(CloudProvider) CloudProviderActivities
 		ResourceConstructor(CloudProvider, Driver) ResourceConstructor
+
+		ResgiterMessageProvider(MessageProvider, MessageProviderActivities)
+		MessageProvider(MessageProvider) MessageProviderActivities
 	}
 
 	Option func(Core)
@@ -60,9 +63,14 @@ type (
 		FillMe()
 	}
 
+	MessageProviderActivities interface {
+		SendChannelMessage(ctx context.Context, msg string) error // TODO: figure out the signature
+	}
+
 	Providers struct {
-		repos map[RepoProvider]RepoProviderActivities
-		cloud map[CloudProvider]CloudProviderActivities
+		repos   map[RepoProvider]RepoProviderActivities
+		cloud   map[CloudProvider]CloudProviderActivities
+		message map[MessageProvider]MessageProviderActivities
 	}
 
 	CloudResource interface {
@@ -148,6 +156,18 @@ func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
 	panic(NewProviderNotFoundError(name.String()))
 }
 
+func (c *core) ResgiterMessageProvider(provider MessageProvider, activities MessageProviderActivities) {
+	c.providers.message[provider] = activities
+}
+
+func (c *core) MessageProvider(name MessageProvider) MessageProviderActivities {
+	if p, ok := c.providers.message[name]; ok {
+		return p
+	}
+
+	panic(NewProviderNotFoundError(name.String()))
+}
+
 // WithRepoProvider registers a repo provider with the core.
 func WithRepoProvider(name RepoProvider, provider RepoProviderActivities) Option {
 	return func(c Core) {
@@ -180,8 +200,9 @@ func Instance(opts ...Option) Core {
 		once.Do(func() {
 			instance = &core{
 				providers: Providers{
-					repos: make(map[RepoProvider]RepoProviderActivities),
-					cloud: make(map[CloudProvider]CloudProviderActivities),
+					repos:   make(map[RepoProvider]RepoProviderActivities),
+					cloud:   make(map[CloudProvider]CloudProviderActivities),
+					message: make(map[MessageProvider]MessageProviderActivities),
 				},
 
 				resources: make(map[CloudProvider]map[Driver]ResourceConstructor),
