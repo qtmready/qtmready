@@ -28,23 +28,29 @@ import (
 	"go.breu.io/quantm/internal/providers/github"
 )
 
-var Client client
+var (
+	Client client
+)
 
-type client struct {
-	AuthClient   *auth.Client
-	CoreClient   *core.Client
-	GithubClient *github.Client
-}
+type (
+	client struct {
+		AuthClient   *auth.Client
+		CoreClient   *core.Client
+		GithubClient *github.Client
+	}
+)
 
 // CheckStatus returns false if the status code is other than provided in parameters.
 func (c *client) CheckStatus(r *http.Response, successCodes ...int) {
 	pass := false
+
 	for _, c := range successCodes {
 		if r.StatusCode == c {
 			pass = true
 		}
 	}
-	if pass == false {
+
+	if !pass {
 		fmt.Printf("Command failed with status code: %d\r\n", r.StatusCode)
 	}
 }
@@ -56,6 +62,7 @@ func (c *client) CheckError(err error) {
 		} else {
 			fmt.Printf("Command failed: %v", err.Error())
 		}
+
 		os.Exit(1)
 	}
 }

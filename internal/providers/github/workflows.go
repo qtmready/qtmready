@@ -531,6 +531,7 @@ func (w *Workflows) OnGithubCIAction(ctx workflow.Context, payload *GithubWorkfl
 		)
 
 	cw := &core.Workflows{}
+
 	_, err = shared.Temporal().Client().SignalWithStartWorkflow(
 		context.Background(),
 		coreWorkflowID,
@@ -540,6 +541,7 @@ func (w *Workflows) OnGithubCIAction(ctx workflow.Context, payload *GithubWorkfl
 		cw.StackController,
 		coreRepo.StackID.String(),
 	)
+
 	if err != nil {
 		shared.Logger().Error("OnGithubCIAction", "error signaling workflow", err)
 		return err

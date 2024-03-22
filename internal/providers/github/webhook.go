@@ -111,11 +111,13 @@ func processInProgressWorkflowRun(ghWorkflowEvent *GithubWorkflowEvent, eventTyp
 		// TODO: make sure we get the latest tag associated with the `buildCommit``
 		// Filter tags that point to the given commit
 		var commitTags []*gh.RepositoryTag
+
 		for _, tag := range tags {
 			commit, _, err := ghClient.Repositories.GetCommit(context.Background(), owner, repo, tag.GetCommit().GetSHA(), nil)
 			if err != nil {
 				return err
 			}
+
 			if buildCommit == commit.GetSHA() {
 				commitTags = append(commitTags, tag)
 			}
@@ -127,6 +129,7 @@ func processInProgressWorkflowRun(ghWorkflowEvent *GithubWorkflowEvent, eventTyp
 		if latestTag == nil {
 			shared.Logger().Error("latest tag not found for " + repo + " event " + eventType)
 		}
+
 		eventsData["changesetID"] = *latestTag.Name
 	}
 
@@ -359,6 +362,7 @@ func handleWorkflowRunEvent(ctx echo.Context) error {
 	wf_file := parts[len(parts)-1]
 
 	var eventType string
+
 	if wf_file == "cicd_quantm.yaml" {
 		eventType = "CI"
 	} else if wf_file == "build_quantm.yaml" {
@@ -376,15 +380,21 @@ func handleWorkflowRunEvent(ctx echo.Context) error {
 	if payload.Action == "in_progress" {
 		shared.Logger().Info("workflow_run event in progress")
 
-		processInProgressWorkflowRun(payload, eventType)
-		// processInProgressWorkflowRun(*payload.WR.ID, *payload.WR.WorkflowID, *payload.WR.HeadBranch, eventType)
+		if err := processInProgressWorkflowRun(payload, eventType); err != nil {
+			shared.Logger().Error("process in-progress workflow", "error", err)
+			return err
+		}
 
 		return nil
 	}
 
 	if payload.Action == "completed" {
 		shared.Logger().Info("workflow_run event completed")
-		processCompletedWorkflowRun(ctx, payload, eventType)
+
+		if err := processCompletedWorkflowRun(ctx, payload, eventType); err != nil {
+			shared.Logger().Error("process complete workflow", "error", err)
+			return err
+		}
 
 		return nil
 	}
