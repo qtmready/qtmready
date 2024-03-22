@@ -277,8 +277,7 @@ func (a *Activities) TriggerGithubCIAction(ctx context.Context, installationID i
 		},
 	}
 
-	_, err = client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, gh_action_name, paylod)
-	if err != nil {
+	if _, err = client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, gh_action_name, paylod); err != nil {
 		shared.Logger().Error("TriggerGithubCIAction", "Error triggering workflow:", err)
 		return err
 	}
@@ -361,8 +360,7 @@ func (a *Activities) TriggerBuild(ctx context.Context, repoID string, changesetI
 		},
 	}
 
-	_, err = client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, gh_action_name, paylod)
-	if err != nil {
+	if _, err = client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, gh_action_name, paylod); err != nil {
 		shared.Logger().Error("TriggerGithubBuildImage", "Error triggering workflow:", err)
 		return err
 	}
@@ -443,8 +441,7 @@ func (a *Activities) TriggerDeployChangeset(ctx context.Context, repoID string, 
 		},
 	}
 
-	_, err = client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, gh_action_name, paylod)
-	if err != nil {
+	if _, err = client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, gh_action_name, paylod); err != nil {
 		shared.Logger().Error("TriggerGithubDeployChangeset", "Error triggering workflow:", err)
 		return err
 	}
@@ -517,8 +514,7 @@ func (a *Activities) TagCommit(ctx context.Context, repoID string, commitSHA str
 		repoName = parts[1]
 	}
 
-	_, _, err = client.Git.CreateTag(ctx, repoOwner, repoName, tag)
-	if err != nil {
+	if _, _, err = client.Git.CreateTag(ctx, repoOwner, repoName, tag); err != nil {
 		shared.Logger().Error("TagCommit", "Error creating tag", err)
 	}
 
