@@ -59,6 +59,8 @@ func main() {
 	providerWrkr.RegisterWorkflow(ghwfs.OnGithubCIAction)
 	providerWrkr.RegisterWorkflow(ghwfs.OnGithubDeployAction)
 	providerWrkr.RegisterWorkflow(ghwfs.OnGithubBuildAction)
+	providerWrkr.RegisterWorkflow(ghwfs.EarlyDetection)
+	providerWrkr.RegisterWorkflow(ghwfs.StaleBranchDetection)
 
 	// provider activities
 	providerWrkr.RegisterActivity(&github.Activities{})
