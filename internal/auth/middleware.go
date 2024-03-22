@@ -132,7 +132,7 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 				return shared.NewAPIError(http.StatusBadRequest, ErrInvalidAuthHeader)
 			}
 
-			return bearerFn(next, ctx, parts[1])
+			return bearerFn(next, ctx, parts)
 		}
 
 	APIKeyAuth:
@@ -154,27 +154,41 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 // bearerFn is the function that handles the JWT token authentication.
-func bearerFn(next echo.HandlerFunc, ctx echo.Context, token string) error {
-	enc, err := jose.Decrypt(
-		[]byte(token),
-		jose.WithAlg(string(jose.A256CBC_HS512)),
-		jose.WithPassword(derive()),
-	)
+func bearerFn(next echo.HandlerFunc, ctx echo.Context, token []string) error {
+	if strings.HasPrefix(token[0], "Bearer") {
+		enc, err := jose.Decrypt(
+			[]byte(token[1]),
+			jose.WithAlg(string(jose.A256CBC_HS512)),
+			jose.WithPassword(derive()),
+		)
 
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, err)
-	}
+		if err != nil {
+			return shared.NewAPIError(http.StatusBadRequest, err)
+		}
 
-	var result map[string]any
+		var result map[string]any
 
-	if err = json.Unmarshal(enc, &result); err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, err)
-	}
+		if err = json.Unmarshal(enc, &result); err != nil {
+			return shared.NewAPIError(http.StatusBadRequest, err)
+		}
 
-	// Set user.id as user_id and team_id from user to the Echo context
-	if info, ok := result["user"].(map[string]any); ok {
-		ctx.Set("user_id", info["id"])
-		ctx.Set("team_id", info["team_id"])
+		// Set user.id as user_id and team_id from user to the Echo context
+		if info, ok := result["user"].(map[string]any); ok {
+			ctx.Set("user_id", info["id"])
+			ctx.Set("team_id", info["team_id"])
+		}
+	} else {
+		parsed, err := jwt.ParseWithClaims(token[1], &JWTClaims{}, SecretFn)
+		if err != nil {
+			return shared.NewAPIError(http.StatusBadRequest, err)
+		}
+
+		if claims, ok := parsed.Claims.(*JWTClaims); ok && parsed.Valid {
+			ctx.Set("user_id", claims.UserID)
+			ctx.Set("team_id", claims.TeamID)
+		} else {
+			return shared.NewAPIError(http.StatusUnauthorized, ErrInvalidOrExpiredToken)
+		}
 	}
 
 	return next(ctx)
