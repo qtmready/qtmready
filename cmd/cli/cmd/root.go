@@ -25,6 +25,7 @@ import (
 	"go.breu.io/quantm/cmd/cli/api"
 	"go.breu.io/quantm/cmd/cli/cmd/git"
 	"go.breu.io/quantm/cmd/cli/cmd/installation"
+	"go.breu.io/quantm/cmd/cli/cmd/mergequeue"
 	"go.breu.io/quantm/cmd/cli/cmd/user"
 	"go.breu.io/quantm/internal/shared"
 )
@@ -59,6 +60,7 @@ func Execute() {
 	rootCmd.AddCommand(NewCmdCreate())
 	rootCmd.AddCommand(NewCmdEdit())
 	rootCmd.AddCommand(NewCmdList())
+	rootCmd.AddCommand(mergequeue.MergeQStatus())
 
 	err := rootCmd.Execute()
 	if err != nil {

@@ -1,0 +1,53 @@
+// Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
+//
+// This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
+// found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
+// THE SOFTWARE, YOU AGREE TO THE TERMS OF THE LICENSE AGREEMENT.
+//
+// The above copyright notice and the subsequent license agreement shall be included in all copies or substantial
+// portions of the software.
+//
+// Breu, Inc. HEREBY DISCLAIMS ANY AND ALL WARRANTIES AND CONDITIONS, EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, AND
+// SPECIFICALLY DISCLAIMS ANY WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, WITH RESPECT TO THE
+// SOFTWARE.
+//
+// Breu, Inc. SHALL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND, INCLUDING BUT NOT LIMITED TO, LOST PROFITS OR ANY
+// CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
+
+package mergequeue
+
+import (
+	"fmt"
+
+	"github.com/spf13/cobra"
+	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/providers/github"
+)
+
+func MergeQStatus() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "mq",
+		Short: "command for showing a merge queue status",
+		Long:  `command for showing a merge queue status`,
+
+		RunE: func(cmd *cobra.Command, args []string) error {
+			fmt.Println("cmd: quantm mq <repo-name>")
+
+			repoName := args[1]
+
+			githubEvents := make([]github.GithubEventsState, 0)
+			if err := db.Filter(
+				&github.GithubEventsState{},
+				&githubEvents,
+				db.QueryParams{"repo_name": repoName},
+			); err != nil {
+				return err
+			}
+
+			return nil
+		},
+	}
+
+	return cmd
+}
