@@ -44,6 +44,7 @@ func NewCmdUserRegister() *cobra.Command {
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			f := &registerOptions{}
+
 			if err := tea.NewProgram(models.InitializeInputModel(f)).Start(); err != nil {
 				return err
 			}

@@ -15,61 +15,20 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package api
+package slack
 
 import (
-	"fmt"
-	"net/http"
-	"os"
-	"strings"
-
-	"go.breu.io/quantm/internal/auth"
-	"go.breu.io/quantm/internal/core"
-	"go.breu.io/quantm/internal/providers/github"
-)
-
-var (
-	Client client
+	"log/slog"
 )
 
 type (
-	client struct {
-		AuthClient   *auth.Client
-		CoreClient   *core.Client
-		GithubClient *github.Client
+	logger struct {
+		*slog.Logger
 	}
 )
 
-// CheckStatus returns false if the status code is other than provided in parameters.
-func (c *client) CheckStatus(r *http.Response, successCodes ...int) {
-	pass := false
+func (l *logger) Output(calldepth int, s string) error {
+	l.Logger.Info(s)
 
-	for _, c := range successCodes {
-		if r.StatusCode == c {
-			pass = true
-		}
-	}
-
-	if !pass {
-		fmt.Printf("Command failed with status code: %d\r\n", r.StatusCode)
-	}
-}
-
-func (c *client) CheckError(err error) {
-	if err != nil {
-		if strings.Contains(err.Error(), "No connection") {
-			fmt.Print("Quantum server is not running\n")
-		} else {
-			fmt.Printf("Command failed: %v", err.Error())
-		}
-
-		os.Exit(1)
-	}
-}
-
-// init initializes the auth, github and core clients to connect with quantm.
-func (c *client) Init(url string) {
-	c.AuthClient, _ = auth.NewClient(url)
-	c.CoreClient, _ = core.NewClient(url)
-	c.GithubClient, _ = github.NewClient(url)
+	return nil
 }

@@ -15,61 +15,28 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package api
+package slack
 
 import (
-	"fmt"
-	"net/http"
-	"os"
-	"strings"
+	"context"
 
-	"go.breu.io/quantm/internal/auth"
-	"go.breu.io/quantm/internal/core"
-	"go.breu.io/quantm/internal/providers/github"
-)
-
-var (
-	Client client
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
-	client struct {
-		AuthClient   *auth.Client
-		CoreClient   *core.Client
-		GithubClient *github.Client
-	}
+	// Activities groups all the activities for the slack provider.
+	Activities struct{}
 )
 
-// CheckStatus returns false if the status code is other than provided in parameters.
-func (c *client) CheckStatus(r *http.Response, successCodes ...int) {
-	pass := false
-
-	for _, c := range successCodes {
-		if r.StatusCode == c {
-			pass = true
-		}
-	}
-
-	if !pass {
-		fmt.Printf("Command failed with status code: %d\r\n", r.StatusCode)
-	}
-}
-
-func (c *client) CheckError(err error) {
+func (a *Activities) SendChannelMessage(ctx context.Context, message string) error {
+	err := NotifyOnSlack(message)
 	if err != nil {
-		if strings.Contains(err.Error(), "No connection") {
-			fmt.Print("Quantum server is not running\n")
-		} else {
-			fmt.Printf("Command failed: %v", err.Error())
-		}
+		shared.Logger().Error("Error notifying Slack", "error", err.Error())
 
-		os.Exit(1)
+		return err
 	}
-}
 
-// init initializes the auth, github and core clients to connect with quantm.
-func (c *client) Init(url string) {
-	c.AuthClient, _ = auth.NewClient(url)
-	c.CoreClient, _ = core.NewClient(url)
-	c.GithubClient, _ = github.NewClient(url)
+	shared.Logger().Info("Early-Detection", "slack notify", message)
+
+	return nil
 }

@@ -531,3 +531,59 @@ func (a *Activities) TagCommit(ctx context.Context, repoID string, commitSHA str
 
 	return nil
 }
+
+func (a *Activities) DeleteBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, branchName string) error {
+	// Get github client
+	client, err := Instance().GetClientFromInstallation(installationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	// Create a new branch based on the latest defaultBranch commit
+	ref := &gh.Reference{
+		Ref: gh.String("refs/heads/" + branchName),
+	}
+
+	// delete the temp ref if its present before
+	if _, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, *ref.Ref); err != nil {
+		shared.Logger().Error("DeleteBranch", "Error deleting ref"+*ref.Ref, err)
+
+		if strings.Contains(err.Error(), "422 Reference does not exist") {
+			// if a ref doesnt exist already, dont return the error
+			return nil
+		}
+
+		return err
+	}
+
+	return nil
+}
+
+func (a *Activities) CreateBranch(ctx context.Context, installationID int64, repoID int64, repoName string, repoOwner string,
+	targetCommit string, newBranchName string) error {
+	// Get github client
+	client, err := Instance().GetClientFromInstallation(installationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	// Create a new branch based on the latest defaultBranch commit
+	ref := &gh.Reference{
+		Ref: gh.String("refs/heads/" + newBranchName),
+		Object: &gh.GitObject{
+			SHA: &targetCommit,
+		},
+	}
+
+	// create new ref
+	if _, _, err = client.Git.CreateRef(context.Background(), repoOwner, repoName, ref); err != nil {
+		shared.Logger().Error("Early-Detection", "Error creating branch: ", err)
+
+		// dont want to retry this workflow so not returning error, just log and return
+		return nil
+	}
+
+	return nil
+}

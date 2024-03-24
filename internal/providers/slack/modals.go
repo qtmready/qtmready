@@ -15,61 +15,21 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
-package api
+package slack
 
 import (
-	"fmt"
-	"net/http"
-	"os"
-	"strings"
-
-	"go.breu.io/quantm/internal/auth"
-	"go.breu.io/quantm/internal/core"
-	"go.breu.io/quantm/internal/providers/github"
+	"github.com/slack-go/slack"
 )
 
-var (
-	Client client
-)
-
-type (
-	client struct {
-		AuthClient   *auth.Client
-		CoreClient   *core.Client
-		GithubClient *github.Client
+// createModal creates a modal view.
+func createModal(blockset []slack.Block, callbackID string, externalID string, title string) slack.ModalViewRequest {
+	return slack.ModalViewRequest{
+		Type:       slack.VTModal,
+		CallbackID: callbackID,
+		ExternalID: externalID,
+		Title:      slack.NewTextBlockObject(slack.PlainTextType, title, false, false), // Update the title text
+		Blocks:     slack.Blocks{BlockSet: blockset},                                   // Wrap blocks in a slack.Blocks struct
+		Close:      slack.NewTextBlockObject(slack.PlainTextType, "Close", false, false),
+		Submit:     slack.NewTextBlockObject(slack.PlainTextType, "Submit", false, false),
 	}
-)
-
-// CheckStatus returns false if the status code is other than provided in parameters.
-func (c *client) CheckStatus(r *http.Response, successCodes ...int) {
-	pass := false
-
-	for _, c := range successCodes {
-		if r.StatusCode == c {
-			pass = true
-		}
-	}
-
-	if !pass {
-		fmt.Printf("Command failed with status code: %d\r\n", r.StatusCode)
-	}
-}
-
-func (c *client) CheckError(err error) {
-	if err != nil {
-		if strings.Contains(err.Error(), "No connection") {
-			fmt.Print("Quantum server is not running\n")
-		} else {
-			fmt.Printf("Command failed: %v", err.Error())
-		}
-
-		os.Exit(1)
-	}
-}
-
-// init initializes the auth, github and core clients to connect with quantm.
-func (c *client) Init(url string) {
-	c.AuthClient, _ = auth.NewClient(url)
-	c.CoreClient, _ = core.NewClient(url)
-	c.GithubClient, _ = github.NewClient(url)
 }
