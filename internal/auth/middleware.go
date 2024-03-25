@@ -67,15 +67,7 @@ func GenerateAccessToken(userID, teamID string) (string, error) {
 		expires = time.Now().Add(time.Hour * 24)
 	}
 
-	claims := &JWTClaims{
-		UserID:           userID,
-		TeamID:           teamID,
-		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(expires), Issuer: shared.Service().GetName()},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	return token.SignedString([]byte(shared.Service().GetSecret()))
+	return generateJWE(userID, teamID, expires)
 }
 
 // GenerateRefreshToken generates a long lived JWT token for the given user.
@@ -87,15 +79,7 @@ func GenerateRefreshToken(userID, teamID string) (string, error) {
 		expires = time.Now().Add(time.Hour * 24 * 30)
 	}
 
-	claims := &JWTClaims{
-		UserID:           userID,
-		TeamID:           teamID,
-		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(expires), Issuer: shared.Service().GetName()},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	return token.SignedString([]byte(shared.Service().GetSecret()))
+	return generateJWE(userID, teamID, expires)
 }
 
 // Middleware to provide JWT & API Key authentication.
@@ -220,6 +204,31 @@ func derive() []byte {
 	_, _ = io.ReadFull(kdf, key)
 
 	return key
+}
+
+// generate generates a JWE token for the given user with specified expiration.
+func generateJWE(userID, teamID string, expires time.Time) (string, error) {
+	claims := map[string]any{
+		"id":      userID,
+		"team_id": teamID,
+		"exp":     expires.Unix(),
+		"iss":     shared.Service().GetName(),
+	}
+
+	result := map[string]any{
+		"user": claims,
+	}
+
+	// Define JWT encode parameters
+	params := JWTEncodeParams{
+		Claims: result,
+		Secret: derive(),
+		MaxAge: time.Hour * 24,
+		Salt:   nil,
+	}
+
+	// Encode JWT
+	return EncodeJWT(params)
 }
 
 // Function to check if the prefix is valid.
