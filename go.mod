@@ -32,7 +32,6 @@ require (
 	github.com/jxskiss/base62 v1.1.0
 	github.com/labstack/echo-contrib v0.15.0
 	github.com/labstack/echo/v4 v4.11.4
-	github.com/lithammer/shortuuid/v4 v4.0.0
 	github.com/manifoldco/promptui v0.9.0
 	github.com/oapi-codegen/runtime v1.1.1
 	github.com/perimeterx/marshmallow v1.1.5 // indirect

@@ -18,12 +18,29 @@
 package db
 
 import (
+	"crypto/rand"
+	"math/big"
 	"strings"
 
 	"github.com/gosimple/slug"
-	"github.com/lithammer/shortuuid/v4"
 )
 
+var (
+	chars = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+)
+
+func suffix(length int) string {
+	sb := strings.Builder{}
+	sb.Grow(length)
+
+	for i := 0; i < length; i++ {
+		idx, _ := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
+		sb.WriteByte(chars[int(idx.Int64())])
+	}
+
+	return sb.String()
+}
+
 func CreateSlug(s string) string {
-	return slug.Make(s) + "-" + strings.ToLower(shortuuid.New())
+	return slug.Make(s) + "-" + suffix(4)
 }

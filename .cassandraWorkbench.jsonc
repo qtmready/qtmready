@@ -1,0 +1,7 @@
+[
+  // ScyllaDB / Docker
+  {
+    "name": "ScyllaDB (Docker)",
+    "contactPoints": ["127.0.0.1"]
+  }
+]

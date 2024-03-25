@@ -48,46 +48,6 @@ services:
     networks:
       - ctrlplane
 
-  # database:
-  #   container_name: database
-  #   image: cassandra:4
-  #   ports:
-  #     - '9042:9042'
-  #   environment:
-  #     - CASSNDRA_CLUSTER_NAME=ctrlplane
-  #     - JVM_EXTRA_OPTS=-Dcassandra.skip_wait_for_gossip_to_settle=0
-  #   volumes:
-  #     - db-data:/var/lib/cassandra
-  #     - ./deploy/cassandra/cassandra.yaml:/etc/cassandra/cassandra.yaml
-  #   networks:
-  #     - ctrlplane
-
-  # database-init:
-  #   container_name: ctrlplane-db-init
-  #   image: cassandra:4
-  #   depends_on:
-  #     - database
-  #   volumes:
-  #     - ./deploy/cassandra/keyspace.cql:/keyspace.cql
-  #   command: /bin/bash -c "sleep 20 && echo loading database keyspace && cqlsh database -f /keyspace.cql"
-  #   deploy:
-  #     restart_policy:
-  #       condition: on-failure
-  #       delay: 5s
-  #       max_attempts: 10
-  #       window: 120s
-  #   networks:
-  #     - ctrlplane
-
-  # mailslurper:
-  #   container_name: mailslurper
-  #   image: oryd/mailslurper:latest-smtps
-  #   ports:
-  #     - "4436:4436"
-  #     - "4437:4437"
-  #   networks:
-  #     - ctrlplane
-
   # temporal.io
   temporal:
     container_name: temporal
