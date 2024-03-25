@@ -67,15 +67,7 @@ func GenerateAccessToken(userID, teamID string) (string, error) {
 		expires = time.Now().Add(time.Hour * 24)
 	}
 
-	claims := &JWTClaims{
-		UserID:           userID,
-		TeamID:           teamID,
-		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(expires), Issuer: shared.Service().GetName()},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	return token.SignedString([]byte(shared.Service().GetSecret()))
+	return generateJWE(userID, teamID, expires)
 }
 
 // GenerateRefreshToken generates a long lived JWT token for the given user.
@@ -87,15 +79,7 @@ func GenerateRefreshToken(userID, teamID string) (string, error) {
 		expires = time.Now().Add(time.Hour * 24 * 30)
 	}
 
-	claims := &JWTClaims{
-		UserID:           userID,
-		TeamID:           teamID,
-		RegisteredClaims: jwt.RegisteredClaims{ExpiresAt: jwt.NewNumericDate(expires), Issuer: shared.Service().GetName()},
-	}
-
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	return token.SignedString([]byte(shared.Service().GetSecret()))
+	return generateJWE(userID, teamID, expires)
 }
 
 // Middleware to provide JWT & API Key authentication.
@@ -132,7 +116,7 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 				return shared.NewAPIError(http.StatusBadRequest, ErrInvalidAuthHeader)
 			}
 
-			return bearerFn(next, ctx, parts)
+			return bearerFn(next, ctx, parts[1])
 		}
 
 	APIKeyAuth:
@@ -154,41 +138,27 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 // bearerFn is the function that handles the JWT token authentication.
-func bearerFn(next echo.HandlerFunc, ctx echo.Context, token []string) error {
-	if strings.HasPrefix(token[0], "Bearer") {
-		enc, err := jose.Decrypt(
-			[]byte(token[1]),
-			jose.WithAlg(string(jose.A256CBC_HS512)),
-			jose.WithPassword(derive()),
-		)
+func bearerFn(next echo.HandlerFunc, ctx echo.Context, token string) error {
+	enc, err := jose.Decrypt(
+		[]byte(token),
+		jose.WithAlg(string(jose.A256CBC_HS512)),
+		jose.WithPassword(derive()),
+	)
 
-		if err != nil {
-			return shared.NewAPIError(http.StatusBadRequest, err)
-		}
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
 
-		var result map[string]any
+	var result map[string]any
 
-		if err = json.Unmarshal(enc, &result); err != nil {
-			return shared.NewAPIError(http.StatusBadRequest, err)
-		}
+	if err = json.Unmarshal(enc, &result); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
 
-		// Set user.id as user_id and team_id from user to the Echo context
-		if info, ok := result["user"].(map[string]any); ok {
-			ctx.Set("user_id", info["id"])
-			ctx.Set("team_id", info["team_id"])
-		}
-	} else {
-		parsed, err := jwt.ParseWithClaims(token[1], &JWTClaims{}, SecretFn)
-		if err != nil {
-			return shared.NewAPIError(http.StatusBadRequest, err)
-		}
-
-		if claims, ok := parsed.Claims.(*JWTClaims); ok && parsed.Valid {
-			ctx.Set("user_id", claims.UserID)
-			ctx.Set("team_id", claims.TeamID)
-		} else {
-			return shared.NewAPIError(http.StatusUnauthorized, ErrInvalidOrExpiredToken)
-		}
+	// Set user.id as user_id and team_id from user to the Echo context
+	if info, ok := result["user"].(map[string]any); ok {
+		ctx.Set("user_id", info["id"])
+		ctx.Set("team_id", info["team_id"])
 	}
 
 	return next(ctx)
@@ -234,6 +204,31 @@ func derive() []byte {
 	_, _ = io.ReadFull(kdf, key)
 
 	return key
+}
+
+// generate generates a JWE token for the given user with specified expiration.
+func generateJWE(userID, teamID string, expires time.Time) (string, error) {
+	claims := map[string]any{
+		"id":      userID,
+		"team_id": teamID,
+		"exp":     expires.Unix(),
+		"iss":     shared.Service().GetName(),
+	}
+
+	result := map[string]any{
+		"user": claims,
+	}
+
+	// Define JWT encode parameters
+	params := JWTEncodeParams{
+		Claims: result,
+		Secret: derive(),
+		MaxAge: time.Hour * 24,
+		Salt:   nil,
+	}
+
+	// Encode JWT
+	return EncodeJWT(params)
 }
 
 // Function to check if the prefix is valid.
