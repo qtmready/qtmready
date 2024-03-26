@@ -49,7 +49,7 @@ func CompleteInstallation(cmd *cobra.Command) {
 
 	completeInstallationBody := github.CompleteInstallationRequest{
 		InstallationID: id,
-		SetupAction:    github.SetupActionCreated,
+		SetupAction:    github.SetupActionInstall,
 	}
 
 	c := api.Client
