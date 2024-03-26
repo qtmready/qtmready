@@ -20,8 +20,8 @@ jobs:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-20.04
     permissions:
-      contents: 'read'
-      id-token: 'write'
+      contents: "read"
+      id-token: "write"
 
     steps:
       - name: Checkout
@@ -45,7 +45,7 @@ jobs:
 
       - name: Authenticate with GCP
         id: auth
-        uses: 'google-github-actions/auth@v2'
+        uses: "google-github-actions/auth@v2"
         with:
           token_format: access_token
           credentials_json: ${{ secrets.GCP_JSON_KEY }}

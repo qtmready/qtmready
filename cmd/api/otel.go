@@ -51,7 +51,7 @@ func (d *devnull) MarshalLog() any {
 
 // _otel sets up opentelemetry.
 func _otel(ctx context.Context, name, version string) (shutdown shutdownfn, err error) {
-	slog.Info("setting up opentelemetry ...")
+	slog.Info("otel: init ...")
 
 	shutdownfns := make([]shutdownfn, 0)
 	shutdown = func(ctx context.Context) error {
@@ -109,6 +109,8 @@ func _otel(ctx context.Context, name, version string) (shutdown shutdownfn, err 
 	otel.SetTracerProvider(tracer)
 
 	shutdownfns = append(shutdownfns, tracer.Shutdown)
+
+	slog.Info("otel: initialized")
 
 	return
 }

@@ -13,5 +13,6 @@
   "go.editorContextMenuCommands": {
     "generateTestForPackage": true
   },
-  "C_Cpp.default.configurationProvider": "ms-vscode.makefile-tools"
+  "cassandraWorkbench.activeClusterName": "ScyllaDB (Docker)",
+  "cassandraWorkbench.activeKeyspace": [["ScyllaDB (Docker)", "ctrlplane"]]
 }

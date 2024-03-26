@@ -214,13 +214,6 @@ func (s *ServerHandler) CreateTeam(ctx echo.Context) error {
 	}
 
 	user.TeamID = team.ID
-	// user.SetPassword("multiscan")
-
-	// stmnt, names := qb.Update("users").Set("team_id").Where(qb.Eq("id")).ToCql()
-	// if err := db.DB().Session.Query(stmnt, names).BindStruct(user).ExecRelease(); err != nil {
-	// 	slog.Error("error updating user", "error", err)
-	// 	return shared.NewAPIError(http.StatusBadRequest, err)
-	// }
 
 	if err := db.Save(user); err != nil {
 		slog.Error("error saving user", "error", err)
