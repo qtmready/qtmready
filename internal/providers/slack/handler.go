@@ -1,0 +1,84 @@
+// Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
+//
+// This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
+// found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
+// THE SOFTWARE, YOU AGREE TO THE TERMS OF THE LICENSE AGREEMENT.
+//
+// The above copyright notice and the subsequent license agreement shall be included in all copies or substantial
+// portions of the software.
+//
+// Breu, Inc. HEREBY DISCLAIMS ANY AND ALL WARRANTIES AND CONDITIONS, EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, AND
+// SPECIFICALLY DISCLAIMS ANY WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, WITH RESPECT TO THE
+// SOFTWARE.
+//
+// Breu, Inc. SHALL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND, INCLUDING BUT NOT LIMITED TO, LOST PROFITS OR ANY
+// CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+// ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
+
+package slack
+
+import (
+	"net/http"
+
+	"github.com/labstack/echo/v4"
+	"github.com/slack-go/slack"
+
+	"go.breu.io/quantm/internal/auth"
+)
+
+type (
+	ServerHandler struct{ *auth.SecurityHandler }
+
+	SlackInfo struct {
+		Workspace string
+		Channels  []slack.Channel
+	}
+)
+
+// NewServerHandler creates a new ServerHandler.
+func NewServerHandler(middleware echo.MiddlewareFunc) *ServerHandler {
+	return &ServerHandler{
+		SecurityHandler: &auth.SecurityHandler{Middleware: middleware},
+	}
+}
+
+func (e *ServerHandler) Login(ctx echo.Context) error {
+	url := Instance().OauthConfig.AuthCodeURL("state")
+	return ctx.Redirect(http.StatusFound, url)
+}
+
+func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
+	code := ctx.QueryParam("code")
+
+	// Exchange the authorization code for an access token
+	token, err := Instance().OauthConfig.Exchange(ctx.Request().Context(), code)
+	if err != nil {
+		return err
+	}
+
+	// TODO: separate this in separate handler
+	// Create a Slack client using the obtained access token
+	client := slack.New(token.AccessToken)
+
+	// Use auth.test method to get information about the authenticated user (bot)
+	authTest, err := client.AuthTestContext(ctx.Request().Context())
+	if err != nil {
+		return err
+	}
+
+	// Use conversations.list method to get a list of channels in the workspace
+	channels, _, err := client.GetConversations(&slack.GetConversationsParameters{
+		Types: []string{"public_channel"},
+	})
+	if err != nil {
+		return err
+	}
+
+	// Construct response with workspace info, and channel details
+	response := SlackInfo{
+		Workspace: authTest.Team,
+		Channels:  channels,
+	}
+
+	return ctx.JSON(http.StatusOK, response)
+}

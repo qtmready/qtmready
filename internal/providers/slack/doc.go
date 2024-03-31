@@ -15,25 +15,12 @@
 // CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
 // ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
 
+// Package slack provides functionality for slack provider.
 package slack
 
 import (
-	"log/slog"
-
-	"github.com/slack-go/slack"
+	_ "github.com/deepmap/oapi-codegen/v2/pkg/codegen" // Required for code generation
+	_ "gopkg.in/yaml.v2"
 )
 
-func NotifyOnSlack(message string) error {
-	return handleMessageEvent(SlackClient(), message)
-}
-
-func handleMessageEvent(client *slack.Client, message string) error {
-	channelID := "C05J9NXGM1P" // TODO: get the channel_id from database
-
-	if err := notify(client, channelID, message); err != nil {
-		slog.Info("Failed to post message to channel", slog.Any("e", err))
-		return err
-	}
-
-	return nil
-}
+//go:generate go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen --config openapi.codegen.yaml ../../../api/openapi/slack/v1/schema.yaml
