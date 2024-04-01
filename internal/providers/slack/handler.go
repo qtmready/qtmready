@@ -18,10 +18,12 @@
 package slack
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/slack-go/slack"
+	"golang.org/x/oauth2"
 
 	"go.breu.io/quantm/internal/auth"
 )
@@ -29,7 +31,9 @@ import (
 type (
 	ServerHandler struct{ *auth.SecurityHandler }
 
+	// TODO: move to openapi.
 	SlackInfo struct {
+		Token     *oauth2.Token
 		Workspace string
 		Channels  []slack.Channel
 	}
@@ -49,6 +53,9 @@ func (e *ServerHandler) Login(ctx echo.Context) error {
 
 func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 	code := ctx.QueryParam("code")
+	if code == "" {
+		return errors.New("empty code")
+	}
 
 	// Exchange the authorization code for an access token
 	token, err := Instance().OauthConfig.Exchange(ctx.Request().Context(), code)
@@ -56,12 +63,11 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 		return err
 	}
 
-	// TODO: separate this in separate handler
 	// Create a Slack client using the obtained access token
 	client := slack.New(token.AccessToken)
 
 	// Use auth.test method to get information about the authenticated user (bot)
-	authTest, err := client.AuthTestContext(ctx.Request().Context())
+	auth, err := client.AuthTestContext(ctx.Request().Context())
 	if err != nil {
 		return err
 	}
@@ -76,7 +82,8 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 
 	// Construct response with workspace info, and channel details
 	response := SlackInfo{
-		Workspace: authTest.Team,
+		Token:     token,
+		Workspace: auth.Team,
 		Channels:  channels,
 	}
 
