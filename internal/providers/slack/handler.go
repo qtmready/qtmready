@@ -23,7 +23,6 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/slack-go/slack"
-	"golang.org/x/oauth2"
 
 	"go.breu.io/quantm/internal/auth"
 )
@@ -33,7 +32,7 @@ type (
 
 	// TODO: move to openapi.
 	SlackInfo struct {
-		Token     *oauth2.Token
+		ChannelID string
 		Workspace string
 		Channels  []slack.Channel
 	}
@@ -51,6 +50,7 @@ func (e *ServerHandler) Login(ctx echo.Context) error {
 	return ctx.Redirect(http.StatusFound, url)
 }
 
+// this for runs one time for one time.
 func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 	code := ctx.QueryParam("code")
 	if code == "" {
@@ -63,7 +63,7 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 		return err
 	}
 
-	// Create a Slack client using the obtained access token
+	// Create a Slack client using the obtained access token.
 	client := slack.New(token.AccessToken)
 
 	// Use auth.test method to get information about the authenticated user (bot)
@@ -71,6 +71,8 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// NOTE: to send a message to workspace's channel need to requied the bot token returned in auth response.
 
 	// Use conversations.list method to get a list of channels in the workspace
 	channels, _, err := client.GetConversations(&slack.GetConversationsParameters{
@@ -80,12 +82,41 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 		return err
 	}
 
+	channelID := findChannelIdForBot(client, channels, auth)
+
+	// TODO: save this channel to our database
+
 	// Construct response with workspace info, and channel details
 	response := SlackInfo{
-		Token:     token,
+		ChannelID: channelID,
 		Workspace: auth.Team,
 		Channels:  channels,
 	}
 
 	return ctx.JSON(http.StatusOK, response)
+}
+
+// TODO: may return a list of channelIDs.
+func findChannelIdForBot(client *slack.Client, channels []slack.Channel, auth *slack.AuthTestResponse) string {
+	var channelID string
+
+	for _, channel := range channels {
+		input := &slack.GetConversationInfoInput{
+			ChannelID:         channel.ID,
+			IncludeLocale:     false,
+			IncludeNumMembers: false,
+		}
+
+		// Use the GetConversationInfo method to get information about the channel
+		channelInfo, _ := client.GetConversationInfo(input)
+
+		// compare the auth.TeamID with channelInfo.SharedTeamIDs array
+		for _, sharedTeamID := range channelInfo.SharedTeamIDs {
+			if auth.TeamID == sharedTeamID {
+				channelID = channel.ID
+			}
+		}
+	}
+
+	return channelID
 }
