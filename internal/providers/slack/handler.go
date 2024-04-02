@@ -45,7 +45,7 @@ func NewServerHandler(middleware echo.MiddlewareFunc) *ServerHandler {
 	}
 }
 
-func (e *ServerHandler) Login(ctx echo.Context) error {
+func (e *ServerHandler) SlackLogin(ctx echo.Context) error {
 	url := Instance().OauthConfig.AuthCodeURL("state")
 	return ctx.Redirect(http.StatusFound, url)
 }

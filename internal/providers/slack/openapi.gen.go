@@ -155,15 +155,15 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// Login request
-	Login(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// SlackLogin request
+	SlackLogin(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// SlackOauth request
 	SlackOauth(ctx context.Context, params *SlackOauthParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
-func (c *Client) Login(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewLoginRequest(c.Server)
+func (c *Client) SlackLogin(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSlackLoginRequest(c.Server)
 	if err != nil {
 		return nil, err
 	}
@@ -186,8 +186,8 @@ func (c *Client) SlackOauth(ctx context.Context, params *SlackOauthParams, reqEd
 	return c.Client.Do(req)
 }
 
-// NewLoginRequest generates requests for Login
-func NewLoginRequest(server string) (*http.Request, error) {
+// NewSlackLoginRequest generates requests for SlackLogin
+func NewSlackLoginRequest(server string) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -301,14 +301,14 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// LoginWithResponse request
-	LoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*LoginResponse, error)
+	// SlackLoginWithResponse request
+	SlackLoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SlackLoginResponse, error)
 
 	// SlackOauthWithResponse request
 	SlackOauthWithResponse(ctx context.Context, params *SlackOauthParams, reqEditors ...RequestEditorFn) (*SlackOauthResponse, error)
 }
 
-type LoginResponse struct {
+type SlackLoginResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON400      *externalRef0.BadRequest
@@ -316,7 +316,7 @@ type LoginResponse struct {
 }
 
 // Status returns HTTPResponse.Status
-func (r LoginResponse) Status() string {
+func (r SlackLoginResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -324,7 +324,7 @@ func (r LoginResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r LoginResponse) StatusCode() int {
+func (r SlackLoginResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -355,13 +355,13 @@ func (r SlackOauthResponse) StatusCode() int {
 	return 0
 }
 
-// LoginWithResponse request returning *LoginResponse
-func (c *ClientWithResponses) LoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*LoginResponse, error) {
-	rsp, err := c.Login(ctx, reqEditors...)
+// SlackLoginWithResponse request returning *SlackLoginResponse
+func (c *ClientWithResponses) SlackLoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*SlackLoginResponse, error) {
+	rsp, err := c.SlackLogin(ctx, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
-	return ParseLoginResponse(rsp)
+	return ParseSlackLoginResponse(rsp)
 }
 
 // SlackOauthWithResponse request returning *SlackOauthResponse
@@ -373,15 +373,15 @@ func (c *ClientWithResponses) SlackOauthWithResponse(ctx context.Context, params
 	return ParseSlackOauthResponse(rsp)
 }
 
-// ParseLoginResponse parses an HTTP response from a LoginWithResponse call
-func ParseLoginResponse(rsp *http.Response) (*LoginResponse, error) {
+// ParseSlackLoginResponse parses an HTTP response from a SlackLoginWithResponse call
+func ParseSlackLoginResponse(rsp *http.Response) (*SlackLoginResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &LoginResponse{
+	response := &SlackLoginResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
@@ -450,7 +450,7 @@ func ParseSlackOauthResponse(rsp *http.Response) (*SlackOauthResponse, error) {
 type ServerInterface interface {
 	// Initiate slack login
 	// (GET /v1/auth/slack/login)
-	Login(ctx echo.Context) error
+	SlackLogin(ctx echo.Context) error
 
 	// Callback after Slack login
 	// (GET /v1/auth/slack/login/callback)
@@ -462,13 +462,13 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// Login converts echo context to params.
+// SlackLogin converts echo context to params.
 
-func (w *ServerInterfaceWrapper) Login(ctx echo.Context) error {
+func (w *ServerInterfaceWrapper) SlackLogin(ctx echo.Context) error {
 	var err error
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.Login
+	handler := w.Handler.SlackLogin
 	err = handler(ctx)
 
 	return err
@@ -522,7 +522,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.GET(baseURL+"/v1/auth/slack/login", wrapper.Login)
+	router.GET(baseURL+"/v1/auth/slack/login", wrapper.SlackLogin)
 	router.GET(baseURL+"/v1/auth/slack/login/callback", wrapper.SlackOauth)
 
 }
