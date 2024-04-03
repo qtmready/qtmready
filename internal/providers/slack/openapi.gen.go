@@ -10,6 +10,7 @@
 package slack
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -18,9 +19,13 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
+	itable "github.com/Guilospanck/igocqlx/table"
+	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime"
+	"github.com/scylladb/gocqlx/v2/table"
 	"go.breu.io/quantm/internal/shared"
 	externalRef0 "go.breu.io/quantm/internal/shared"
 )
@@ -68,6 +73,43 @@ func (v *SlackStatus) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// RegisterSlackChannelRequest defines model for RegisterSlackChannelRequest.
+type RegisterSlackChannelRequest struct {
+	ChannelId     string `json:"channel_id"`
+	ChannelName   string `json:"channel_name"`
+	Token         string `json:"token"`
+	WorkspaceName string `json:"workspace_name"`
+}
+
+// SlackIntegration defines model for SlackIntegration.
+type SlackIntegration struct {
+	ChannelID     string     `cql:"channel_id" json:"channel_id"`
+	ChannelName   string     `cql:"channel_name" json:"channel_name"`
+	CreatedAt     time.Time  `cql:"created_at" json:"created_at"`
+	ID            gocql.UUID `cql:"id" json:"id"`
+	TeamID        gocql.UUID `cql:"team_id" json:"team_id"`
+	UpdatedAt     time.Time  `cql:"updated_at" json:"updated_at"`
+	WorkspaceID   string     `cql:"workspace_id" json:"workspace_id"`
+	WorkspaceName string     `cql:"workspace_name" json:"workspace_name"`
+}
+
+var (
+	slackintegrationColumns = []string{"channel_id", "channel_name", "created_at", "id", "team_id", "updated_at", "workspace_id", "workspace_name"}
+
+	slackintegrationMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "slack",
+			Columns: slackintegrationColumns,
+		},
+	}
+
+	slackintegrationTable = itable.New(*slackintegrationMeta.M)
+)
+
+func (slackintegration *SlackIntegration) GetTable() itable.ITable {
+	return slackintegrationTable
+}
+
 // SlackResponse defines model for SlackResponse.
 type SlackResponse struct {
 	Errors *map[string]string `json:"errors,omitempty"`
@@ -81,6 +123,15 @@ type SlackStatus string
 type SlackOauthParams struct {
 	Code string `form:"code" json:"code"`
 }
+
+// SlackIntegrationParams defines parameters for SlackIntegration.
+type SlackIntegrationParams struct {
+	// Empty Workspace Name
+	Empty string `form:"" json:""`
+}
+
+// RegisterChannelJSONRequestBody defines body for RegisterChannel for application/json ContentType.
+type RegisterChannelJSONRequestBody = RegisterSlackChannelRequest
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -160,6 +211,14 @@ type ClientInterface interface {
 
 	// SlackOauth request
 	SlackOauth(ctx context.Context, params *SlackOauthParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// RegisterChannelWithBody request with any body
+	RegisterChannelWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	RegisterChannel(ctx context.Context, body RegisterChannelJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SlackIntegration request
+	SlackIntegration(ctx context.Context, params *SlackIntegrationParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) SlackLogin(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -176,6 +235,42 @@ func (c *Client) SlackLogin(ctx context.Context, reqEditors ...RequestEditorFn) 
 
 func (c *Client) SlackOauth(ctx context.Context, params *SlackOauthParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSlackOauthRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RegisterChannelWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRegisterChannelRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) RegisterChannel(ctx context.Context, body RegisterChannelJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewRegisterChannelRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) SlackIntegration(ctx context.Context, params *SlackIntegrationParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSlackIntegrationRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -258,6 +353,91 @@ func NewSlackOauthRequest(server string, params *SlackOauthParams) (*http.Reques
 	return req, nil
 }
 
+// NewRegisterChannelRequest calls the generic RegisterChannel builder with application/json body
+func NewRegisterChannelRequest(server string, body RegisterChannelJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewRegisterChannelRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewRegisterChannelRequestWithBody generates requests for RegisterChannel with any type of body
+func NewRegisterChannelRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/auth/slack/register-channel")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
+// NewSlackIntegrationRequest generates requests for SlackIntegration
+func NewSlackIntegrationRequest(server string, params *SlackIntegrationParams) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/v1/slack/integration")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "", runtime.ParamLocationQuery, params.Empty); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -306,6 +486,14 @@ type ClientWithResponsesInterface interface {
 
 	// SlackOauthWithResponse request
 	SlackOauthWithResponse(ctx context.Context, params *SlackOauthParams, reqEditors ...RequestEditorFn) (*SlackOauthResponse, error)
+
+	// RegisterChannelWithBodyWithResponse request with any body
+	RegisterChannelWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RegisterChannelResponse, error)
+
+	RegisterChannelWithResponse(ctx context.Context, body RegisterChannelJSONRequestBody, reqEditors ...RequestEditorFn) (*RegisterChannelResponse, error)
+
+	// SlackIntegrationWithResponse request
+	SlackIntegrationWithResponse(ctx context.Context, params *SlackIntegrationParams, reqEditors ...RequestEditorFn) (*SlackIntegrationResponse, error)
 }
 
 type SlackLoginResponse struct {
@@ -364,6 +552,63 @@ func (c *ClientWithResponses) SlackLoginWithResponse(ctx context.Context, reqEdi
 	return ParseSlackLoginResponse(rsp)
 }
 
+type RegisterChannelResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *SlackStatus
+	JSON400      *externalRef0.BadRequest
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r RegisterChannelResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r RegisterChannelResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type SlackIntegrationResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *SlackIntegration
+	JSON400      *externalRef0.BadRequest
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r SlackIntegrationResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SlackIntegrationResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+// LoginWithResponse request returning *LoginResponse
+func (c *ClientWithResponses) LoginWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*LoginResponse, error) {
+	rsp, err := c.Login(ctx, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSlackLoginResponse(rsp)
+}
+
 // SlackOauthWithResponse request returning *SlackOauthResponse
 func (c *ClientWithResponses) SlackOauthWithResponse(ctx context.Context, params *SlackOauthParams, reqEditors ...RequestEditorFn) (*SlackOauthResponse, error) {
 	rsp, err := c.SlackOauth(ctx, params, reqEditors...)
@@ -371,6 +616,32 @@ func (c *ClientWithResponses) SlackOauthWithResponse(ctx context.Context, params
 		return nil, err
 	}
 	return ParseSlackOauthResponse(rsp)
+}
+
+// RegisterChannelWithBodyWithResponse request with arbitrary body returning *RegisterChannelResponse
+func (c *ClientWithResponses) RegisterChannelWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*RegisterChannelResponse, error) {
+	rsp, err := c.RegisterChannelWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRegisterChannelResponse(rsp)
+}
+
+func (c *ClientWithResponses) RegisterChannelWithResponse(ctx context.Context, body RegisterChannelJSONRequestBody, reqEditors ...RequestEditorFn) (*RegisterChannelResponse, error) {
+	rsp, err := c.RegisterChannel(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRegisterChannelResponse(rsp)
+}
+
+// SlackIntegrationWithResponse request returning *SlackIntegrationResponse
+func (c *ClientWithResponses) SlackIntegrationWithResponse(ctx context.Context, params *SlackIntegrationParams, reqEditors ...RequestEditorFn) (*SlackIntegrationResponse, error) {
+	rsp, err := c.SlackIntegration(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSlackIntegrationResponse(rsp)
 }
 
 // ParseSlackLoginResponse parses an HTTP response from a SlackLoginWithResponse call
@@ -446,6 +717,86 @@ func ParseSlackOauthResponse(rsp *http.Response) (*SlackOauthResponse, error) {
 	return response, nil
 }
 
+// ParseRegisterChannelResponse parses an HTTP response from a RegisterChannelWithResponse call
+func ParseRegisterChannelResponse(rsp *http.Response) (*RegisterChannelResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &RegisterChannelResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SlackStatus
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseSlackIntegrationResponse parses an HTTP response from a SlackIntegrationWithResponse call
+func ParseSlackIntegrationResponse(rsp *http.Response) (*SlackIntegrationResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SlackIntegrationResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest SlackIntegration
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Initiate slack login
@@ -455,6 +806,14 @@ type ServerInterface interface {
 	// Callback after Slack login
 	// (GET /v1/auth/slack/login/callback)
 	SlackOauth(ctx echo.Context) error
+
+	// register slack channel
+	// (POST /v1/auth/slack/register-channel)
+	RegisterChannel(ctx echo.Context) error
+
+	// Get slack integration
+	// (GET /v1/slack/integration)
+	SlackIntegration(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -495,6 +854,39 @@ func (w *ServerInterfaceWrapper) SlackOauth(ctx echo.Context) error {
 	return err
 }
 
+// RegisterChannel converts echo context to params.
+
+func (w *ServerInterfaceWrapper) RegisterChannel(ctx echo.Context) error {
+	var err error
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.RegisterChannel
+	err = handler(ctx)
+
+	return err
+}
+
+// SlackIntegration converts echo context to params.
+
+func (w *ServerInterfaceWrapper) SlackIntegration(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params SlackIntegrationParams
+	// ------------- Required query parameter "" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "", ctx.QueryParams(), &params.Empty)
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter : %s", err))
+	}
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.SlackIntegration
+	err = handler(ctx)
+
+	return err
+}
+
 // EchoRouter is an interface that wraps the methods of echo.Echo & echo.Group to provide a common interface
 // for registering routes.
 type EchoRouter interface {
@@ -524,5 +916,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.GET(baseURL+"/v1/auth/slack/login", wrapper.SlackLogin)
 	router.GET(baseURL+"/v1/auth/slack/login/callback", wrapper.SlackOauth)
+	router.POST(baseURL+"/v1/auth/slack/register-channel", wrapper.RegisterChannel)
+	router.GET(baseURL+"/v1/slack/integration", wrapper.SlackIntegration)
 
 }
