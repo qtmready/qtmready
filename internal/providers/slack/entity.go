@@ -17,5 +17,5 @@
 
 package slack
 
-func (s *SlackIntegration) PreCreate() error { return nil }
-func (s *SlackIntegration) PreUpdate() error { return nil }
+func (s *Slack) PreCreate() error { return nil }
+func (s *Slack) PreUpdate() error { return nil }
