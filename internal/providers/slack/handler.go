@@ -136,3 +136,32 @@ func (e *ServerHandler) SlackIntegration(ctx echo.Context) error {
 
 	return ctx.JSON(http.StatusOK, slackIntegration)
 }
+
+func (e *ServerHandler) RegisterChannel(ctx echo.Context) error {
+	request := &RegisterSlackChannelRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	workspaceName := request.WorkspaceName
+	channelName := request.ChannelName
+	channelID := request.ChannelId
+	// token := request.Token
+
+	// get entry from db
+	slackIntegration := &SlackIntegration{}
+	params := db.QueryParams{"workspace_name": workspaceName}
+
+	if err := db.Get(slackIntegration, params); err != nil {
+		return ctx.JSON(http.StatusInternalServerError, "Error obtaining from database")
+	}
+
+	slackIntegration.ChannelID = channelID
+	slackIntegration.ChannelName = channelName
+
+	if err := db.Update(slackIntegration); err != nil {
+		return ctx.JSON(http.StatusInternalServerError, "Error updating database")
+	}
+
+	return ctx.JSON(http.StatusOK, "Ok")
+}
