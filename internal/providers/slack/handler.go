@@ -25,6 +25,7 @@ import (
 	"github.com/slack-go/slack"
 
 	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/db"
 )
 
 type (
@@ -119,4 +120,19 @@ func findChannelIdForBot(client *slack.Client, channels []slack.Channel, auth *s
 	}
 
 	return channelID
+}
+
+func (e *ServerHandler) SlackIntegration(ctx echo.Context) error {
+	// obtain query parameters
+	workspace_name := ctx.QueryParam("workspace_name")
+
+	// get from db
+	slackIntegration := &SlackIntegration{}
+	params := db.QueryParams{"workspace_name": workspace_name}
+
+	if err := db.Get(slackIntegration, params); err != nil {
+		return ctx.JSON(http.StatusInternalServerError, "Error obtaining from database")
+	}
+
+	return ctx.JSON(http.StatusOK, slackIntegration)
 }
