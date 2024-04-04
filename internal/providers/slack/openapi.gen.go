@@ -28,6 +28,10 @@ import (
 	externalRef0 "go.breu.io/quantm/internal/shared"
 )
 
+const (
+	BearerAuthScopes = "BearerAuth.Scopes"
+)
+
 // Slack defines model for Slack.
 type Slack struct {
 	ChannelID         string     `cql:"channel_id" json:"channel_id"`
@@ -322,6 +326,9 @@ type ServerInterface interface {
 	// Slack Oauth and save the info
 	// (GET /v1/slack)
 	SlackOauth(ctx echo.Context) error
+
+	// SecurityHandler returns the underlying Security Wrapper
+	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -334,6 +341,8 @@ type ServerInterfaceWrapper struct {
 func (w *ServerInterfaceWrapper) SlackOauth(ctx echo.Context) error {
 	var err error
 
+	ctx.Set(BearerAuthScopes, []string{})
+
 	// Parameter object where we will unmarshal all parameters from the context
 	var params SlackOauthParams
 	// ------------- Required query parameter "code" -------------
@@ -345,7 +354,8 @@ func (w *ServerInterfaceWrapper) SlackOauth(ctx echo.Context) error {
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.SlackOauth
-	err = handler(ctx)
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
 
 	return err
 }

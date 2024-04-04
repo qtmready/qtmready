@@ -18,7 +18,6 @@
 package slack
 
 import (
-	"errors"
 	"net/http"
 
 	"github.com/gocql/gocql"
@@ -27,6 +26,7 @@ import (
 
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -46,7 +46,7 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 
 	code := ctx.QueryParam("code")
 	if code == "" {
-		return errors.New("empty code")
+		return shared.NewAPIError(http.StatusNotFound, ErrCodeEmpty)
 	}
 
 	// TODO: get from token
@@ -54,10 +54,10 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 
 	response, err := slack.GetOAuthV2Response(&c, ClientID(), ClientSecret(), code, ClientRedirectURL())
 	if err != nil {
-		return err
+		return ctx.JSON(http.StatusInternalServerError, err)
 	}
 
-	//NOTE - remove
+	// NOTE - remove.
 	teamID, _ := gocql.RandomUUID()
 
 	slack := &Slack{
