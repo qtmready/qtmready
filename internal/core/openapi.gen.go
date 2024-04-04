@@ -36,11 +36,54 @@ const (
 )
 
 var (
+	ErrInvalidAWSDriver       = errors.New("invalid AWSDriver value")
 	ErrInvalidCloudProvider   = errors.New("invalid CloudProvider value")
 	ErrInvalidDriver          = errors.New("invalid Driver value")
+	ErrInvalidGCPDriver       = errors.New("invalid GCPDriver value")
 	ErrInvalidMessageProvider = errors.New("invalid MessageProvider value")
 	ErrInvalidRepoProvider    = errors.New("invalid RepoProvider value")
 )
+
+type (
+	AWSDriverMapType map[string]AWSDriver // AWSDriverMapType is a quick lookup map for AWSDriver.
+)
+
+// Defines values for AWSDriver.
+const (
+	AWSDriverS3  AWSDriver = "s3"
+	AWSDriverSns AWSDriver = "sns"
+	AWSDriverSqs AWSDriver = "sqs"
+)
+
+// AWSDriverMap returns all known values for AWSDriver.
+var (
+	AWSDriverMap = AWSDriverMapType{
+		AWSDriverS3.String():  AWSDriverS3,
+		AWSDriverSns.String(): AWSDriverSns,
+		AWSDriverSqs.String(): AWSDriverSqs,
+	}
+)
+
+/*
+ * Helper methods for AWSDriver for easy marshalling and unmarshalling.
+ */
+func (v AWSDriver) String() string               { return string(v) }
+func (v AWSDriver) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
+func (v *AWSDriver) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	val, ok := AWSDriverMap[s]
+	if !ok {
+		return ErrInvalidAWSDriver
+	}
+
+	*v = val
+
+	return nil
+}
 
 type (
 	CloudProviderMapType map[string]CloudProvider // CloudProviderMapType is a quick lookup map for CloudProvider.
@@ -131,6 +174,47 @@ func (v *Driver) UnmarshalJSON(data []byte) error {
 }
 
 type (
+	GCPDriverMapType map[string]GCPDriver // GCPDriverMapType is a quick lookup map for GCPDriver.
+)
+
+// Defines values for GCPDriver.
+const (
+	GCPDriverCloudrun GCPDriver = "cloudrun"
+	GCPDriverGke      GCPDriver = "gke"
+	GCPDriverPubsub   GCPDriver = "pubsub"
+)
+
+// GCPDriverMap returns all known values for GCPDriver.
+var (
+	GCPDriverMap = GCPDriverMapType{
+		GCPDriverCloudrun.String(): GCPDriverCloudrun,
+		GCPDriverGke.String():      GCPDriverGke,
+		GCPDriverPubsub.String():   GCPDriverPubsub,
+	}
+)
+
+/*
+ * Helper methods for GCPDriver for easy marshalling and unmarshalling.
+ */
+func (v GCPDriver) String() string               { return string(v) }
+func (v GCPDriver) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
+func (v *GCPDriver) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	val, ok := GCPDriverMap[s]
+	if !ok {
+		return ErrInvalidGCPDriver
+	}
+
+	*v = val
+
+	return nil
+}
+
+type (
 	MessageProviderMapType map[string]MessageProvider // MessageProviderMapType is a quick lookup map for MessageProvider.
 )
 
@@ -208,6 +292,9 @@ func (v *RepoProvider) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// AWSDriver s3, sqs, sns, dynamodb, postgres, mysql etc
+type AWSDriver string
+
 // BluePrintRegions BluePrintRegions sets the cloud regions where a blueprint can be deployed
 type BluePrintRegions struct {
 	Aws     []string `json:"aws"`
@@ -264,8 +351,19 @@ type CloudProvider string
 // Driver gke, cloudrun, pubsub, s3, sqs, sns, dynamodb, postgres, mysql etc
 type Driver string
 
+// GCPDriver gke, cloudrun, pubsub etc
+type GCPDriver string
+
 // MessageProvider defines model for MessageProvider.
 type MessageProvider string
+
+// ProviderConfiguration Provider config defines configuration specific to a cloud provider
+type ProviderConfiguration struct {
+	Aws     string `json:"aws"`
+	Azure   string `json:"azure"`
+	Default string `json:"default"`
+	Gcp     string `json:"gcp"`
+}
 
 // Repo defines model for Repo.
 type Repo struct {
@@ -362,12 +460,6 @@ type ResourceCreateRequest struct {
 
 // ResourceListResponse defines model for ResourceListResponse.
 type ResourceListResponse = []Resource
-
-// SlackMessage defines model for SlackMessage.
-type SlackMessage struct {
-	ChannelID string          `json:"channelID"`
-	Message   MessageProvider `json:"message"`
-}
 
 // Stack defines model for Stack.
 type Stack struct {
@@ -484,9 +576,6 @@ type CreateStackJSONRequestBody = StackCreateRequest
 
 // CreateWorkloadJSONRequestBody defines body for CreateWorkload for application/json ContentType.
 type CreateWorkloadJSONRequestBody = WorkloadCreateRequest
-
-// SlackNotifyJSONRequestBody defines body for SlackNotify for application/json ContentType.
-type SlackNotifyJSONRequestBody = SlackMessage
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -606,11 +695,6 @@ type ClientInterface interface {
 
 	// GetWorkload request
 	GetWorkload(ctx context.Context, params *GetWorkloadParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// SlackNotifyWithBody request with any body
-	SlackNotifyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	SlackNotify(ctx context.Context, body SlackNotifyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) CreateBlueprintWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -807,30 +891,6 @@ func (c *Client) CreateWorkload(ctx context.Context, body CreateWorkloadJSONRequ
 
 func (c *Client) GetWorkload(ctx context.Context, params *GetWorkloadParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetWorkloadRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) SlackNotifyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSlackNotifyRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) SlackNotify(ctx context.Context, body SlackNotifyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewSlackNotifyRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1296,46 +1356,6 @@ func NewGetWorkloadRequest(server string, params *GetWorkloadParams) (*http.Requ
 	return req, nil
 }
 
-// NewSlackNotifyRequest calls the generic SlackNotify builder with application/json body
-func NewSlackNotifyRequest(server string, body SlackNotifyJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewSlackNotifyRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewSlackNotifyRequestWithBody generates requests for SlackNotify with any type of body
-func NewSlackNotifyRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/v1/slack/notify")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -1424,11 +1444,6 @@ type ClientWithResponsesInterface interface {
 
 	// GetWorkloadWithResponse request
 	GetWorkloadWithResponse(ctx context.Context, params *GetWorkloadParams, reqEditors ...RequestEditorFn) (*GetWorkloadResponse, error)
-
-	// SlackNotifyWithBodyWithResponse request with any body
-	SlackNotifyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SlackNotifyResponse, error)
-
-	SlackNotifyWithResponse(ctx context.Context, body SlackNotifyJSONRequestBody, reqEditors ...RequestEditorFn) (*SlackNotifyResponse, error)
 }
 
 type CreateBlueprintResponse struct {
@@ -1736,30 +1751,6 @@ func (r GetWorkloadResponse) StatusCode() int {
 	return 0
 }
 
-type SlackNotifyResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *SlackMessage
-	JSON400      *externalRef0.BadRequest
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r SlackNotifyResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r SlackNotifyResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 // CreateBlueprintWithBodyWithResponse request with arbitrary body returning *CreateBlueprintResponse
 func (c *ClientWithResponses) CreateBlueprintWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBlueprintResponse, error) {
 	rsp, err := c.CreateBlueprintWithBody(ctx, contentType, body, reqEditors...)
@@ -1906,23 +1897,6 @@ func (c *ClientWithResponses) GetWorkloadWithResponse(ctx context.Context, param
 		return nil, err
 	}
 	return ParseGetWorkloadResponse(rsp)
-}
-
-// SlackNotifyWithBodyWithResponse request with arbitrary body returning *SlackNotifyResponse
-func (c *ClientWithResponses) SlackNotifyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*SlackNotifyResponse, error) {
-	rsp, err := c.SlackNotifyWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseSlackNotifyResponse(rsp)
-}
-
-func (c *ClientWithResponses) SlackNotifyWithResponse(ctx context.Context, body SlackNotifyJSONRequestBody, reqEditors ...RequestEditorFn) (*SlackNotifyResponse, error) {
-	rsp, err := c.SlackNotify(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseSlackNotifyResponse(rsp)
 }
 
 // ParseCreateBlueprintResponse parses an HTTP response from a CreateBlueprintWithResponse call
@@ -2512,46 +2486,6 @@ func ParseGetWorkloadResponse(rsp *http.Response) (*GetWorkloadResponse, error) 
 	return response, nil
 }
 
-// ParseSlackNotifyResponse parses an HTTP response from a SlackNotifyWithResponse call
-func ParseSlackNotifyResponse(rsp *http.Response) (*SlackNotifyResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &SlackNotifyResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest SlackMessage
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Create blueprint
@@ -2601,10 +2535,6 @@ type ServerInterface interface {
 	// Get workload
 	// (GET /core/workloads/)
 	GetWorkload(ctx echo.Context) error
-
-	// early warning messgae
-	// (POST /v1/slack/notify)
-	SlackNotify(ctx echo.Context) error
 
 	// SecurityHandler returns the underlying Security Wrapper
 	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
@@ -2863,18 +2793,6 @@ func (w *ServerInterfaceWrapper) GetWorkload(ctx echo.Context) error {
 	return err
 }
 
-// SlackNotify converts echo context to params.
-
-func (w *ServerInterfaceWrapper) SlackNotify(ctx echo.Context) error {
-	var err error
-
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.SlackNotify
-	err = handler(ctx)
-
-	return err
-}
-
 // EchoRouter is an interface that wraps the methods of echo.Echo & echo.Group to provide a common interface
 // for registering routes.
 type EchoRouter interface {
@@ -2914,6 +2832,5 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/core/stacks/:slug", wrapper.GetStack)
 	router.POST(baseURL+"/core/workloads", wrapper.CreateWorkload)
 	router.GET(baseURL+"/core/workloads/", wrapper.GetWorkload)
-	router.POST(baseURL+"/v1/slack/notify", wrapper.SlackNotify)
 
 }

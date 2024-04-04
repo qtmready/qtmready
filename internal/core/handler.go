@@ -261,7 +261,3 @@ func (s *ServerHandler) GetRepo(ctx echo.Context) error {
 
 	return ctx.JSON(http.StatusOK, repo)
 }
-
-func (s *ServerHandler) SlackNotify(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
-}

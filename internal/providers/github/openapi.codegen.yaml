@@ -9,4 +9,5 @@ compatibility:
   always-prefix-enum-values: true
 output: openapi.gen.go
 output-options:
+  skip-prune: true
   user-templates-dir: ../../shared/templates
