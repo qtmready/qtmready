@@ -28,8 +28,8 @@ type (
 	Activities struct{}
 )
 
-func (a *Activities) SendChannelMessage(ctx context.Context, message string) error {
-	err := NotifyOnSlack(message)
+func (a *Activities) SendChannelMessage(ctx context.Context, teamID, message string) error {
+	err := NotifyOnSlack(teamID, message)
 	if err != nil {
 		shared.Logger().Error("Error notifying Slack", "error", err.Error())
 

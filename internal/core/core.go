@@ -64,7 +64,7 @@ type (
 	}
 
 	MessageProviderActivities interface {
-		SendChannelMessage(ctx context.Context, msg string) error // TODO: figure out the signature
+		SendChannelMessage(ctx context.Context, teamID, msg string) error // TODO: figure out the signature
 	}
 
 	Providers struct {
