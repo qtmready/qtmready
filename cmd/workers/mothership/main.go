@@ -27,6 +27,7 @@ import (
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/providers/gcp/cloudrun"
 	"go.breu.io/quantm/internal/providers/github"
+	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -73,6 +74,8 @@ func main() {
 	coreWrkr.RegisterWorkflow(cwfs.GetAssets)
 	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)
 	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
+	coreWrkr.RegisterWorkflow(cwfs.EarlyDetection)
+	coreWrkr.RegisterWorkflow(cwfs.StaleBranchDetection)
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.Activities{})
