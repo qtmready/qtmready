@@ -36,7 +36,7 @@ func (a *Activities) SendChannelMessage(ctx context.Context, message string) err
 		return err
 	}
 
-	shared.Logger().Info("Early-Detection", "slack notify", message)
+	shared.Logger().Info("slack notified")
 
 	return nil
 }
