@@ -437,7 +437,7 @@ func (a *Activities) CreateBranch(ctx context.Context, installationID int64, rep
 
 	// create new ref
 	if _, _, err = client.Git.CreateRef(context.Background(), repoOwner, repoName, ref); err != nil {
-		shared.Logger().Error("EarlyDetection", "Error creating branch: ", err)
+		shared.Logger().Error("CreateBranch activity", "Error creating branch: ", err)
 
 		// dont want to retry this workflow so not returning error, just log and return
 		return nil
