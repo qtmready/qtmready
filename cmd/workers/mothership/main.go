@@ -44,6 +44,7 @@ func main() {
 	core.Instance(
 		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
 		core.WithCloudResource(core.CloudProviderGCP, core.DriverCloudrun, &cloudrun.Constructor{}),
+		core.WithMessageProvider(core.MessageProviderSlack, &slack.Activities{}),
 	)
 
 	ghwfs := &github.Workflows{}
@@ -57,11 +58,10 @@ func main() {
 	providerWrkr.RegisterWorkflow(ghwfs.OnLabelEvent)
 	providerWrkr.RegisterWorkflow(ghwfs.PollMergeQueue)
 	providerWrkr.RegisterWorkflow(ghwfs.OnGithubActionResult)
-	providerWrkr.RegisterWorkflow(ghwfs.EarlyDetection)
-	providerWrkr.RegisterWorkflow(ghwfs.StaleBranchDetection)
 
 	// provider activities
 	providerWrkr.RegisterActivity(&github.Activities{})
+	providerWrkr.RegisterActivity(&slack.Activities{})
 
 	// mutex workflow
 	coreWrkr.RegisterWorkflow(mutex.Workflow)

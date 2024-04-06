@@ -42,12 +42,11 @@ type (
 		RegisterRepoProvider(RepoProvider, RepoProviderActivities)
 		RegisterCloudProvider(CloudProvider, CloudProviderActivities)
 		RegisterCloudResource(provider CloudProvider, driver Driver, resource ResourceConstructor)
+		ResgisterMessageProvider(MessageProvider, MessageProviderActivities)
 
 		RepoProvider(RepoProvider) RepoProviderActivities
 		CloudProvider(CloudProvider) CloudProviderActivities
 		ResourceConstructor(CloudProvider, Driver) ResourceConstructor
-
-		ResgiterMessageProvider(MessageProvider, MessageProviderActivities)
 		MessageProvider(MessageProvider) MessageProviderActivities
 	}
 
@@ -156,7 +155,7 @@ func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
 	panic(NewProviderNotFoundError(name.String()))
 }
 
-func (c *core) ResgiterMessageProvider(provider MessageProvider, activities MessageProviderActivities) {
+func (c *core) ResgisterMessageProvider(provider MessageProvider, activities MessageProviderActivities) {
 	c.providers.message[provider] = activities
 }
 
@@ -166,6 +165,14 @@ func (c *core) MessageProvider(name MessageProvider) MessageProviderActivities {
 	}
 
 	panic(NewProviderNotFoundError(name.String()))
+}
+
+// WithMessageProvider registers a repo provider with the core.
+func WithMessageProvider(name MessageProvider, provider MessageProviderActivities) Option {
+	return func(c Core) {
+		shared.Logger().Info("core: registering message provider", "name", name.String())
+		c.ResgisterMessageProvider(name, provider)
+	}
 }
 
 // WithRepoProvider registers a repo provider with the core.
