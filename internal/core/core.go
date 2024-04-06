@@ -56,6 +56,13 @@ type (
 		GetLatestCommit(context.Context, string, string) (string, error)
 		DeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error
 		TagCommit(ctx context.Context, repoID string, commitSHA string, tagName string, tagMessage string) error
+		CreateBranch(ctx context.Context, installationID int64, repoID int64, repoName string, repoOwner string, targetCommit string,
+			newBranchName string) error
+		DeleteBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, branchName string) error
+		MergeBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, baseBranch string,
+			targetBranch string) error
+		CalculateChangesInBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, defaultBranch string,
+			targetBranch string) (int, error)
 	}
 
 	CloudProviderActivities interface {
