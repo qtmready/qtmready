@@ -49,6 +49,16 @@ type (
 		RepoID      string
 		CommitID    string
 	}
+
+	PushEventSignal struct {
+		RefBranch      string
+		RepoProvider   string
+		RepoID         int64
+		RepoName       string
+		RepoOwner      string
+		DefaultBranch  string
+		InstallationID int64
+	}
 )
 
 var (
@@ -74,6 +84,7 @@ const (
 const (
 	WorkflowSignalDeploymentStarted WorkflowSignal = "deployment_trigger"
 	WorkflowSignalCreateChangeset   WorkflowSignal = "create_changeset"
+	WorkflowEarlyDetection          WorkflowSignal = "early_detection"
 )
 
 /*

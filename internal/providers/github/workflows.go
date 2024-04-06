@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	gh "github.com/google/go-github/v53/github"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core"
@@ -155,28 +154,36 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 		return nil
 	}
 
-	wf := &Workflows{}
+	signalPayload := &shared.PushEventSignal{
+		RefBranch:      branchName,
+		RepoID:         payload.Repository.ID,
+		RepoName:       payload.Repository.Name,
+		RepoOwner:      payload.Repository.Owner.Login,
+		DefaultBranch:  payload.Repository.DefaultBranch,
+		InstallationID: payload.Installation.ID,
+		RepoProvider:   "github",
+	}
+
+	cw := &core.Workflows{}
 	opts := shared.Temporal().
-		Queue(shared.ProvidersQueue).
+		Queue(shared.CoreQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("repo"),
 			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
 			shared.WithWorkflowElement("branch"),
-			shared.WithWorkflowElementID(payload.Ref),
-			shared.WithWorkflowProp("type", "Early-Detection"),
+			shared.WithWorkflowElementID(branchName),
+			shared.WithWorkflowProp("type", "early_detection"),
 		)
 
 	_, err := shared.Temporal().
-		Client().
-		SignalWithStartWorkflow(
-			context.Background(),
-			opts.ID,
-			WorkflowSignalPushEvent.String(),
-			payload,
-			opts,
-			wf.EarlyDetection,
-			branchName,
-		)
+		Client().SignalWithStartWorkflow(
+		context.Background(),
+		opts.ID,
+		shared.WorkflowEarlyDetection.String(),
+		signalPayload,
+		opts,
+		cw.EarlyDetection,
+	)
 	if err != nil {
 		shared.Logger().Error("OnPushEvent", "Error signaling workflow", err)
 		return err
