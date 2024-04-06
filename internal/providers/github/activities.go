@@ -173,6 +173,7 @@ func (a *Activities) GetLatestCommit(ctx context.Context, providerID string, bra
 	return *gb.Commit.SHA, nil
 }
 
+// TODO - break it to smalller activities (create, delete and merge)
 func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoName string,
 	targetBranchName string, installationID int64) (string, error) {
 	client, err := Instance().GetClientFromInstallation(installationID)
@@ -436,11 +437,60 @@ func (a *Activities) CreateBranch(ctx context.Context, installationID int64, rep
 
 	// create new ref
 	if _, _, err = client.Git.CreateRef(context.Background(), repoOwner, repoName, ref); err != nil {
-		shared.Logger().Error("Early-Detection", "Error creating branch: ", err)
+		shared.Logger().Error("EarlyDetection", "Error creating branch: ", err)
 
 		// dont want to retry this workflow so not returning error, just log and return
 		return nil
 	}
 
 	return nil
+}
+
+func (a *Activities) MergeBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, baseBranch string,
+	targetBranch string) error {
+	// Get github client for operations
+	client, err := Instance().GetClientFromInstallation(installationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	// targetBranch will be merged into the baseBranch
+	rebaseReq := &gh.RepositoryMergeRequest{
+		Base:          &baseBranch,
+		Head:          &targetBranch,
+		CommitMessage: gh.String("Rebasing " + targetBranch + " with " + baseBranch),
+	}
+
+	if _, _, err := client.Repositories.Merge(context.Background(), repoOwner, repoName, rebaseReq); err != nil {
+		shared.Logger().Error("Merge failed", "Error", err)
+		return err
+	}
+
+	return nil
+}
+
+func (a *Activities) CalculateChangesInBranch(ctx context.Context, installationID int64, repoName string, repoOwner string,
+	defaultBranch string, targetBranch string) (int, error) {
+	// Get github client for operations
+	client, err := Instance().GetClientFromInstallation(installationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return -1, err
+	}
+
+	comparison, _, err := client.Repositories.CompareCommits(context.Background(), repoOwner, repoName, defaultBranch, targetBranch, nil)
+	if err != nil {
+		shared.Logger().Error("Error in CalculateChangesInBranch", "CompareCommits", err)
+		return -1, err
+	}
+
+	var changes int
+	for _, file := range comparison.Files {
+		changes += file.GetChanges()
+	}
+
+	shared.Logger().Debug("CalculateChangesInBranch", "total changes in branch "+targetBranch, changes)
+
+	return changes, nil
 }
