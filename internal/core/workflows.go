@@ -228,112 +228,108 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
 	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
 
 	// detect 200+ changes
-	{
-		shared.Logger().Debug("going to detect 200+ changes")
+	shared.Logger().Debug("going to detect 200+ changes")
 
-		changes := 0
-		if err := workflow.ExecuteActivity(pctx, repoProviderInst.CalculateChangesInBranch, installationID, repoName, repoOwner,
-			defaultBranch, branchName).Get(ctx, &changes); err != nil {
-			shared.Logger().Error("EarlyDetection", "error from CalculateChangesInBranch activity", err)
+	changes := 0
+	if err := workflow.ExecuteActivity(pctx, repoProviderInst.CalculateChangesInBranch, installationID, repoName, repoOwner,
+		defaultBranch, branchName).Get(ctx, &changes); err != nil {
+		shared.Logger().Error("EarlyDetection", "error from CalculateChangesInBranch activity", err)
+		return err
+	}
+
+	if changes > 200 {
+		message := "200+ lines changed on branch " + branchName
+
+		if err := workflow.ExecuteActivity(
+			pctx,
+			msgProviderInst.SendChannelMessage,
+			message,
+		).Get(ctx, nil); err != nil {
+			shared.Logger().Error("Error notifying Slack", "error", err.Error())
 			return err
 		}
 
-		if changes > 200 {
-			message := "200+ lines changed on branch " + branchName
-
-			if err := workflow.ExecuteActivity(
-				pctx,
-				msgProviderInst.SendChannelMessage,
-				message,
-			).Get(ctx, nil); err != nil {
-				shared.Logger().Error("Error notifying Slack", "error", err.Error())
-				return err
-			}
-		}
-
+		return nil
+	} else {
 		shared.Logger().Debug("200+ changes NOT detected")
 	}
 
 	// check merge conflicts
-	{
-		shared.Logger().Debug("going to detect merge conflicts")
+	shared.Logger().Debug("going to detect merge conflicts")
 
-		latestDefBranchCommitSHA := ""
-		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), defaultBranch).Get(ctx,
-			&latestDefBranchCommitSHA); err != nil {
-			shared.Logger().Error("EarlyDetection", "error from GetLatestCommit activity", err)
-			return err
-		}
-
-		// create a temp branch/ref
-		tempBranchName := defaultBranch + "-tempcopy-for-target-" + branchName
-
-		// delete the branch if it is present already
-		if err := workflow.ExecuteActivity(pctx, repoProviderInst.DeleteBranch, installationID, repoName, repoOwner,
-			tempBranchName).Get(ctx, nil); err != nil {
-			shared.Logger().Error("EarlyDetection", "error from DeleteBranch activity", err)
-			return err
-		}
-
-		// create new ref
-		if err := workflow.ExecuteActivity(pctx, repoProviderInst.CreateBranch, installationID, repoID, repoName, repoOwner,
-			latestDefBranchCommitSHA, tempBranchName).Get(ctx, nil); err != nil {
-			shared.Logger().Error("EarlyDetection", "error from DeleteBranch activity", err)
-			return err
-		}
-
-		if err := workflow.ExecuteActivity(pctx, repoProviderInst.MergeBranch, installationID, repoName, repoOwner, tempBranchName,
-			branchName).Get(ctx, nil); err != nil {
-			// dont want to retry this workflow so not returning error, just log and return
-			shared.Logger().Error("EarlyDetection", "Error merging branch", err)
-
-			message := "Merge Conflicts are expected on branch " + branchName
-			if err = workflow.ExecuteActivity(
-				pctx,
-				msgProviderInst.SendChannelMessage,
-				message,
-			).Get(ctx, nil); err != nil {
-				shared.Logger().Error("Error notifying Slack", "error", err.Error())
-				return err
-			}
-
-			return nil
-		}
-
-		shared.Logger().Debug("merge conflicts NOT detected")
+	latestDefBranchCommitSHA := ""
+	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), defaultBranch).Get(ctx,
+		&latestDefBranchCommitSHA); err != nil {
+		shared.Logger().Error("EarlyDetection", "error from GetLatestCommit activity", err)
+		return err
 	}
 
-	// execute child workflow for stale detection
-	{
-		shared.Logger().Debug("going to detect stale branch")
+	// create a temp branch/ref
+	tempBranchName := defaultBranch + "-tempcopy-for-target-" + branchName
 
-		latestDefBranchCommitSHA := ""
-		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), branchName).Get(ctx,
-			&latestDefBranchCommitSHA); err != nil {
-			shared.Logger().Error("EarlyDetection", "error from GetLatestCommit activity", err)
+	// delete the branch if it is present already
+	if err := workflow.ExecuteActivity(pctx, repoProviderInst.DeleteBranch, installationID, repoName, repoOwner,
+		tempBranchName).Get(ctx, nil); err != nil {
+		shared.Logger().Error("EarlyDetection", "error from DeleteBranch activity", err)
+		return err
+	}
+
+	// create new ref
+	if err := workflow.ExecuteActivity(pctx, repoProviderInst.CreateBranch, installationID, repoID, repoName, repoOwner,
+		latestDefBranchCommitSHA, tempBranchName).Get(ctx, nil); err != nil {
+		shared.Logger().Error("EarlyDetection", "error from DeleteBranch activity", err)
+		return err
+	}
+
+	if err := workflow.ExecuteActivity(pctx, repoProviderInst.MergeBranch, installationID, repoName, repoOwner, tempBranchName,
+		branchName).Get(ctx, nil); err != nil {
+		// dont want to retry this workflow so not returning error, just log and return
+		shared.Logger().Error("EarlyDetection", "Error merging branch", err)
+
+		message := "Merge Conflicts are expected on branch " + branchName
+		if err = workflow.ExecuteActivity(
+			pctx,
+			msgProviderInst.SendChannelMessage,
+			message,
+		).Get(ctx, nil); err != nil {
+			shared.Logger().Error("Error notifying Slack", "error", err.Error())
 			return err
 		}
 
-		wf := &Workflows{}
-		opts := shared.Temporal().
-			Queue(shared.CoreQueue).
-			WorkflowOptions(
-				shared.WithWorkflowBlock("repo"),
-				shared.WithWorkflowBlockID(strconv.FormatInt(repoID, 10)),
-				shared.WithWorkflowElement("branch"),
-				shared.WithWorkflowElementID(branchName),
-				shared.WithWorkflowProp("type", "Stale-Detection"),
-			)
+		return nil
+	}
 
-		if _, err := shared.Temporal().Client().ExecuteWorkflow(
-			context.Background(),
-			opts,
-			wf.StaleBranchDetection,
-			signalPayload, branchName, latestDefBranchCommitSHA); err != nil {
-			// dont want to retry this workflow so not returning error, just log and return
-			shared.Logger().Error("EarlyDetection", "error executing child workflow", err)
-			return nil
-		}
+	shared.Logger().Debug("merge conflicts NOT detected")
+
+	// execute child workflow for stale detection
+	shared.Logger().Debug("going to detect stale branch")
+
+	latestDefBranchCommitSHA = ""
+	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), branchName).Get(ctx,
+		&latestDefBranchCommitSHA); err != nil {
+		shared.Logger().Error("EarlyDetection", "error from GetLatestCommit activity", err)
+		return err
+	}
+
+	wf := &Workflows{}
+	opts := shared.Temporal().
+		Queue(shared.CoreQueue).
+		WorkflowOptions(
+			shared.WithWorkflowBlock("repo"),
+			shared.WithWorkflowBlockID(strconv.FormatInt(repoID, 10)),
+			shared.WithWorkflowElement("branch"),
+			shared.WithWorkflowElementID(branchName),
+			shared.WithWorkflowProp("type", "Stale-Detection"),
+		)
+
+	if _, err := shared.Temporal().Client().ExecuteWorkflow(
+		context.Background(),
+		opts,
+		wf.StaleBranchDetection,
+		signalPayload, branchName, latestDefBranchCommitSHA); err != nil {
+		// dont want to retry this workflow so not returning error, just log and return
+		shared.Logger().Error("EarlyDetection", "error executing child workflow", err)
+		return nil
 	}
 
 	return nil
