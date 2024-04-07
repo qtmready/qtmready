@@ -173,7 +173,7 @@ func (a *Activities) GetLatestCommit(ctx context.Context, providerID string, bra
 	return *gb.Commit.SHA, nil
 }
 
-// TODO - break it to smalller activities (create, delete and merge)
+// TODO - break it to smalller activities (create, delete and merge).
 func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoName string,
 	targetBranchName string, installationID int64) (string, error) {
 	client, err := Instance().GetClientFromInstallation(installationID)
