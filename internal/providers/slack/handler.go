@@ -49,16 +49,12 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusNotFound, ErrCodeEmpty)
 	}
 
-	// TODO: get from token
-	// teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
+	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
 
 	response, err := slack.GetOAuthV2Response(&c, ClientID(), ClientSecret(), code, ClientRedirectURL())
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, err)
 	}
-
-	// NOTE - remove.
-	teamID, _ := gocql.RandomUUID()
 
 	slack := &Slack{
 		ChannelID:         response.IncomingWebhook.ChannelID,
