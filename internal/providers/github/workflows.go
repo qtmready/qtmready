@@ -239,7 +239,7 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) erro
 			if err := workflow.ExecuteActivity(
 				actx,
 				m.SendChannelMessage,
-				// teamID, TODO: get the teamID and how to get
+				// teamID, TODO: get the teamID and how to get => Get from core after restructure code
 				message,
 			).Get(ctx, nil); err != nil {
 				shared.Logger().Error("Error notifying Slack", "error", err.Error())
@@ -290,7 +290,7 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) erro
 			if err = workflow.ExecuteActivity(
 				actx,
 				m.SendChannelMessage,
-				// teamID, TODO: get the teamID and how to get
+				// teamID, TODO: get the teamID and how to get => Get from core after restructure code
 				message,
 			).Get(ctx, nil); err != nil {
 				shared.Logger().Error("Error notifying Slack", "error", err.Error())
@@ -367,7 +367,7 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID in
 		if err := workflow.ExecuteActivity(
 			actx,
 			m.SendChannelMessage,
-			// teamID, TODO: get the teamID and how to get
+			// teamID, TODO: get the teamID and how to get => Get from core after restructure code
 			message,
 		).Get(ctx, nil); err != nil {
 			shared.Logger().Error("Error notifying Slack", "error", err.Error())

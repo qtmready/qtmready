@@ -19,7 +19,11 @@ package slack
 
 import (
 	"context"
+	"log/slog"
 
+	"github.com/slack-go/slack"
+
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -28,11 +32,27 @@ type (
 	Activities struct{}
 )
 
+// get the slack record by team id
+// get the access token for workspace and channel ID
+// create a slack instance
+// post message the specific channel
+// call the notify function to post the message to slack workspace channel.
 func (a *Activities) SendChannelMessage(ctx context.Context, teamID, message string) error {
-	err := NotifyOnSlack(teamID, message)
-	if err != nil {
-		shared.Logger().Error("Error notifying Slack", "error", err.Error())
+	// Get the slack info from database
+	s := &Slack{}
+	params := db.QueryParams{"team_id": teamID}
 
+	if err := db.Get(s, params); err != nil {
+		slog.Info("Failed to get the slack record", slog.Any("e", err))
+		return err
+	}
+
+	// Create a Slack client using the obtained access token.
+	client := slack.New(s.WorkspaceBotToken)
+
+	// call blockset to send the message to slack channel or sepecific workspace.
+	if err := notify(client, s.ChannelID, message); err != nil {
+		slog.Info("Failed to post message to channel", slog.Any("e", err))
 		return err
 	}
 

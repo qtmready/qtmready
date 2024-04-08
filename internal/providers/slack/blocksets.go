@@ -21,30 +21,24 @@ import (
 	"log/slog"
 
 	"github.com/slack-go/slack"
-
-	"go.breu.io/quantm/internal/db"
 )
 
-// get the slack record by team id
-// get the access token for workspace and channel ID
-// create a slack instance
-// post message the specific channel
-// call the notify function to post the message to slack workspace channel.
-func NotifyOnSlack(teamID, message string) error {
-	// Get the slack info from database
-	s := &Slack{}
-	params := db.QueryParams{"team_id": teamID}
-
-	if err := db.Get(s, params); err != nil {
-		slog.Info("Failed to get the slack record", slog.Any("e", err))
-		return err
+func notify(client *slack.Client, channelID, message string) error {
+	attachment := slack.Attachment{
+		Color: "danger",
+		Title: "Message from quantm",
+		Text:  message,
 	}
 
-	// Create a Slack client using the obtained access token.
-	client := slack.New(s.WorkspaceBotToken)
+	// Send message
+	_, _, err := client.PostMessage(
+		channelID,
+		slack.MsgOptionAttachments(attachment),
+		slack.MsgOptionAsUser(true),
+	)
 
-	if err := notify(client, s.ChannelID, message); err != nil {
-		slog.Info("Failed to post message to channel", slog.Any("e", err))
+	if err != nil {
+		slog.Error("Error sending message to channel ", channelID, ": ", err)
 		return err
 	}
 
