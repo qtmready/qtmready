@@ -30,6 +30,7 @@ const (
 )
 
 const (
+	WorkflowSignalNew     shared.WorkflowSignal = "new"
 	WorkflowSignalLocked  shared.WorkflowSignal = "locked"
 	WorkflowSignalAcquire shared.WorkflowSignal = "acquire"
 	WorkflowSignalRelease shared.WorkflowSignal = "release"
@@ -124,7 +125,7 @@ func (m *Lock) Acquire(ctx workflow.Context) error {
 		return NewAcquireLockError(m.ExecutionID)
 	}
 
-	logger.Info("mutex: acquiring lock. signal sent successfully, waiting for lock ... ", "resource ID", m.ID)
+	logger.Info("mutex: waiting for lock ... ", "resource ID", m.ID)
 	workflow.GetSignalChannel(ctx, WorkflowSignalLocked.String()).Receive(ctx, nil)
 	logger.Info("mutex: lock acquired.", "resource ID", m.ID)
 
@@ -133,7 +134,7 @@ func (m *Lock) Acquire(ctx workflow.Context) error {
 
 func (m *Lock) Release(ctx workflow.Context) error {
 	logger := workflow.GetLogger(ctx)
-	logger.Info("mutex: releasing lock. sending signal to mutex workflow ...", "resource ID", m.ID)
+	logger.Info("mutex: releasing lock. releasing lock ...", "resource ID", m.ID)
 
 	caller := workflow.GetInfo(ctx)
 
@@ -146,6 +147,8 @@ func (m *Lock) Release(ctx workflow.Context) error {
 	).Get(ctx, nil); err != nil {
 		return NewReleaseLockError(m.ExecutionID)
 	}
+
+	logger.Info("mutex: lock released.", "resource ID", m.ID)
 
 	return nil
 }
