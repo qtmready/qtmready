@@ -18,12 +18,12 @@
 package core
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"time"
 
 	"github.com/gocql/gocql"
+	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
@@ -314,19 +314,28 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
 	wf := &Workflows{}
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
-		WorkflowOptions(
+		ChildWorkflowOptions(
+			shared.WithWorkflowParent(ctx),
 			shared.WithWorkflowBlock("repo"),
 			shared.WithWorkflowBlockID(strconv.FormatInt(repoID, 10)),
 			shared.WithWorkflowElement("branch"),
 			shared.WithWorkflowElementID(branchName),
-			shared.WithWorkflowProp("type", "Stale-Detection"),
+			shared.WithWorkflowProp("type", "stale_detection"),
 		)
+	opts.ParentClosePolicy = enums.PARENT_CLOSE_POLICY_ABANDON
 
-	if _, err := shared.Temporal().Client().ExecuteWorkflow(
-		context.Background(),
-		opts,
+	var execution workflow.Execution
+
+	cctx := workflow.WithChildOptions(ctx, opts)
+	err := workflow.ExecuteChildWorkflow(cctx,
 		wf.StaleBranchDetection,
-		signalPayload, branchName, latestDefBranchCommitSHA); err != nil {
+		signalPayload,
+		branchName,
+		latestDefBranchCommitSHA).
+		GetChildWorkflowExecution().
+		Get(cctx, &execution)
+
+	if err != nil {
 		// dont want to retry this workflow so not returning error, just log and return
 		shared.Logger().Error("EarlyDetection", "error executing child workflow", err)
 		return nil
