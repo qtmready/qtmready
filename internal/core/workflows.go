@@ -251,7 +251,7 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
 
 		return nil
 	} else {
-		shared.Logger().Debug("200+ changes NOT detected")
+		shared.Logger().Info("200+ changes NOT detected")
 	}
 
 	// check merge conflicts
@@ -299,7 +299,7 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
 		return nil
 	}
 
-	shared.Logger().Debug("merge conflicts NOT detected")
+	shared.Logger().Info("merge conflicts NOT detected")
 
 	// execute child workflow for stale detection
 	shared.Logger().Debug("going to detect stale branch")
@@ -389,7 +389,7 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.Pus
 	}
 
 	// at this point, the branch is not stale so just return
-	shared.Logger().Debug("stale branch NOT detected")
+	shared.Logger().Info("stale branch NOT detected")
 
 	return nil
 }
