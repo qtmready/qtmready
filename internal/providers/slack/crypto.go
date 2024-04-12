@@ -23,6 +23,8 @@ import (
 	"crypto/rand"
 	"crypto/sha512"
 	"io"
+
+	"go.breu.io/quantm/internal/shared"
 )
 
 // encrypt encrypts the given plaintext using the provided key and AES-256 in Cipher Feedback mode.
@@ -72,7 +74,7 @@ func decrypt(ciphertext []byte, key []byte) ([]byte, error) {
 // and then takes the first 32 bytes of the hash as the key.
 func generateKey(workspaceID string) []byte {
 	h := sha512.New()
-	h.Write([]byte(SaltSecret() + workspaceID))
+	h.Write([]byte(shared.Service().GetSecret() + workspaceID))
 
 	return h.Sum(nil)[:32]
 }
