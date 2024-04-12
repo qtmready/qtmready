@@ -19,6 +19,7 @@ package slack
 
 import (
 	"context"
+	"encoding/base64"
 	"log/slog"
 
 	"github.com/slack-go/slack"
@@ -47,8 +48,25 @@ func (a *Activities) SendChannelMessage(ctx context.Context, teamID, message str
 		return err
 	}
 
-	// Create a Slack client using the obtained access token.
-	client := slack.New(s.WorkspaceBotToken)
+	// Decode the base64-encoded encrypted token.
+	decode, err := base64.StdEncoding.DecodeString(s.WorkspaceBotToken)
+	if err != nil {
+		slog.Info("Failed to decode the token", slog.Any("e", err))
+		return err
+	}
+
+	// Generate the same key used for encryption.
+	key := generateKey(s.WorkspaceID)
+
+	// Decrypt the token.
+	decryptedToken, err := decrypt(decode, key)
+	if err != nil {
+		slog.Info("Failed to decrypt the token", slog.Any("e", err))
+		return err
+	}
+
+	// Create a Slack client using the decrypted access token.
+	client := slack.New(string(decryptedToken))
 
 	// call blockset to send the message to slack channel or sepecific workspace.
 	if err := notify(client, s.ChannelID, message); err != nil {

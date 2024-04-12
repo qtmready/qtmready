@@ -19,6 +19,7 @@ type (
 		ClientID     string `env:"SLACK_CLIENT_ID"`
 		ClientSecret string `env:"SLACK_CLIENT_SECRET"`
 		RedirectURL  string `env:"SLACK_REDIRECT_URL"`
+		SaltSecret   string `env:"ENCRYPTION_SALT_SECRET"`
 	}
 
 	integration struct {
@@ -112,4 +113,8 @@ func ClientSecret() string {
 
 func ClientRedirectURL() string {
 	return Instance().Config.RedirectURL
+}
+
+func SaltSecret() string {
+	return Instance().Config.SaltSecret
 }

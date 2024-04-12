@@ -18,6 +18,7 @@
 package slack
 
 import (
+	"encoding/base64"
 	"net/http"
 
 	"github.com/gocql/gocql"
@@ -53,7 +54,16 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 
 	response, err := slack.GetOAuthV2Response(&c, ClientID(), ClientSecret(), code, ClientRedirectURL())
 	if err != nil {
-		return ctx.JSON(http.StatusInternalServerError, err)
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	// Generate a key for AES-256.
+	key := generateKey(response.Team.ID)
+
+	// Encrypt the access token.
+	encryptedToken, err := encrypt([]byte(response.AccessToken), key)
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
 	slack := &Slack{
@@ -61,12 +71,12 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 		ChannelName:       response.IncomingWebhook.Channel,
 		WorkspaceName:     response.Team.Name,
 		WorkspaceID:       response.Team.ID,
-		WorkspaceBotToken: response.AccessToken,
+		WorkspaceBotToken: base64.StdEncoding.EncodeToString(encryptedToken), // Store the base64-encoded encrypted token
 		TeamID:            teamID,
 	}
 
 	if err := db.Save(slack); err != nil {
-		return ctx.JSON(http.StatusInternalServerError, err)
+		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
 	return ctx.JSON(http.StatusOK, slack)

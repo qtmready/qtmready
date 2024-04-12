@@ -22,5 +22,6 @@ import (
 )
 
 var (
-	ErrCodeEmpty = errors.New("code is empty")
+	ErrCodeEmpty  = errors.New("code is empty")
+	ErrCipherText = errors.New("ciphertext too short")
 )
