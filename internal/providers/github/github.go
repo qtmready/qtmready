@@ -120,7 +120,7 @@ func LockInstance(ctx workflow.Context, repoID string) (mutex.Mutex, error) {
 			mutex.WithID(lockID),
 		)
 
-		if err := lock.Start(ctx); err != nil {
+		if err := lock.Prepare(ctx); err != nil {
 			return nil, err
 		}
 	}

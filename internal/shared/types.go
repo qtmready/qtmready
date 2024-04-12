@@ -27,7 +27,8 @@ import (
 
 // workflow related shared types and contants.
 type (
-	WorkflowSignal string // WorkflowSignal is the name of a workflow signal.
+	// WorkflowSignal is a type alias to define the name of the workflow signal.
+	WorkflowSignal string
 
 	// PullRequestSignal is the sent to PR workflows to trigger a deployment.
 	PullRequestSignal struct {

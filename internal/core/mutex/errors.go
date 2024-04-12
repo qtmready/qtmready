@@ -28,27 +28,31 @@ var (
 )
 
 type (
-	mutexError struct {
+	MutexError struct {
 		id   string // the id of the mutex.
 		kind string // kind of error. can be "acquire lock", "release lock", or "start workflow".
 	}
 )
 
-func (e *mutexError) Error() string {
+func (e *MutexError) Error() string {
 	return fmt.Sprintf("%s: failed to %s.", e.id, e.kind)
 }
 
 // NewAcquireLockError creates a new acquire lock error.
 func NewAcquireLockError(id string) error {
-	return &mutexError{id, "acquire lock"}
+	return &MutexError{id, "acquire lock"}
 }
 
 // NewReleaseLockError creates a new release lock error.
 func NewReleaseLockError(id string) error {
-	return &mutexError{id, "release lock"}
+	return &MutexError{id, "release lock"}
 }
 
-// NewStartWorkflowError creates a new start workflow error.
-func NewStartWorkflowError(id string) error {
-	return &mutexError{id, "start workflow"}
+// NewPrepareMutexError creates a new start workflow error.
+func NewPrepareMutexError(id string) error {
+	return &MutexError{id, "prepare mutex"}
+}
+
+func NewCleanupMutexError(id string) error {
+	return &MutexError{id, "cleanup mutex"}
 }
