@@ -19,7 +19,6 @@ version: "3.9"
 
 services:
   # common
-
   database:
     container_name: database
     image: scylladb/scylla:5.4
@@ -56,7 +55,7 @@ services:
     environment:
       - CASSANDRA_SEEDS=database
       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-cass.yaml
-    image: temporalio/auto-setup:1.20.2
+    image: temporalio/auto-setup:1.22.5
     ports:
       - "7233:7233"
     volumes:
@@ -70,7 +69,7 @@ services:
       - temporal
     environment:
       - TEMPORAL_CLI_ADDRESS=temporal:7233
-    image: temporalio/admin-tools:1.20.2
+    image: temporalio/admin-tools:1.22.5
     stdin_open: true
     tty: true
     networks:
@@ -83,7 +82,7 @@ services:
     environment:
       TEMPORAL_ADDRESS: temporal:7233
       TEMPORAL_CORS_ORIGINS: http://localhost:3000
-    image: temporalio/ui:2.15.0
+    image: temporalio/ui:2.25.0
     ports:
       - 8080:8080
     networks:

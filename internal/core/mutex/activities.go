@@ -3,16 +3,17 @@ package mutex
 import (
 	"context"
 
+	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/shared"
 )
 
-// PrepareMutex starts the mutex workflow, signals an existing workflow, for the given provider and resource,
+// PrepareMutexActivity either starts a new mutex workflow for the requested resource or signals the running mutex to schedule a new lock.
 // with the specified timeout.
-func PrepareMutex(ctx context.Context, payload *Info) (*workflow.Execution, error) {
+func PrepareMutexActivity(ctx context.Context, payload *Info) (*workflow.Execution, error) {
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
-		shared.WithWorkflowBlock(payload.ID),
+		shared.WithWorkflowBlock(payload.ResourceID),
 		shared.WithWorkflowBlockID("mutex"),
 	)
 
@@ -23,6 +24,9 @@ func PrepareMutex(ctx context.Context, payload *Info) (*workflow.Execution, erro
 	if err != nil {
 		return &workflow.Execution{}, err
 	}
+
+	logger := activity.GetLogger(ctx)
+	logger.Info("started workflow", "ID", exe.GetID(), "Run ID", exe.GetRunID())
 
 	return &workflow.Execution{ID: exe.GetID(), RunID: exe.GetRunID()}, nil
 }

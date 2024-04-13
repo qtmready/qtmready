@@ -117,7 +117,7 @@ func LockInstance(ctx workflow.Context, repoID string) (mutex.Mutex, error) {
 	if !exists {
 		lock = mutex.New(
 			mutex.WithCallerContext(ctx),
-			mutex.WithID(lockID),
+			mutex.WithResourceID(lockID),
 		)
 
 		if err := lock.Prepare(ctx); err != nil {

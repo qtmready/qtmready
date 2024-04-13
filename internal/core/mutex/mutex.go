@@ -18,6 +18,7 @@
 package mutex
 
 import (
+	"log/slog"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -52,9 +53,10 @@ type (
 
 	// Info holds all the information about the mutex.
 	Info struct {
-		ID      string         `json:"id"`      // ResourceID identifies the resource being locked.
-		Caller  *workflow.Info `json:"caller"`  // Info holds the workflow info that requests the mutex.
-		Timeout time.Duration  `json:"timeout"` // Timeout sets the timeout, after which the lock is automatically released.
+		ResourceID string              `json:"resource_id"` // ResourceID identifies the resource being locked.
+		Caller     *workflow.Info      `json:"caller"`      // Info holds the workflow info that requests the mutex.
+		Execution  *workflow.Execution `json:"execution"`   // Info holds the workflow info that holds the mutex.
+		Timeout    time.Duration       `json:"timeout"`     // Timeout sets the timeout, after which the lock is automatically released.
 	}
 )
 
@@ -69,24 +71,29 @@ func (info *Info) Prepare(ctx workflow.Context) error {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: info.Timeout}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
-	if err := workflow.ExecuteActivity(ctx, PrepareMutex, info).Get(ctx, &info.Caller); err != nil {
+	exe := &workflow.Execution{}
+	if err := workflow.ExecuteActivity(ctx, PrepareMutexActivity, info).Get(ctx, exe); err != nil {
 		wfwarn(ctx, info, "mutex: unable to prepare mutex", err)
-		return NewPrepareMutexError(info.ID)
+		return NewPrepareMutexError(info.ResourceID)
 	}
 
-	wfinfo(ctx, info, "mutex: prepared! waiting for lock to be acquired ...")
+	info.Execution = exe
+
+	wfinfo(ctx, info, "mutex: prepared!", slog.String("mutex", info.Execution.ID))
 
 	return nil
 }
 
 func (info *Info) Acquire(ctx workflow.Context) error {
-	wfinfo(ctx, info, "mutex: acquiring lock, attempting ...")
+	wfinfo(ctx, info, "mutex: acquiring lock ...")
 
 	ok := true
 
-	if err := workflow.SignalExternalWorkflow(ctx, info.ID, "", WorkflowSignalAcquire.String(), info).Get(ctx, nil); err != nil {
+	if err := workflow.
+		SignalExternalWorkflow(ctx, info.Execution.ID, "", WorkflowSignalAcquire.String(), info).
+		Get(ctx, nil); err != nil {
 		wfwarn(ctx, info, "mutex: unable to acquire lock", err)
-		return NewAcquireLockError(info.ID)
+		return NewAcquireLockError(info.ResourceID)
 	}
 
 	wfinfo(ctx, info, "mutex: acquiring lock, waiting in queue ...")
@@ -97,7 +104,7 @@ func (info *Info) Acquire(ctx workflow.Context) error {
 		return nil
 	}
 
-	return NewAcquireLockError(info.ID)
+	return NewAcquireLockError(info.ResourceID)
 }
 
 func (info *Info) Release(ctx workflow.Context) error {
@@ -105,9 +112,11 @@ func (info *Info) Release(ctx workflow.Context) error {
 
 	orphan := false
 
-	if err := workflow.SignalExternalWorkflow(ctx, info.ID, "", WorkflowSignalRelease.String(), info).Get(ctx, nil); err != nil {
+	if err := workflow.
+		SignalExternalWorkflow(ctx, info.Execution.ID, "", WorkflowSignalRelease.String(), info).
+		Get(ctx, nil); err != nil {
 		wfwarn(ctx, info, "mutex: unable to release lock", err)
-		return NewReleaseLockError(info.ID)
+		return NewReleaseLockError(info.ResourceID)
 	}
 
 	wfinfo(ctx, info, "mutex: releasing lock, processing ...")
@@ -123,22 +132,24 @@ func (info *Info) Release(ctx workflow.Context) error {
 }
 
 func (info *Info) Cleanup(ctx workflow.Context) error {
-	wfinfo(ctx, info, "mutex: clean up requested ...")
+	wfinfo(ctx, info, "mutex: requesting cleanup ...")
 
 	persist := false
 
-	if err := workflow.SignalExternalWorkflow(ctx, info.ID, "", WorkflowSignalCleanup.String(), info).Get(ctx, nil); err != nil {
+	if err := workflow.
+		SignalExternalWorkflow(ctx, info.Execution.ID, "", WorkflowSignalCleanup.String(), info).
+		Get(ctx, nil); err != nil {
 		wferr(ctx, info, "mutex: unable to clean up", err)
-		return NewCleanupMutexError(info.ID)
+		return NewCleanupMutexError(info.ResourceID)
 	}
 
-	wfinfo(ctx, info, "mutex: waiting for cleanup to complete ...")
+	wfinfo(ctx, info, "mutex: waiting for cleanup ...")
 	workflow.GetSignalChannel(ctx, WorkflowSignalCleanupDone.String()).Receive(ctx, &persist)
 
 	if persist {
 		wfwarn(ctx, info, "mutex: unable to clean up, mutex in use", nil)
 	} else {
-		wfinfo(ctx, info, "mutex: cleanup complete")
+		wfinfo(ctx, info, "mutex: cleanup done!")
 	}
 
 	return nil
@@ -146,7 +157,7 @@ func (info *Info) Cleanup(ctx workflow.Context) error {
 
 // validate validates if the mutex is properly configured.
 func (lock *Info) validate() error {
-	if lock.ID == "" {
+	if lock.ResourceID == "" {
 		return ErrNoResourceID
 	}
 
@@ -157,7 +168,7 @@ func (lock *Info) validate() error {
 	return nil
 }
 
-// WithID sets the resource ID for the mutex workflow. We start with the assumption that a valid resource ID will be provided.
+// WithResourceID sets the resource ID for the mutex workflow. We start with the assumption that a valid resource ID will be provided.
 // The lock must always be held against the ids of core entities e.g. Stack, Repo or Resource. and the format may look like
 // ${entity_type}.${entity_id}.mutex
 //   - entity type e.g stack, repo, resource
@@ -168,9 +179,9 @@ func (lock *Info) validate() error {
 // this can be set explicitly as well as "io.quantm.repo.${repo_id}.branch.${branch_name}.mutex". This is the format that should be used
 // when holding locks against specific resources like repos or artifacts or cloud resources. This is a judgement call. The goal is, we
 // should be able to arrive at the lock id regardless of the context.
-func WithID(id string) Option {
+func WithResourceID(id string) Option {
 	return func(m *Info) {
-		m.ID = id
+		m.ResourceID = id
 	}
 }
 
@@ -189,7 +200,7 @@ func WithTimeout(timeout time.Duration) Option {
 }
 
 // New returns a new Mutex.
-// It should always be called with WithCallerContext and WithID options.
+// It should always be called with WithCallerContext and WithResourceID options.
 // If WithTimeout is not called, it defaults to DefaultTimeout.
 //
 // NOTE - This workflow assumes that we always start a workflow from within a workflow. We might have to change this design if our use case
@@ -199,7 +210,7 @@ func WithTimeout(timeout time.Duration) Option {
 //
 //	m := mutex.New(
 //	  mutex.WithCallerContext(ctx),
-//	  mutex.WithID("id"),
+//	  mutex.WithResourceID("id"),
 //	  mutex.WithTimeout(30*time.Minute), // Optional
 //	)
 //	if err := m.Prepare(ctx); err != nil {/*handle error*/}
