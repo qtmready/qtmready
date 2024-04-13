@@ -65,7 +65,7 @@ func ParentWorkflow(ctx workflow.Context) error {
 	waitfor := make(Data, 0)
 	futures := make([]workflow.Future, 0)
 
-	for range 15 {
+	for range 2 {
 		workflow.SideEffect(ctx, func(workflow.Context) any {
 			n, _ := rand.Int(rand.Reader, big.NewInt(30))
 			wait := time.Duration(n.Int64()) * time.Second
@@ -118,9 +118,9 @@ func ChildWorkflow(ctx workflow.Context, id uuid.UUID, timeout time.Duration) er
 		return err
 	}
 
-	if err := lock.Cleanup(ctx); err != nil {
-		return err
-	}
+	// if err := lock.Cleanup(ctx); err != nil {
+	// 	return err
+	// }
 
 	return nil
 }
