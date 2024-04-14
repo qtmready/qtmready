@@ -118,9 +118,9 @@ func ChildWorkflow(ctx workflow.Context, id uuid.UUID, timeout time.Duration) er
 		return err
 	}
 
-	// if err := lock.Cleanup(ctx); err != nil {
-	// 	return err
-	// }
+	if err := lock.Cleanup(ctx); err != nil {
+		return err
+	}
 
 	return nil
 }

@@ -12,8 +12,8 @@ import (
 // with the specified timeout.
 func PrepareMutexActivity(ctx context.Context, payload *Info) (*workflow.Execution, error) {
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
-		shared.WithWorkflowBlock(payload.ResourceID),
-		shared.WithWorkflowBlockID("mutex"),
+		shared.WithWorkflowBlock("mutex"),
+		shared.WithWorkflowBlockID(payload.ResourceID),
 	)
 
 	exe, err := shared.Temporal().
