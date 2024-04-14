@@ -85,20 +85,20 @@ func (info *Info) Prepare(ctx workflow.Context) error {
 }
 
 func (info *Info) Acquire(ctx workflow.Context) error {
-	wfdebug(ctx, info, "mutex: acquiring lock ...")
+	wfdebug(ctx, info, "mutex: requesting lock ...")
 
 	ok := true
 
 	if err := workflow.
 		SignalExternalWorkflow(ctx, info.Execution.ID, "", WorkflowSignalAcquire.String(), info).
 		Get(ctx, nil); err != nil {
-		wfwarn(ctx, info, "mutex: unable to acquire lock", err)
+		wfwarn(ctx, info, "mutex: unable to request lock ...", err)
 		return NewAcquireLockError(info.ResourceID)
 	}
 
-	wfdebug(ctx, info, "mutex: acquiring lock, waiting in queue ...")
+	wfdebug(ctx, info, "mutex: lock scheduled ...")
 	workflow.GetSignalChannel(ctx, WorkflowSignalLocked.String()).Receive(ctx, &ok)
-	wfdebug(ctx, info, "mutex: acquiring lock, done!")
+	wfdebug(ctx, info, "mutex: lock acquired!")
 
 	if ok {
 		return nil
@@ -108,24 +108,24 @@ func (info *Info) Acquire(ctx workflow.Context) error {
 }
 
 func (info *Info) Release(ctx workflow.Context) error {
-	wfdebug(ctx, info, "mutex: releasing lock ...")
+	wfdebug(ctx, info, "mutex: requesting release ...")
 
 	orphan := false
 
 	if err := workflow.
 		SignalExternalWorkflow(ctx, info.Execution.ID, "", WorkflowSignalRelease.String(), info).
 		Get(ctx, nil); err != nil {
-		wfwarn(ctx, info, "mutex: unable to release lock", err)
+		wfwarn(ctx, info, "mutex: unable to request release ...", err)
 		return NewReleaseLockError(info.ResourceID)
 	}
 
-	wfdebug(ctx, info, "mutex: releasing lock, processing ...")
+	wfdebug(ctx, info, "mutex: releasing lock ...")
 	workflow.GetSignalChannel(ctx, WorkflowSignalReleased.String()).Receive(ctx, &orphan)
 
 	if orphan {
-		wfwarn(ctx, info, "mutex: releasing lock, orphaned!", nil)
+		wfwarn(ctx, info, "mutex: lock released, orphaned!", nil)
 	} else {
-		wfdebug(ctx, info, "mutex: releasing lock, done!")
+		wfdebug(ctx, info, "mutex: lock released, done!")
 	}
 
 	return nil

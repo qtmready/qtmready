@@ -3,7 +3,6 @@ package mutex
 import (
 	"context"
 
-	"go.temporal.io/sdk/activity"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/shared"
@@ -24,9 +23,6 @@ func PrepareMutexActivity(ctx context.Context, payload *Info) (*workflow.Executi
 	if err != nil {
 		return &workflow.Execution{}, err
 	}
-
-	logger := activity.GetLogger(ctx)
-	logger.Info("started workflow", "ID", exe.GetID(), "Run ID", exe.GetRunID())
 
 	return &workflow.Execution{ID: exe.GetID(), RunID: exe.GetRunID()}, nil
 }
