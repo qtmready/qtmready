@@ -49,11 +49,11 @@ var (
 func Workflow(ctx workflow.Context, lock *Info) error {
 	wfinfo(ctx, lock, "mutex: workflow started")
 
-	persist := true                                           // persist is used to keep the workflow running.
-	active := &Info{}                                         // active is the active lock request.
-	status := MutexStatusAcquiring                            // status is the current status of the lock.
-	queue := &Map{Internal: make(map[string]time.Duration)}   // queue is the pool of workflows waiting to acquire the lock.
-	orphans := &Map{Internal: make(map[string]time.Duration)} // orphans is the pool of workflows that have timed out.
+	persist := true                                               // persist is used to keep the workflow running.
+	active := &Info{}                                             // active is the active lock request.
+	status := MutexStatusAcquiring                                // status is the current status of the lock.
+	queue := &SafeMap{Internal: make(map[string]time.Duration)}   // queue is the pool of workflows waiting to acquire the lock.
+	orphans := &SafeMap{Internal: make(map[string]time.Duration)} // orphans is the pool of workflows that have timed out.
 
 	// coroutine to listen for prepare signals
 	workflow.Go(ctx, func(ctx workflow.Context) {
@@ -150,7 +150,7 @@ func Workflow(ctx workflow.Context, lock *Info) error {
 
 // _release is a channel handler that is called when lock is to be released.
 // TODO - handle the case when the lock is found in the orphans pool.
-func _release(ctx workflow.Context, active *Info, status *MutexStatus, queue, orphans *Map) shared.ChannelHandler {
+func _release(ctx workflow.Context, active *Info, status *MutexStatus, queue, orphans *SafeMap) shared.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
 		rx := &Info{}
 		channel.Receive(ctx, rx)
@@ -182,14 +182,16 @@ func _release(ctx workflow.Context, active *Info, status *MutexStatus, queue, or
 
 // _timeout is a future handler that is called when the lock has timed out.
 // TODO - what happens at the acquirer when the lock times out?
-func _timeout(ctx workflow.Context, active *Info, status *MutexStatus, pool, orphans *Map, timeout time.Duration) shared.FutureHandler {
+func _timeout(ctx workflow.Context, active *Info, status *MutexStatus, pool, orphans *SafeMap, timeout time.Duration) shared.FutureHandler {
 	return func(future workflow.Future) {
-		if *status == MutexStatusReleasing && timeout > 0 {
-			wfinfo(ctx, active, "mutex: lock timeout reached", slog.Duration("timeout", timeout))
+		if *status == MutexStatusLocked && *status != MutexStatusReleasing && timeout > 0 {
+			wfinfo(ctx, active, "mutex: timeout reached, releasing ...", slog.Duration("timeout", timeout))
 			pool.Remove(ctx, active.Caller.WorkflowExecution.ID)
 			orphans.Add(ctx, active.Caller.WorkflowExecution.ID, timeout)
 
 			*status = MutexStatusTimeout
 		}
+
+		wfwarn(ctx, active, "mutex: ignoring timeout ...", nil)
 	}
 }

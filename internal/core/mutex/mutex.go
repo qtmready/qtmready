@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	DefaultTimeout = 30 * time.Minute
+	DefaultTimeout = 0 * time.Minute // DefaultTimeout is the default timeout for the mutex.
 )
 
 const (
