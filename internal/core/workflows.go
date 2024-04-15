@@ -193,67 +193,14 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	return nil
 }
 
-// when a push event is received by quantm, branch controller gets active.
-// if the push event occurred on the default branch (e.g. main) quantm,
-// rebases all available branches with the default one.
-// otherwise it runs early detection algorithm to see if the branch
-// could be problematic when a PR is opened on it.
-func (w *Workflows) BranchController(ctx workflow.Context) error {
-	shared.Logger().Debug("BranchController", "waiting for signal", shared.WorkflowPushEvent.String())
-
-	// get push event data via workflow signal
-	ch := workflow.GetSignalChannel(ctx, shared.WorkflowPushEvent.String())
-
-	signalPayload := &shared.PushEventSignal{}
-
-	// receive signal payload
-	ch.Receive(ctx, signalPayload)
-
-	timeout := 10 * time.Second
-	lock := mutex.New(
-		mutex.WithResourceID(signalPayload.RepoName+"-"+signalPayload.RefBranch),
-		mutex.WithTimeout(timeout+(10*time.Second)),
-		mutex.WithHandler(ctx),
-	)
-
-	// Prepare the lock means that get the reference to running Mutex workflow and schedule a new lock on it. If there is no Mutex workflow
-	// running, then start a new Mutex workflow and schedule a lock on it.
-	if err := lock.Prepare(ctx); err != nil {
-		return err // or handle error
-	}
-
-	// Acquire acquires the lock. If we do not handle the error.
-	if err := lock.Acquire(ctx); err != nil {
-		return err // or handle error
-	}
-
-	defer func() {
-
-		// Release the lock.
-		if err := lock.Release(ctx); err != nil {
-			// return err // or handle error
-		}
-
-		// Cleanup tries to shutdown the Mutex workflow if there are no more locks waiting.
-		if err := lock.Cleanup(ctx); err != nil {
-			// return err // or handle error
-		}
-	}()
-
-	branchName := signalPayload.RefBranch
-	installationID := signalPayload.InstallationID
-	repoID := signalPayload.RepoID
-	repoName := signalPayload.RepoName
-	repoOwner := signalPayload.RepoOwner
-	defaultBranch := signalPayload.DefaultBranch
-	repoProvider := signalPayload.RepoProvider
-
-	shared.Logger().Info("BranchController", "signal payload", signalPayload)
-
-	repoProviderInst := Instance().RepoProvider(RepoProvider(repoProvider))
-
-	// msgProvider := Instance().MessageProvider(MessageProvider("slack"))
-	msgProviderInst := Instance().MessageProvider(MessageProviderSlack) // TODO - maybe not hardcode to slack and get from payload
+func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivities, msgProviderInst MessageProviderActivities,
+	pushEvent *shared.PushEventSignal) error {
+	branchName := pushEvent.RefBranch
+	installationID := pushEvent.InstallationID
+	repoID := pushEvent.RepoID
+	repoName := pushEvent.RepoName
+	repoOwner := pushEvent.RepoOwner
+	defaultBranch := pushEvent.DefaultBranch
 
 	providerActOpts := workflow.ActivityOptions{
 		StartToCloseTimeout: 60 * time.Second,
@@ -264,68 +211,9 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 	}
 	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
 
-	// if the push comes at the default branch i.e. main rebase all branches with main
-	if branchName == defaultBranch {
-		var branchNames []string
-		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetAllBranches, installationID, repoName, repoOwner).Get(ctx,
-			&branchNames); err != nil {
-			shared.Logger().Error("BranchController", "error from GetAllBranches activity", err)
-			return err
-		}
-
-		for _, branch := range branchNames {
-			if strings.Contains(branch, "-tempcopy-for-target-") {
-				// no need to do rebase with quantm created temp branches
-				continue
-			}
-
-			if err := workflow.ExecuteActivity(pctx, repoProviderInst.MergeBranch, installationID, repoName, repoOwner, defaultBranch,
-				branch).Get(ctx, nil); err != nil {
-				shared.Logger().Error("BranchController", "Error merging branch", err)
-
-				message := "Merge Conflicts are expected on branch " + branchName
-				if err = workflow.ExecuteActivity(
-					pctx,
-					msgProviderInst.SendChannelMessage,
-					message,
-				).Get(ctx, nil); err != nil {
-					shared.Logger().Error("Error notifying Slack", "error", err.Error())
-					return err
-				}
-			}
-		}
-
-		return nil
-	}
-
-	// detect 200+ changes
-	shared.Logger().Debug("going to detect 200+ changes")
-
-	changes := 0
-	if err := workflow.ExecuteActivity(pctx, repoProviderInst.CalculateChangesInBranch, installationID, repoName, repoOwner,
-		defaultBranch, branchName).Get(ctx, &changes); err != nil {
-		shared.Logger().Error("BranchController", "error from CalculateChangesInBranch activity", err)
-		return err
-	}
-
-	if changes > 200 {
-		message := "200+ lines changed on branch " + branchName
-
-		if err := workflow.ExecuteActivity(
-			pctx,
-			msgProviderInst.SendChannelMessage,
-			message,
-		).Get(ctx, nil); err != nil {
-			shared.Logger().Error("Error notifying Slack", "error", err.Error())
-			return err
-		}
-
-		return nil
-	} else {
-		shared.Logger().Info("200+ changes NOT detected")
-	}
-
 	// check merge conflicts
+	// create a temporary copy of default branch for the target branch (under inspection)
+	// if the rebase with the target branch returns error, raise warning
 	shared.Logger().Debug("going to detect merge conflicts")
 
 	latestDefBranchCommitSHA := ""
@@ -372,10 +260,151 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 
 	shared.Logger().Info("merge conflicts NOT detected")
 
+	// detect 200+ changes
+	// calculate all changes between default branch (e.g. main) with the target branch
+	// raise warning if the changes are more than 200 lines
+	shared.Logger().Debug("going to detect 200+ changes")
+
+	changes := 0
+	if err := workflow.ExecuteActivity(pctx, repoProviderInst.CalculateChangesInBranch, installationID, repoName, repoOwner,
+		defaultBranch, branchName).Get(ctx, &changes); err != nil {
+		shared.Logger().Error("BranchController", "error from CalculateChangesInBranch activity", err)
+		return err
+	}
+
+	if changes > 200 {
+		message := "200+ lines changed on branch " + branchName
+
+		if err := workflow.ExecuteActivity(
+			ctx,
+			msgProviderInst.SendChannelMessage,
+			message,
+		).Get(ctx, nil); err != nil {
+			shared.Logger().Error("Error notifying Slack", "error", err.Error())
+			return err
+		}
+
+		return nil
+	} else {
+		shared.Logger().Info("200+ changes NOT detected")
+	}
+
+	return nil
+}
+
+// when a push event is received by quantm, branch controller gets active.
+// if the push event occurred on the default branch (e.g. main) quantm,
+// rebases all available branches with the default one.
+// otherwise it runs early detection algorithm to see if the branch
+// could be problematic when a PR is opened on it.
+func (w *Workflows) BranchController(ctx workflow.Context) error {
+	shared.Logger().Debug("BranchController", "waiting for signal", shared.WorkflowPushEvent.String())
+
+	// get push event data via workflow signal
+	ch := workflow.GetSignalChannel(ctx, shared.WorkflowPushEvent.String())
+
+	signalPayload := &shared.PushEventSignal{}
+
+	// receive signal payload
+	ch.Receive(ctx, signalPayload)
+
+	timeout := 10 * time.Second
+	lock := mutex.New(
+		mutex.WithResourceID(signalPayload.RepoName+"-"+signalPayload.RefBranch),
+		mutex.WithTimeout(timeout+(10*time.Second)),
+		mutex.WithHandler(ctx),
+	)
+
+	// Prepare the lock means that get the reference to running Mutex workflow and schedule a new lock on it. If there is no Mutex workflow
+	// running, then start a new Mutex workflow and schedule a lock on it.
+	if err := lock.Prepare(ctx); err != nil {
+		return err // or handle error
+	}
+
+	// Acquire acquires the lock. If we do not handle the error.
+	if err := lock.Acquire(ctx); err != nil {
+		return err // or handle error
+	}
+
+	defer func() {
+		// Release the lock.
+		if err := lock.Release(ctx); err != nil {
+			// return err // or handle error
+		}
+
+		// Cleanup tries to shutdown the Mutex workflow if there are no more locks waiting.
+		if err := lock.Cleanup(ctx); err != nil {
+			// return err // or handle error
+		}
+	}()
+
+	branchName := signalPayload.RefBranch
+	installationID := signalPayload.InstallationID
+	repoID := signalPayload.RepoID
+	repoName := signalPayload.RepoName
+	repoOwner := signalPayload.RepoOwner
+	defaultBranch := signalPayload.DefaultBranch
+	repoProvider := signalPayload.RepoProvider
+
+	shared.Logger().Info("BranchController", "signal payload", signalPayload)
+
+	repoProviderInst := Instance().RepoProvider(RepoProvider(repoProvider))
+
+	msgProviderInst := Instance().MessageProvider(MessageProviderSlack) // TODO - maybe not hardcode to slack and get from payload
+
+	providerActOpts := workflow.ActivityOptions{
+		StartToCloseTimeout: 60 * time.Second,
+		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
+		RetryPolicy: &temporal.RetryPolicy{
+			MaximumAttempts: 1,
+		},
+	}
+	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
+
+	// if the push comes at the default branch i.e. main rebase all branches with main
+	if branchName == defaultBranch {
+		var branchNames []string
+		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetAllBranches, installationID, repoName, repoOwner).Get(ctx,
+			&branchNames); err != nil {
+			shared.Logger().Error("BranchController", "error from GetAllBranches activity", err)
+			return err
+		}
+
+		for _, branch := range branchNames {
+			if strings.Contains(branch, "-tempcopy-for-target-") {
+				// no need to do rebase with quantm created temp branches
+				continue
+			}
+
+			if err := workflow.ExecuteActivity(pctx, repoProviderInst.MergeBranch, installationID, repoName, repoOwner, defaultBranch,
+				branch).Get(ctx, nil); err != nil {
+				shared.Logger().Error("BranchController", "Error merging branch", err)
+
+				message := "Merge Conflicts are expected on branch " + branchName
+				if err = workflow.ExecuteActivity(
+					pctx,
+					msgProviderInst.SendChannelMessage,
+					message,
+				).Get(ctx, nil); err != nil {
+					shared.Logger().Error("Error notifying Slack", "error", err.Error())
+					return err
+				}
+			}
+		}
+
+		return nil
+	}
+
+	// check if the target branch would have merge conflicts with the default branch or it has too much changes
+	if err := CheckEarlyWarning(ctx, repoProviderInst, msgProviderInst, signalPayload); err != nil {
+		return err
+	}
+
 	// execute child workflow for stale detection
+	// if a branch is stale for a long time (5 days in this case) raise warning
 	shared.Logger().Debug("going to detect stale branch")
 
-	latestDefBranchCommitSHA = ""
+	latestDefBranchCommitSHA := ""
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), branchName).Get(ctx,
 		&latestDefBranchCommitSHA); err != nil {
 		shared.Logger().Error("BranchController", "error from GetLatestCommit activity", err)
