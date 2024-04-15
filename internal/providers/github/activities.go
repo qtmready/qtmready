@@ -260,7 +260,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	return *repoCommit.SHA, nil
 }
 
-func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int64, repoOwner string,
+func (a *Activities) TriggerCIAction(ctx context.Context, installationID int64, repoOwner string,
 	repoName string, targetBranch string) error {
 	shared.Logger().Debug("activity TriggerGithubAction started")
 

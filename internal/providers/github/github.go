@@ -33,16 +33,6 @@ import (
 	"go.breu.io/quantm/internal/core/mutex"
 )
 
-type (
-	MergeQueue struct {
-		PullRequestID  int64
-		InstallationID int64
-		RepoOwner      string
-		RepoName       string
-		Branch         string
-	}
-)
-
 var (
 	instance *Config
 	once     sync.Once

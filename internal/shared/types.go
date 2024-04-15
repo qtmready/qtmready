@@ -61,6 +61,15 @@ type (
 		DefaultBranch  string
 		InstallationID int64
 	}
+
+	MergeQueueSignal struct {
+		PullRequestID  int64
+		InstallationID int64
+		RepoOwner      string
+		RepoName       string
+		Branch         string
+		RepoProvider   string
+	}
 )
 
 var (
@@ -87,6 +96,7 @@ const (
 	WorkflowSignalDeploymentStarted WorkflowSignal = "deployment_trigger"
 	WorkflowSignalCreateChangeset   WorkflowSignal = "create_changeset"
 	WorkflowPushEvent               WorkflowSignal = "push_event_triggered"
+	MergeQueueStarted               WorkflowSignal = "merge_queue_trigger"
 )
 
 /*

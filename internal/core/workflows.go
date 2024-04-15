@@ -349,7 +349,6 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 	shared.Logger().Info("BranchController", "signal payload", signalPayload)
 
 	repoProviderInst := Instance().RepoProvider(RepoProvider(repoProvider))
-
 	msgProviderInst := Instance().MessageProvider(MessageProviderSlack) // TODO - maybe not hardcode to slack and get from payload
 
 	providerActOpts := workflow.ActivityOptions{
@@ -490,6 +489,39 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.Pus
 
 	// at this point, the branch is not stale so just return
 	shared.Logger().Info("stale branch NOT detected")
+
+	return nil
+}
+
+func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
+	logger := workflow.GetLogger(ctx)
+	logger.Info("PollMergeQueue", "entry", "workflow started")
+
+	// wait for github action to return success status
+	ch := workflow.GetSignalChannel(ctx, shared.MergeQueueStarted.String())
+	element := &shared.MergeQueueSignal{}
+	ch.Receive(ctx, &element)
+
+	logger.Info("PollMergeQueue", "data recvd", element)
+
+	repoProviderInst := Instance().RepoProvider(RepoProvider(element.RepoProvider))
+
+	providerActOpts := workflow.ActivityOptions{
+		StartToCloseTimeout: 60 * time.Second,
+		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
+		RetryPolicy: &temporal.RetryPolicy{
+			MaximumAttempts: 1,
+		},
+	}
+	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
+
+	if err := workflow.ExecuteActivity(pctx, repoProviderInst.TriggerCIAction, element.InstallationID, element.RepoOwner, element.RepoName,
+		element.Branch).Get(ctx, nil); err != nil {
+		logger.Error("error triggering github action", "error", err)
+		return err
+	}
+
+	logger.Info("github action triggered")
 
 	return nil
 }

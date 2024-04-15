@@ -301,19 +301,18 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 	if label == fmt.Sprintf("quantm ready") {
 		logger.Debug("quantm ready label applied")
 
-		workflows := &Workflows{}
+		cw := &core.Workflows{}
 		opts := shared.Temporal().
-			Queue(shared.ProvidersQueue).
+			Queue(shared.CoreQueue).
 			WorkflowOptions(
-				shared.WithWorkflowBlock("github"),
-				shared.WithWorkflowBlockID(fmt.Sprint(installationID)),
-				shared.WithWorkflowElement("repo"),
-				shared.WithWorkflowElementID(fmt.Sprint(payload.Repository.ID)),
-				shared.WithWorkflowMod("PR"),
-				shared.WithWorkflowModID(fmt.Sprint(pullRequestID)),
+				shared.WithWorkflowBlock("repo"),
+				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+				shared.WithWorkflowElement("PR"),
+				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
+				shared.WithWorkflowProp("type", "merge_queue"),
 			)
 
-		payload2 := &MergeQueue{
+		payload2 := &shared.MergeQueueSignal{
 			PullRequestID:  pullRequestID,
 			InstallationID: installationID,
 			RepoOwner:      repoOwner,
@@ -321,18 +320,18 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 			Branch:         branch,
 		}
 
-		_, err := shared.Temporal().Client().SignalWithStartWorkflow(
+		_, err := shared.Temporal().
+			Client().SignalWithStartWorkflow(
 			context.Background(),
 			opts.ID,
-			WorkflowSignalPullRequestLabeled.String(),
+			shared.MergeQueueStarted.String(),
 			payload2,
 			opts,
-			workflows.PollMergeQueue,
+			cw.PollMergeQueue,
 		)
-
 		if err != nil {
-			shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
-			return nil
+			shared.Logger().Error("OnLabelEvent", "Error signaling workflow", err)
+			return err
 		}
 
 		shared.Logger().Info("PR sent to MergeQueue")
@@ -428,35 +427,6 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	// for !status.Complete {
 	// 	selector.Select(ctx)
 	// }
-
-	return nil
-}
-
-func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
-	logger := workflow.GetLogger(ctx)
-	logger.Info("PollMergeQueue", "entry", "workflow started")
-
-	// wait for github action to return success status
-	ch := workflow.GetSignalChannel(ctx, WorkflowSignalPullRequestLabeled.String())
-	element := &MergeQueue{}
-	ch.Receive(ctx, &element)
-
-	logger.Info("PollMergeQueue", "data recvd", element)
-
-	// trigger CICD here
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
-
-	var er error
-	err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
-		element.InstallationID, element.RepoOwner, element.RepoName, element.Branch).Get(ctx, er)
-
-	if err != nil {
-		logger.Error("error triggering github action", "error", err)
-		return err
-	}
-
-	logger.Info("github action triggered")
 
 	return nil
 }

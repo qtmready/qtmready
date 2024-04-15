@@ -57,7 +57,6 @@ func main() {
 	providerWrkr.RegisterWorkflow(ghwfs.OnPushEvent)
 	providerWrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
 	providerWrkr.RegisterWorkflow(ghwfs.OnLabelEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.PollMergeQueue)
 	providerWrkr.RegisterWorkflow(ghwfs.OnGithubActionResult)
 
 	// provider activities
@@ -76,6 +75,7 @@ func main() {
 	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
 	coreWrkr.RegisterWorkflow(cwfs.BranchController)
 	coreWrkr.RegisterWorkflow(cwfs.StaleBranchDetection)
+	coreWrkr.RegisterWorkflow(cwfs.PollMergeQueue)
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.Activities{})
