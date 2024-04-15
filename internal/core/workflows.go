@@ -203,6 +203,37 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
 	// receive signal payload
 	ch.Receive(ctx, signalPayload)
 
+	timeout := 10 * time.Second
+	lock := mutex.New(
+		mutex.WithResourceID(signalPayload.RepoName+"-"+signalPayload.RefBranch),
+		mutex.WithTimeout(timeout+(10*time.Second)),
+		mutex.WithHandler(ctx),
+	)
+
+	// Prepare the lock means that get the reference to running Mutex workflow and schedule a new lock on it. If there is no Mutex workflow
+	// running, then start a new Mutex workflow and schedule a lock on it.
+	if err := lock.Prepare(ctx); err != nil {
+		return err // or handle error
+	}
+
+	// Acquire acquires the lock. If we do not handle the error.
+	if err := lock.Acquire(ctx); err != nil {
+		return err // or handle error
+	}
+
+	defer func() {
+
+		// Release the lock.
+		if err := lock.Release(ctx); err != nil {
+			// return err // or handle error
+		}
+
+		// Cleanup tries to shutdown the Mutex workflow if there are no more locks waiting.
+		if err := lock.Cleanup(ctx); err != nil {
+			// return err // or handle error
+		}
+	}()
+
 	branchName := signalPayload.RefBranch
 	installationID := signalPayload.InstallationID
 	repoID := signalPayload.RepoID
