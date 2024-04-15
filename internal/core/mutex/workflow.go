@@ -69,6 +69,7 @@ func Workflow(ctx workflow.Context, starter *Handler) error {
 		wfinfo(ctx, starter, "mutex: waiting for lock request ...")
 
 		found := true
+		cleanup := false
 		timeout := time.Duration(0)
 		acquirer := workflow.NewSelector(ctx)
 
@@ -78,7 +79,7 @@ func Workflow(ctx workflow.Context, starter *Handler) error {
 		acquirer.Select(ctx)
 
 		// cleanup signal received and processed. queue is empty, so shutdown the workflow.
-		if !persist {
+		if !persist || cleanup {
 			wfinfo(ctx, starter, "mutex: cleanup done, shutting down ...")
 
 			continue
@@ -207,7 +208,7 @@ func _abort(ctx workflow.Context, handler *Handler, status *MutexStatus, pool, o
 }
 
 // cleanup is a coroutine that listens to the cleanup signal and shuts down the workflow if the queue is empty.
-func _cleanup(ctx workflow.Context, handler *Handler, pool *Pool, callback workflow.Settable) shared.CoroutineHandler {
+func _cleanup(ctx workflow.Context, handler *Handler, pool *Pool, fn workflow.Settable) shared.CoroutineHandler {
 	wfinfo(ctx, handler, "mutex: setting up workflow for cleanup signals ....")
 
 	shutdown := false
@@ -220,14 +221,14 @@ func _cleanup(ctx workflow.Context, handler *Handler, pool *Pool, callback workf
 			wfinfo(ctx, handler, "mutex: cleanup requested ...", slog.Int("pool_size", pool.Size()))
 
 			if pool.Size() == 0 {
-				wfinfo(ctx, handler, "mutex: cleanup success, requesting shutdown ...", slog.Int("pool_size", pool.Size()))
-				callback.Set(rx, nil)
+				wfinfo(ctx, handler, "mutex: requesting shutdown ...", slog.Int("pool_size", pool.Size()))
+				fn.Set(rx, nil)
 
 				shutdown = true
 			}
 
 			workflow.SignalExternalWorkflow(ctx, rx.Info.WorkflowExecution.ID, "", WorkflowSignalCleanupDone.String(), shutdown)
-			wfinfo(ctx, handler, "mutex: ignoring cleanup request ...", slog.Int("pool_size", pool.Size()))
+			wfinfo(ctx, handler, "mutex: cleanup done!", slog.Int("pool_size", pool.Size()))
 		}
 	}
 }
@@ -235,7 +236,7 @@ func _cleanup(ctx workflow.Context, handler *Handler, pool *Pool, callback workf
 func _shutdown(ctx workflow.Context, handler *Handler, persist *bool) shared.FutureHandler {
 	return func(future workflow.Future) {
 		rx := &Handler{}
-		future.Get(ctx, rx)
+		_ = future.Get(ctx, rx)
 
 		wfinfo(ctx, handler, "mutex: shutdown requested ...")
 
@@ -244,16 +245,3 @@ func _shutdown(ctx workflow.Context, handler *Handler, persist *bool) shared.Fut
 		wfinfo(ctx, handler, "mutex: shutting down ...")
 	}
 }
-
-// // _shutdown is a channel handler that is called when the shutdown signal is received.
-// func _shutdown(ctx workflow.Context, persist *bool) shared.ChannelHandler {
-// 	return func(channel workflow.ReceiveChannel, more bool) {
-// 		rx := &Handler{}
-// 		channel.Receive(ctx, rx)
-// 		wfinfo(ctx, rx, "mutex: shutdown requested ...")
-
-// 		*persist = false
-
-// 		wfinfo(ctx, rx, "mutex: shutting down ...")
-// 	}
-// }
