@@ -227,6 +227,40 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
 	}
 	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
 
+	// if the push comes at the default branch i.e. main rebase all branches with main
+	if branchName == defaultBranch {
+		var branchNames []string
+		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetAllBranches, installationID, repoName, repoOwner).Get(ctx,
+			&branchNames); err != nil {
+			shared.Logger().Error("EarlyDetection", "error from GetAllBranches activity", err)
+			return err
+		}
+
+		for _, branch := range branchNames {
+			if strings.Contains(branch, "-tempcopy-for-target-") {
+				// no need to do rebase with quantm created temp branches
+				continue
+			}
+
+			if err := workflow.ExecuteActivity(pctx, repoProviderInst.MergeBranch, installationID, repoName, repoOwner, defaultBranch,
+				branch).Get(ctx, nil); err != nil {
+				shared.Logger().Error("EarlyDetection", "Error merging branch", err)
+
+				message := "Merge Conflicts are expected on branch " + branchName
+				if err = workflow.ExecuteActivity(
+					pctx,
+					msgProviderInst.SendChannelMessage,
+					message,
+				).Get(ctx, nil); err != nil {
+					shared.Logger().Error("Error notifying Slack", "error", err.Error())
+					return err
+				}
+			}
+		}
+
+		return nil
+	}
+
 	// detect 200+ changes
 	shared.Logger().Debug("going to detect 200+ changes")
 
