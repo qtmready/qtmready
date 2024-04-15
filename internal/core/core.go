@@ -63,6 +63,7 @@ type (
 			targetBranch string) error
 		CalculateChangesInBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, defaultBranch string,
 			targetBranch string) (int, error)
+		GetAllBranches(ctx context.Context, installationID int64, repoName string, repoOwner string) ([]string, error)
 	}
 
 	CloudProviderActivities interface {

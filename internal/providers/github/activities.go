@@ -190,7 +190,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	}
 
 	defaultBranch := *repo.DefaultBranch
-	newBranchName := defaultBranch + "-copy-for-" + targetBranchName
+	newBranchName := defaultBranch + "-tempcopy-for-target-" + targetBranchName
 
 	// Get the latest commit SHA of the default branch
 	commits, _, err := client.Repositories.ListCommits(ctx, repoOwner, repoName, &gh.CommitsListOptions{
@@ -201,11 +201,11 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 		return err.Error(), err
 	}
 
-	// Use the latest commit SHA
-	if len(commits) == 0 {
-		shared.Logger().Error("RebaseAndMerge Activity", "No commits found in the default branch.", nil)
-		return err.Error(), err
-	}
+	// // Use the latest commit SHA
+	// if len(commits) == 0 {
+	// 	shared.Logger().Error("RebaseAndMerge Activity", "No commits found in the default branch.", nil)
+	// 	return err.Error(), err
+	// }
 
 	latestCommitSHA := *commits[0].SHA
 
@@ -493,4 +493,26 @@ func (a *Activities) CalculateChangesInBranch(ctx context.Context, installationI
 	shared.Logger().Debug("CalculateChangesInBranch", "total changes in branch "+targetBranch, changes)
 
 	return changes, nil
+}
+
+func (a *Activities) GetAllBranches(ctx context.Context, installationID int64, repoName string, repoOwner string) ([]string, error) {
+	//get github client
+	client, err := Instance().GetClientFromInstallation(installationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return nil, err
+	}
+
+	branches, _, err := client.Repositories.ListBranches(ctx, repoOwner, repoName, nil)
+	if err != nil {
+		shared.Logger().Error("GetAllBranches: could not get branches", "Error", err)
+		return nil, err
+	}
+
+	var branchNames []string
+	for _, branch := range branches {
+		branchNames = append(branchNames, *branch.Name)
+	}
+
+	return branchNames, nil
 }
