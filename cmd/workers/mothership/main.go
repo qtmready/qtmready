@@ -74,7 +74,7 @@ func main() {
 	coreWrkr.RegisterWorkflow(cwfs.GetAssets)
 	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)
 	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
-	coreWrkr.RegisterWorkflow(cwfs.EarlyDetection)
+	coreWrkr.RegisterWorkflow(cwfs.BranchController)
 	coreWrkr.RegisterWorkflow(cwfs.StaleBranchDetection)
 
 	// core activities

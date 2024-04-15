@@ -20,6 +20,7 @@ package core
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -192,11 +193,16 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	return nil
 }
 
-func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
-	shared.Logger().Debug("EarlyDetection", "waiting for signal", shared.WorkflowEarlyDetection.String())
+// when a push event is received by quantm, branch controller gets active.
+// if the push event occurred on the default branch (e.g. main) quantm,
+// rebases all available branches with the default one.
+// otherwise it runs early detection algorithm to see if the branch
+// could be problematic when a PR is opened on it.
+func (w *Workflows) BranchController(ctx workflow.Context) error {
+	shared.Logger().Debug("BranchController", "waiting for signal", shared.WorkflowPushEvent.String())
 
 	// get push event data via workflow signal
-	ch := workflow.GetSignalChannel(ctx, shared.WorkflowEarlyDetection.String())
+	ch := workflow.GetSignalChannel(ctx, shared.WorkflowPushEvent.String())
 
 	signalPayload := &shared.PushEventSignal{}
 
@@ -242,7 +248,7 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
 	defaultBranch := signalPayload.DefaultBranch
 	repoProvider := signalPayload.RepoProvider
 
-	shared.Logger().Info("EarlyDetection", "signal payload", signalPayload)
+	shared.Logger().Info("BranchController", "signal payload", signalPayload)
 
 	repoProviderInst := Instance().RepoProvider(RepoProvider(repoProvider))
 
@@ -263,7 +269,7 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
 		var branchNames []string
 		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetAllBranches, installationID, repoName, repoOwner).Get(ctx,
 			&branchNames); err != nil {
-			shared.Logger().Error("EarlyDetection", "error from GetAllBranches activity", err)
+			shared.Logger().Error("BranchController", "error from GetAllBranches activity", err)
 			return err
 		}
 
@@ -275,7 +281,7 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
 
 			if err := workflow.ExecuteActivity(pctx, repoProviderInst.MergeBranch, installationID, repoName, repoOwner, defaultBranch,
 				branch).Get(ctx, nil); err != nil {
-				shared.Logger().Error("EarlyDetection", "Error merging branch", err)
+				shared.Logger().Error("BranchController", "Error merging branch", err)
 
 				message := "Merge Conflicts are expected on branch " + branchName
 				if err = workflow.ExecuteActivity(
@@ -298,7 +304,7 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
 	changes := 0
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.CalculateChangesInBranch, installationID, repoName, repoOwner,
 		defaultBranch, branchName).Get(ctx, &changes); err != nil {
-		shared.Logger().Error("EarlyDetection", "error from CalculateChangesInBranch activity", err)
+		shared.Logger().Error("BranchController", "error from CalculateChangesInBranch activity", err)
 		return err
 	}
 
@@ -325,7 +331,7 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
 	latestDefBranchCommitSHA := ""
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), defaultBranch).Get(ctx,
 		&latestDefBranchCommitSHA); err != nil {
-		shared.Logger().Error("EarlyDetection", "error from GetLatestCommit activity", err)
+		shared.Logger().Error("BranchController", "error from GetLatestCommit activity", err)
 		return err
 	}
 
@@ -335,21 +341,21 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
 	// delete the branch if it is present already
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.DeleteBranch, installationID, repoName, repoOwner,
 		tempBranchName).Get(ctx, nil); err != nil {
-		shared.Logger().Error("EarlyDetection", "error from DeleteBranch activity", err)
+		shared.Logger().Error("BranchController", "error from DeleteBranch activity", err)
 		return err
 	}
 
 	// create new ref
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.CreateBranch, installationID, repoID, repoName, repoOwner,
 		latestDefBranchCommitSHA, tempBranchName).Get(ctx, nil); err != nil {
-		shared.Logger().Error("EarlyDetection", "error from DeleteBranch activity", err)
+		shared.Logger().Error("BranchController", "error from DeleteBranch activity", err)
 		return err
 	}
 
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.MergeBranch, installationID, repoName, repoOwner, tempBranchName,
 		branchName).Get(ctx, nil); err != nil {
 		// dont want to retry this workflow so not returning error, just log and return
-		shared.Logger().Error("EarlyDetection", "Error merging branch", err)
+		shared.Logger().Error("BranchController", "Error merging branch", err)
 
 		message := "Merge Conflicts are expected on branch " + branchName
 		if err = workflow.ExecuteActivity(
@@ -372,7 +378,7 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
 	latestDefBranchCommitSHA = ""
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), branchName).Get(ctx,
 		&latestDefBranchCommitSHA); err != nil {
-		shared.Logger().Error("EarlyDetection", "error from GetLatestCommit activity", err)
+		shared.Logger().Error("BranchController", "error from GetLatestCommit activity", err)
 		return err
 	}
 
@@ -402,7 +408,7 @@ func (w *Workflows) EarlyDetection(ctx workflow.Context) error {
 
 	if err != nil {
 		// dont want to retry this workflow so not returning error, just log and return
-		shared.Logger().Error("EarlyDetection", "error executing child workflow", err)
+		shared.Logger().Error("BranchController", "error executing child workflow", err)
 		return nil
 	}
 
@@ -434,7 +440,7 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.Pus
 	latestCommitSHA := ""
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(event.RepoID, 10), branchName).Get(ctx,
 		&latestCommitSHA); err != nil {
-		shared.Logger().Error("EarlyDetection", "error from GetLatestCommit activity", err)
+		shared.Logger().Error("StaleBranchDetection", "error from GetLatestCommit activity", err)
 		return err
 	}
 

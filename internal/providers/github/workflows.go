@@ -179,10 +179,10 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 		Client().SignalWithStartWorkflow(
 		context.Background(),
 		opts.ID,
-		shared.WorkflowEarlyDetection.String(),
+		shared.WorkflowPushEvent.String(),
 		signalPayload,
 		opts,
-		cw.EarlyDetection,
+		cw.BranchController,
 	)
 	if err != nil {
 		shared.Logger().Error("OnPushEvent", "Error signaling workflow", err)

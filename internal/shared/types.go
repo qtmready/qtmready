@@ -86,7 +86,7 @@ const (
 const (
 	WorkflowSignalDeploymentStarted WorkflowSignal = "deployment_trigger"
 	WorkflowSignalCreateChangeset   WorkflowSignal = "create_changeset"
-	WorkflowEarlyDetection          WorkflowSignal = "early_detection"
+	WorkflowPushEvent               WorkflowSignal = "push_event_triggered"
 )
 
 /*
