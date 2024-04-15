@@ -10,7 +10,7 @@ import (
 
 // PrepareMutexActivity either starts a new mutex workflow for the requested resource or signals the running mutex to schedule a new lock.
 // with the specified timeout.
-func PrepareMutexActivity(ctx context.Context, payload *Info) (*workflow.Execution, error) {
+func PrepareMutexActivity(ctx context.Context, payload *Handler) (*workflow.Execution, error) {
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
 		shared.WithWorkflowBlock("mutex"),
 		shared.WithWorkflowBlockID(payload.ResourceID),

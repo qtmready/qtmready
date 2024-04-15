@@ -62,7 +62,7 @@ func configure(queue queue.Name) worker.Worker {
 
 func ParentWorkflow(ctx workflow.Context) error {
 	logger := workflow.GetLogger(ctx)
-	waitfor := make(Data, 0)
+	queue := make(Data, 0)
 	futures := make([]workflow.Future, 0)
 
 	for range 2 {
@@ -70,26 +70,26 @@ func ParentWorkflow(ctx workflow.Context) error {
 			n, _ := rand.Int(rand.Reader, big.NewInt(30))
 			wait := time.Duration(n.Int64()) * time.Second
 			id, _ := uuid.NewV7()
-			waitfor[id] = wait
+			queue[id] = wait
 
 			return nil
 		})
 	}
 
-	for id := range waitfor {
+	for id := range queue {
 		opts := shared.Temporal().Queue(shared.CoreQueue).ChildWorkflowOptions(
 			shared.WithWorkflowParent(ctx),
 			shared.WithWorkflowBlock("child"),
 			shared.WithWorkflowBlockID(id.String()),
 		)
 		childctx := workflow.WithChildOptions(ctx, opts)
-		future := workflow.ExecuteChildWorkflow(childctx, ChildWorkflow, id, waitfor[id])
+		future := workflow.ExecuteChildWorkflow(childctx, ChildWorkflow, id, queue[id])
 
 		futures = append(futures, future)
 	}
 
 	for _, future := range futures {
-		logger.Info("waiting for child workflow to complete")
+		logger.Info("waiting for child workflows to complete")
 
 		_ = future.Get(ctx, nil)
 	}
@@ -101,25 +101,32 @@ func ChildWorkflow(ctx workflow.Context, id uuid.UUID, timeout time.Duration) er
 	logger := workflow.GetLogger(ctx)
 	logger.Info("Starting child workflow", slog.String("id", id.String()), slog.String("timeout", timeout.String()))
 
-	lock := mutex.New(mutex.WithResourceID("repo.xyz"), mutex.WithTimeout(timeout+(10*time.Second)), mutex.WithCallerContext(ctx))
+	lock := mutex.New(mutex.WithResourceID("repo.xyz"), mutex.WithTimeout(timeout+(10*time.Second)), mutex.WithHandler(ctx))
+
+	// Prepare the lock means that get the reference to running Mutex workflow and schedule a new lock on it. If there is no Mutex workflow
+	// running, then start a new Mutex workflow and schedule a lock on it.
 	if err := lock.Prepare(ctx); err != nil {
-		return err
+		return err // or handle error
 	}
 
+	// Acquire acquires the lock. If we do not handle the error.
 	if err := lock.Acquire(ctx); err != nil {
-		return err
+		return err // or handle error
 	}
 
+	// Do so work here.
 	if err := workflow.Sleep(ctx, timeout); err != nil {
-		return err
+		return err // or handle error
 	}
 
+	// Release the lock.
 	if err := lock.Release(ctx); err != nil {
-		return err
+		return err // or handle error
 	}
 
+	// Cleanup tries to shutdown the Mutex workflow if there are no more locks waiting.
 	if err := lock.Cleanup(ctx); err != nil {
-		return err
+		return err // or handle error
 	}
 
 	return nil

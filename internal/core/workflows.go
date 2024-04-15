@@ -598,7 +598,7 @@ func (w *Workflows) ProvisionInfra(ctx workflow.Context, assets *Assets) error {
 }
 
 // Deploy deploys the stack.
-func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Info, assets *Assets) error {
+func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Handler, assets *Assets) error {
 	logger := workflow.GetLogger(ctx)
 	logger.Info("Deployment initiated", "changeset", assets.ChangesetID, "infra", assets.Infra)
 	infra := make(Infra)
@@ -788,7 +788,7 @@ func onInfraProvisionedSignal(
 		ctx = workflow.WithChildOptions(ctx, opts)
 
 		err := workflow.
-			ExecuteChildWorkflow(ctx, w.Deploy, stackID, lock.(*mutex.Info), assets).
+			ExecuteChildWorkflow(ctx, w.Deploy, stackID, lock.(*mutex.Handler), assets).
 			GetChildWorkflowExecution().Get(ctx, &execution)
 		if err != nil {
 			logger.Error("Error in Executing deployment workflow", "Error", err)

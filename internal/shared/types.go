@@ -40,8 +40,9 @@ type (
 		ImageRegistry    string //TODO: move registry enum generation to shared
 	}
 
-	FutureHandler  func(workflow.Future)               // FutureHandler is the signature of the future handler function.
-	ChannelHandler func(workflow.ReceiveChannel, bool) // ChannelHandler is the signature of the channel handler function.
+	FutureHandler    func(workflow.Future)               // FutureHandler is the signature of the future handler for temporal.
+	ChannelHandler   func(workflow.ReceiveChannel, bool) // ChannelHandler is the signature of the channel handler for temporal.
+	CoroutineHandler func(workflow.Context)              // CoroutineHandler is the signature of the coroutine handler for temporal.
 
 	WorkflowOption = queue.WorkflowOptions
 
