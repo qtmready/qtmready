@@ -96,7 +96,7 @@ services:
       - mothership
       - migrate
     container_name: ctrlplane-job-migrate
-    image: cosmtrek/air:v1.49.0
+    image: cosmtrek/air:v1.50.0
     environment:
       SERVICE_NAME: job::migrate
       CASSANDRA_MIGRATION_SOURCE_URL: file:///migrate/internal/db/migrations
@@ -116,7 +116,7 @@ services:
       - full
       - api
     container_name: ctrlplane-api
-    image: cosmtrek/air:v1.49.0
+    image: cosmtrek/air:v1.50.0
     environment:
       SERVICE_NAME: mothership::api
       DEBUG: true
@@ -138,7 +138,7 @@ services:
     profiles:
       - mothership
       - full
-    image: cosmtrek/air:v1.49.0
+    image: cosmtrek/air:v1.50.0
     environment:
       SERVICE_NAME: mothership::worker
       DEBUG: true
