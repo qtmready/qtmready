@@ -65,7 +65,7 @@ func ParentWorkflow(ctx workflow.Context) error {
 	queue := make(Data, 0)
 	futures := make([]workflow.Future, 0)
 
-	for range 2 {
+	for range 1 {
 		workflow.SideEffect(ctx, func(workflow.Context) any {
 			n, _ := rand.Int(rand.Reader, big.NewInt(30))
 			wait := time.Duration(n.Int64()) * time.Second

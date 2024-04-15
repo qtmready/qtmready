@@ -69,7 +69,6 @@ func Workflow(ctx workflow.Context, starter *Handler) error {
 		wfinfo(ctx, starter, "mutex: waiting for lock request ...")
 
 		found := true
-		cleanup := false
 		timeout := time.Duration(0)
 		acquirer := workflow.NewSelector(ctx)
 
@@ -79,9 +78,7 @@ func Workflow(ctx workflow.Context, starter *Handler) error {
 		acquirer.Select(ctx)
 
 		// cleanup signal received and processed. queue is empty, so shutdown the workflow.
-		if !persist || cleanup {
-			wfinfo(ctx, starter, "mutex: cleanup done, shutting down ...")
-
+		if !persist {
 			continue
 		}
 
@@ -103,7 +100,8 @@ func Workflow(ctx workflow.Context, starter *Handler) error {
 			releaser := workflow.NewSelector(ctx)
 
 			releaser.AddReceive(
-				workflow.GetSignalChannel(ctx, WorkflowSignalRelease.String()), _release(ctx, handler, &status, &pool, &orphans),
+				workflow.GetSignalChannel(ctx, WorkflowSignalRelease.String()),
+				_release(ctx, handler, &status, &pool, &orphans),
 			)
 			releaser.AddFuture(workflow.NewTimer(ctx, timeout), _abort(ctx, handler, &status, &pool, &orphans, timeout))
 
@@ -116,6 +114,10 @@ func Workflow(ctx workflow.Context, starter *Handler) error {
 			}
 		}
 	}
+
+	// FIXME - This waits for WorkflowSignalCleanupDone to be recieved at the caller's side. There must be a better way.
+	// Investigate selector.AddSend(ctx, valueptr, callback). I think that should do it.
+	_ = workflow.Sleep(ctx, 500*time.Millisecond)
 
 	wfinfo(ctx, starter, "mutex: shutdown!")
 
@@ -227,8 +229,11 @@ func _cleanup(ctx workflow.Context, handler *Handler, pool *Pool, fn workflow.Se
 				shutdown = true
 			}
 
-			workflow.SignalExternalWorkflow(ctx, rx.Info.WorkflowExecution.ID, "", WorkflowSignalCleanupDone.String(), shutdown)
-			wfinfo(ctx, handler, "mutex: cleanup done!", slog.Int("pool_size", pool.Size()))
+			_ = workflow.
+				SignalExternalWorkflow(ctx, rx.Info.WorkflowExecution.ID, "", WorkflowSignalCleanupDone.String(), shutdown).
+				Get(ctx, nil)
+
+			wfinfo(ctx, handler, "mutex: cleanup request processed!", slog.Int("pool_size", pool.Size()))
 		}
 	}
 }
@@ -238,7 +243,7 @@ func _shutdown(ctx workflow.Context, handler *Handler, persist *bool) shared.Fut
 		rx := &Handler{}
 		_ = future.Get(ctx, rx)
 
-		wfinfo(ctx, handler, "mutex: shutdown requested ...")
+		wfinfo(ctx, handler, "mutex: shutdown request recieved ...")
 
 		*persist = false
 
