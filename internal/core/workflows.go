@@ -369,11 +369,15 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 			return err
 		}
 
+		shared.Logger().Info("BranchController", "Total branches ", len(branchNames))
+
 		for _, branch := range branchNames {
-			if strings.Contains(branch, "-tempcopy-for-target-") {
+			if strings.Contains(branch, "-tempcopy-for-target-") || branch == defaultBranch {
 				// no need to do rebase with quantm created temp branches
 				continue
 			}
+
+			shared.Logger().Info("BranchController", "Testing conflicts with branch ", branch)
 
 			if err := workflow.ExecuteActivity(pctx, repoProviderInst.MergeBranch, installationID, repoName, repoOwner, defaultBranch,
 				branch).Get(ctx, nil); err != nil {
