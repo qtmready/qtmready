@@ -503,15 +503,32 @@ func (a *Activities) GetAllBranches(ctx context.Context, installationID int64, r
 		return nil, err
 	}
 
-	branches, _, err := client.Repositories.ListBranches(ctx, repoOwner, repoName, nil)
-	if err != nil {
-		shared.Logger().Error("GetAllBranches: could not get branches", "Error", err)
-		return nil, err
-	}
-
 	var branchNames []string
-	for _, branch := range branches {
-		branchNames = append(branchNames, *branch.Name)
+
+	page := 1
+
+	for {
+		branches, resp, err := client.Repositories.ListBranches(ctx, repoOwner, repoName, &gh.BranchListOptions{
+			ListOptions: gh.ListOptions{
+				Page:    page,
+				PerPage: 30, // Adjust this value as needed
+			},
+		})
+		if err != nil {
+			shared.Logger().Error("GetAllBranches: could not get branches", "Error", err)
+			return nil, err
+		}
+
+		for _, branch := range branches {
+			branchNames = append(branchNames, *branch.Name)
+		}
+
+		// Check if there are more pages to fetch
+		if resp.NextPage == 0 {
+			break // No more pages
+		}
+
+		page = resp.NextPage
 	}
 
 	return branchNames, nil
