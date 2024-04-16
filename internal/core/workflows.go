@@ -219,7 +219,7 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 	latestDefBranchCommitSHA := ""
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), defaultBranch).Get(ctx,
 		&latestDefBranchCommitSHA); err != nil {
-		shared.Logger().Error("BranchController", "error from GetLatestCommit activity", err)
+		shared.Logger().Error("CheckEarlyWarning", "error from GetLatestCommit activity", err)
 		return err
 	}
 
@@ -229,21 +229,21 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 	// delete the branch if it is present already
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.DeleteBranch, installationID, repoName, repoOwner,
 		tempBranchName).Get(ctx, nil); err != nil {
-		shared.Logger().Error("BranchController", "error from DeleteBranch activity", err)
+		shared.Logger().Error("CheckEarlyWarning", "error from DeleteBranch activity", err)
 		return err
 	}
 
 	// create new ref
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.CreateBranch, installationID, repoID, repoName, repoOwner,
 		latestDefBranchCommitSHA, tempBranchName).Get(ctx, nil); err != nil {
-		shared.Logger().Error("BranchController", "error from DeleteBranch activity", err)
+		shared.Logger().Error("CheckEarlyWarning", "error from DeleteBranch activity", err)
 		return err
 	}
 
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.MergeBranch, installationID, repoName, repoOwner, tempBranchName,
 		branchName).Get(ctx, nil); err != nil {
 		// dont want to retry this workflow so not returning error, just log and return
-		shared.Logger().Error("BranchController", "Error merging branch", err)
+		shared.Logger().Error("CheckEarlyWarning", "Error merging branch", err)
 
 		message := "Merge Conflicts are expected on branch " + branchName
 		if err = workflow.ExecuteActivity(
@@ -268,7 +268,7 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 	changes := 0
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.CalculateChangesInBranch, installationID, repoName, repoOwner,
 		defaultBranch, branchName).Get(ctx, &changes); err != nil {
-		shared.Logger().Error("BranchController", "error from CalculateChangesInBranch activity", err)
+		shared.Logger().Error("CheckEarlyWarning", "error from CalculateChangesInBranch activity", err)
 		return err
 	}
 
@@ -276,7 +276,7 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 		message := "200+ lines changed on branch " + branchName
 
 		if err := workflow.ExecuteActivity(
-			ctx,
+			pctx,
 			msgProviderInst.SendChannelMessage,
 			message,
 		).Get(ctx, nil); err != nil {
@@ -379,7 +379,7 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 				branch).Get(ctx, nil); err != nil {
 				shared.Logger().Error("BranchController", "Error merging branch", err)
 
-				message := "Merge Conflicts are expected on branch " + branchName
+				message := "Merge Conflicts are expected on branch " + branch
 				if err = workflow.ExecuteActivity(
 					pctx,
 					msgProviderInst.SendChannelMessage,
