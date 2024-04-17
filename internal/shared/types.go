@@ -27,7 +27,8 @@ import (
 
 // workflow related shared types and contants.
 type (
-	WorkflowSignal string // WorkflowSignal is the name of a workflow signal.
+	// WorkflowSignal is a type alias to define the name of the workflow signal.
+	WorkflowSignal string
 
 	// PullRequestSignal is the sent to PR workflows to trigger a deployment.
 	PullRequestSignal struct {
@@ -39,8 +40,9 @@ type (
 		ImageRegistry    string //TODO: move registry enum generation to shared
 	}
 
-	FutureHandler  func(workflow.Future)               // FutureHandler is the signature of the future handler function.
-	ChannelHandler func(workflow.ReceiveChannel, bool) // ChannelHandler is the signature of the channel handler function.
+	FutureHandler    func(workflow.Future)               // FutureHandler is the signature of the future handler for temporal.
+	ChannelHandler   func(workflow.ReceiveChannel, bool) // ChannelHandler is the signature of the channel handler for temporal.
+	CoroutineHandler func(workflow.Context)              // CoroutineHandler is the signature of the coroutine handler for temporal.
 
 	WorkflowOption = queue.WorkflowOptions
 
@@ -48,6 +50,25 @@ type (
 		RepoTableID gocql.UUID
 		RepoID      string
 		CommitID    string
+	}
+
+	PushEventSignal struct {
+		RefBranch      string
+		RepoProvider   string
+		RepoID         int64
+		RepoName       string
+		RepoOwner      string
+		DefaultBranch  string
+		InstallationID int64
+	}
+
+	MergeQueueSignal struct {
+		PullRequestID  int64
+		InstallationID int64
+		RepoOwner      string
+		RepoName       string
+		Branch         string
+		RepoProvider   string
 	}
 )
 
@@ -74,6 +95,8 @@ const (
 const (
 	WorkflowSignalDeploymentStarted WorkflowSignal = "deployment_trigger"
 	WorkflowSignalCreateChangeset   WorkflowSignal = "create_changeset"
+	WorkflowPushEvent               WorkflowSignal = "push_event_triggered"
+	MergeQueueStarted               WorkflowSignal = "merge_queue_trigger"
 )
 
 /*

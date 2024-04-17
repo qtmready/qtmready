@@ -27,6 +27,7 @@ import (
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/providers/gcp/cloudrun"
 	"go.breu.io/quantm/internal/providers/github"
+	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -44,6 +45,7 @@ func main() {
 	core.Instance(
 		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
 		core.WithCloudResource(core.CloudProviderGCP, core.DriverCloudrun, &cloudrun.Constructor{}),
+		core.WithMessageProvider(core.MessageProviderSlack, &slack.Activities{}),
 	)
 
 	ghwfs := &github.Workflows{}
@@ -55,13 +57,11 @@ func main() {
 	providerWrkr.RegisterWorkflow(ghwfs.OnPushEvent)
 	providerWrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
 	providerWrkr.RegisterWorkflow(ghwfs.OnLabelEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.PollMergeQueue)
 	providerWrkr.RegisterWorkflow(ghwfs.OnGithubActionResult)
-	providerWrkr.RegisterWorkflow(ghwfs.EarlyDetection)
-	providerWrkr.RegisterWorkflow(ghwfs.StaleBranchDetection)
 
 	// provider activities
 	providerWrkr.RegisterActivity(&github.Activities{})
+	providerWrkr.RegisterActivity(&slack.Activities{})
 
 	// mutex workflow
 	coreWrkr.RegisterWorkflow(mutex.Workflow)
@@ -73,10 +73,14 @@ func main() {
 	coreWrkr.RegisterWorkflow(cwfs.GetAssets)
 	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)
 	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
+	coreWrkr.RegisterWorkflow(cwfs.BranchController)
+	coreWrkr.RegisterWorkflow(cwfs.StaleBranchDetection)
+	coreWrkr.RegisterWorkflow(cwfs.PollMergeQueue)
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.Activities{})
 	coreWrkr.RegisterActivity(&cloudrun.Activities{})
+	coreWrkr.RegisterActivity(mutex.PrepareMutexActivity)
 
 	// start worker for provider queue
 	err := providerWrkr.Start()

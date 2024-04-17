@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	gh "github.com/google/go-github/v53/github"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core"
@@ -150,232 +149,45 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 		branchName = parts[len(parts)-1]
 	}
 
-	if branchName == payload.Repository.DefaultBranch || strings.Contains(branchName, "-tempcopy-for-target-") {
-		shared.Logger().Debug("OnPushEvent", "push on default branch or temp branch", branchName)
+	if strings.Contains(branchName, "-tempcopy-for-target-") {
+		shared.Logger().Debug("OnPushEvent", "push on temp branch", branchName)
 		return nil
 	}
 
-	wf := &Workflows{}
+	signalPayload := &shared.PushEventSignal{
+		RefBranch:      branchName,
+		RepoID:         payload.Repository.ID,
+		RepoName:       payload.Repository.Name,
+		RepoOwner:      payload.Repository.Owner.Login,
+		DefaultBranch:  payload.Repository.DefaultBranch,
+		InstallationID: payload.Installation.ID,
+		RepoProvider:   "github",
+	}
+
+	cw := &core.Workflows{}
 	opts := shared.Temporal().
-		Queue(shared.ProvidersQueue).
+		Queue(shared.CoreQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("repo"),
 			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
 			shared.WithWorkflowElement("branch"),
-			shared.WithWorkflowElementID(payload.Ref),
-			shared.WithWorkflowProp("type", "Early-Detection"),
+			shared.WithWorkflowElementID(branchName),
+			shared.WithWorkflowProp("type", "branch_controller"),
 		)
 
 	_, err := shared.Temporal().
-		Client().
-		SignalWithStartWorkflow(
-			context.Background(),
-			opts.ID,
-			WorkflowSignalPushEvent.String(),
-			payload,
-			opts,
-			wf.EarlyDetection,
-			branchName,
-		)
+		Client().SignalWithStartWorkflow(
+		context.Background(),
+		opts.ID,
+		shared.WorkflowPushEvent.String(),
+		signalPayload,
+		opts,
+		cw.BranchController,
+	)
 	if err != nil {
 		shared.Logger().Error("OnPushEvent", "Error signaling workflow", err)
 		return err
 	}
-
-	return nil
-}
-
-func (w *Workflows) EarlyDetection(ctx workflow.Context, branchName string) error {
-	shared.Logger().Info("EarlyDetection", "entrypoint", "workflow signaled for branch:"+branchName)
-
-	shared.Logger().Debug("Early-Detection", "waiting for signal", WorkflowSignalPushEvent.String())
-
-	// get push event data via workflow signal
-	ch := workflow.GetSignalChannel(ctx, WorkflowSignalPushEvent.String())
-
-	event := &PushEvent{}
-
-	// receive signal payload
-	ch.Receive(ctx, event)
-
-	// shared.Logger().Info("Early-Detection", "signal payload", event)
-
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
-
-	// get github client
-	client, err := Instance().GetClientFromInstallation(event.Installation.ID)
-	if err != nil {
-		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
-		return err
-	}
-
-	m := core.Instance().MessageProvider(core.MessageProviderSlack)
-
-	// detect 200+ changes
-	{
-		shared.Logger().Debug("going to detect 200+ changes")
-
-		comparison, _, err := client.Repositories.CompareCommits(context.Background(), event.Repository.Owner.Login,
-			event.Repository.Name, event.Repository.DefaultBranch, branchName, nil)
-
-		if err != nil {
-			shared.Logger().Error("CompareCommits", "Error", err)
-
-			// dont want to retry this workflow so not returning error, just log and return
-			return nil
-		}
-
-		var changes int
-		for _, file := range comparison.Files {
-			changes += file.GetChanges()
-		}
-
-		shared.Logger().Debug("Early-Detection", "total changes in branch", changes)
-
-		if changes > 200 {
-			message := "200+ lines changed on branch " + event.Repository.DefaultBranch
-
-			if err := workflow.ExecuteActivity(
-				actx,
-				m.SendChannelMessage,
-				message,
-			).Get(ctx, nil); err != nil {
-				shared.Logger().Error("Error notifying Slack", "error", err.Error())
-				return err
-			}
-		}
-
-		shared.Logger().Debug("200+ changes NOT detected")
-	}
-
-	// check merge conflicts
-	{
-		shared.Logger().Debug("going to detect merge conflicts")
-
-		latestDefBranchCommitSHA := ""
-		if err = workflow.ExecuteActivity(actx, activities.GetLatestCommit, strconv.FormatInt(event.Repository.ID, 10),
-			event.Repository.DefaultBranch).Get(ctx, &latestDefBranchCommitSHA); err != nil {
-			shared.Logger().Error("EarlyDetection", "error from GetLatestCommit activity", err)
-			return err
-		}
-
-		// create a temp branch/ref
-		tempBranchName := event.Repository.DefaultBranch + "-tempcopy-for-target-" + branchName
-
-		// delete the branch if it is present already
-		if err = workflow.ExecuteActivity(actx, activities.DeleteBranch, event.Installation.ID, event.Repository.Name,
-			event.Repository.Owner.Login, tempBranchName).Get(ctx, nil); err != nil {
-			shared.Logger().Error("EarlyDetection", "error from DeleteBranch activity", err)
-			return err
-		}
-
-		// create new ref
-		if err = workflow.ExecuteActivity(actx, activities.CreateBranch, event.Installation.ID, event.Repository.ID, event.Repository.Name,
-			event.Repository.Owner.Login, latestDefBranchCommitSHA, tempBranchName).Get(ctx, nil); err != nil {
-			shared.Logger().Error("EarlyDetection", "error from DeleteBranch activity", err)
-			return err
-		}
-
-		// Perform rebase of the target branch with the new temp branch
-		rebaseRequest := &gh.RepositoryMergeRequest{
-			Base:          &tempBranchName,
-			Head:          &branchName,
-			CommitMessage: gh.String("Rebasing " + branchName + " with " + tempBranchName),
-		}
-		if _, _, err = client.Repositories.Merge(context.Background(), event.Repository.Owner.Login, event.Repository.Name,
-			rebaseRequest); err != nil {
-			message := "Merge Conflicts are expected on branch " + branchName
-			if err = workflow.ExecuteActivity(
-				actx,
-				m.SendChannelMessage,
-				message,
-			).Get(ctx, nil); err != nil {
-				shared.Logger().Error("Error notifying Slack", "error", err.Error())
-				return err
-			}
-
-			shared.Logger().Error("Early-Detection", "Error rebasing branches: ", err)
-			// dont want to retry this workflow so not returning error, just log and return
-			return nil
-		}
-
-		shared.Logger().Debug("merge conflicts NOT detected")
-	}
-
-	// execute child workflow for stale detection
-	{
-		shared.Logger().Debug("going to detect stale branch")
-
-		latestDefBranchCommitSHA := ""
-		if err := workflow.ExecuteActivity(actx, activities.GetLatestCommit, strconv.FormatInt(event.Repository.ID, 10),
-			branchName).Get(ctx, &latestDefBranchCommitSHA); err != nil {
-			shared.Logger().Error("EarlyDetection", "error from GetLatestCommit activity", err)
-			return err
-		}
-
-		wf := &Workflows{}
-		opts := shared.Temporal().
-			Queue(shared.ProvidersQueue).
-			WorkflowOptions(
-				shared.WithWorkflowBlock("repo"),
-				shared.WithWorkflowBlockID(strconv.FormatInt(event.Repository.ID, 10)),
-				shared.WithWorkflowElement("branch"),
-				shared.WithWorkflowElementID(event.Ref),
-				shared.WithWorkflowProp("type", "Stale-Detection"),
-			)
-
-		if _, err := shared.Temporal().Client().ExecuteWorkflow(
-			context.Background(),
-			opts,
-			wf.StaleBranchDetection,
-			event.Installation.ID, strconv.FormatInt(event.Repository.ID, 10), event.Repository.Owner.Login, event.Repository.Name,
-			branchName, latestDefBranchCommitSHA); err != nil {
-			shared.Logger().Error("Early-Detection", "error executing child workflow", err)
-
-			// dont want to retry this workflow so not returning error, just log and return
-			return nil
-		}
-	}
-
-	return nil
-}
-
-func (w *Workflows) StaleBranchDetection(ctx workflow.Context, installationID int64, repoID string, repoOwner string, repoName string,
-	branchName string, lastBranchCommit string) error {
-	// Sleep for 5 days before raising stale detection
-	_ = workflow.Sleep(ctx, 5*24*time.Hour)
-	// _ = workflow.Sleep(ctx, 30*time.Second)
-
-	shared.Logger().Debug("StaleBranchDetection", "woke up from sleep", "checking for stale branch")
-
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
-	m := core.Instance().MessageProvider(core.MessageProviderSlack)
-
-	latestCommitSHA := ""
-	if err := workflow.ExecuteActivity(actx, activities.GetLatestCommit, repoID, branchName).Get(ctx, &latestCommitSHA); err != nil {
-		shared.Logger().Error("EarlyDetection", "error from GetLatestCommit activity", err)
-		return err
-	}
-
-	// check if the branchName branch has the lastBranchCommit as the latest commit
-	if lastBranchCommit == latestCommitSHA {
-		message := "Stale branch " + branchName
-		if err := workflow.ExecuteActivity(
-			actx,
-			m.SendChannelMessage,
-			message,
-		).Get(ctx, nil); err != nil {
-			shared.Logger().Error("Error notifying Slack", "error", err.Error())
-			return err
-		}
-
-		return nil
-	}
-
-	// at this point, the branch is not stale so just return
-	shared.Logger().Debug("stale branch NOT detected")
 
 	return nil
 }
@@ -489,19 +301,18 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 	if label == fmt.Sprintf("quantm ready") {
 		logger.Debug("quantm ready label applied")
 
-		workflows := &Workflows{}
+		cw := &core.Workflows{}
 		opts := shared.Temporal().
-			Queue(shared.ProvidersQueue).
+			Queue(shared.CoreQueue).
 			WorkflowOptions(
-				shared.WithWorkflowBlock("github"),
-				shared.WithWorkflowBlockID(fmt.Sprint(installationID)),
-				shared.WithWorkflowElement("repo"),
-				shared.WithWorkflowElementID(fmt.Sprint(payload.Repository.ID)),
-				shared.WithWorkflowMod("PR"),
-				shared.WithWorkflowModID(fmt.Sprint(pullRequestID)),
+				shared.WithWorkflowBlock("repo"),
+				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+				shared.WithWorkflowElement("PR"),
+				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
+				shared.WithWorkflowProp("type", "merge_queue"),
 			)
 
-		payload2 := &MergeQueue{
+		payload2 := &shared.MergeQueueSignal{
 			PullRequestID:  pullRequestID,
 			InstallationID: installationID,
 			RepoOwner:      repoOwner,
@@ -509,18 +320,18 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 			Branch:         branch,
 		}
 
-		_, err := shared.Temporal().Client().SignalWithStartWorkflow(
+		_, err := shared.Temporal().
+			Client().SignalWithStartWorkflow(
 			context.Background(),
 			opts.ID,
-			WorkflowSignalPullRequestLabeled.String(),
+			shared.MergeQueueStarted.String(),
 			payload2,
 			opts,
-			workflows.PollMergeQueue,
+			cw.PollMergeQueue,
 		)
-
 		if err != nil {
-			shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
-			return nil
+			shared.Logger().Error("OnLabelEvent", "Error signaling workflow", err)
+			return err
 		}
 
 		shared.Logger().Info("PR sent to MergeQueue")
@@ -616,35 +427,6 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	// for !status.Complete {
 	// 	selector.Select(ctx)
 	// }
-
-	return nil
-}
-
-func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
-	logger := workflow.GetLogger(ctx)
-	logger.Info("PollMergeQueue", "entry", "workflow started")
-
-	// wait for github action to return success status
-	ch := workflow.GetSignalChannel(ctx, WorkflowSignalPullRequestLabeled.String())
-	element := &MergeQueue{}
-	ch.Receive(ctx, &element)
-
-	logger.Info("PollMergeQueue", "data recvd", element)
-
-	// trigger CICD here
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
-
-	var er error
-	err := workflow.ExecuteActivity(actx, activities.TriggerGithubAction,
-		element.InstallationID, element.RepoOwner, element.RepoName, element.Branch).Get(ctx, er)
-
-	if err != nil {
-		logger.Error("error triggering github action", "error", err)
-		return err
-	}
-
-	logger.Info("github action triggered")
 
 	return nil
 }
