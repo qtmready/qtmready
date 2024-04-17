@@ -533,3 +533,16 @@ func (a *Activities) GetAllBranches(ctx context.Context, installationID int64, r
 
 	return branchNames, nil
 }
+
+func (a *Activities) GetRepoTeamID(ctx context.Context, repoID string) (string, error) {
+	logger := activity.GetLogger(ctx)
+	prepo := &Repo{}
+
+	if err := db.Get(prepo, db.QueryParams{"github_id": repoID}); err != nil {
+		logger.Error("GetRepoTeamID failed", "Error", err)
+		return "", err
+	}
+
+	shared.Logger().Info("GetRepoTeamID Activity", "Get Repo Team ID successfully: ", prepo.TeamID)
+	return prepo.TeamID.String(), nil
+}

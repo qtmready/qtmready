@@ -233,7 +233,7 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 		DefaultBranch: request.DefaultBranch,
 		IsMonorepo:    request.IsMonorepo,
 		Provider:      request.Provider,
-		TeamID:		   teamID
+		TeamID:        teamID,
 	}
 
 	if err := db.Save(repo); err != nil {

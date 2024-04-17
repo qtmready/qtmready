@@ -65,6 +65,7 @@ type (
 			targetBranch string) (int, error)
 		GetAllBranches(ctx context.Context, installationID int64, repoName string, repoOwner string) ([]string, error)
 		TriggerCIAction(ctx context.Context, installationID int64, repoOwner string, repoName string, targetBranch string) error
+		GetRepoTeamID(ctx context.Context, repoID string) (string, error)
 	}
 
 	CloudProviderActivities interface {
