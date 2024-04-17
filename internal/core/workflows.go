@@ -245,7 +245,7 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 		// dont want to retry this workflow so not returning error, just log and return
 		shared.Logger().Error("CheckEarlyWarning", "Error merging branch", err)
 
-		message := "Merge Conflicts are expected on branch " + branchName
+		message := "Merge Conflicts are expected on branch `" + branchName + "` on repo `" + repoName + "`"
 		if err = workflow.ExecuteActivity(
 			pctx,
 			msgProviderInst.SendChannelMessage,
@@ -273,7 +273,7 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 	}
 
 	if changes > 200 {
-		message := "200+ lines changed on branch " + branchName
+		message := "200+ lines changed on branch `" + branchName + "` on repo `" + repoName + "`"
 
 		if err := workflow.ExecuteActivity(
 			pctx,
@@ -383,7 +383,7 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 				branch).Get(ctx, nil); err != nil {
 				shared.Logger().Error("BranchController", "Error merging branch", err)
 
-				message := "Merge Conflicts are expected on branch " + branch
+				message := "Merge Conflicts are expected on branch `" + branchName + "` on repo `" + repoName + "`"
 				if err = workflow.ExecuteActivity(
 					pctx,
 					msgProviderInst.SendChannelMessage,
@@ -478,7 +478,7 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.Pus
 
 	// check if the branchName branch has the lastBranchCommit as the latest commit
 	if lastBranchCommit == latestCommitSHA {
-		message := "Stale branch " + branchName
+		message := "Stale branch `" + branchName + "` on repo `" + event.RepoName + "`"
 		if err := workflow.ExecuteActivity(
 			pctx,
 			msgProviderInst.SendChannelMessage,
