@@ -375,11 +375,12 @@ type Repo struct {
 	Provider      RepoProvider `cql:"provider" json:"provider"`
 	ProviderID    string       `cql:"provider_id" json:"provider_id"`
 	StackID       gocql.UUID   `cql:"stack_id" json:"stack_id"`
+	TeamID        gocql.UUID   `cql:"team_id" json:"team_id"`
 	UpdatedAt     time.Time    `cql:"updated_at" json:"updated_at"`
 }
 
 var (
-	repoColumns = []string{"created_at", "default_branch", "id", "is_monorepo", "name", "provider", "provider_id", "stack_id", "updated_at"}
+	repoColumns = []string{"created_at", "default_branch", "id", "is_monorepo", "name", "provider", "provider_id", "stack_id", "team_id", "updated_at"}
 
 	repoMeta = itable.Metadata{
 		M: &table.Metadata{

@@ -224,6 +224,8 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 		return err
 	}
 
+	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
+
 	repo := &Repo{
 		Name:          request.Name,
 		StackID:       request.StackID,
@@ -231,6 +233,7 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 		DefaultBranch: request.DefaultBranch,
 		IsMonorepo:    request.IsMonorepo,
 		Provider:      request.Provider,
+		TeamID:		   teamID
 	}
 
 	if err := db.Save(repo); err != nil {
