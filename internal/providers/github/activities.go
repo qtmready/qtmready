@@ -496,7 +496,7 @@ func (a *Activities) CalculateChangesInBranch(ctx context.Context, installationI
 }
 
 func (a *Activities) GetAllBranches(ctx context.Context, installationID int64, repoName string, repoOwner string) ([]string, error) {
-	//get github client
+	// get github client
 	client, err := Instance().GetClientFromInstallation(installationID)
 	if err != nil {
 		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
@@ -544,5 +544,6 @@ func (a *Activities) GetRepoTeamID(ctx context.Context, repoID string) (string, 
 	}
 
 	shared.Logger().Info("GetRepoTeamID Activity", "Get Repo Team ID successfully: ", prepo.TeamID)
+
 	return prepo.TeamID.String(), nil
 }
