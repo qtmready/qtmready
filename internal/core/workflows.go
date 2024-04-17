@@ -203,7 +203,7 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 	defaultBranch := pushEvent.DefaultBranch
 
 	providerActOpts := workflow.ActivityOptions{
-		StartToCloseTimeout: 60 * time.Second,
+		StartToCloseTimeout: 10 * time.Second,
 		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
 		RetryPolicy: &temporal.RetryPolicy{
 			MaximumAttempts: 1,
@@ -308,7 +308,7 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 	// receive signal payload
 	ch.Receive(ctx, signalPayload)
 
-	timeout := 10 * time.Second
+	timeout := 100 * time.Second
 	lock := mutex.New(
 		mutex.WithResourceID(signalPayload.RepoName+"-"+signalPayload.RefBranch),
 		mutex.WithTimeout(timeout+(10*time.Second)),
@@ -346,13 +346,13 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 	defaultBranch := signalPayload.DefaultBranch
 	repoProvider := signalPayload.RepoProvider
 
-	shared.Logger().Info("BranchController", "signal payload", signalPayload)
+	shared.Logger().Debug("BranchController", "signal payload", signalPayload)
 
 	repoProviderInst := Instance().RepoProvider(RepoProvider(repoProvider))
 	msgProviderInst := Instance().MessageProvider(MessageProviderSlack) // TODO - maybe not hardcode to slack and get from payload
 
 	providerActOpts := workflow.ActivityOptions{
-		StartToCloseTimeout: 60 * time.Second,
+		StartToCloseTimeout: 10 * time.Second,
 		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
 		RetryPolicy: &temporal.RetryPolicy{
 			MaximumAttempts: 1,
@@ -369,7 +369,7 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 			return err
 		}
 
-		shared.Logger().Info("BranchController", "Total branches ", len(branchNames))
+		shared.Logger().Debug("BranchController", "Total branches ", len(branchNames))
 
 		for _, branch := range branchNames {
 			if strings.Contains(branch, "-tempcopy-for-target-") || branch == defaultBranch {
@@ -377,13 +377,13 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 				continue
 			}
 
-			shared.Logger().Info("BranchController", "Testing conflicts with branch ", branch)
+			shared.Logger().Debug("BranchController", "Testing conflicts with branch ", branch)
 
 			if err := workflow.ExecuteActivity(pctx, repoProviderInst.MergeBranch, installationID, repoName, repoOwner, defaultBranch,
 				branch).Get(ctx, nil); err != nil {
 				shared.Logger().Error("BranchController", "Error merging branch", err)
 
-				message := "Merge Conflicts are expected on branch `" + branchName + "` on repo `" + repoName + "`"
+				message := "Merge Conflicts are expected on branch `" + branch + "` on repo `" + repoName + "`"
 				if err = workflow.ExecuteActivity(
 					pctx,
 					msgProviderInst.SendChannelMessage,
