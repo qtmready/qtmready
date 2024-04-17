@@ -173,6 +173,7 @@ func (a *Activities) GetLatestCommit(ctx context.Context, providerID string, bra
 	return *gb.Commit.SHA, nil
 }
 
+// TODO - break it to smalller activities (create, delete and merge).
 func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoName string,
 	targetBranchName string, installationID int64) (string, error) {
 	client, err := Instance().GetClientFromInstallation(installationID)
@@ -189,7 +190,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	}
 
 	defaultBranch := *repo.DefaultBranch
-	newBranchName := defaultBranch + "-copy-for-" + targetBranchName
+	newBranchName := defaultBranch + "-tempcopy-for-target-" + targetBranchName
 
 	// Get the latest commit SHA of the default branch
 	commits, _, err := client.Repositories.ListCommits(ctx, repoOwner, repoName, &gh.CommitsListOptions{
@@ -200,11 +201,11 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 		return err.Error(), err
 	}
 
-	// Use the latest commit SHA
-	if len(commits) == 0 {
-		shared.Logger().Error("RebaseAndMerge Activity", "No commits found in the default branch.", nil)
-		return err.Error(), err
-	}
+	// // Use the latest commit SHA
+	// if len(commits) == 0 {
+	// 	shared.Logger().Error("RebaseAndMerge Activity", "No commits found in the default branch.", nil)
+	// 	return err.Error(), err
+	// }
 
 	latestCommitSHA := *commits[0].SHA
 
@@ -259,7 +260,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	return *repoCommit.SHA, nil
 }
 
-func (a *Activities) TriggerGithubAction(ctx context.Context, installationID int64, repoOwner string,
+func (a *Activities) TriggerCIAction(ctx context.Context, installationID int64, repoOwner string,
 	repoName string, targetBranch string) error {
 	shared.Logger().Debug("activity TriggerGithubAction started")
 
@@ -436,11 +437,99 @@ func (a *Activities) CreateBranch(ctx context.Context, installationID int64, rep
 
 	// create new ref
 	if _, _, err = client.Git.CreateRef(context.Background(), repoOwner, repoName, ref); err != nil {
-		shared.Logger().Error("Early-Detection", "Error creating branch: ", err)
+		shared.Logger().Error("CreateBranch activity", "Error creating branch: ", err)
 
 		// dont want to retry this workflow so not returning error, just log and return
 		return nil
 	}
 
 	return nil
+}
+
+func (a *Activities) MergeBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, baseBranch string,
+	targetBranch string) error {
+	// Get github client for operations
+	client, err := Instance().GetClientFromInstallation(installationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	// targetBranch will be merged into the baseBranch
+	rebaseReq := &gh.RepositoryMergeRequest{
+		Base:          &baseBranch,
+		Head:          &targetBranch,
+		CommitMessage: gh.String("Rebasing " + targetBranch + " with " + baseBranch),
+	}
+
+	if _, _, err := client.Repositories.Merge(context.Background(), repoOwner, repoName, rebaseReq); err != nil {
+		shared.Logger().Error("Merge failed", "Error", err)
+		return err
+	}
+
+	return nil
+}
+
+func (a *Activities) CalculateChangesInBranch(ctx context.Context, installationID int64, repoName string, repoOwner string,
+	defaultBranch string, targetBranch string) (int, error) {
+	// Get github client for operations
+	client, err := Instance().GetClientFromInstallation(installationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return -1, err
+	}
+
+	comparison, _, err := client.Repositories.CompareCommits(context.Background(), repoOwner, repoName, defaultBranch, targetBranch, nil)
+	if err != nil {
+		shared.Logger().Error("Error in CalculateChangesInBranch", "CompareCommits", err)
+		return -1, err
+	}
+
+	var changes int
+	for _, file := range comparison.Files {
+		changes += file.GetChanges()
+	}
+
+	shared.Logger().Debug("CalculateChangesInBranch", "total changes in branch "+targetBranch, changes)
+
+	return changes, nil
+}
+
+func (a *Activities) GetAllBranches(ctx context.Context, installationID int64, repoName string, repoOwner string) ([]string, error) {
+	//get github client
+	client, err := Instance().GetClientFromInstallation(installationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return nil, err
+	}
+
+	var branchNames []string
+
+	page := 1
+
+	for {
+		branches, resp, err := client.Repositories.ListBranches(ctx, repoOwner, repoName, &gh.BranchListOptions{
+			ListOptions: gh.ListOptions{
+				Page:    page,
+				PerPage: 30, // Adjust this value as needed
+			},
+		})
+		if err != nil {
+			shared.Logger().Error("GetAllBranches: could not get branches", "Error", err)
+			return nil, err
+		}
+
+		for _, branch := range branches {
+			branchNames = append(branchNames, *branch.Name)
+		}
+
+		// Check if there are more pages to fetch
+		if resp.NextPage == 0 {
+			break // No more pages
+		}
+
+		page = resp.NextPage
+	}
+
+	return branchNames, nil
 }

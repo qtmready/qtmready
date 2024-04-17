@@ -42,7 +42,7 @@ func TestTeam(t *testing.T) {
 
 func testTeamSlug(args, want any) func(*testing.T) {
 	team := args.(*auth.Team)
-	sluglen := len(slug.Make(team.Name)) + 1 + 22
+	sluglen := len(slug.Make(team.Name)) + 1 + 4
 
 	return func(t *testing.T) {
 		if len(team.Slug) != sluglen {

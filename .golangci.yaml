@@ -1,6 +1,6 @@
-run:
-  skip-files:
-  - doc.go
+issues:
+  exclude-files:
+    - doc\.go$
 linters:
   enable:
     - asasalint

@@ -26,22 +26,26 @@ import (
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
 
 	"go.breu.io/quantm/internal/db"
 )
 
 const (
-	DBImage                 = "scylladb/scylla:5.2"
-	TestNetworkName         = "testnet"
+	DBImage                 = "scylladb/scylla:5.4"
 	DBContainerHost         = "test-db"
-	TemporalImage           = "temporalio/auto-setup:1.20.3"
+	TemporalImage           = "temporalio/auto-setup:1.22.5"
 	TemporalContainerHost   = "test-temporal"
 	NatsIOImage             = "nats:2.9.15"
 	NatsIOContainerHost     = "test-natsio"
-	AirImage                = "cosmtrek/air:v1.42.0"
+	AirImage                = "cosmtrek/air:v1.49.0"
 	APIContainerHost        = "test-api"
 	MothershipContainerHost = "test-mothership"
+)
+
+var (
+	TestNetworkName string
 )
 
 type (
@@ -57,17 +61,15 @@ type (
 )
 
 // CreateTestNetwork creates a test network for testing purposes.
-func CreateTestNetwork(ctx context.Context) (testcontainers.Network, error) {
-	req := testcontainers.GenericNetworkRequest{
-		NetworkRequest: testcontainers.NetworkRequest{Name: TestNetworkName, CheckDuplicate: true},
-	}
-
-	network, err := testcontainers.GenericNetwork(ctx, req)
+func CreateTestNetwork(ctx context.Context) (*testcontainers.DockerNetwork, error) {
+	net, err := network.New(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return network, nil
+	TestNetworkName = net.Name
+
+	return net, nil
 }
 
 // StartDBContainer starts a Cassandra container for testing purposes.

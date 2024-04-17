@@ -33,16 +33,6 @@ import (
 	"go.breu.io/quantm/internal/core/mutex"
 )
 
-type (
-	MergeQueue struct {
-		PullRequestID  int64
-		InstallationID int64
-		RepoOwner      string
-		RepoName       string
-		Branch         string
-	}
-)
-
 var (
 	instance *Config
 	once     sync.Once
@@ -116,11 +106,11 @@ func LockInstance(ctx workflow.Context, repoID string) (mutex.Mutex, error) {
 	lock, exists := lockRepo[lockID]
 	if !exists {
 		lock = mutex.New(
-			mutex.WithCallerContext(ctx),
-			mutex.WithID(lockID),
+			mutex.WithHandler(ctx),
+			mutex.WithResourceID(lockID),
 		)
 
-		if err := lock.Start(ctx); err != nil {
+		if err := lock.Prepare(ctx); err != nil {
 			return nil, err
 		}
 	}

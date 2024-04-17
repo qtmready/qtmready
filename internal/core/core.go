@@ -42,12 +42,11 @@ type (
 		RegisterRepoProvider(RepoProvider, RepoProviderActivities)
 		RegisterCloudProvider(CloudProvider, CloudProviderActivities)
 		RegisterCloudResource(provider CloudProvider, driver Driver, resource ResourceConstructor)
+		ResgisterMessageProvider(MessageProvider, MessageProviderActivities)
 
 		RepoProvider(RepoProvider) RepoProviderActivities
 		CloudProvider(CloudProvider) CloudProviderActivities
 		ResourceConstructor(CloudProvider, Driver) ResourceConstructor
-
-		ResgiterMessageProvider(MessageProvider, MessageProviderActivities)
 		MessageProvider(MessageProvider) MessageProviderActivities
 	}
 
@@ -57,6 +56,15 @@ type (
 		GetLatestCommit(context.Context, string, string) (string, error)
 		DeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error
 		TagCommit(ctx context.Context, repoID string, commitSHA string, tagName string, tagMessage string) error
+		CreateBranch(ctx context.Context, installationID int64, repoID int64, repoName string, repoOwner string, targetCommit string,
+			newBranchName string) error
+		DeleteBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, branchName string) error
+		MergeBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, baseBranch string,
+			targetBranch string) error
+		CalculateChangesInBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, defaultBranch string,
+			targetBranch string) (int, error)
+		GetAllBranches(ctx context.Context, installationID int64, repoName string, repoOwner string) ([]string, error)
+		TriggerCIAction(ctx context.Context, installationID int64, repoOwner string, repoName string, targetBranch string) error
 	}
 
 	CloudProviderActivities interface {
@@ -156,7 +164,7 @@ func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
 	panic(NewProviderNotFoundError(name.String()))
 }
 
-func (c *core) ResgiterMessageProvider(provider MessageProvider, activities MessageProviderActivities) {
+func (c *core) ResgisterMessageProvider(provider MessageProvider, activities MessageProviderActivities) {
 	c.providers.message[provider] = activities
 }
 
@@ -166,6 +174,14 @@ func (c *core) MessageProvider(name MessageProvider) MessageProviderActivities {
 	}
 
 	panic(NewProviderNotFoundError(name.String()))
+}
+
+// WithMessageProvider registers a repo provider with the core.
+func WithMessageProvider(name MessageProvider, provider MessageProviderActivities) Option {
+	return func(c Core) {
+		shared.Logger().Info("core: registering message provider", "name", name.String())
+		c.ResgisterMessageProvider(name, provider)
+	}
 }
 
 // WithRepoProvider registers a repo provider with the core.
