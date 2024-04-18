@@ -22,7 +22,7 @@ stack_name = "quantm mutli repo poc"
 
 #Getting Access Token
 print("Logging in")
-url = "https://api.breu.ngrok.io/auth/login"
+url = "https://qw4oxd513shx.share.zrok.io/auth/login"
 payload = {
     "email": "umer@breu.io",
     "password": "pass123"
@@ -34,7 +34,7 @@ access_token = res.json()["access_token"]
 
 #Creating Stack
 print("Creating Stack")
-url = "https://api.breu.ngrok.io/core/stacks"
+url = "https://qw4oxd513shx.share.zrok.io/core/stacks"
 payload = {"name": stack_name}
 headers = {
     "Content-Type": "application/json",
@@ -44,7 +44,7 @@ stack_id = requests.request("POST", url, json=payload, headers=headers).json()["
 
 #Creating Repo
 print("Creating Repo")
-url = "https://api.breu.ngrok.io/core/repos"
+url = "https://qw4oxd513shx.share.zrok.io/core/repos"
 payload = {
     "stack_id": stack_id,
     "provider": "github",
@@ -57,7 +57,7 @@ repo_id = requests.request("POST", url, json=payload, headers=headers).json()["i
 
 #Creating Repo
 print("Creating Repo")
-url = "https://api.breu.ngrok.io/core/repos"
+url = "https://qw4oxd513shx.share.zrok.io/core/repos"
 payload = {
     "stack_id": stack_id,
     "provider": "github",
@@ -70,7 +70,7 @@ repo_id = requests.request("POST", url, json=payload, headers=headers).json()["i
 
 # #Creating Resource
 # print("Creating Resource")
-# url = "https://api.breu.ngrok.io/core/resources"
+# url = "https://qw4oxd513shx.share.zrok.io/core/resources"
 # payloadx = {
 #     "Name": "CloudRun_CargoFlo",
 #     "provider": "GCP",
@@ -83,7 +83,7 @@ repo_id = requests.request("POST", url, json=payload, headers=headers).json()["i
 
 # #creating Workload
 # print("Creating Workload")
-# url = "https://api.breu.ngrok.io/core/workloads"
+# url = "https://qw4oxd513shx.share.zrok.io/core/workloads"
 # payload = {
 #     "Name": "api-quantm",
 #     "kind": "worker",
@@ -98,7 +98,7 @@ repo_id = requests.request("POST", url, json=payload, headers=headers).json()["i
 
 # #creating BluePrint
 # print("Creating BluePrint")
-# url = "https://api.breu.ngrok.io/core/blueprints"
+# url = "https://qw4oxd513shx.share.zrok.io/core/blueprints"
 # payload = {
 
 #     "name" : "CargoFlo blueprint",

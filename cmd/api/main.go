@@ -33,6 +33,7 @@ import (
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/providers/github"
+	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
 	"go.breu.io/quantm/internal/shared/logger"
 )
@@ -88,7 +89,7 @@ func main() {
 	auth.RegisterHandlers(web, auth.NewServerHandler(auth.Middleware))
 	core.RegisterHandlers(web, core.NewServerHandler(auth.Middleware))
 	github.RegisterHandlers(web, github.NewServerHandler(auth.Middleware))
-
+	slack.RegisterHandlers(web, slack.NewServerHandler(auth.Middleware))
 	slog.Info("setting up metrics")
 
 	metrics := echo.New()

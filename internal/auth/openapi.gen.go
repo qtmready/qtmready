@@ -142,15 +142,6 @@ type CreateTeamRequest struct {
 	Name string `json:"name"`
 }
 
-// DeleteResponse defines model for DeleteResponse.
-type DeleteResponse struct {
-	// Message A descriptive message about the operation result.
-	Message string `json:"message"`
-
-	// Ok Indicates if the operation was successful.
-	Ok bool `json:"ok"`
-}
-
 // LinkAccountRequest defines model for LinkAccountRequest.
 type LinkAccountRequest struct {
 	ExpiresAt         time.Time `json:"expires_at"`
@@ -284,15 +275,6 @@ type UserRequest struct {
 	Name  string `json:"name"`
 }
 
-// UnlinkAccountParams defines parameters for UnlinkAccount.
-type UnlinkAccountParams struct {
-	// ProviderAccountId Provider account ID
-	ProviderAccountId string `form:"provider_account_id" json:"provider_account_id"`
-
-	// Provider Provider type
-	Provider string `form:"provider" json:"provider"`
-}
-
 // ListUsersParams defines parameters for ListUsers.
 type ListUsersParams struct {
 	// ProviderAccountId Provider account ID
@@ -328,9 +310,6 @@ type AddUserToTeamJSONRequestBody = AddUserToTeamRequest
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody = UserRequest
-
-// UpdateUserJSONRequestBody defines body for UpdateUser for application/json ContentType.
-type UpdateUserJSONRequestBody = UserRequest
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -405,9 +384,6 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// UnlinkAccount request
-	UnlinkAccount(ctx context.Context, params *UnlinkAccountParams, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// LinkAccountWithBody request with any body
 	LinkAccountWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -460,28 +436,8 @@ type ClientInterface interface {
 
 	CreateUser(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// DeleteUser request
-	DeleteUser(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GetUser request
 	GetUser(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// UpdateUserWithBody request with any body
-	UpdateUserWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	UpdateUser(ctx context.Context, id string, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-}
-
-func (c *Client) UnlinkAccount(ctx context.Context, params *UnlinkAccountParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUnlinkAccountRequest(c.Server, params)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
 }
 
 func (c *Client) LinkAccountWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -724,18 +680,6 @@ func (c *Client) CreateUser(ctx context.Context, body CreateUserJSONRequestBody,
 	return c.Client.Do(req)
 }
 
-func (c *Client) DeleteUser(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewDeleteUserRequest(c.Server, id)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) GetUser(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGetUserRequest(c.Server, id)
 	if err != nil {
@@ -746,87 +690,6 @@ func (c *Client) GetUser(ctx context.Context, id string, reqEditors ...RequestEd
 		return nil, err
 	}
 	return c.Client.Do(req)
-}
-
-func (c *Client) UpdateUserWithBody(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateUserRequestWithBody(c.Server, id, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) UpdateUser(ctx context.Context, id string, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewUpdateUserRequest(c.Server, id, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-// NewUnlinkAccountRequest generates requests for UnlinkAccount
-func NewUnlinkAccountRequest(server string, params *UnlinkAccountParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/accounts/link")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "provider_account_id", runtime.ParamLocationQuery, params.ProviderAccountId); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "provider", runtime.ParamLocationQuery, params.Provider); err != nil {
-			return nil, err
-		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-			return nil, err
-		} else {
-			for k, v := range parsed {
-				for _, v2 := range v {
-					queryValues.Add(k, v2)
-				}
-			}
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
 }
 
 // NewLinkAccountRequest calls the generic LinkAccount builder with application/json body
@@ -1325,40 +1188,6 @@ func NewCreateUserRequestWithBody(server string, contentType string, body io.Rea
 	return req, nil
 }
 
-// NewDeleteUserRequest generates requests for DeleteUser
-func NewDeleteUserRequest(server string, id string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/users/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("DELETE", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewGetUserRequest generates requests for GetUser
 func NewGetUserRequest(server string, id string) (*http.Request, error) {
 	var err error
@@ -1389,53 +1218,6 @@ func NewGetUserRequest(server string, id string) (*http.Request, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	return req, nil
-}
-
-// NewUpdateUserRequest calls the generic UpdateUser builder with application/json body
-func NewUpdateUserRequest(server string, id string, body UpdateUserJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewUpdateUserRequestWithBody(server, id, "application/json", bodyReader)
-}
-
-// NewUpdateUserRequestWithBody generates requests for UpdateUser with any type of body
-func NewUpdateUserRequestWithBody(server string, id string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/users/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("PUT", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -1483,9 +1265,6 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// UnlinkAccountWithResponse request
-	UnlinkAccountWithResponse(ctx context.Context, params *UnlinkAccountParams, reqEditors ...RequestEditorFn) (*UnlinkAccountResponse, error)
-
 	// LinkAccountWithBodyWithResponse request with any body
 	LinkAccountWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*LinkAccountResponse, error)
 
@@ -1538,42 +1317,8 @@ type ClientWithResponsesInterface interface {
 
 	CreateUserWithResponse(ctx context.Context, body CreateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateUserResponse, error)
 
-	// DeleteUserWithResponse request
-	DeleteUserWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error)
-
 	// GetUserWithResponse request
 	GetUserWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetUserResponse, error)
-
-	// UpdateUserWithBodyWithResponse request with any body
-	UpdateUserWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
-
-	UpdateUserWithResponse(ctx context.Context, id string, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error)
-}
-
-type UnlinkAccountResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DeleteResponse
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r UnlinkAccountResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UnlinkAccountResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
 }
 
 type LinkAccountResponse struct {
@@ -1878,32 +1623,6 @@ func (r CreateUserResponse) StatusCode() int {
 	return 0
 }
 
-type DeleteUserResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *DeleteResponse
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r DeleteUserResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r DeleteUserResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type GetUserResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1928,41 +1647,6 @@ func (r GetUserResponse) StatusCode() int {
 		return r.HTTPResponse.StatusCode
 	}
 	return 0
-}
-
-type UpdateUserResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *User
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r UpdateUserResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r UpdateUserResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-// UnlinkAccountWithResponse request returning *UnlinkAccountResponse
-func (c *ClientWithResponses) UnlinkAccountWithResponse(ctx context.Context, params *UnlinkAccountParams, reqEditors ...RequestEditorFn) (*UnlinkAccountResponse, error) {
-	rsp, err := c.UnlinkAccount(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUnlinkAccountResponse(rsp)
 }
 
 // LinkAccountWithBodyWithResponse request with arbitrary body returning *LinkAccountResponse
@@ -2137,15 +1821,6 @@ func (c *ClientWithResponses) CreateUserWithResponse(ctx context.Context, body C
 	return ParseCreateUserResponse(rsp)
 }
 
-// DeleteUserWithResponse request returning *DeleteUserResponse
-func (c *ClientWithResponses) DeleteUserWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*DeleteUserResponse, error) {
-	rsp, err := c.DeleteUser(ctx, id, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseDeleteUserResponse(rsp)
-}
-
 // GetUserWithResponse request returning *GetUserResponse
 func (c *ClientWithResponses) GetUserWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetUserResponse, error) {
 	rsp, err := c.GetUser(ctx, id, reqEditors...)
@@ -2153,77 +1828,6 @@ func (c *ClientWithResponses) GetUserWithResponse(ctx context.Context, id string
 		return nil, err
 	}
 	return ParseGetUserResponse(rsp)
-}
-
-// UpdateUserWithBodyWithResponse request with arbitrary body returning *UpdateUserResponse
-func (c *ClientWithResponses) UpdateUserWithBodyWithResponse(ctx context.Context, id string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error) {
-	rsp, err := c.UpdateUserWithBody(ctx, id, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateUserResponse(rsp)
-}
-
-func (c *ClientWithResponses) UpdateUserWithResponse(ctx context.Context, id string, body UpdateUserJSONRequestBody, reqEditors ...RequestEditorFn) (*UpdateUserResponse, error) {
-	rsp, err := c.UpdateUser(ctx, id, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseUpdateUserResponse(rsp)
-}
-
-// ParseUnlinkAccountResponse parses an HTTP response from a UnlinkAccountWithResponse call
-func ParseUnlinkAccountResponse(rsp *http.Response) (*UnlinkAccountResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UnlinkAccountResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DeleteResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
 }
 
 // ParseLinkAccountResponse parses an HTTP response from a LinkAccountWithResponse call
@@ -2804,60 +2408,6 @@ func ParseCreateUserResponse(rsp *http.Response) (*CreateUserResponse, error) {
 	return response, nil
 }
 
-// ParseDeleteUserResponse parses an HTTP response from a DeleteUserWithResponse call
-func ParseDeleteUserResponse(rsp *http.Response) (*DeleteUserResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &DeleteUserResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest DeleteResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseGetUserResponse parses an HTTP response from a GetUserWithResponse call
 func ParseGetUserResponse(rsp *http.Response) (*GetUserResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2912,66 +2462,8 @@ func ParseGetUserResponse(rsp *http.Response) (*GetUserResponse, error) {
 	return response, nil
 }
 
-// ParseUpdateUserResponse parses an HTTP response from a UpdateUserWithResponse call
-func ParseUpdateUserResponse(rsp *http.Response) (*UpdateUserResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &UpdateUserResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest User
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// unlink account
-	// (DELETE /auth/accounts/link)
-	UnlinkAccount(ctx echo.Context) error
-
 	// link user with account
 	// (POST /auth/accounts/link)
 	LinkAccount(ctx echo.Context) error
@@ -3020,17 +2512,9 @@ type ServerInterface interface {
 	// (POST /auth/users)
 	CreateUser(ctx echo.Context) error
 
-	// delete user by id
-	// (DELETE /auth/users/{id})
-	DeleteUser(ctx echo.Context) error
-
 	// get user by id
 	// (GET /auth/users/{id})
 	GetUser(ctx echo.Context) error
-
-	// update user by id
-	// (PUT /auth/users/{id})
-	UpdateUser(ctx echo.Context) error
 
 	// SecurityHandler returns the underlying Security Wrapper
 	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
@@ -3039,34 +2523,6 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
-}
-
-// UnlinkAccount converts echo context to params.
-
-func (w *ServerInterfaceWrapper) UnlinkAccount(ctx echo.Context) error {
-	var err error
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params UnlinkAccountParams
-	// ------------- Required query parameter "provider_account_id" -------------
-
-	err = runtime.BindQueryParameter("form", true, true, "provider_account_id", ctx.QueryParams(), &params.ProviderAccountId)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter provider_account_id: %s", err))
-	}
-
-	// ------------- Required query parameter "provider" -------------
-
-	err = runtime.BindQueryParameter("form", true, true, "provider", ctx.QueryParams(), &params.Provider)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter provider: %s", err))
-	}
-
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.UnlinkAccount
-	err = handler(ctx)
-
-	return err
 }
 
 // LinkAccount converts echo context to params.
@@ -3271,25 +2727,6 @@ func (w *ServerInterfaceWrapper) CreateUser(ctx echo.Context) error {
 	return err
 }
 
-// DeleteUser converts echo context to params.
-
-func (w *ServerInterfaceWrapper) DeleteUser(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "id" -------------
-	var id string
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter id: %s", err))
-	}
-
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.DeleteUser
-	err = handler(ctx)
-
-	return err
-}
-
 // GetUser converts echo context to params.
 
 func (w *ServerInterfaceWrapper) GetUser(ctx echo.Context) error {
@@ -3304,25 +2741,6 @@ func (w *ServerInterfaceWrapper) GetUser(ctx echo.Context) error {
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GetUser
-	err = handler(ctx)
-
-	return err
-}
-
-// UpdateUser converts echo context to params.
-
-func (w *ServerInterfaceWrapper) UpdateUser(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "id" -------------
-	var id string
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter id: %s", err))
-	}
-
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.UpdateUser
 	err = handler(ctx)
 
 	return err
@@ -3355,7 +2773,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.DELETE(baseURL+"/auth/accounts/link", wrapper.UnlinkAccount)
 	router.POST(baseURL+"/auth/accounts/link", wrapper.LinkAccount)
 	router.POST(baseURL+"/auth/api-keys/team", wrapper.CreateTeamAPIKey)
 	router.POST(baseURL+"/auth/api-keys/user", wrapper.CreateUserAPIKey)
@@ -3368,8 +2785,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/auth/teams/:slug/users", wrapper.AddUserToTeam)
 	router.GET(baseURL+"/auth/users", wrapper.ListUsers)
 	router.POST(baseURL+"/auth/users", wrapper.CreateUser)
-	router.DELETE(baseURL+"/auth/users/:id", wrapper.DeleteUser)
 	router.GET(baseURL+"/auth/users/:id", wrapper.GetUser)
-	router.PUT(baseURL+"/auth/users/:id", wrapper.UpdateUser)
 
 }

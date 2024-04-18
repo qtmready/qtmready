@@ -1,4 +1,4 @@
-package: auth
+package: slack
 generate:
   models: true
   echo-server: true
@@ -10,4 +10,4 @@ compatibility:
 output: openapi.gen.go
 output-options:
   skip-prune: true
-  user-templates-dir: ../shared/templates
+  user-templates-dir: ../../shared/templates

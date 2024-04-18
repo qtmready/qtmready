@@ -72,7 +72,9 @@ func (a *Activities) DeployRevision(ctx context.Context, r *Resource, wl *Worklo
 
 		// assuming there is no side container on cloud run
 		service.Template.Containers[0].Image = wl.Image
+
 		logger.Info("50 percent traffic to latest", "revision", r.Revision)
+
 		tt := &runpb.TrafficTarget{Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST, Percent: 50}
 		tt1 := &runpb.TrafficTarget{
 			Type: runpb.TrafficTargetAllocationType_TRAFFIC_TARGET_ALLOCATION_TYPE_REVISION, Revision: r.LastRevision, Percent: 50,
@@ -83,12 +85,14 @@ func (a *Activities) DeployRevision(ctx context.Context, r *Resource, wl *Worklo
 
 		usr := &runpb.UpdateServiceRequest{Service: service}
 		op, err := client.UpdateService(ctx, usr)
+
 		if err != nil {
 			logger.Error("could not update service", "Error", err)
 			return err
 		}
 
 		logger.Info("waiting for service revision update")
+
 		_, _ = op.Wait(ctx)
 	}
 

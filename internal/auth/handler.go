@@ -340,15 +340,3 @@ func (s *ServerHandler) LinkAccount(ctx echo.Context) error {
 
 	return ctx.JSON(http.StatusCreated, account)
 }
-
-func (s *ServerHandler) GetUserByAccount(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
-}
-
-func (s *ServerHandler) DeleteUser(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
-}
-
-func (s *ServerHandler) UnlinkAccount(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
-}
