@@ -29,6 +29,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/mutex"
+	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -253,7 +254,8 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 		// dont want to retry this workflow so not returning error, just log and return
 		shared.Logger().Error("CheckEarlyWarning", "Error merging branch", err)
 
-		message := "Merge Conflicts are expected on branch `" + branchName + "` on repo `" + repoName + "`"
+		// TODO: handle in salck once finalize
+		message := slack.FormatMergeConflictMessage(repoName, branchName)
 		if err = workflow.ExecuteActivity(
 			pctx,
 			msgProviderInst.SendChannelMessage,
@@ -281,9 +283,10 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 		return err
 	}
 
-	if changes > 200 {
-		message := "200+ lines changed on branch `" + branchName + "` on repo `" + repoName + "`"
-
+	threshold := 200
+	if changes > threshold {
+		// TODO: handle in salck once finalize
+		message := slack.FormatLineThresholdExceededMessage(repoName, branchName, changes, threshold)
 		if err := workflow.ExecuteActivity(
 			pctx,
 			msgProviderInst.SendChannelMessage,
@@ -401,7 +404,8 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 					return err
 				}
 
-				message := "Merge Conflicts are expected on branch `" + branch + "` on repo `" + repoName + "`"
+				// TODO: handle in salck once finalize
+				message := slack.FormatMergeConflictMessage(repoName, branchName)
 				if err = workflow.ExecuteActivity(
 					pctx,
 					msgProviderInst.SendChannelMessage,
@@ -505,7 +509,8 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.Pus
 			return err
 		}
 
-		message := "Stale branch `" + branchName + "` on repo `" + event.RepoName + "`"
+		// TODO: handle in salck once finalize
+		message := slack.FormatStaleBranchMessage(event.RepoName, branchName)
 		if err := workflow.ExecuteActivity(
 			pctx,
 			msgProviderInst.SendChannelMessage,
