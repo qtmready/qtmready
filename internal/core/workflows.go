@@ -246,7 +246,7 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 		shared.Logger().Error("CheckEarlyWarning", "Error merging branch", err)
 
 		teamID := ""
-		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetRepoTeamID, repoID).Get(ctx,
+		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetRepoTeamID, strconv.FormatInt(repoID, 10)).Get(ctx,
 			&teamID); err != nil {
 			shared.Logger().Error("CheckEarlyWarning", "error from GetRepoTeamID activity", err)
 			return err
@@ -282,7 +282,7 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 
 	if changes > 200 {
 		teamID := ""
-		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetRepoTeamID, repoID).Get(ctx,
+		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetRepoTeamID, strconv.FormatInt(repoID, 10)).Get(ctx,
 			&teamID); err != nil {
 			shared.Logger().Error("CheckEarlyWarning", "error from GetRepoTeamID activity", err)
 			return err
@@ -400,7 +400,7 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 				shared.Logger().Error("BranchController", "Error merging branch", err)
 
 				teamID := ""
-				if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetRepoTeamID, repoID).Get(ctx,
+				if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetRepoTeamID, strconv.FormatInt(repoID, 10)).Get(ctx,
 					&teamID); err != nil {
 					shared.Logger().Error("BranchController", "error from GetRepoTeamID activity", err)
 					return err
