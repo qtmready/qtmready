@@ -240,17 +240,18 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 		return err
 	}
 
+	// get the teamID from repo table
+	teamID := ""
+	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetRepoTeamID, strconv.FormatInt(repoID, 10)).Get(ctx,
+		&teamID); err != nil {
+		shared.Logger().Error("CheckEarlyWarning", "error from GetRepoTeamID activity", err)
+		return err
+	}
+
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.MergeBranch, installationID, repoName, repoOwner, tempBranchName,
 		branchName).Get(ctx, nil); err != nil {
 		// dont want to retry this workflow so not returning error, just log and return
 		shared.Logger().Error("CheckEarlyWarning", "Error merging branch", err)
-
-		teamID := ""
-		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetRepoTeamID, strconv.FormatInt(repoID, 10)).Get(ctx,
-			&teamID); err != nil {
-			shared.Logger().Error("CheckEarlyWarning", "error from GetRepoTeamID activity", err)
-			return err
-		}
 
 		message := "Merge Conflicts are expected on branch `" + branchName + "` on repo `" + repoName + "`"
 		if err = workflow.ExecuteActivity(
@@ -281,13 +282,6 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 	}
 
 	if changes > 200 {
-		teamID := ""
-		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetRepoTeamID, strconv.FormatInt(repoID, 10)).Get(ctx,
-			&teamID); err != nil {
-			shared.Logger().Error("CheckEarlyWarning", "error from GetRepoTeamID activity", err)
-			return err
-		}
-
 		message := "200+ lines changed on branch `" + branchName + "` on repo `" + repoName + "`"
 
 		if err := workflow.ExecuteActivity(
@@ -399,6 +393,7 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 				branch).Get(ctx, nil); err != nil {
 				shared.Logger().Error("BranchController", "Error merging branch", err)
 
+				// get the teamID from repo table
 				teamID := ""
 				if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetRepoTeamID, strconv.FormatInt(repoID, 10)).Get(ctx,
 					&teamID); err != nil {
@@ -502,6 +497,7 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.Pus
 
 	// check if the branchName branch has the lastBranchCommit as the latest commit
 	if lastBranchCommit == latestCommitSHA {
+		// get the teamID from repo table
 		teamID := ""
 		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetRepoTeamID, strconv.FormatInt(event.RepoID, 10)).Get(ctx,
 			&teamID); err != nil {
