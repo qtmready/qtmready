@@ -70,15 +70,6 @@ type (
 		Branch         string
 		RepoProvider   string
 	}
-
-	// NOTE: unable to place in core or github or slack package getting circular import.
-	BranchChanges struct {
-		Changes   int      // Total number of changes in the branch
-		Additions int      // Number of additions in the branch
-		Deletions int      // Number of deletions in the branch
-		FileCount int      // Total number of files changed in the branch
-		Files     []string // List of files changed in the branch
-	}
 )
 
 var (

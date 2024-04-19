@@ -62,7 +62,7 @@ type (
 		MergeBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, baseBranch string,
 			targetBranch string) error
 		ChangesInBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, defaultBranch string,
-			targetBranch string) (*shared.BranchChanges, error)
+			targetBranch string) (*BranchChanges, error)
 		GetAllBranches(ctx context.Context, installationID int64, repoName string, repoOwner string) ([]string, error)
 		TriggerCIAction(ctx context.Context, installationID int64, repoOwner string, repoName string, targetBranch string) error
 		GetRepoTeamID(ctx context.Context, repoID string) (string, error)
@@ -73,7 +73,10 @@ type (
 	}
 
 	MessageProviderActivities interface {
-		SendChannelMessage(ctx context.Context, teamID, msg string) error // TODO: figure out the signature
+		SendStaleBranchMessage(ctx context.Context, teamID, repoName, branchName string) error
+		SendNumberOfLinesExceedMessage(ctx context.Context, teamID, repoName, branchName string, threshold int,
+			branchChnages BranchChanges) error
+		SendMergeConflictsMessage(ctx context.Context, teamID, repoName, branchName string) error
 	}
 
 	Providers struct {

@@ -29,7 +29,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/mutex"
-	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -254,13 +253,12 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 		// dont want to retry this workflow so not returning error, just log and return
 		shared.Logger().Error("CheckEarlyWarning", "Error merging branch", err)
 
-		// TODO: handle in salck once finalize
-		message := slack.FormatMergeConflictMessage(repoName, branchName)
 		if err = workflow.ExecuteActivity(
 			pctx,
-			msgProviderInst.SendChannelMessage,
+			msgProviderInst.SendMergeConflictsMessage,
 			teamID,
-			message,
+			repoName,
+			branchName,
 		).Get(ctx, nil); err != nil {
 			shared.Logger().Error("Error notifying Slack", "error", err.Error())
 			return err
@@ -276,7 +274,7 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 	// raise warning if the changes are more than 200 lines
 	shared.Logger().Debug("going to detect 200+ changes")
 
-	branchChnages := shared.BranchChanges{}
+	branchChnages := BranchChanges{}
 
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.ChangesInBranch, installationID, repoName, repoOwner,
 		defaultBranch, branchName).Get(ctx, &branchChnages); err != nil {
@@ -286,13 +284,14 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 
 	threshold := 200
 	if branchChnages.Changes > threshold {
-		// TODO: handle in salck once finalize
-		message := slack.FormatLineThresholdExceededMessage(repoName, branchName, threshold, branchChnages)
 		if err := workflow.ExecuteActivity(
 			pctx,
-			msgProviderInst.SendChannelMessage,
+			msgProviderInst.SendNumberOfLinesExceedMessage,
 			teamID,
-			message,
+			repoName,
+			branchName,
+			threshold,
+			branchChnages,
 		).Get(ctx, nil); err != nil {
 			shared.Logger().Error("Error notifying Slack", "error", err.Error())
 			return err
@@ -405,13 +404,12 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 					return err
 				}
 
-				// TODO: handle in salck once finalize
-				message := slack.FormatMergeConflictMessage(repoName, branchName)
 				if err = workflow.ExecuteActivity(
 					pctx,
-					msgProviderInst.SendChannelMessage,
+					msgProviderInst.SendMergeConflictsMessage,
 					teamID,
-					message,
+					repoName,
+					branchName,
 				).Get(ctx, nil); err != nil {
 					shared.Logger().Error("Error notifying Slack", "error", err.Error())
 					return err
@@ -510,13 +508,12 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.Pus
 			return err
 		}
 
-		// TODO: handle in salck once finalize
-		message := slack.FormatStaleBranchMessage(event.RepoName, branchName)
 		if err := workflow.ExecuteActivity(
 			pctx,
-			msgProviderInst.SendChannelMessage,
+			msgProviderInst.SendStaleBranchMessage,
 			teamID,
-			message,
+			event.RepoName,
+			branchName,
 		).Get(ctx, nil); err != nil {
 			shared.Logger().Error("Error notifying Slack", "error", err.Error())
 			return err

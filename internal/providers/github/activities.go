@@ -471,7 +471,7 @@ func (a *Activities) MergeBranch(ctx context.Context, installationID int64, repo
 }
 
 func (a *Activities) ChangesInBranch(ctx context.Context, installationID int64, repoName string, repoOwner string,
-	defaultBranch string, targetBranch string) (*shared.BranchChanges, error) {
+	defaultBranch string, targetBranch string) (*core.BranchChanges, error) {
 	// Get github client for operations
 	client, err := Instance().GetClientFromInstallation(installationID)
 	if err != nil {
@@ -498,7 +498,7 @@ func (a *Activities) ChangesInBranch(ctx context.Context, installationID int64, 
 
 	shared.Logger().Debug("ChangesInBranch", "total changes in branch "+targetBranch, changes)
 
-	branchChanges := &shared.BranchChanges{
+	branchChanges := &core.BranchChanges{
 		Changes:   changes,
 		Additions: additions,
 		Deletions: deletions,

@@ -20,10 +20,10 @@ package slack
 import (
 	"fmt"
 
-	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/core"
 )
 
-func FormatLineThresholdExceededMessage(repoName, branchName string, threshold int, branchChanges shared.BranchChanges) string {
+func FormatLineThresholdExceededMessage(repoName, branchName string, threshold int, branchChanges core.BranchChanges) string {
 	actionRequired := "Please review the changes carefully before merging."
 
 	var details string
