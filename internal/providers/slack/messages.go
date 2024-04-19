@@ -19,32 +19,50 @@ package slack
 
 import (
 	"fmt"
+
+	"go.breu.io/quantm/internal/shared"
 )
 
-func FormatLineThresholdExceededMessage(repoName, branchName string, changes, threshold int) string {
-	details := "This commit introduces significant changes to the codebase."
+func FormatLineThresholdExceededMessage(repoName, branchName string, threshold int, branchChanges shared.BranchChanges) string {
 	actionRequired := "Please review the changes carefully before merging."
+
+	var details string
+	if branchChanges.FileCount > 0 {
+		details = fmt.Sprintf("This commit introduces significant changes to the codebase.\n\n"+
+			"**File Count:** %d\n\n"+
+			"**Files:**\n", branchChanges.FileCount)
+		for i, file := range branchChanges.Files {
+			details += fmt.Sprintf("%d. %s\n", i+1, file)
+		}
+	} else {
+		details = "This commit introduces no changes to the codebase."
+	}
 
 	message := fmt.Sprintf(
 		":rotating_light: **Early Warning: Line Threshold Exceeded**\n\n"+
 			"**Repository:** %s\n"+
 			"**Branch:** %s\n"+
-			"**Lines Added:** %d\n"+
 			"**Threshold:** %d\n\n"+
+			"**Changes:** %d\n"+
+			"**Lines Added:** %d\n\n"+
+			"**Lines Deleted:** %d\n\n"+
 			":memo: **Details:**\n"+
 			"%s\n\n"+
 			":mag: **Action Required:**\n"+
 			"%s",
 		repoName,
 		branchName,
-		changes,
 		threshold,
+		branchChanges.Changes,
+		branchChanges.Additions,
+		branchChanges.Deletions,
 		details,
 		actionRequired,
 	)
 
 	return message
 }
+
 func FormatMergeConflictMessage(repoName, branchName string) string {
 	details := "Merge conflicts were detected when attempting to merge the changes from your branch into the target branch."
 	actionRequired := "Please resolve these conflicts before attempting to merge again."

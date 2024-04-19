@@ -276,17 +276,18 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 	// raise warning if the changes are more than 200 lines
 	shared.Logger().Debug("going to detect 200+ changes")
 
-	changes := 0
-	if err := workflow.ExecuteActivity(pctx, repoProviderInst.CalculateChangesInBranch, installationID, repoName, repoOwner,
-		defaultBranch, branchName).Get(ctx, &changes); err != nil {
-		shared.Logger().Error("CheckEarlyWarning", "error from CalculateChangesInBranch activity", err)
+	branchChnages := shared.BranchChanges{}
+
+	if err := workflow.ExecuteActivity(pctx, repoProviderInst.ChangesInBranch, installationID, repoName, repoOwner,
+		defaultBranch, branchName).Get(ctx, &branchChnages); err != nil {
+		shared.Logger().Error("CheckEarlyWarning", "error from ChangesInBranch activity", err)
 		return err
 	}
 
 	threshold := 200
-	if changes > threshold {
+	if branchChnages.Changes > threshold {
 		// TODO: handle in salck once finalize
-		message := slack.FormatLineThresholdExceededMessage(repoName, branchName, changes, threshold)
+		message := slack.FormatLineThresholdExceededMessage(repoName, branchName, threshold, branchChnages)
 		if err := workflow.ExecuteActivity(
 			pctx,
 			msgProviderInst.SendChannelMessage,
