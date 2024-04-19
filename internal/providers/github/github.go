@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	gh "github.com/google/go-github/v53/github"
@@ -107,10 +108,15 @@ func LockInstance(ctx workflow.Context, repoID string) (mutex.Mutex, error) {
 	if !exists {
 		lock = mutex.New(
 			mutex.WithHandler(ctx),
+			mutex.WithTimeout(10*time.Second),
 			mutex.WithResourceID(lockID),
 		)
 
 		if err := lock.Prepare(ctx); err != nil {
+			return nil, err
+		}
+
+		if err := lock.Acquire(ctx); err != nil {
 			return nil, err
 		}
 	}

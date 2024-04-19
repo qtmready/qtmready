@@ -80,7 +80,10 @@ func main() {
 	// core activities
 	coreWrkr.RegisterActivity(&core.Activities{})
 	coreWrkr.RegisterActivity(&cloudrun.Activities{})
+
+	// mutex activity
 	coreWrkr.RegisterActivity(mutex.PrepareMutexActivity)
+	providerWrkr.RegisterActivity(mutex.PrepareMutexActivity)
 
 	// start worker for provider queue
 	err := providerWrkr.Start()

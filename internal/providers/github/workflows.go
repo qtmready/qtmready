@@ -222,11 +222,13 @@ func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *Workflow
 		return err
 	}
 
-	err = lock.Release(ctx)
-	if err != nil {
-		logger.Error("error releasing lock", "error", err)
-		return err
-	}
+	defer func() {
+		// Release the lock.
+		_ = lock.Release(ctx)
+
+		// Cleanup tries to shutdown the Mutex workflow if there are no more locks waiting.
+		_ = lock.Cleanup(ctx)
+	}()
 
 	// Signal stack workflow about changeset update
 	// info to be sent: repo, commit
@@ -318,6 +320,7 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 			RepoOwner:      repoOwner,
 			RepoName:       repoName,
 			Branch:         branch,
+			RepoProvider:   "github",
 		}
 
 		_, err := shared.Temporal().
