@@ -470,29 +470,43 @@ func (a *Activities) MergeBranch(ctx context.Context, installationID int64, repo
 	return nil
 }
 
-func (a *Activities) CalculateChangesInBranch(ctx context.Context, installationID int64, repoName string, repoOwner string,
-	defaultBranch string, targetBranch string) (int, error) {
+func (a *Activities) ChangesInBranch(ctx context.Context, installationID int64, repoName string, repoOwner string,
+	defaultBranch string, targetBranch string) (*core.BranchChanges, error) {
 	// Get github client for operations
 	client, err := Instance().GetClientFromInstallation(installationID)
 	if err != nil {
 		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
-		return -1, err
+		return nil, err
 	}
 
 	comparison, _, err := client.Repositories.CompareCommits(context.Background(), repoOwner, repoName, defaultBranch, targetBranch, nil)
 	if err != nil {
-		shared.Logger().Error("Error in CalculateChangesInBranch", "CompareCommits", err)
-		return -1, err
+		shared.Logger().Error("Error in ChangesInBranch", "CompareCommits", err)
+		return nil, err
 	}
 
-	var changes int
+	var changes, additions, deletions int
+
+	var changedFiles []string
+
 	for _, file := range comparison.Files {
 		changes += file.GetChanges()
+		additions += file.GetAdditions()
+		deletions += file.GetDeletions()
+		changedFiles = append(changedFiles, *file.Filename)
 	}
 
-	shared.Logger().Debug("CalculateChangesInBranch", "total changes in branch "+targetBranch, changes)
+	shared.Logger().Debug("ChangesInBranch", "total changes in branch "+targetBranch, changes)
 
-	return changes, nil
+	branchChanges := &core.BranchChanges{
+		Changes:   changes,
+		Additions: additions,
+		Deletions: deletions,
+		FileCount: len(changedFiles),
+		Files:     changedFiles,
+	}
+
+	return branchChanges, nil
 }
 
 func (a *Activities) GetAllBranches(ctx context.Context, installationID int64, repoName string, repoOwner string) ([]string, error) {

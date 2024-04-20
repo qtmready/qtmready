@@ -345,6 +345,24 @@ type BlueprintCreateRequest struct {
 	StackID       gocql.UUID       `json:"stack_id"`
 }
 
+// BranchChanges Branch changes
+type BranchChanges struct {
+	// Additions Number of additions
+	Additions int `json:"additions"`
+
+	// Changes Total number of changes
+	Changes int `json:"changes"`
+
+	// Deletions Number of deletions
+	Deletions int `json:"deletions"`
+
+	// FileCount Number of changed files
+	FileCount int `json:"file_count"`
+
+	// Files List of changed files
+	Files []string `json:"files"`
+}
+
 // CloudProvider aws, gcp, azure
 type CloudProvider string
 

@@ -253,12 +253,12 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 		// dont want to retry this workflow so not returning error, just log and return
 		shared.Logger().Error("CheckEarlyWarning", "Error merging branch", err)
 
-		message := "Merge Conflicts are expected on branch `" + branchName + "` on repo `" + repoName + "`"
 		if err = workflow.ExecuteActivity(
 			pctx,
-			msgProviderInst.SendChannelMessage,
+			msgProviderInst.SendMergeConflictsMessage,
 			teamID,
-			message,
+			repoName,
+			branchName,
 		).Get(ctx, nil); err != nil {
 			shared.Logger().Error("Error notifying Slack", "error", err.Error())
 			return err
@@ -274,21 +274,24 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 	// raise warning if the changes are more than 200 lines
 	shared.Logger().Debug("going to detect 200+ changes")
 
-	changes := 0
-	if err := workflow.ExecuteActivity(pctx, repoProviderInst.CalculateChangesInBranch, installationID, repoName, repoOwner,
-		defaultBranch, branchName).Get(ctx, &changes); err != nil {
-		shared.Logger().Error("CheckEarlyWarning", "error from CalculateChangesInBranch activity", err)
+	branchChnages := BranchChanges{}
+
+	if err := workflow.ExecuteActivity(pctx, repoProviderInst.ChangesInBranch, installationID, repoName, repoOwner,
+		defaultBranch, branchName).Get(ctx, &branchChnages); err != nil {
+		shared.Logger().Error("CheckEarlyWarning", "error from ChangesInBranch activity", err)
 		return err
 	}
 
-	if changes > 200 {
-		message := "200+ lines changed on branch `" + branchName + "` on repo `" + repoName + "`"
-
+	threshold := 200
+	if branchChnages.Changes > threshold {
 		if err := workflow.ExecuteActivity(
 			pctx,
-			msgProviderInst.SendChannelMessage,
+			msgProviderInst.SendNumberOfLinesExceedMessage,
 			teamID,
-			message,
+			repoName,
+			branchName,
+			threshold,
+			branchChnages,
 		).Get(ctx, nil); err != nil {
 			shared.Logger().Error("Error notifying Slack", "error", err.Error())
 			return err
@@ -401,12 +404,12 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 					return err
 				}
 
-				message := "Merge Conflicts are expected on branch `" + branch + "` on repo `" + repoName + "`"
 				if err = workflow.ExecuteActivity(
 					pctx,
-					msgProviderInst.SendChannelMessage,
+					msgProviderInst.SendMergeConflictsMessage,
 					teamID,
-					message,
+					repoName,
+					branchName,
 				).Get(ctx, nil); err != nil {
 					shared.Logger().Error("Error notifying Slack", "error", err.Error())
 					return err
@@ -505,12 +508,12 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.Pus
 			return err
 		}
 
-		message := "Stale branch `" + branchName + "` on repo `" + event.RepoName + "`"
 		if err := workflow.ExecuteActivity(
 			pctx,
-			msgProviderInst.SendChannelMessage,
+			msgProviderInst.SendStaleBranchMessage,
 			teamID,
-			message,
+			event.RepoName,
+			branchName,
 		).Get(ctx, nil); err != nil {
 			shared.Logger().Error("Error notifying Slack", "error", err.Error())
 			return err
