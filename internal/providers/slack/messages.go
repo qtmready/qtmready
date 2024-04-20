@@ -42,9 +42,9 @@ func FormatLineThresholdExceededMessage(repoName, branchName string, threshold i
 		":rotating_light: **Early Warning: Line Threshold Exceeded**\n\n"+
 			"**Repository:** %s\n"+
 			"**Branch:** %s\n"+
-			"**Threshold:** %d\n\n"+
+			"**Threshold:** %d\n"+
 			"**Changes:** %d\n"+
-			"**Lines Added:** %d\n\n"+
+			"**Lines Added:** %d\n"+
 			"**Lines Deleted:** %d\n\n"+
 			":memo: **Details:**\n"+
 			"%s\n\n"+
@@ -64,7 +64,9 @@ func FormatLineThresholdExceededMessage(repoName, branchName string, threshold i
 }
 
 func FormatMergeConflictMessage(repoName, branchName string) string {
-	details := "Merge conflicts were detected when attempting to merge the changes from your branch into the target branch."
+	details :=
+		fmt.Sprintf("Merge conflicts were detected when attempting to merge the changes from (%s) into the target branch (main).",
+			branchName)
 	actionRequired := "Please resolve these conflicts before attempting to merge again."
 
 	message := fmt.Sprintf(
@@ -91,8 +93,8 @@ func FormatStaleBranchMessage(repoName, branchName string) string {
 	message := fmt.Sprintf(
 		":rotating_light: **Early Warning: Stale Branch Detected**\n\n"+
 			"**Repository:** %s\n"+
-			"**Branch:** %s\n\n"+
-			":memo: **Details:**\n"+
+			"**Branch:** %s\n"+
+			":memo: **Details:**\n\n"+
 			"%s\n\n"+
 			":mag: **Action Required:**\n"+
 			"%s",
