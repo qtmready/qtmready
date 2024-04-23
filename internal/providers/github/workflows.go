@@ -306,7 +306,6 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 
 	default:
 		logger.Debug("undefined label applied!")
-		break
 	}
 
 	return nil

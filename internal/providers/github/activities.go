@@ -20,7 +20,7 @@ package github
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strconv"
 	"strings"
 
@@ -577,7 +577,7 @@ func (a *Activities) GetAllRelevantActions(ctx context.Context, installationID i
 		return err
 	}
 
-	var labeledWorkflows []string
+	// var labeledWorkflows []string
 
 	// initialize workflow status record map
 	actionWorkflowStatuses[repoName] = make(map[string]string)
@@ -591,7 +591,7 @@ func (a *Activities) GetAllRelevantActions(ctx context.Context, installationID i
 		}
 
 		// Read the content bytes
-		contentBytes, err := ioutil.ReadAll(content)
+		contentBytes, err := io.ReadAll(content)
 		if err != nil {
 			return err
 		}
@@ -601,7 +601,7 @@ func (a *Activities) GetAllRelevantActions(ctx context.Context, installationID i
 
 		// Check if the workflow is triggered by the specified label
 		if strings.Contains(contentStr, "quantm ready") {
-			labeledWorkflows = append(labeledWorkflows, *workflow.Path)
+			// labeledWorkflows = append(labeledWorkflows, *workflow.Path)
 
 			shared.Logger().Debug("action file: " + *workflow.Path)
 

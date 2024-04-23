@@ -227,6 +227,10 @@ func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, ret)
 }
 
+func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
+	return nil
+}
+
 func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
 
