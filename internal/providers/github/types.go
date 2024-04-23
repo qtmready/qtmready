@@ -62,14 +62,13 @@ type (
 		Installation InstallationID `json:"installation"`
 	}
 
-	WorkflowRun struct {
-		Action       string         `json:"action"`
-		Repository   RepositoryPR   `json:"repository"`
-		Sender       User           `json:"sender"`
-		Installation InstallationID `json:"installation"`
-		WR           struct {
-			HeadBranch string `json:"head_branch"`
-		} `json:"workflow_run"`
+	GithubWorkflowRunEvent struct {
+		Action       string             `json:"action"`
+		Repository   RepositoryPR       `json:"repository"`
+		Sender       User               `json:"sender"`
+		Installation InstallationID     `json:"installation"`
+		WR           WorkflowRunPayload `json:"workflow_run"`
+		Workflow     WorkflowPayload    `json:"workflow"`
 	}
 
 	PullRequestEvent struct {

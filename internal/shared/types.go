@@ -97,6 +97,7 @@ const (
 	WorkflowSignalCreateChangeset   WorkflowSignal = "create_changeset"
 	WorkflowPushEvent               WorkflowSignal = "push_event_triggered"
 	MergeQueueStarted               WorkflowSignal = "merge_queue_trigger"
+	MergeTriggered                  WorkflowSignal = "merge_trigger"
 )
 
 /*

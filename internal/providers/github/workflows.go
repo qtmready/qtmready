@@ -192,95 +192,10 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	return nil
 }
 
-func (w *Workflows) OnGithubActionResult(ctx workflow.Context, payload *WorkflowRun) error {
-	logger := workflow.GetLogger(ctx)
-	logger.Info("OnGithubActionResult", "entry", "workflow started")
-
-	// wait for github action to return success status
-	ch := workflow.GetSignalChannel(ctx, WorkflowSignalActionResult.String())
-	gh_result := &GithubActionResult{}
-	ch.Receive(ctx, gh_result)
-
-	logger.Info("OnGithubActionResult", "action recvd", gh_result)
-
-	// acquiring lock here
-	lock, err := LockInstance(ctx, fmt.Sprint(payload.Repository.ID))
-	if err != nil {
-		logger.Error("Error in getting lock instance", "Error", err)
-		return err
-	}
-
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
-
-	var mergeCommit string
-	err = workflow.ExecuteActivity(actx, activities.RebaseAndMerge, payload.Repository.Owner.Login, payload.Repository.Name,
-		payload.WR.HeadBranch, payload.Installation.ID).Get(ctx, &mergeCommit)
-
-	if err != nil {
-		logger.Error("error getting installation", "error", err)
-		return err
-	}
-
-	defer func() {
-		// Release the lock.
-		_ = lock.Release(ctx)
-
-		// Cleanup tries to shutdown the Mutex workflow if there are no more locks waiting.
-		_ = lock.Cleanup(ctx)
-	}()
-
-	// Signal stack workflow about changeset update
-	// info to be sent: repo, commit
-	// get workflowID for the stack attached to this repo
-
-	// get core repo
-	repo := &Repo{GithubID: payload.Repository.ID}
-	coreRepo := &core.Repo{}
-
-	err = workflow.ExecuteActivity(actx, activities.GetCoreRepo, repo).Get(ctx, coreRepo)
-	if err != nil {
-		logger.Error("error getting core repo", "error", err)
-		return err
-	}
-
-	// get core workflow ID for this stack
-	coreWorkflowID := shared.Temporal().
-		Queue(shared.CoreQueue).
-		WorkflowID(
-			shared.WithWorkflowBlock("stack"),
-			shared.WithWorkflowBlockID(coreRepo.StackID.String()),
-		)
-
-	// signal core stack workflow
-	logger.Info("core workflow id", "ID", coreWorkflowID)
-
-	signalPayload := &shared.CreateChangesetSignal{
-		RepoTableID: coreRepo.ID,
-		RepoID:      fmt.Sprint(payload.Repository.ID),
-		CommitID:    mergeCommit,
-	}
-
-	options := shared.Temporal().
-		Queue(shared.CoreQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("stack"),
-			shared.WithWorkflowBlockID(coreRepo.StackID.String()),
-		)
-
-	cw := &core.Workflows{}
-	_, err = shared.Temporal().Client().SignalWithStartWorkflow(
-		context.Background(),
-		coreWorkflowID,
-		shared.WorkflowSignalCreateChangeset.String(),
-		signalPayload,
-		options,
-		cw.StackController,
-		coreRepo.StackID.String(),
-	)
-
-	if err != nil {
-		return err
+func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, payload *GithubWorkflowRunEvent) error {
+	if actionWorkflowStatuses[payload.Repository.Name] != nil {
+		shared.Logger().Debug("workflow action file: " + payload.Workflow.Path + ", action: " + payload.Action)
+		actionWorkflowStatuses[payload.Repository.Name][payload.Workflow.Path] = payload.Action
 	}
 
 	return nil
@@ -300,7 +215,8 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 	label := payload.Label.Name
 	branch := payload.PullRequest.Head.Ref
 
-	if label == fmt.Sprintf("quantm ready") {
+	switch label {
+	case "quantm ready":
 		logger.Debug("quantm ready label applied")
 
 		cw := &core.Workflows{}
@@ -323,7 +239,7 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 			RepoProvider:   "github",
 		}
 
-		_, err := shared.Temporal().
+		if _, err := shared.Temporal().
 			Client().SignalWithStartWorkflow(
 			context.Background(),
 			opts.ID,
@@ -331,13 +247,65 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 			payload2,
 			opts,
 			cw.PollMergeQueue,
-		)
-		if err != nil {
+		); err != nil {
 			shared.Logger().Error("OnLabelEvent", "Error signaling workflow", err)
 			return err
 		}
 
 		shared.Logger().Info("PR sent to MergeQueue")
+
+	case "quantm now":
+		logger.Debug("quantm now label applied")
+
+		// check if all workflows are completed!
+		for {
+			allCompleted := true
+
+			for _, value := range actionWorkflowStatuses[repoName] {
+				if value != "completed" {
+					// return here since all are not completed
+					allCompleted = false
+
+					shared.Logger().Warn("all actions were not successful")
+
+					break
+				}
+			}
+
+			if allCompleted {
+				break
+			}
+
+			_ = workflow.Sleep(ctx, 30*time.Second)
+
+			shared.Logger().Debug("checking again all actions statuses")
+		}
+
+		// cw := &core.Workflows{}
+		opts := shared.Temporal().
+			Queue(shared.CoreQueue).
+			WorkflowOptions(
+				shared.WithWorkflowBlock("repo"),
+				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+				shared.WithWorkflowElement("PR"),
+				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
+				shared.WithWorkflowProp("type", "merge_queue"),
+			)
+
+		if err := shared.Temporal().
+			Client().SignalWorkflow(
+			context.Background(),
+			opts.ID,
+			"",
+			shared.MergeTriggered.String(),
+			nil,
+		); err != nil {
+			shared.Logger().Error("OnLabelEvent", "Error signaling workflow", err)
+			return err
+		}
+
+	default:
+		logger.Debug("undefined label applied!")
 	}
 
 	return nil

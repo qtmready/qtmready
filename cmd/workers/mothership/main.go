@@ -57,7 +57,7 @@ func main() {
 	providerWrkr.RegisterWorkflow(ghwfs.OnPushEvent)
 	providerWrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
 	providerWrkr.RegisterWorkflow(ghwfs.OnLabelEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.OnGithubActionResult)
+	providerWrkr.RegisterWorkflow(ghwfs.OnWorkflowRunEvent)
 
 	// provider activities
 	providerWrkr.RegisterActivity(&github.Activities{})

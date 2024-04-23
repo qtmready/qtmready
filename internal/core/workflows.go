@@ -537,10 +537,11 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
 	element := &shared.MergeQueueSignal{}
 	ch.Receive(ctx, &element)
 
+	logger.Debug("PollMergeQueue first signal received")
 	logger.Info("PollMergeQueue", "data recvd", element)
 
+	// actually merge now
 	repoProviderInst := Instance().RepoProvider(RepoProvider(element.RepoProvider))
-
 	providerActOpts := workflow.ActivityOptions{
 		StartToCloseTimeout: 60 * time.Second,
 		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
@@ -550,9 +551,23 @@ func (w *Workflows) PollMergeQueue(ctx workflow.Context) error {
 	}
 	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
 
-	if err := workflow.ExecuteActivity(pctx, repoProviderInst.TriggerCIAction, element.InstallationID, element.RepoOwner, element.RepoName,
-		element.Branch).Get(ctx, nil); err != nil {
-		logger.Error("error triggering github action", "error", err)
+	// get list of all available github workflow actions/files
+	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetAllRelevantActions, element.InstallationID, element.RepoName,
+		element.RepoOwner).Get(ctx, nil); err != nil {
+		logger.Error("error getting all labeled actions", "error", err)
+		return err
+	}
+
+	logger.Debug("waiting on second signal now.")
+
+	mergeSig := workflow.GetSignalChannel(ctx, shared.MergeTriggered.String())
+	mergeSig.Receive(ctx, nil)
+
+	logger.Debug("PollMergeQueue second signal received")
+
+	if err := workflow.ExecuteActivity(pctx, repoProviderInst.RebaseAndMerge, element.RepoOwner, element.RepoName, element.Branch,
+		element.InstallationID).Get(ctx, nil); err != nil {
+		logger.Error("error rebasing & merging activity", "error", err)
 		return err
 	}
 

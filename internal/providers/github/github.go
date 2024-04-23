@@ -35,9 +35,10 @@ import (
 )
 
 var (
-	instance *Config
-	once     sync.Once
-	lockRepo map[string]mutex.Mutex
+	instance               *Config
+	once                   sync.Once
+	lockRepo               map[string]mutex.Mutex
+	actionWorkflowStatuses map[string]map[string]string // github repo -> workflow file -> status (idle, requested, in_progress, completed)
 )
 
 func NewGithub(options ...ConfigOption) *Config {
@@ -46,6 +47,8 @@ func NewGithub(options ...ConfigOption) *Config {
 	for _, option := range options {
 		option(g)
 	}
+
+	actionWorkflowStatuses = make(map[string]map[string]string)
 
 	return g
 }
