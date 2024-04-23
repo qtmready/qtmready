@@ -215,7 +215,8 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 	label := payload.Label.Name
 	branch := payload.PullRequest.Head.Ref
 
-	if label == fmt.Sprintf("quantm ready") {
+	switch label {
+	case "quantm ready":
 		logger.Debug("quantm ready label applied")
 
 		cw := &core.Workflows{}
@@ -238,7 +239,7 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 			RepoProvider:   "github",
 		}
 
-		_, err := shared.Temporal().
+		if _, err := shared.Temporal().
 			Client().SignalWithStartWorkflow(
 			context.Background(),
 			opts.ID,
@@ -246,13 +247,66 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 			payload2,
 			opts,
 			cw.PollMergeQueue,
-		)
-		if err != nil {
+		); err != nil {
 			shared.Logger().Error("OnLabelEvent", "Error signaling workflow", err)
 			return err
 		}
 
 		shared.Logger().Info("PR sent to MergeQueue")
+
+	case "quantm now":
+		logger.Debug("quantm now label applied")
+
+		// check if all workflows are completed!
+		for {
+			allCompleted := true
+
+			for _, value := range actionWorkflowStatuses[repoName] {
+				if value != "completed" {
+					// return here since all are not completed
+					allCompleted = false
+
+					shared.Logger().Warn("all actions were not successful")
+
+					break
+				}
+			}
+
+			if allCompleted {
+				break
+			}
+
+			_ = workflow.Sleep(ctx, 30*time.Second)
+
+			shared.Logger().Debug("checking again all actions statuses")
+		}
+
+		// cw := &core.Workflows{}
+		opts := shared.Temporal().
+			Queue(shared.CoreQueue).
+			WorkflowOptions(
+				shared.WithWorkflowBlock("repo"),
+				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+				shared.WithWorkflowElement("PR"),
+				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
+				shared.WithWorkflowProp("type", "merge_queue"),
+			)
+
+		if err := shared.Temporal().
+			Client().SignalWorkflow(
+			context.Background(),
+			opts.ID,
+			"",
+			shared.MergeTriggered.String(),
+			nil,
+		); err != nil {
+			shared.Logger().Error("OnLabelEvent", "Error signaling workflow", err)
+			return err
+		}
+
+	default:
+		logger.Debug("undefined label applied!")
+		break
 	}
 
 	return nil
