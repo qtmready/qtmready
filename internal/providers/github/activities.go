@@ -20,6 +20,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"strings"
 
@@ -560,4 +561,53 @@ func (a *Activities) GetRepoTeamID(ctx context.Context, repoID string) (string, 
 	shared.Logger().Info("GetRepoTeamID Activity", "Get Repo Team ID successfully: ", prepo.TeamID)
 
 	return prepo.TeamID.String(), nil
+}
+
+func (a *Activities) GetAllRelevantActions(ctx context.Context, installationID int64, repoName string, repoOwner string) error {
+	// get github client
+	client, err := Instance().GetClientFromInstallation(installationID)
+	if err != nil {
+		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	// List repository workflows
+	workflows, _, err := client.Actions.ListWorkflows(ctx, repoOwner, repoName, nil)
+	if err != nil {
+		return err
+	}
+
+	var labeledWorkflows []string
+
+	// initialize workflow status record map
+	actionWorkflowStatuses[repoName] = make(map[string]string)
+
+	// Iterate through each workflow
+	for _, workflow := range workflows.Workflows {
+		// Download the content of the workflow file
+		content, _, err := client.Repositories.DownloadContents(ctx, repoOwner, repoName, *workflow.Path, nil)
+		if err != nil {
+			return err
+		}
+
+		// Read the content bytes
+		contentBytes, err := ioutil.ReadAll(content)
+		if err != nil {
+			return err
+		}
+
+		// Convert content bytes to string
+		contentStr := string(contentBytes)
+
+		// Check if the workflow is triggered by the specified label
+		if strings.Contains(contentStr, "quantm ready") {
+			labeledWorkflows = append(labeledWorkflows, *workflow.Path)
+
+			shared.Logger().Debug("action file: " + *workflow.Path)
+
+			actionWorkflowStatuses[repoName][*workflow.Path] = "idle"
+		}
+	}
+
+	return nil
 }
