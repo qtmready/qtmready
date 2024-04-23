@@ -601,9 +601,9 @@ func (a *Activities) GetAllRelevantActions(ctx context.Context, installationID i
 
 		// Check if the workflow is triggered by the specified label
 		if strings.Contains(contentStr, "quantm ready") {
-			// labeledWorkflows = append(labeledWorkflows, *workflow.Path)
-
 			shared.Logger().Debug("action file: " + *workflow.Path)
+
+			// labeledWorkflows = append(labeledWorkflows, *workflow.Path)
 
 			actionWorkflowStatuses[repoName][*workflow.Path] = "idle"
 		}
