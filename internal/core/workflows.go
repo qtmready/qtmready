@@ -409,7 +409,7 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 					msgProviderInst.SendMergeConflictsMessage,
 					teamID,
 					repoName,
-					branchName,
+					branch,
 				).Get(ctx, nil); err != nil {
 					shared.Logger().Error("Error notifying Slack", "error", err.Error())
 					return err
