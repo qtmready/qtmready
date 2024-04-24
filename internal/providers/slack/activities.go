@@ -38,11 +38,10 @@ func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID, repoNam
 		return err
 	}
 
-	// format message
-	message := FormatStaleBranchMessage(repoName, branchName)
+	attachment := formatStaleBranchAttachment(repoName, branchName)
 
 	// call blockset to send the message to slack channel or sepecific workspace.
-	if err := notify(client, channelID, message); err != nil {
+	if err := notify(client, channelID, attachment); err != nil {
 		slog.Info("Failed to post message to channel", slog.Any("e", err))
 		return err
 	}
@@ -63,11 +62,10 @@ func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context,
 		return err
 	}
 
-	// Format message
-	message := FormatLineThresholdExceededMessage(repoName, branchName, threshold, branchChanges)
+	attachment := formatLineThresholdExceededAttachment(repoName, branchName, threshold, branchChanges)
 
 	// Call function to send the message to Slack channel or specific workspace.
-	if err := notify(client, channelID, message); err != nil {
+	if err := notify(client, channelID, attachment); err != nil {
 		slog.Info("Failed to post message to channel", slog.Any("e", err))
 		return err
 	}
@@ -85,11 +83,10 @@ func (a *Activities) SendMergeConflictsMessage(ctx context.Context, teamID, repo
 		return err
 	}
 
-	// format message
-	message := FormatMergeConflictMessage(repoName, branchName)
+	attachment := formatMergeConflictAttachment(repoName, branchName)
 
 	// call blockset to send the message to slack channel or sepecific workspace.
-	if err := notify(client, channelID, message); err != nil {
+	if err := notify(client, channelID, attachment); err != nil {
 		slog.Info("Failed to post message to channel", slog.Any("e", err))
 		return err
 	}

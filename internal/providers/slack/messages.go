@@ -20,89 +20,94 @@ package slack
 import (
 	"fmt"
 
+	"github.com/slack-go/slack"
+
 	"go.breu.io/quantm/internal/core"
 )
 
-func FormatLineThresholdExceededMessage(repoName, branchName string, threshold int, branchChanges core.BranchChanges) string {
-	actionRequired := "Please review the changes carefully before merging."
+func formatLineThresholdExceededAttachment(repoName, branchName string, threshold int, branchChanges core.BranchChanges) slack.Attachment {
+	return slack.Attachment{
+		Color: "danger",
+		Title: "*PR Lines exceed Alert*",
+		Fields: []slack.AttachmentField{
+			createRepositoryField(repoName),
+			createBranchField(branchName),
+			{
+				Title: "*Threshold*",
+				Value: fmt.Sprintf("%d", threshold),
+				Short: true,
+			},
+			{
+				Title: "*Changes Count*",
+				Value: fmt.Sprintf("%d", branchChanges.Changes),
+				Short: true,
+			},
+			{
+				Title: "*Lines Added*",
+				Value: fmt.Sprintf("%d", branchChanges.Additions),
+				Short: true,
+			},
+			{
+				Title: "*Lines Deleted*",
+				Value: fmt.Sprintf("%d", branchChanges.Deletions),
+				Short: true,
+			},
+			{
+				Title: "*Details*",
+				Value: fmt.Sprintf("*Number of Conflicts:* %d\n*Files with Conflicts:*\n%s",
+					branchChanges.FileCount, formatFilesList(branchChanges.Files)),
+				Short: false,
+			},
+		},
+		MarkdownIn: []string{"fields"},
+	}
+}
 
-	var details string
-	if branchChanges.FileCount > 0 {
-		details = fmt.Sprintf("This commit introduces significant changes to the codebase.\n\n"+
-			"**File Count:** %d\n\n"+
-			"**Files:**\n", branchChanges.FileCount)
-		for i, file := range branchChanges.Files {
-			details += fmt.Sprintf("%d. %s\n", i+1, file)
-		}
-	} else {
-		details = "This commit introduces no changes to the codebase."
+func formatMergeConflictAttachment(repoName, branchName string) slack.Attachment {
+	return slack.Attachment{
+		Color: "danger",
+		Title: "*Merge Conflict Alert*",
+		Fields: []slack.AttachmentField{
+			createRepositoryField(repoName),
+			createBranchField(branchName),
+		},
+		MarkdownIn: []string{"fields"}, // TODO
+	}
+}
+
+func formatStaleBranchAttachment(repoName, branchName string) slack.Attachment {
+	return slack.Attachment{
+		Color: "danger",
+		Title: "*Stale Branch Alert*",
+		Fields: []slack.AttachmentField{
+			createRepositoryField(repoName),
+			createBranchField(branchName),
+		},
+		MarkdownIn: []string{"fields"}, // TODO
+	}
+}
+
+func createRepositoryField(repoName string) slack.AttachmentField {
+	return slack.AttachmentField{
+		Title: "*Repository*",
+		Value: fmt.Sprintf("[%s]", repoName),
+		Short: true,
+	}
+}
+
+func createBranchField(branchName string) slack.AttachmentField {
+	return slack.AttachmentField{
+		Title: "*Branch*",
+		Value: branchName,
+		Short: true,
+	}
+}
+
+func formatFilesList(files []string) string {
+	result := ""
+	for _, file := range files {
+		result += "- " + file + "\n"
 	}
 
-	message := fmt.Sprintf(
-		":rotating_light: **Early Warning: Line Threshold Exceeded**\n\n"+
-			"**Repository:** %s\n"+
-			"**Branch:** %s\n"+
-			"**Threshold:** %d\n"+
-			"**Changes:** %d\n"+
-			"**Lines Added:** %d\n"+
-			"**Lines Deleted:** %d\n\n"+
-			":memo: **Details:**\n"+
-			"%s\n\n"+
-			":mag: **Action Required:**\n"+
-			"%s",
-		repoName,
-		branchName,
-		threshold,
-		branchChanges.Changes,
-		branchChanges.Additions,
-		branchChanges.Deletions,
-		details,
-		actionRequired,
-	)
-
-	return message
-}
-
-func FormatMergeConflictMessage(repoName, branchName string) string {
-	details :=
-		fmt.Sprintf("Merge conflicts were detected when attempting to merge the changes from (%s) into the target branch (main).",
-			branchName)
-	actionRequired := "Please resolve these conflicts before attempting to merge again."
-
-	message := fmt.Sprintf(
-		":rotating_light: **Early Warning: Merge Conflicts are expected on branch**\n\n"+
-			"**Repository:** %s\n"+
-			"**Branch:** %s\n\n"+
-			":memo: **Details:**\n"+
-			"%s\n\n"+
-			":mag: **Action Required:**\n"+
-			"%s",
-		repoName,
-		branchName,
-		details,
-		actionRequired,
-	)
-
-	return message
-}
-
-func FormatStaleBranchMessage(repoName, branchName string) string {
-	details := "This branch has not had any recent activity."
-	actionRequired := "Please check if this branch is still needed. If not, consider deleting it to keep the repository clean."
-
-	message := fmt.Sprintf(
-		":rotating_light: **Early Warning: Stale Branch Detected**\n\n"+
-			"**Repository:** %s\n"+
-			"**Branch:** %s\n"+
-			":memo: **Details:**\n\n"+
-			"%s\n\n"+
-			":mag: **Action Required:**\n"+
-			"%s",
-		repoName,
-		branchName,
-		details,
-		actionRequired,
-	)
-
-	return message
+	return result
 }
