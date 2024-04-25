@@ -63,19 +63,19 @@ func formatLineThresholdExceededAttachment(repoName, branchName string, threshol
 	}
 }
 
-func formatMergeConflictAttachment(repoName, branchName string) slack.Attachment {
+func formatMergeConflictAttachment(merge core.LatestCommit) slack.Attachment {
 	return slack.Attachment{
 		Color: "danger",
 		Title: "Merge Conflict",
 		Fields: []slack.AttachmentField{
-			createRepositoryField(repoName, ""),
-			createBranchField(branchName, ""),
+			createRepositoryField(merge.RepoName, merge.RepoUrl),
+			createBranchField(merge.Branch, merge.CommitUrl),
 		},
 		MarkdownIn: []string{"fields"}, // TODO
 	}
 }
 
-func formatStaleBranchAttachment(staleBranch core.StaleBranch) slack.Attachment {
+func formatStaleBranchAttachment(staleBranch core.LatestCommit) slack.Attachment {
 	return slack.Attachment{
 		Color: "danger",
 		Title: "Stale Branch",

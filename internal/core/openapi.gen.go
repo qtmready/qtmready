@@ -378,6 +378,15 @@ type Driver string
 // GCPDriver gke, cloudrun, pubsub etc
 type GCPDriver string
 
+// LatestCommit get the latest commit information
+type LatestCommit struct {
+	Branch    string `json:"branch"`
+	CommitUrl string `json:"commit_url"`
+	RepoName  string `json:"repo_name"`
+	RepoUrl   string `json:"repo_url"`
+	SHA       string `json:"sha"`
+}
+
 // MessageProvider defines model for MessageProvider.
 type MessageProvider string
 
@@ -525,15 +534,6 @@ type StackCreateRequest struct {
 
 // StackListResponse defines model for StackListResponse.
 type StackListResponse = []Stack
-
-// StaleBranch Stale branch information
-type StaleBranch struct {
-	Branch    string `json:"branch"`
-	CommitUrl string `json:"commit_url"`
-	RepoName  string `json:"repo_name"`
-	RepoUrl   string `json:"repo_url"`
-	SHA       string `json:"sha"`
-}
 
 // Workload Workload defines a workload for the app
 type Workload struct {

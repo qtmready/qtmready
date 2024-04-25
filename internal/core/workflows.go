@@ -91,16 +91,16 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 		marker := &repoMarkers[idx]
 		// p := Instance().Provider(repo.Provider) // get the specific provider
 		p := Instance().RepoProvider(repo.Provider) // get the specific provider
-		commitID := ""
 
+		commit := LatestCommit{}
 		if err := workflow.
 			ExecuteActivity(pctx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).
-			Get(ctx, &commitID); err != nil {
+			Get(ctx, &commit); err != nil {
 			shared.Logger().Error("Error in getting latest commit ID", "repo", repo.Name, "provider", repo.Provider)
 			return fmt.Errorf("Error in getting latest commit ID repo:%s, provider:%s", repo.Name, repo.Provider.String())
 		}
 
-		marker.CommitID = commitID
+		marker.CommitID = commit.SHA
 		marker.Provider = repo.Provider.String()
 		marker.RepoID = repo.ID.String()
 
@@ -216,9 +216,9 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 	// if the rebase with the target branch returns error, raise warning
 	shared.Logger().Debug("going to detect merge conflicts")
 
-	latestDefBranchCommitSHA := ""
+	commit := LatestCommit{}
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), defaultBranch).Get(ctx,
-		&latestDefBranchCommitSHA); err != nil {
+		&commit); err != nil {
 		shared.Logger().Error("CheckEarlyWarning", "error from GetLatestCommit activity", err)
 		return err
 	}
@@ -235,7 +235,7 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 
 	// create new ref
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.CreateBranch, installationID, repoID, repoName, repoOwner,
-		latestDefBranchCommitSHA, tempBranchName).Get(ctx, nil); err != nil {
+		commit.SHA, tempBranchName).Get(ctx, nil); err != nil {
 		shared.Logger().Error("CheckEarlyWarning", "error from DeleteBranch activity", err)
 		return err
 	}
@@ -257,8 +257,7 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 			pctx,
 			msgProviderInst.SendMergeConflictsMessage,
 			teamID,
-			repoName,
-			branchName,
+			commit,
 		).Get(ctx, nil); err != nil {
 			shared.Logger().Error("Error notifying Slack", "error", err.Error())
 			return err
@@ -373,6 +372,13 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 	}
 	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
 
+	commit := LatestCommit{}
+	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), branchName).Get(ctx,
+		&commit); err != nil {
+		shared.Logger().Error("BranchController", "error from GetLatestCommit activity", err)
+		return err
+	}
+
 	// if the push comes at the default branch i.e. main rebase all branches with main
 	if branchName == defaultBranch {
 		var branchNames []string
@@ -408,8 +414,7 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 					pctx,
 					msgProviderInst.SendMergeConflictsMessage,
 					teamID,
-					repoName,
-					branch,
+					commit,
 				).Get(ctx, nil); err != nil {
 					shared.Logger().Error("Error notifying Slack", "error", err.Error())
 					return err
@@ -428,13 +433,6 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 	// execute child workflow for stale detection
 	// if a branch is stale for a long time (5 days in this case) raise warning
 	shared.Logger().Debug("going to detect stale branch")
-
-	latestDefBranchCommitSHA := ""
-	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), branchName).Get(ctx,
-		&latestDefBranchCommitSHA); err != nil {
-		shared.Logger().Error("BranchController", "error from GetLatestCommit activity", err)
-		return err
-	}
 
 	wf := &Workflows{}
 	opts := shared.Temporal().
@@ -456,7 +454,7 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 		wf.StaleBranchDetection,
 		signalPayload,
 		branchName,
-		latestDefBranchCommitSHA).
+		commit.SHA).
 		GetChildWorkflowExecution().
 		Get(cctx, &execution)
 
@@ -473,8 +471,6 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.Pus
 	lastBranchCommit string) error {
 
 	repoID := event.RepoID
-	repoName := event.RepoName
-	repoOwner := event.RepoOwner
 	// Sleep for 5 days before raising stale detection
 	_ = workflow.Sleep(ctx, 5*24*time.Hour)
 	// _ = workflow.Sleep(ctx, 30*time.Second)
@@ -495,17 +491,17 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.Pus
 	}
 	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
 
-	staleBranch := StaleBranch{}
+	commit := LatestCommit{}
 	if err := workflow.
-		ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), repoName, repoOwner, branchName).
+		ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), branchName).
 		Get(ctx,
-			&staleBranch); err != nil {
+			&commit); err != nil {
 		shared.Logger().Error("StaleBranchDetection", "error from GetLatestCommit activity", err)
 		return err
 	}
 
 	// check if the branchName branch has the lastBranchCommit as the latest commit
-	if lastBranchCommit == staleBranch.SHA {
+	if lastBranchCommit == commit.SHA {
 		// get the teamID from repo table
 		teamID := ""
 		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetRepoTeamID, strconv.FormatInt(event.RepoID, 10)).Get(ctx,
@@ -518,7 +514,7 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.Pus
 			pctx,
 			msgProviderInst.SendStaleBranchMessage,
 			teamID,
-			staleBranch,
+			commit,
 		).Get(ctx, nil); err != nil {
 			shared.Logger().Error("Error notifying Slack", "error", err.Error())
 			return err
@@ -677,16 +673,16 @@ func (w *Workflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) e
 		marker := &repoMarker[idx]
 		// p := Instance().Provider(repo.Provider) // get the specific provider
 		p := Instance().RepoProvider(repo.Provider) // get the specific provider
-		commitID := ""
 
+		commit := LatestCommit{}
 		if err := workflow.
 			ExecuteActivity(pctx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).
-			Get(ctx, &commitID); err != nil {
+			Get(ctx, &commit); err != nil {
 			logger.Error("Error in getting latest commit ID", "repo", repo.Name, "provider", repo.Provider)
 			return fmt.Errorf("Error in getting latest commit ID repo:%s, provider:%s", repo.Name, repo.Provider.String())
 		}
 
-		marker.CommitID = commitID
+		marker.CommitID = commit.SHA
 		marker.HasChanged = repo.ID == payload.RepoID
 		marker.Provider = repo.Provider.String()
 		marker.RepoID = repo.ID.String()

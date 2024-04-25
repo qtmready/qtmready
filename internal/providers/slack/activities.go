@@ -30,7 +30,7 @@ type (
 	Activities struct{}
 )
 
-func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID string, staleBranch core.StaleBranch) error {
+func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID string, stale core.LatestCommit) error {
 	// Create a Slack client using the decrypted access token.
 	client, channelID, err := GetSlackClientAndChannelID(teamID)
 	if err != nil {
@@ -38,7 +38,7 @@ func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID string, 
 		return err
 	}
 
-	attachment := formatStaleBranchAttachment(staleBranch)
+	attachment := formatStaleBranchAttachment(stale)
 
 	// call blockset to send the message to slack channel or sepecific workspace.
 	if err := notify(client, channelID, attachment); err != nil {
@@ -75,7 +75,7 @@ func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context,
 	return nil
 }
 
-func (a *Activities) SendMergeConflictsMessage(ctx context.Context, teamID, repoName, branchName string) error {
+func (a *Activities) SendMergeConflictsMessage(ctx context.Context, teamID string, merge core.LatestCommit) error {
 	// Create a Slack client using the decrypted access token.
 	client, channelID, err := GetSlackClientAndChannelID(teamID)
 	if err != nil {
@@ -83,7 +83,7 @@ func (a *Activities) SendMergeConflictsMessage(ctx context.Context, teamID, repo
 		return err
 	}
 
-	attachment := formatMergeConflictAttachment(repoName, branchName)
+	attachment := formatMergeConflictAttachment(merge)
 
 	// call blockset to send the message to slack channel or sepecific workspace.
 	if err := notify(client, channelID, attachment); err != nil {

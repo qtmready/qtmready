@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"strconv"
 	"strings"
 
@@ -149,7 +150,7 @@ func (a *Activities) GetStack(ctx context.Context, repo *core.Repo) (*core.Stack
 }
 
 // GetLatestCommit gets latest commit for default branch of the provided repo.
-func (a *Activities) GetLatestCommit(ctx context.Context, repoID, repoName, repoOwner, branch string) (*core.StaleBranch, error) {
+func (a *Activities) GetLatestCommit(ctx context.Context, repoID, branch string) (*core.LatestCommit, error) {
 	logger := activity.GetLogger(ctx)
 	prepo := &Repo{}
 
@@ -164,7 +165,7 @@ func (a *Activities) GetLatestCommit(ctx context.Context, repoID, repoName, repo
 	}
 
 	// TODO: move to some genernic function or activity
-	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
+	repo, _, err := client.Repositories.Get(ctx, strings.Split(prepo.FullName, "/")[0], prepo.Name)
 	if err != nil {
 		shared.Logger().Error("ChangesInBranch Activity", "Error getting repository: ", err)
 		return nil, err
@@ -176,7 +177,7 @@ func (a *Activities) GetLatestCommit(ctx context.Context, repoID, repoName, repo
 		return nil, err
 	}
 
-	staleBranch := &core.StaleBranch{
+	commit := &core.LatestCommit{
 		RepoName:  repo.GetName(),
 		RepoUrl:   repo.GetHTMLURL(),
 		Branch:    *gb.Name,
@@ -184,9 +185,11 @@ func (a *Activities) GetLatestCommit(ctx context.Context, repoID, repoName, repo
 		CommitUrl: *gb.Commit.HTMLURL,
 	}
 
+	log.Println("commit => ", commit)
+
 	logger.Debug("Repo", "Name", prepo.FullName, "Branch name", gb.Name, "Last commit", gb.Commit.SHA)
 
-	return staleBranch, nil
+	return commit, nil
 }
 
 // TODO - break it to smalller activities (create, delete and merge).
