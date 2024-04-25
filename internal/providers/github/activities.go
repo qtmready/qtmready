@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"strconv"
 	"strings"
 
@@ -185,9 +184,7 @@ func (a *Activities) GetLatestCommit(ctx context.Context, repoID, branch string)
 		CommitUrl: *gb.Commit.HTMLURL,
 	}
 
-	log.Println("commit => ", commit)
-
-	logger.Debug("Repo", "Name", prepo.FullName, "Branch name", gb.Name, "Last commit", gb.Commit.SHA)
+	logger.Debug("Repo", "Name", prepo.FullName, "Branch name", gb.Name, "Last commit", commit)
 
 	return commit, nil
 }
@@ -523,8 +520,6 @@ func (a *Activities) ChangesInBranch(ctx context.Context, installationID int64, 
 		changedFiles = append(changedFiles, *file.Filename)
 	}
 
-	shared.Logger().Debug("ChangesInBranch", "total changes in branch "+targetBranch, changes)
-
 	branchChanges := &core.BranchChanges{
 		RepoUrl:    repo.GetHTMLURL(),
 		Changes:    changes,
@@ -534,6 +529,8 @@ func (a *Activities) ChangesInBranch(ctx context.Context, installationID int64, 
 		FileCount:  len(changedFiles),
 		Files:      changedFiles,
 	}
+
+	shared.Logger().Debug("ChangesInBranch", "total changes in branch "+targetBranch, changes)
 
 	return branchChanges, nil
 }

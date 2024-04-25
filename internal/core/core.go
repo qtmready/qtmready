@@ -76,10 +76,10 @@ type (
 	}
 
 	MessageProviderActivities interface {
-		SendStaleBranchMessage(ctx context.Context, teamID string, stale LatestCommit) error
+		SendStaleBranchMessage(ctx context.Context, teamID string, stale *LatestCommit) error
 		SendNumberOfLinesExceedMessage(ctx context.Context, teamID, repoName, branchName string, threshold int,
-			branchChnages BranchChanges) error
-		SendMergeConflictsMessage(ctx context.Context, teamID string, merge LatestCommit) error
+			branchChnages *BranchChanges) error
+		SendMergeConflictsMessage(ctx context.Context, teamID string, merge *LatestCommit) error
 	}
 
 	Providers struct {

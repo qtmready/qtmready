@@ -216,9 +216,9 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 	// if the rebase with the target branch returns error, raise warning
 	shared.Logger().Debug("going to detect merge conflicts")
 
-	commit := LatestCommit{}
+	commit := &LatestCommit{}
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), defaultBranch).Get(ctx,
-		&commit); err != nil {
+		commit); err != nil {
 		shared.Logger().Error("CheckEarlyWarning", "error from GetLatestCommit activity", err)
 		return err
 	}
@@ -273,10 +273,10 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 	// raise warning if the changes are more than 200 lines
 	shared.Logger().Debug("going to detect 200+ changes")
 
-	branchChnages := BranchChanges{}
+	branchChnages := &BranchChanges{}
 
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.ChangesInBranch, installationID, repoName, repoOwner,
-		defaultBranch, branchName).Get(ctx, &branchChnages); err != nil {
+		defaultBranch, branchName).Get(ctx, branchChnages); err != nil {
 		shared.Logger().Error("CheckEarlyWarning", "error from ChangesInBranch activity", err)
 		return err
 	}
@@ -372,9 +372,9 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 	}
 	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
 
-	commit := LatestCommit{}
+	commit := &LatestCommit{}
 	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), branchName).Get(ctx,
-		&commit); err != nil {
+		commit); err != nil {
 		shared.Logger().Error("BranchController", "error from GetLatestCommit activity", err)
 		return err
 	}
@@ -491,7 +491,7 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.Pus
 	}
 	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
 
-	commit := LatestCommit{}
+	commit := &LatestCommit{}
 	if err := workflow.
 		ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), branchName).
 		Get(ctx,

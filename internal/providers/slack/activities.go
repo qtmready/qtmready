@@ -30,7 +30,7 @@ type (
 	Activities struct{}
 )
 
-func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID string, stale core.LatestCommit) error {
+func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID string, stale *core.LatestCommit) error {
 	// Create a Slack client using the decrypted access token.
 	client, channelID, err := GetSlackClientAndChannelID(teamID)
 	if err != nil {
@@ -54,7 +54,7 @@ func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID string, 
 func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context,
 	teamID, repoName, branchName string,
 	threshold int,
-	branchChanges core.BranchChanges) error {
+	branchChanges *core.BranchChanges) error {
 	// Create a Slack client using the decrypted access token.
 	client, channelID, err := GetSlackClientAndChannelID(teamID)
 	if err != nil {
@@ -75,7 +75,7 @@ func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context,
 	return nil
 }
 
-func (a *Activities) SendMergeConflictsMessage(ctx context.Context, teamID string, merge core.LatestCommit) error {
+func (a *Activities) SendMergeConflictsMessage(ctx context.Context, teamID string, merge *core.LatestCommit) error {
 	// Create a Slack client using the decrypted access token.
 	client, channelID, err := GetSlackClientAndChannelID(teamID)
 	if err != nil {

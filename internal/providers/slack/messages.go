@@ -25,7 +25,7 @@ import (
 	"go.breu.io/quantm/internal/core"
 )
 
-func formatLineThresholdExceededAttachment(repoName, branchName string, threshold int, branchChanges core.BranchChanges) slack.Attachment {
+func formatLineThresholdExceededAttachment(repoName, branchName string, threshold int, branchChanges *core.BranchChanges) slack.Attachment {
 	return slack.Attachment{
 		Color: "danger",
 		Title: "PR Lines Exceed",
@@ -63,7 +63,7 @@ func formatLineThresholdExceededAttachment(repoName, branchName string, threshol
 	}
 }
 
-func formatMergeConflictAttachment(merge core.LatestCommit) slack.Attachment {
+func formatMergeConflictAttachment(merge *core.LatestCommit) slack.Attachment {
 	return slack.Attachment{
 		Color: "danger",
 		Title: "Merge Conflict",
@@ -75,7 +75,7 @@ func formatMergeConflictAttachment(merge core.LatestCommit) slack.Attachment {
 	}
 }
 
-func formatStaleBranchAttachment(staleBranch core.LatestCommit) slack.Attachment {
+func formatStaleBranchAttachment(staleBranch *core.LatestCommit) slack.Attachment {
 	return slack.Attachment{
 		Color: "danger",
 		Title: "Stale Branch",
