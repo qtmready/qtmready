@@ -75,13 +75,13 @@ func formatMergeConflictAttachment(repoName, branchName string) slack.Attachment
 	}
 }
 
-func formatStaleBranchAttachment(repoName, branchName string) slack.Attachment {
+func formatStaleBranchAttachment(staleBranch core.StaleBranch) slack.Attachment {
 	return slack.Attachment{
 		Color: "danger",
 		Title: "Stale Branch",
 		Fields: []slack.AttachmentField{
-			createRepositoryField(repoName, ""),
-			createBranchField(branchName, ""),
+			createRepositoryField(staleBranch.RepoName, staleBranch.RepoUrl),
+			createBranchField(staleBranch.Branch, staleBranch.CommitUrl),
 		},
 		MarkdownIn: []string{"fields"}, // TODO
 	}

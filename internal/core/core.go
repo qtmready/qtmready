@@ -53,7 +53,7 @@ type (
 	Option func(Core)
 
 	RepoProviderActivities interface {
-		GetLatestCommit(context.Context, string, string) (string, error)
+		GetLatestCommit(ctx context.Context, repoID, repoName, repoOwner, branchName string) (*StaleBranch, error)
 		DeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error
 		TagCommit(ctx context.Context, repoID string, commitSHA string, tagName string, tagMessage string) error
 		CreateBranch(ctx context.Context, installationID int64, repoID int64, repoName string, repoOwner string, targetCommit string,
@@ -76,7 +76,7 @@ type (
 	}
 
 	MessageProviderActivities interface {
-		SendStaleBranchMessage(ctx context.Context, teamID, repoName, branchName string) error
+		SendStaleBranchMessage(ctx context.Context, teamID string, staleBranch StaleBranch) error
 		SendNumberOfLinesExceedMessage(ctx context.Context, teamID, repoName, branchName string, threshold int,
 			branchChnages BranchChanges) error
 		SendMergeConflictsMessage(ctx context.Context, teamID, repoName, branchName string) error

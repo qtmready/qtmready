@@ -149,29 +149,44 @@ func (a *Activities) GetStack(ctx context.Context, repo *core.Repo) (*core.Stack
 }
 
 // GetLatestCommit gets latest commit for default branch of the provided repo.
-func (a *Activities) GetLatestCommit(ctx context.Context, providerID string, branch string) (string, error) {
+func (a *Activities) GetLatestCommit(ctx context.Context, repoID, repoName, repoOwner, branch string) (*core.StaleBranch, error) {
 	logger := activity.GetLogger(ctx)
 	prepo := &Repo{}
 
-	if err := db.Get(prepo, db.QueryParams{"github_id": providerID}); err != nil {
-		return "", err
+	if err := db.Get(prepo, db.QueryParams{"github_id": repoID}); err != nil {
+		return nil, err
 	}
 
 	client, err := Instance().GetClientFromInstallation(prepo.InstallationID)
 	if err != nil {
 		logger.Error("GetClientFromInstallation failed", "Error", err)
-		return "", err
+		return nil, err
+	}
+
+	// TODO: move to some genernic function or activity
+	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
+	if err != nil {
+		shared.Logger().Error("ChangesInBranch Activity", "Error getting repository: ", err)
+		return nil, err
 	}
 
 	gb, _, err := client.Repositories.GetBranch(context.Background(), strings.Split(prepo.FullName, "/")[0], prepo.Name, branch, false)
 	if err != nil {
 		logger.Error("GetBranch for Github Repo failed", "Error", err)
-		return "", err
+		return nil, err
+	}
+
+	staleBranch := &core.StaleBranch{
+		RepoName:  repo.GetName(),
+		RepoUrl:   repo.GetHTMLURL(),
+		Branch:    *gb.Name,
+		SHA:       *gb.Commit.SHA,
+		CommitUrl: *gb.Commit.HTMLURL,
 	}
 
 	logger.Debug("Repo", "Name", prepo.FullName, "Branch name", gb.Name, "Last commit", gb.Commit.SHA)
 
-	return *gb.Commit.SHA, nil
+	return staleBranch, nil
 }
 
 // TODO - break it to smalller activities (create, delete and merge).
@@ -184,6 +199,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	}
 
 	// Get the default branch (e.g., "main")
+	// TODO: move to some genernic function or activity
 	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error getting repository: ", err)
@@ -480,6 +496,7 @@ func (a *Activities) ChangesInBranch(ctx context.Context, installationID int64, 
 		return nil, err
 	}
 
+	// TODO: move to some genernic function or activity
 	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
 	if err != nil {
 		shared.Logger().Error("ChangesInBranch Activity", "Error getting repository: ", err)

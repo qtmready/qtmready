@@ -528,9 +528,11 @@ type StackListResponse = []Stack
 
 // StaleBranch Stale branch information
 type StaleBranch struct {
-	Branch  *string `json:"branch,omitempty"`
-	RepoUrl string  `json:"repo_url"`
-	Sha     string  `json:"sha"`
+	Branch    string `json:"branch"`
+	CommitUrl string `json:"commit_url"`
+	RepoName  string `json:"repo_name"`
+	RepoUrl   string `json:"repo_url"`
+	SHA       string `json:"sha"`
 }
 
 // Workload Workload defines a workload for the app

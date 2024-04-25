@@ -30,7 +30,7 @@ type (
 	Activities struct{}
 )
 
-func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID, repoName, branchName string) error {
+func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID string, staleBranch core.StaleBranch) error {
 	// Create a Slack client using the decrypted access token.
 	client, channelID, err := GetSlackClientAndChannelID(teamID)
 	if err != nil {
@@ -38,7 +38,7 @@ func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID, repoNam
 		return err
 	}
 
-	attachment := formatStaleBranchAttachment(repoName, branchName)
+	attachment := formatStaleBranchAttachment(staleBranch)
 
 	// call blockset to send the message to slack channel or sepecific workspace.
 	if err := notify(client, channelID, attachment); err != nil {

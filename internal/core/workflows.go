@@ -471,6 +471,10 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 
 func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.PushEventSignal, branchName string,
 	lastBranchCommit string) error {
+
+	repoID := event.RepoID
+	repoName := event.RepoName
+	repoOwner := event.RepoOwner
 	// Sleep for 5 days before raising stale detection
 	_ = workflow.Sleep(ctx, 5*24*time.Hour)
 	// _ = workflow.Sleep(ctx, 30*time.Second)
@@ -491,15 +495,17 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.Pus
 	}
 	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
 
-	latestCommitSHA := ""
-	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(event.RepoID, 10), branchName).Get(ctx,
-		&latestCommitSHA); err != nil {
+	staleBranch := StaleBranch{}
+	if err := workflow.
+		ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), repoName, repoOwner, branchName).
+		Get(ctx,
+			&staleBranch); err != nil {
 		shared.Logger().Error("StaleBranchDetection", "error from GetLatestCommit activity", err)
 		return err
 	}
 
 	// check if the branchName branch has the lastBranchCommit as the latest commit
-	if lastBranchCommit == latestCommitSHA {
+	if lastBranchCommit == staleBranch.SHA {
 		// get the teamID from repo table
 		teamID := ""
 		if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetRepoTeamID, strconv.FormatInt(event.RepoID, 10)).Get(ctx,
@@ -512,8 +518,7 @@ func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.Pus
 			pctx,
 			msgProviderInst.SendStaleBranchMessage,
 			teamID,
-			event.RepoName,
-			branchName,
+			staleBranch,
 		).Get(ctx, nil); err != nil {
 			shared.Logger().Error("Error notifying Slack", "error", err.Error())
 			return err
