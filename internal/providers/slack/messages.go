@@ -28,17 +28,17 @@ import (
 func formatLineThresholdExceededAttachment(repoName, branchName string, threshold int, branchChanges core.BranchChanges) slack.Attachment {
 	return slack.Attachment{
 		Color: "danger",
-		Title: "*PR Lines exceed Alert*",
+		Title: "PR Lines Exceed",
 		Fields: []slack.AttachmentField{
-			createRepositoryField(repoName),
-			createBranchField(branchName),
+			createRepositoryField(repoName, branchChanges.RepoUrl),
+			createBranchField(branchName, branchChanges.CompareUrl),
 			{
 				Title: "*Threshold*",
 				Value: fmt.Sprintf("%d", threshold),
 				Short: true,
 			},
 			{
-				Title: "*Changes Count*",
+				Title: "*Total Lines Count*",
 				Value: fmt.Sprintf("%d", branchChanges.Changes),
 				Short: true,
 			},
@@ -54,7 +54,7 @@ func formatLineThresholdExceededAttachment(repoName, branchName string, threshol
 			},
 			{
 				Title: "*Details*",
-				Value: fmt.Sprintf("*Number of Conflicts:* %d\n*Files with Conflicts:*\n%s",
+				Value: fmt.Sprintf("*Number of Files Changed:* %d\n*Files Changed:*\n%s",
 					branchChanges.FileCount, formatFilesList(branchChanges.Files)),
 				Short: false,
 			},
@@ -66,10 +66,10 @@ func formatLineThresholdExceededAttachment(repoName, branchName string, threshol
 func formatMergeConflictAttachment(repoName, branchName string) slack.Attachment {
 	return slack.Attachment{
 		Color: "danger",
-		Title: "*Merge Conflict Alert*",
+		Title: "Merge Conflict",
 		Fields: []slack.AttachmentField{
-			createRepositoryField(repoName),
-			createBranchField(branchName),
+			createRepositoryField(repoName, ""),
+			createBranchField(branchName, ""),
 		},
 		MarkdownIn: []string{"fields"}, // TODO
 	}
@@ -78,27 +78,27 @@ func formatMergeConflictAttachment(repoName, branchName string) slack.Attachment
 func formatStaleBranchAttachment(repoName, branchName string) slack.Attachment {
 	return slack.Attachment{
 		Color: "danger",
-		Title: "*Stale Branch Alert*",
+		Title: "Stale Branch",
 		Fields: []slack.AttachmentField{
-			createRepositoryField(repoName),
-			createBranchField(branchName),
+			createRepositoryField(repoName, ""),
+			createBranchField(branchName, ""),
 		},
 		MarkdownIn: []string{"fields"}, // TODO
 	}
 }
 
-func createRepositoryField(repoName string) slack.AttachmentField {
+func createRepositoryField(repoName, repoURL string) slack.AttachmentField {
 	return slack.AttachmentField{
 		Title: "*Repository*",
-		Value: fmt.Sprintf("[%s]", repoName),
+		Value: fmt.Sprintf("<%s|%s>", repoURL, repoName),
 		Short: true,
 	}
 }
 
-func createBranchField(branchName string) slack.AttachmentField {
+func createBranchField(branchName, compareUrl string) slack.AttachmentField {
 	return slack.AttachmentField{
 		Title: "*Branch*",
-		Value: branchName,
+		Value: fmt.Sprintf("<%s|%s>", compareUrl, branchName),
 		Short: true,
 	}
 }

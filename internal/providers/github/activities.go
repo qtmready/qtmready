@@ -480,6 +480,12 @@ func (a *Activities) ChangesInBranch(ctx context.Context, installationID int64, 
 		return nil, err
 	}
 
+	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
+	if err != nil {
+		shared.Logger().Error("ChangesInBranch Activity", "Error getting repository: ", err)
+		return nil, err
+	}
+
 	comparison, _, err := client.Repositories.CompareCommits(context.Background(), repoOwner, repoName, defaultBranch, targetBranch, nil)
 	if err != nil {
 		shared.Logger().Error("Error in ChangesInBranch", "CompareCommits", err)
@@ -500,11 +506,13 @@ func (a *Activities) ChangesInBranch(ctx context.Context, installationID int64, 
 	shared.Logger().Debug("ChangesInBranch", "total changes in branch "+targetBranch, changes)
 
 	branchChanges := &core.BranchChanges{
-		Changes:   changes,
-		Additions: additions,
-		Deletions: deletions,
-		FileCount: len(changedFiles),
-		Files:     changedFiles,
+		RepoUrl:    repo.GetHTMLURL(),
+		Changes:    changes,
+		Additions:  additions,
+		Deletions:  deletions,
+		CompareUrl: comparison.GetHTMLURL(),
+		FileCount:  len(changedFiles),
+		Files:      changedFiles,
 	}
 
 	return branchChanges, nil

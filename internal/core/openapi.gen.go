@@ -345,13 +345,16 @@ type BlueprintCreateRequest struct {
 	StackID       gocql.UUID       `json:"stack_id"`
 }
 
-// BranchChanges Branch changes
+// BranchChanges Branch changes lines exceed
 type BranchChanges struct {
 	// Additions Number of additions
 	Additions int `json:"additions"`
 
 	// Changes Total number of changes
 	Changes int `json:"changes"`
+
+	// CompareUrl Compare url
+	CompareUrl string `json:"compare_url"`
 
 	// Deletions Number of deletions
 	Deletions int `json:"deletions"`
@@ -361,6 +364,9 @@ type BranchChanges struct {
 
 	// Files List of changed files
 	Files []string `json:"files"`
+
+	// RepoUrl Repo url
+	RepoUrl string `json:"repo_url"`
 }
 
 // CloudProvider aws, gcp, azure
@@ -519,6 +525,13 @@ type StackCreateRequest struct {
 
 // StackListResponse defines model for StackListResponse.
 type StackListResponse = []Stack
+
+// StaleBranch Stale branch information
+type StaleBranch struct {
+	Branch  *string `json:"branch,omitempty"`
+	RepoUrl string  `json:"repo_url"`
+	Sha     string  `json:"sha"`
+}
 
 // Workload Workload defines a workload for the app
 type Workload struct {
