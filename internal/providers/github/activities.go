@@ -149,29 +149,44 @@ func (a *Activities) GetStack(ctx context.Context, repo *core.Repo) (*core.Stack
 }
 
 // GetLatestCommit gets latest commit for default branch of the provided repo.
-func (a *Activities) GetLatestCommit(ctx context.Context, providerID string, branch string) (string, error) {
+func (a *Activities) GetLatestCommit(ctx context.Context, repoID, branch string) (*core.LatestCommit, error) {
 	logger := activity.GetLogger(ctx)
 	prepo := &Repo{}
 
-	if err := db.Get(prepo, db.QueryParams{"github_id": providerID}); err != nil {
-		return "", err
+	if err := db.Get(prepo, db.QueryParams{"github_id": repoID}); err != nil {
+		return nil, err
 	}
 
 	client, err := Instance().GetClientFromInstallation(prepo.InstallationID)
 	if err != nil {
 		logger.Error("GetClientFromInstallation failed", "Error", err)
-		return "", err
+		return nil, err
+	}
+
+	// TODO: move to some genernic function or activity
+	repo, _, err := client.Repositories.Get(ctx, strings.Split(prepo.FullName, "/")[0], prepo.Name)
+	if err != nil {
+		shared.Logger().Error("ChangesInBranch Activity", "Error getting repository: ", err)
+		return nil, err
 	}
 
 	gb, _, err := client.Repositories.GetBranch(context.Background(), strings.Split(prepo.FullName, "/")[0], prepo.Name, branch, false)
 	if err != nil {
 		logger.Error("GetBranch for Github Repo failed", "Error", err)
-		return "", err
+		return nil, err
 	}
 
-	logger.Debug("Repo", "Name", prepo.FullName, "Branch name", gb.Name, "Last commit", gb.Commit.SHA)
+	commit := &core.LatestCommit{
+		RepoName:  repo.GetName(),
+		RepoUrl:   repo.GetHTMLURL(),
+		Branch:    *gb.Name,
+		SHA:       *gb.Commit.SHA,
+		CommitUrl: *gb.Commit.HTMLURL,
+	}
 
-	return *gb.Commit.SHA, nil
+	logger.Debug("Repo", "Name", prepo.FullName, "Branch name", gb.Name, "Last commit", commit)
+
+	return commit, nil
 }
 
 // TODO - break it to smalller activities (create, delete and merge).
@@ -184,6 +199,7 @@ func (a *Activities) RebaseAndMerge(ctx context.Context, repoOwner string, repoN
 	}
 
 	// Get the default branch (e.g., "main")
+	// TODO: move to some genernic function or activity
 	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
 	if err != nil {
 		shared.Logger().Error("RebaseAndMerge Activity", "Error getting repository: ", err)
@@ -480,6 +496,13 @@ func (a *Activities) ChangesInBranch(ctx context.Context, installationID int64, 
 		return nil, err
 	}
 
+	// TODO: move to some genernic function or activity
+	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
+	if err != nil {
+		shared.Logger().Error("ChangesInBranch Activity", "Error getting repository: ", err)
+		return nil, err
+	}
+
 	comparison, _, err := client.Repositories.CompareCommits(context.Background(), repoOwner, repoName, defaultBranch, targetBranch, nil)
 	if err != nil {
 		shared.Logger().Error("Error in ChangesInBranch", "CompareCommits", err)
@@ -497,15 +520,17 @@ func (a *Activities) ChangesInBranch(ctx context.Context, installationID int64, 
 		changedFiles = append(changedFiles, *file.Filename)
 	}
 
-	shared.Logger().Debug("ChangesInBranch", "total changes in branch "+targetBranch, changes)
-
 	branchChanges := &core.BranchChanges{
-		Changes:   changes,
-		Additions: additions,
-		Deletions: deletions,
-		FileCount: len(changedFiles),
-		Files:     changedFiles,
+		RepoUrl:    repo.GetHTMLURL(),
+		Changes:    changes,
+		Additions:  additions,
+		Deletions:  deletions,
+		CompareUrl: comparison.GetHTMLURL(),
+		FileCount:  len(changedFiles),
+		Files:      changedFiles,
 	}
+
+	shared.Logger().Debug("ChangesInBranch", "total changes in branch "+targetBranch, changes)
 
 	return branchChanges, nil
 }

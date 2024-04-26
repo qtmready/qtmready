@@ -345,13 +345,16 @@ type BlueprintCreateRequest struct {
 	StackID       gocql.UUID       `json:"stack_id"`
 }
 
-// BranchChanges Branch changes
+// BranchChanges Branch changes lines exceed
 type BranchChanges struct {
 	// Additions Number of additions
 	Additions int `json:"additions"`
 
 	// Changes Total number of changes
 	Changes int `json:"changes"`
+
+	// CompareUrl Compare url
+	CompareUrl string `json:"compare_url"`
 
 	// Deletions Number of deletions
 	Deletions int `json:"deletions"`
@@ -361,6 +364,9 @@ type BranchChanges struct {
 
 	// Files List of changed files
 	Files []string `json:"files"`
+
+	// RepoUrl Repo url
+	RepoUrl string `json:"repo_url"`
 }
 
 // CloudProvider aws, gcp, azure
@@ -371,6 +377,15 @@ type Driver string
 
 // GCPDriver gke, cloudrun, pubsub etc
 type GCPDriver string
+
+// LatestCommit get the latest commit information
+type LatestCommit struct {
+	Branch    string `json:"branch"`
+	CommitUrl string `json:"commit_url"`
+	RepoName  string `json:"repo_name"`
+	RepoUrl   string `json:"repo_url"`
+	SHA       string `json:"sha"`
+}
 
 // MessageProvider defines model for MessageProvider.
 type MessageProvider string

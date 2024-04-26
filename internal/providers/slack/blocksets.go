@@ -23,13 +23,7 @@ import (
 	"github.com/slack-go/slack"
 )
 
-func notify(client *slack.Client, channelID, message string) error {
-	attachment := slack.Attachment{
-		Color: "danger",
-		Title: "Message from quantm",
-		Text:  message,
-	}
-
+func notify(client *slack.Client, channelID string, attachment slack.Attachment) error {
 	// Send message
 	_, _, err := client.PostMessage(
 		channelID,

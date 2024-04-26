@@ -30,7 +30,7 @@ type (
 	Activities struct{}
 )
 
-func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID, repoName, branchName string) error {
+func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID string, stale *core.LatestCommit) error {
 	// Create a Slack client using the decrypted access token.
 	client, channelID, err := GetSlackClientAndChannelID(teamID)
 	if err != nil {
@@ -38,11 +38,10 @@ func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID, repoNam
 		return err
 	}
 
-	// format message
-	message := FormatStaleBranchMessage(repoName, branchName)
+	attachment := formatStaleBranchAttachment(stale)
 
 	// call blockset to send the message to slack channel or sepecific workspace.
-	if err := notify(client, channelID, message); err != nil {
+	if err := notify(client, channelID, attachment); err != nil {
 		slog.Info("Failed to post message to channel", slog.Any("e", err))
 		return err
 	}
@@ -55,7 +54,7 @@ func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID, repoNam
 func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context,
 	teamID, repoName, branchName string,
 	threshold int,
-	branchChanges core.BranchChanges) error {
+	branchChanges *core.BranchChanges) error {
 	// Create a Slack client using the decrypted access token.
 	client, channelID, err := GetSlackClientAndChannelID(teamID)
 	if err != nil {
@@ -63,11 +62,10 @@ func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context,
 		return err
 	}
 
-	// Format message
-	message := FormatLineThresholdExceededMessage(repoName, branchName, threshold, branchChanges)
+	attachment := formatLineThresholdExceededAttachment(repoName, branchName, threshold, branchChanges)
 
 	// Call function to send the message to Slack channel or specific workspace.
-	if err := notify(client, channelID, message); err != nil {
+	if err := notify(client, channelID, attachment); err != nil {
 		slog.Info("Failed to post message to channel", slog.Any("e", err))
 		return err
 	}
@@ -77,7 +75,7 @@ func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context,
 	return nil
 }
 
-func (a *Activities) SendMergeConflictsMessage(ctx context.Context, teamID, repoName, branchName string) error {
+func (a *Activities) SendMergeConflictsMessage(ctx context.Context, teamID string, merge *core.LatestCommit) error {
 	// Create a Slack client using the decrypted access token.
 	client, channelID, err := GetSlackClientAndChannelID(teamID)
 	if err != nil {
@@ -85,11 +83,10 @@ func (a *Activities) SendMergeConflictsMessage(ctx context.Context, teamID, repo
 		return err
 	}
 
-	// format message
-	message := FormatMergeConflictMessage(repoName, branchName)
+	attachment := formatMergeConflictAttachment(merge)
 
 	// call blockset to send the message to slack channel or sepecific workspace.
-	if err := notify(client, channelID, message); err != nil {
+	if err := notify(client, channelID, attachment); err != nil {
 		slog.Info("Failed to post message to channel", slog.Any("e", err))
 		return err
 	}
