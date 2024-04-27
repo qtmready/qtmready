@@ -243,10 +243,12 @@ func (s *ServerHandler) CreateUser(ctx echo.Context) error {
 	names := strings.Split(request.Name, " ")
 
 	user := &User{
-		FirstName: names[0],
-		LastName:  "", // Default value
-		Email:     request.Email,
-		Password:  "", // Default value
+		FirstName:  names[0],
+		LastName:   "", // Default value
+		Email:      request.Email,
+		Password:   "", // Default value
+		IsActive:   true,
+		IsVerified: true,
 	}
 
 	// Check if names slice has at least 2 elements, if so, assign the second element to LastName

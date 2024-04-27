@@ -49,7 +49,7 @@ var (
 // TODO: handle salt.
 const (
 	prefix = "Auth.js Generated Encryption Key"
-	salt   = "authjs.session-token"
+	salt   = "__Secure-authjs.session-token"
 )
 
 type (
