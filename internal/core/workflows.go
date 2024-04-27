@@ -191,11 +191,12 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	return nil
 }
 
-func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivities, msgProviderInst MessageProviderActivities,
+func CheckEarlyWarning(ctx workflow.Context, rpa RepoProviderActivities, mpa MessageProviderActivities,
 	pushEvent *shared.PushEventSignal) error {
+	logger := workflow.GetLogger(ctx)
 	branchName := pushEvent.RefBranch
 	installationID := pushEvent.InstallationID
-	repoID := pushEvent.RepoID
+	repoID := strconv.FormatInt(pushEvent.RepoID, 10)
 	repoName := pushEvent.RepoName
 	repoOwner := pushEvent.RepoOwner
 	defaultBranch := pushEvent.DefaultBranch
@@ -212,93 +213,79 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 	// check merge conflicts
 	// create a temporary copy of default branch for the target branch (under inspection)
 	// if the rebase with the target branch returns error, raise warning
-	shared.Logger().Debug("going to detect merge conflicts")
+	logger.Info("Check early warning", "push event", pushEvent)
 
 	commit := &LatestCommit{}
-	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetLatestCommit, strconv.FormatInt(repoID, 10), defaultBranch).Get(ctx,
-		commit); err != nil {
-		shared.Logger().Error("CheckEarlyWarning", "error from GetLatestCommit activity", err)
+	if err := workflow.ExecuteActivity(pctx, rpa.GetLatestCommit, repoID, defaultBranch).Get(ctx, commit); err != nil {
+		logger.Error("Repo provider activities: Get latest commit activity", "error", err)
 		return err
 	}
 
 	// create a temp branch/ref
-	tempBranchName := defaultBranch + "-tempcopy-for-target-" + branchName
+	temp := defaultBranch + "-tempcopy-for-target-" + branchName
 
 	// delete the branch if it is present already
-	if err := workflow.ExecuteActivity(pctx, repoProviderInst.DeleteBranch, installationID, repoName, repoOwner,
-		tempBranchName).Get(ctx, nil); err != nil {
-		shared.Logger().Error("CheckEarlyWarning", "error from DeleteBranch activity", err)
+	if err := workflow.ExecuteActivity(pctx, rpa.DeleteBranch, installationID, repoName, repoOwner, temp).
+		Get(ctx, nil); err != nil {
+		logger.Error("Repo provider activities: Delete branch activity", "error", err)
 		return err
 	}
 
 	// create new ref
-	if err := workflow.ExecuteActivity(pctx, repoProviderInst.CreateBranch, installationID, repoID, repoName, repoOwner,
-		commit.SHA, tempBranchName).Get(ctx, nil); err != nil {
-		shared.Logger().Error("CheckEarlyWarning", "error from DeleteBranch activity", err)
+	if err := workflow.
+		ExecuteActivity(pctx, rpa.CreateBranch, installationID, repoID, repoName, repoOwner, commit.SHA, temp).
+		Get(ctx, nil); err != nil {
+		logger.Error("Repo provider activities: Create branch activity", "error", err)
 		return err
 	}
 
 	// get the teamID from repo table
 	teamID := ""
-	if err := workflow.ExecuteActivity(pctx, repoProviderInst.GetRepoTeamID, strconv.FormatInt(repoID, 10)).Get(ctx,
-		&teamID); err != nil {
-		shared.Logger().Error("CheckEarlyWarning", "error from GetRepoTeamID activity", err)
+	if err := workflow.ExecuteActivity(pctx, rpa.GetRepoTeamID, repoID).Get(ctx, &teamID); err != nil {
+		logger.Error("Repo provider activities: Get repo teamID activity", "error", err)
 		return err
 	}
 
-	if err := workflow.ExecuteActivity(pctx, repoProviderInst.MergeBranch, installationID, repoName, repoOwner, tempBranchName,
-		branchName).Get(ctx, nil); err != nil {
+	if err := workflow.ExecuteActivity(pctx, rpa.MergeBranch, installationID, repoName, repoOwner, temp, branchName).
+		Get(ctx, nil); err != nil {
 		// dont want to retry this workflow so not returning error, just log and return
-		shared.Logger().Error("CheckEarlyWarning", "Error merging branch", err)
+		logger.Error("Repo provider activities: Merge branch activity", "error", err)
 
-		if err = workflow.ExecuteActivity(
-			pctx,
-			msgProviderInst.SendMergeConflictsMessage,
-			teamID,
-			commit,
-		).Get(ctx, nil); err != nil {
-			shared.Logger().Error("Error notifying Slack", "error", err.Error())
+		// send slack notification
+		if err = workflow.ExecuteActivity(pctx, mpa.SendMergeConflictsMessage, teamID, commit).Get(ctx, nil); err != nil {
+			logger.Error("Message provider activities: Send merge conflicts message activity", "error", err)
 			return err
 		}
 
 		return nil
 	}
 
-	shared.Logger().Info("merge conflicts NOT detected")
+	logger.Info("Merge conflicts NOT detected")
 
 	// detect 200+ changes
 	// calculate all changes between default branch (e.g. main) with the target branch
 	// raise warning if the changes are more than 200 lines
-	shared.Logger().Debug("going to detect 200+ changes")
+	logger.Info("Going to detect 200+ changes")
 
 	branchChnages := &BranchChanges{}
 
-	if err := workflow.ExecuteActivity(pctx, repoProviderInst.ChangesInBranch, installationID, repoName, repoOwner,
-		defaultBranch, branchName).Get(ctx, branchChnages); err != nil {
-		shared.Logger().Error("CheckEarlyWarning", "error from ChangesInBranch activity", err)
+	if err := workflow.ExecuteActivity(pctx, rpa.ChangesInBranch, installationID, repoName, repoOwner, defaultBranch, branchName).
+		Get(ctx, branchChnages); err != nil {
+		logger.Error("Repo provider activities: Changes in branch  activity", "error", err)
 		return err
 	}
 
 	threshold := 200
 	if branchChnages.Changes > threshold {
 		if err := workflow.
-			ExecuteActivity(
-				pctx,
-				msgProviderInst.SendNumberOfLinesExceedMessage,
-				teamID,
-				repoName,
-				branchName,
-				threshold,
-				branchChnages,
-			).Get(ctx, nil); err != nil {
-			shared.Logger().Error("Error notifying Slack", "error", err.Error())
+			ExecuteActivity(pctx, mpa.SendNumberOfLinesExceedMessage, teamID, repoName, branchName, threshold, branchChnages).
+			Get(ctx, nil); err != nil {
+			logger.Error("Message provider activities: Send number of lines exceed message activity", "error", err)
 			return err
 		}
-
-		return nil
-	} else {
-		shared.Logger().Info("200+ changes NOT detected")
 	}
+
+	logger.Info("200+ changes NOT detected")
 
 	return nil
 }
