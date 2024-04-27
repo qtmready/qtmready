@@ -60,12 +60,13 @@ func (w *Workflows) ChangesetController(id string) error {
 //
 // The workflow waits for the signals from the git provider. It consumes events for PR created, updated, merged etc.
 func (w *Workflows) StackController(ctx workflow.Context, stackID string) error {
+	logger := workflow.GetLogger(ctx)
 	// wait for merge complete signal
 	ch := workflow.GetSignalChannel(ctx, shared.WorkflowSignalCreateChangeset.String())
 	payload := &shared.CreateChangesetSignal{}
 	ch.Receive(ctx, payload)
 
-	shared.Logger().Info("StackController", "signal payload", payload)
+	logger.Info("Stack controller", "signal payload", payload)
 
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	actx := workflow.WithActivityOptions(ctx, activityOpts)
@@ -73,11 +74,11 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	// get repos for stack
 	repos := SlicedResult[Repo]{}
 	if err := workflow.ExecuteActivity(actx, activities.GetRepos, stackID).Get(ctx, &repos); err != nil {
-		shared.Logger().Error("GetRepos providers failed", "error", err)
+		logger.Error("Get repos activity", "error", err)
 		return err
 	}
 
-	shared.Logger().Debug("StackController : going to create repomarkers")
+	logger.Info("Stack controller: going to create repomarkers")
 
 	providerActivityOpts := workflow.ActivityOptions{
 		StartToCloseTimeout: 60 * time.Second,
@@ -89,32 +90,27 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	repoMarkers := make([]ChangeSetRepoMarker, len(repos.Data))
 	for idx, repo := range repos.Data {
 		marker := &repoMarkers[idx]
-		// p := Instance().Provider(repo.Provider) // get the specific provider
 		p := Instance().RepoProvider(repo.Provider) // get the specific provider
 
 		commit := LatestCommit{}
-		if err := workflow.
-			ExecuteActivity(pctx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).
-			Get(ctx, &commit); err != nil {
-			shared.Logger().Error("Error in getting latest commit ID", "repo", repo.Name, "provider", repo.Provider)
-			return fmt.Errorf("Error in getting latest commit ID repo:%s, provider:%s", repo.Name, repo.Provider.String())
+		if err := workflow.ExecuteActivity(pctx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).Get(ctx, &commit); err != nil {
+			logger.Error("Repo provider activities: Get latest commit activity", "error", err)
+			return err
 		}
 
 		marker.CommitID = commit.SHA
 		marker.Provider = repo.Provider.String()
 		marker.RepoID = repo.ID.String()
+		logger.Debug("Debug only", "Commit ID updated for repo ", marker.RepoID)
 
 		// update commit id for the recently changed repo
 		if marker.RepoID == payload.RepoID {
 			marker.CommitID = payload.CommitID
-			shared.Logger().Debug("Commit ID updated for repo " + marker.RepoID)
 			marker.HasChanged = true // the repo in which commit was made
 		}
 
-		shared.Logger().Debug("Repo", "Name", repo.Name, "Repo marker", marker)
+		logger.Debug("Debug only", "Repo", repo, "Repo marker", marker)
 	}
-
-	shared.Logger().Debug("StackController", "repomarkers created", repoMarkers)
 
 	// create changeset before deploying the updated changeset
 	changesetID, _ := gocql.RandomUUID()
@@ -126,25 +122,27 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	}
 
 	if err := workflow.ExecuteActivity(actx, activities.CreateChangeset, changeset, changeset.ID).Get(ctx, nil); err != nil {
-		shared.Logger().Error("Error in creating changeset")
+		logger.Error("Create changeset activity", "error", err)
 	}
 
-	shared.Logger().Info("StackController", "Changeset created", changeset.ID)
+	logger.Info("Stack controller", "changeset created", changeset)
 
 	for idx, repo := range repos.Data {
+		provider := repo.ProviderID
+		commitID := repoMarkers[idx].CommitID
+
 		p := Instance().RepoProvider(repo.Provider) // get the specific provider
 
-		if err := workflow.ExecuteActivity(pctx, p.TagCommit, repo.ProviderID, repoMarkers[idx].CommitID, changesetID.String(),
-			"Tagged by quantm"); err != nil {
-			shared.Logger().Error("StackController", "error in tagging the repo", repo.ProviderID, "err", err)
+		if err := workflow.ExecuteActivity(pctx, p.TagCommit, provider, commitID, changesetID.String(), "Tagged by quantm"); err != nil {
+			logger.Error("Repo provider activities: Tag commit activity", "error", err)
 		}
 
 		if err := workflow.ExecuteActivity(pctx, p.DeployChangeset, repo.ProviderID, changeset.ID).Get(ctx, nil); err != nil {
-			shared.Logger().Error("StackController", "error in deploying for repo", repo.ProviderID, "err", err)
+			logger.Error("Repo provider activities: Deploy changeset activity", "error", err)
 		}
 	}
 
-	shared.Logger().Debug("deployment done........")
+	logger.Info("deployment done........")
 
 	// // deployment map is designed to be used in OnPullRequestWorkflow only
 	// logger := workflow.GetLogger(ctx)
@@ -283,15 +281,16 @@ func CheckEarlyWarning(ctx workflow.Context, repoProviderInst RepoProviderActivi
 
 	threshold := 200
 	if branchChnages.Changes > threshold {
-		if err := workflow.ExecuteActivity(
-			pctx,
-			msgProviderInst.SendNumberOfLinesExceedMessage,
-			teamID,
-			repoName,
-			branchName,
-			threshold,
-			branchChnages,
-		).Get(ctx, nil); err != nil {
+		if err := workflow.
+			ExecuteActivity(
+				pctx,
+				msgProviderInst.SendNumberOfLinesExceedMessage,
+				teamID,
+				repoName,
+				branchName,
+				threshold,
+				branchChnages,
+			).Get(ctx, nil); err != nil {
 			shared.Logger().Error("Error notifying Slack", "error", err.Error())
 			return err
 		}
