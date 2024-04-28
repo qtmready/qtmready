@@ -1,1 +1,0 @@
-alter table repos add team_id uuid;

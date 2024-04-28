@@ -1,1 +1,0 @@
-alter table resources add config varchar;
