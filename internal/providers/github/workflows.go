@@ -293,13 +293,8 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 			)
 
 		if err := shared.Temporal().
-			Client().SignalWorkflow(
-			context.Background(),
-			opts.ID,
-			"",
-			shared.MergeTriggered.String(),
-			nil,
-		); err != nil {
+			Client().
+			SignalWorkflow(context.Background(), opts.ID, "", shared.MergeTriggered.String(), nil); err != nil {
 			shared.Logger().Error("OnLabelEvent", "Error signaling workflow", err)
 			return err
 		}

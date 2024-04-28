@@ -233,6 +233,8 @@ func _cleanup(ctx workflow.Context, handler *Handler, pool *Pool, fn workflow.Se
 				SignalExternalWorkflow(ctx, rx.Info.WorkflowExecution.ID, "", WorkflowSignalCleanupDone.String(), shutdown).
 				Get(ctx, nil)
 
+			workflow.GetSignalChannel(ctx, WorkflowSignalCleanupDoneAck.String()).Receive(ctx, nil)
+
 			wfinfo(ctx, handler, "mutex: cleanup request processed!", slog.Int("pool_size", pool.Size()))
 		}
 	}

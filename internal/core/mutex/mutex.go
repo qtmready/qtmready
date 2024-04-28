@@ -31,14 +31,15 @@ const (
 )
 
 const (
-	WorkflowSignalPrepare     shared.WorkflowSignal = "prepare"
-	WorkflowSignalAcquire     shared.WorkflowSignal = "acquire"
-	WorkflowSignalLocked      shared.WorkflowSignal = "locked"
-	WorkflowSignalRelease     shared.WorkflowSignal = "release"
-	WorkflowSignalReleased    shared.WorkflowSignal = "released"
-	WorkflowSignalCleanup     shared.WorkflowSignal = "cleanup"
-	WorkflowSignalCleanupDone shared.WorkflowSignal = "cleanup_done"
-	WorkflowSignalShutDown    shared.WorkflowSignal = "shutdown"
+	WorkflowSignalPrepare        shared.WorkflowSignal = "mutex_prepare"
+	WorkflowSignalAcquire        shared.WorkflowSignal = "mutex_acquire"
+	WorkflowSignalLocked         shared.WorkflowSignal = "mutex_locked"
+	WorkflowSignalRelease        shared.WorkflowSignal = "mutex_release"
+	WorkflowSignalReleased       shared.WorkflowSignal = "mutex_released"
+	WorkflowSignalCleanup        shared.WorkflowSignal = "mutex_cleanup"
+	WorkflowSignalCleanupDone    shared.WorkflowSignal = "mutex_cleanup_done"
+	WorkflowSignalCleanupDoneAck shared.WorkflowSignal = "mutex_cleanup_done_ack"
+	WorkflowSignalShutDown       shared.WorkflowSignal = "mutex_shutdown"
 )
 
 type (
@@ -146,6 +147,13 @@ func (info *Handler) Cleanup(ctx workflow.Context) error {
 
 	wfinfo(ctx, info, "mutex handler: waiting for cleanup ...")
 	workflow.GetSignalChannel(ctx, WorkflowSignalCleanupDone.String()).Receive(ctx, &shutdown)
+
+	if err := workflow.
+		SignalExternalWorkflow(ctx, info.Execution.ID, "", WorkflowSignalCleanupDoneAck.String(), shutdown).
+		Get(ctx, nil); err != nil {
+		wfwarn(ctx, info, "mutex handler: unable to acknowledge cleanup", err)
+		return NewCleanupMutexError(info.ResourceID)
+	}
 
 	if shutdown {
 		wfinfo(ctx, info, "mutex handler: cleanup done!")
