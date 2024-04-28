@@ -191,8 +191,9 @@ func (w *Workflows) StackController(ctx workflow.Context, stackID string) error 
 	return nil
 }
 
-func CheckEarlyWarning(ctx workflow.Context, rpa RepoProviderActivities, mpa MessageProviderActivities,
-	pushEvent *shared.PushEventSignal) error {
+func CheckEarlyWarning(
+	ctx workflow.Context, rpa RepoProviderActivities, mpa MessageProviderActivities, pushEvent *shared.PushEventSignal,
+) error {
 	logger := workflow.GetLogger(ctx)
 	branchName := pushEvent.RefBranch
 	installationID := pushEvent.InstallationID
@@ -314,28 +315,13 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 		mutex.WithHandler(ctx),
 	)
 
-	// Prepare the lock means that get the reference to running Mutex workflow and schedule a new lock on it. If there is no Mutex workflow
-	// running, then start a new Mutex workflow and schedule a lock on it.
 	if err := lock.Prepare(ctx); err != nil {
 		return err // or handle error
 	}
 
-	// Acquire acquires the lock. If we do not handle the error.
 	if err := lock.Acquire(ctx); err != nil {
 		return err // or handle error
 	}
-
-	defer func() {
-		// Release the lock.
-		if err := lock.Release(ctx); err != nil {
-			// return err // or handle error
-		}
-
-		// Cleanup tries to shutdown the Mutex workflow if there are no more locks waiting.
-		if err := lock.Cleanup(ctx); err != nil {
-			// return err // or handle error
-		}
-	}()
 
 	branchName := signalPayload.RefBranch
 	installationID := signalPayload.InstallationID
@@ -403,6 +389,9 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 			}
 		}
 
+		_ = lock.Release(ctx)
+		_ = lock.Cleanup(ctx)
+
 		return nil
 	}
 
@@ -448,7 +437,9 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 	return nil
 }
 
-func (w *Workflows) StaleBranchDetection(ctx workflow.Context, event *shared.PushEventSignal, branchName string, lastBranchCommit string) error {
+func (w *Workflows) StaleBranchDetection(
+	ctx workflow.Context, event *shared.PushEventSignal, branchName string, lastBranchCommit string,
+) error {
 	logger := workflow.GetLogger(ctx)
 	repoID := strconv.FormatInt(event.RepoID, 10)
 	// Sleep for 5 days before raising stale detection
@@ -799,7 +790,7 @@ func (w *Workflows) Deploy(ctx workflow.Context, stackID string, lock *mutex.Han
 	return nil
 }
 
-func onManualOverrideSignal(ctx workflow.Context, stackID string, deployments Deployments) shared.ChannelHandler {
+func onManualOverrideSignal(ctx workflow.Context, _ string, _ Deployments) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 	triggerID := int64(0)
 
@@ -865,7 +856,7 @@ func onDeploymentStartedSignal(ctx workflow.Context, stackID string, deployments
 }
 
 // onAssetsRetrievedSignal will receive assets sent by GetAssets, update deployment state and execute ProvisionInfra.
-func onAssetsRetrievedSignal(ctx workflow.Context, stackID string, deployments Deployments) shared.ChannelHandler {
+func onAssetsRetrievedSignal(ctx workflow.Context, _ string, deployments Deployments) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 	w := &Workflows{}
 
@@ -911,7 +902,7 @@ func onAssetsRetrievedSignal(ctx workflow.Context, stackID string, deployments D
 
 // onInfraProvisionedSignal will receive assets by ProvisionInfra, update deployment state and execute Deploy.
 func onInfraProvisionedSignal(
-	ctx workflow.Context, stackID string, lock mutex.Mutex, deployments Deployments, activeinfra Infra,
+	ctx workflow.Context, stackID string, lock mutex.Mutex, deployments Deployments, _ Infra,
 ) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 	w := &Workflows{}
@@ -952,7 +943,7 @@ func onInfraProvisionedSignal(
 }
 
 // onDeploymentCompletedSignal will conclude the deployment.
-func onDeploymentCompletedSignal(ctx workflow.Context, stackID string, deployments Deployments) shared.ChannelHandler {
+func onDeploymentCompletedSignal(ctx workflow.Context, _ string, deployments Deployments) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
