@@ -213,10 +213,16 @@ func (s *ServerHandler) CreateTeam(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	user.TeamID = team.ID
+	// NOTE: delete the existing user from database and create a new user with team_id
+	// TODO: need to move it to temporal workflow and activities or temp database table.
+	if err := db.Delete(user); err != nil {
+		slog.Error("error delete user", "error", err)
+		return shared.NewAPIError(http.StatusNotFound, err)
+	}
 
-	if err := db.Save(user); err != nil {
-		slog.Error("error saving user", "error", err)
+	user.TeamID = team.ID
+	if err := db.Create(user); err != nil {
+		slog.Error("error creating user", "error", err)
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
@@ -283,7 +289,7 @@ func (s *ServerHandler) ListUsers(ctx echo.Context) error {
 
 	if email != "" {
 		if err := db.Filter(&User{}, &users, db.QueryParams{"email": "'" + email + "'"}); err != nil {
-			return shared.NewAPIError(http.StatusInternalServerError, err)
+			return shared.NewAPIError(http.StatusBadRequest, err)
 		}
 	}
 
@@ -296,7 +302,7 @@ func (s *ServerHandler) ListUsers(ctx echo.Context) error {
 		}
 
 		if err := db.Filter(&User{}, &users, db.QueryParams{"id": account.UserID.String()}); err != nil {
-			return shared.NewAPIError(http.StatusInternalServerError, err)
+			return shared.NewAPIError(http.StatusBadRequest, err)
 		}
 	}
 
