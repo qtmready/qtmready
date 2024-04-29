@@ -170,6 +170,19 @@ func Update[T Entity](entity T) error {
 	return query.ExecRelease()
 }
 
+// Delete deletes the row from cassandra. The entity value is a pointer to the struct.
+//
+// CAUTION: Cassandra has a concept of tombstones. When you delete a row, it is not immediately removed from the database.
+// Instead, a tombstone is created, which is a marker that tells Cassandra that the row has been deleted. The tombstone
+// will be removed after the gc_grace_seconds period has passed. This is a setting in the table definition.
+func Delete[T Entity](entity T) error {
+	tbl := entity.GetTable()
+	stmnt, names := qb.Delete(tbl.Name()).Where(qb.Eq("id")).ToCql()
+	query := DB().Session.Query(stmnt, names)
+
+	return query.BindStruct(entity).ExecRelease()
+}
+
 // gets the ID of the entity. The entity value is a pointer to the struct.
 func getID(entity Entity) gocql.UUID {
 	return reflect.ValueOf(entity).Elem().FieldByName("ID").Interface().(gocql.UUID)
