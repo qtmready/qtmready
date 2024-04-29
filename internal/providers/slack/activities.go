@@ -19,10 +19,10 @@ package slack
 
 import (
 	"context"
-	"log/slog"
+
+	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/quantm/internal/core"
-	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -31,10 +31,11 @@ type (
 )
 
 func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID string, stale *core.LatestCommit) error {
-	// Create a Slack client using the decrypted access token.
+	logger := activity.GetLogger(ctx)
+
 	client, channelID, err := GetSlackClientAndChannelID(teamID)
 	if err != nil {
-		slog.Info("Error in GetSlackClientAndChannelID", slog.Any("e", err))
+		logger.Error("Error in GetSlackClientAndChannelID", "Error", err)
 		return err
 	}
 
@@ -42,23 +43,23 @@ func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID string, 
 
 	// call blockset to send the message to slack channel or sepecific workspace.
 	if err := notify(client, channelID, attachment); err != nil {
-		slog.Info("Failed to post message to channel", slog.Any("e", err))
+		logger.Error("Failed to post message to channel", "Error", err)
 		return err
 	}
 
-	shared.Logger().Info("slack notified")
+	logger.Info("Slack notification sent successfully")
 
 	return nil
 }
 
-func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context,
-	teamID, repoName, branchName string,
-	threshold int,
-	branchChanges *core.BranchChanges) error {
-	// Create a Slack client using the decrypted access token.
+func (a *Activities) SendNumberOfLinesExceedMessage(
+	ctx context.Context, teamID, repoName, branchName string, threshold int, branchChanges *core.BranchChanges,
+) error {
+	logger := activity.GetLogger(ctx)
+
 	client, channelID, err := GetSlackClientAndChannelID(teamID)
 	if err != nil {
-		slog.Info("Error in GetSlackClientAndChannelID", slog.Any("e", err))
+		logger.Error("Error in GetSlackClientAndChannelID", "Error", err)
 		return err
 	}
 
@@ -66,20 +67,21 @@ func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context,
 
 	// Call function to send the message to Slack channel or specific workspace.
 	if err := notify(client, channelID, attachment); err != nil {
-		slog.Info("Failed to post message to channel", slog.Any("e", err))
+		logger.Error("Failed to post message to channel", "Error", err)
 		return err
 	}
 
-	shared.Logger().Info("Slack notification sent successfully")
+	logger.Info("Slack notification sent successfully")
 
 	return nil
 }
 
 func (a *Activities) SendMergeConflictsMessage(ctx context.Context, teamID string, merge *core.LatestCommit) error {
-	// Create a Slack client using the decrypted access token.
+	logger := activity.GetLogger(ctx)
+
 	client, channelID, err := GetSlackClientAndChannelID(teamID)
 	if err != nil {
-		slog.Info("Error in GetSlackClientAndChannelID", slog.Any("e", err))
+		logger.Error("Error in GetSlackClientAndChannelID", "Error", err)
 		return err
 	}
 
@@ -87,11 +89,11 @@ func (a *Activities) SendMergeConflictsMessage(ctx context.Context, teamID strin
 
 	// call blockset to send the message to slack channel or sepecific workspace.
 	if err := notify(client, channelID, attachment); err != nil {
-		slog.Info("Failed to post message to channel", slog.Any("e", err))
+		logger.Error("Failed to post message to channel", "Error", err)
 		return err
 	}
 
-	shared.Logger().Info("slack notified")
+	logger.Info("Slack notification sent successfully")
 
 	return nil
 }

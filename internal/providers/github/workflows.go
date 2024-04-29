@@ -150,7 +150,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	}
 
 	if strings.Contains(branchName, "-tempcopy-for-target-") {
-		shared.Logger().Debug("OnPushEvent", "push on temp branch", branchName)
+		logger.Debug("OnPushEvent", "push on temp branch", branchName)
 		return nil
 	}
 
@@ -185,7 +185,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 		cw.BranchController,
 	)
 	if err != nil {
-		shared.Logger().Error("OnPushEvent", "Error signaling workflow", err)
+		logger.Error("OnPushEvent: Error signaling workflow", "error", err)
 		return err
 	}
 
@@ -193,8 +193,11 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 }
 
 func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, payload *GithubWorkflowRunEvent) error {
+	logger := workflow.GetLogger(ctx)
+
 	if actionWorkflowStatuses[payload.Repository.Name] != nil {
-		shared.Logger().Debug("workflow action file: " + payload.Workflow.Path + ", action: " + payload.Action)
+		logger.Debug("Workflow action file:", "action", payload.Action)
+		logger.Debug("Workflow action file:", "file", payload.Workflow.Path)
 		actionWorkflowStatuses[payload.Repository.Name][payload.Workflow.Path] = payload.Action
 	}
 
@@ -202,8 +205,6 @@ func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, payload *GithubWork
 }
 
 func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent) error {
-	shared.Logger().Info("OnLabelEvent", "entry", "workflow started")
-
 	logger := workflow.GetLogger(ctx)
 
 	logger.Info("received PR label event ...")
@@ -239,20 +240,20 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 			RepoProvider:   "github",
 		}
 
-		if _, err := shared.Temporal().
-			Client().SignalWithStartWorkflow(
-			context.Background(),
-			opts.ID,
-			shared.MergeQueueStarted.String(),
-			payload2,
-			opts,
-			cw.PollMergeQueue,
-		); err != nil {
-			shared.Logger().Error("OnLabelEvent", "Error signaling workflow", err)
+		if _, err := shared.Temporal().Client().
+			SignalWithStartWorkflow(
+				context.Background(),
+				opts.ID,
+				shared.MergeQueueStarted.String(),
+				payload2,
+				opts,
+				cw.PollMergeQueue,
+			); err != nil {
+			logger.Error("OnLabelEvent: Error signaling workflow", "error", err)
 			return err
 		}
 
-		shared.Logger().Info("PR sent to MergeQueue")
+		logger.Info("PR sent to MergeQueue")
 
 	case "quantm now":
 		logger.Debug("quantm now label applied")
@@ -266,7 +267,7 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 					// return here since all are not completed
 					allCompleted = false
 
-					shared.Logger().Warn("all actions were not successful")
+					logger.Warn("all actions were not successful")
 
 					break
 				}
@@ -278,7 +279,7 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 
 			_ = workflow.Sleep(ctx, 30*time.Second)
 
-			shared.Logger().Debug("checking again all actions statuses")
+			logger.Debug("checking again all actions statuses")
 		}
 
 		// cw := &core.Workflows{}
@@ -292,10 +293,9 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 				shared.WithWorkflowProp("type", "merge_queue"),
 			)
 
-		if err := shared.Temporal().
-			Client().
+		if err := shared.Temporal().Client().
 			SignalWorkflow(context.Background(), opts.ID, "", shared.MergeTriggered.String(), nil); err != nil {
-			shared.Logger().Error("OnLabelEvent", "Error signaling workflow", err)
+			logger.Error("OnLabelEvent: Error signaling workflow", "error", err)
 			return err
 		}
 
@@ -317,9 +317,8 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 //
 // After the creation of the idempotency key, we pass the idempotency key as a signal to the Aperture Workflow.
 func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullRequestEvent) error {
-	shared.Logger().Info("OnPullRequestEvent", "entry", "workflow started")
-
 	logger := workflow.GetLogger(ctx)
+	logger.Info("OnPullRequestEvent workflow started ...")
 	// status := &PullRequestWorkflowStatus{Complete: false}
 
 	// wait for artifact to generate and push to registery
