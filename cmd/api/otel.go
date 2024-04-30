@@ -129,7 +129,7 @@ func _exporter() (trace.SpanExporter, error) {
 }
 
 // _resource returns a resource with the service name and version.
-func _resource(ctx context.Context, name, version string) (*resource.Resource, error) {
+func _resource(_ context.Context, name, version string) (*resource.Resource, error) {
 	return resource.Merge(
 		resource.Default(),
 		resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceName(name), semconv.ServiceVersion(version)),
