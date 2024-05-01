@@ -3,13 +3,20 @@
 type {{.TypeName}} {{if .IsAlias }}={{end}} {{.Schema.TypeDecl}}
 
 {{ if ne .Schema.BreuEntity "" }}
+{{ $columns := list }}
+{{ $pkey := list }}
+{{ range $idx, $props := .Schema.Properties }}
+{{ $columns = append $columns $props.JsonFieldName }}
+  {{ if hasKey $props.Extensions "x-entity-part-key" }}
+    {{ $pkey = append $pkey $props.JsonFieldName }}
+  {{ end}}
+{{ end }}
 var (
-{{.JsonName | lower}}Columns = []string{ {{ range $idx, $prop := .Schema.Properties }}"{{$prop.JsonFieldName}}",{{end}} }
-
 {{.JsonName | lower}}Meta = itable.Metadata{
   M: &table.Metadata{
     Name: "{{.Schema.BreuEntity}}",
-    Columns: {{.JsonName | lower}}Columns,
+    Columns: {{ $columns | toStringSlice | toStringArray }},
+    PartKey: {{ $pkey | toStringSlice | toStringArray }},
   },
 }
 
