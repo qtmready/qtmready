@@ -18,7 +18,10 @@
 package slack
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
+	"time"
 
 	"github.com/slack-go/slack"
 
@@ -27,8 +30,10 @@ import (
 
 func formatLineThresholdExceededAttachment(repoName, branchName string, threshold int, branchChanges *core.BranchChanges) slack.Attachment {
 	return slack.Attachment{
-		Color: "danger",
-		Title: "PR Lines Exceed",
+		Color:     "danger",
+		Pretext:   "The number of lines in this pull request exceeds the allowed threshold. Please review and adjust accordingly.", // TODO: need to finalize
+		Title:     "PR Lines Exceed",
+		TitleLink: branchChanges.CompareUrl,
 		Fields: []slack.AttachmentField{
 			createRepositoryField(repoName, branchChanges.RepoUrl),
 			createBranchField(branchName, branchChanges.CompareUrl),
@@ -60,30 +65,40 @@ func formatLineThresholdExceededAttachment(repoName, branchName string, threshol
 			},
 		},
 		MarkdownIn: []string{"fields"},
+		Footer:     "Lines Exceed",
+		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
 	}
 }
 
 func formatMergeConflictAttachment(merge *core.LatestCommit) slack.Attachment {
 	return slack.Attachment{
-		Color: "danger",
-		Title: "Merge Conflict",
+		Color:     "danger",
+		Pretext:   "Merge conflict detected. Please resolve the conflict.", // TODO: need to finalize
+		Title:     "Merge Conflict",
+		TitleLink: merge.CommitUrl,
 		Fields: []slack.AttachmentField{
 			createRepositoryField(merge.RepoName, merge.RepoUrl),
 			createBranchField(merge.Branch, merge.CommitUrl),
 		},
-		MarkdownIn: []string{"fields"}, // TODO
+		MarkdownIn: []string{"fields"},
+		Footer:     "Merge Conflict",
+		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
 	}
 }
 
 func formatStaleBranchAttachment(staleBranch *core.LatestCommit) slack.Attachment {
 	return slack.Attachment{
-		Color: "danger",
-		Title: "Stale Branch",
+		Color:     "danger",
+		Pretext:   "Stale branch is detected. Please review and take necessary action.", // TODO: need to finalize
+		Title:     "Stale Branch",
+		TitleLink: staleBranch.CommitUrl,
 		Fields: []slack.AttachmentField{
 			createRepositoryField(staleBranch.RepoName, staleBranch.RepoUrl),
 			createBranchField(staleBranch.Branch, staleBranch.CommitUrl),
 		},
 		MarkdownIn: []string{"fields"}, // TODO
+		Footer:     "Stale Branch",
+		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
 	}
 }
 
