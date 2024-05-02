@@ -119,7 +119,7 @@ func (account *Account) GetTable() itable.ITable {
 	return accountTable
 }
 
-// AccountTypeEnum oauth account type enum
+// AccountTypeEnum oauth account type enum.
 type AccountTypeEnum string
 
 // AddUserToTeamRequest defines model for AddUserToTeamRequest.
@@ -255,7 +255,7 @@ var (
 		M: &table.Metadata{
 			Name:    "users",
 			Columns: []string{"created_at", "email", "first_name", "id", "is_active", "is_verified", "last_name", "password", "team_id", "updated_at"},
-			PartKey: []string{"team_id"},
+			PartKey: []string{},
 		},
 	}
 

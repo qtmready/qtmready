@@ -191,20 +191,20 @@ func (artifactreadyrequest *ArtifactReadyRequest) GetTable() itable.ITable {
 	return artifactreadyrequestTable
 }
 
-// CliGitMerge branch name and repo info is sent to quantm via quantum-cli
+// CliGitMerge branch name and repo info is sent to quantm via quantum-cli.
 type CliGitMerge struct {
 	Branch    string `json:"branch"`
 	RepoName  string `json:"repo_name"`
 	RepoOwner string `json:"repo_owner"`
 }
 
-// CompleteInstallationRequest complete the installation given the installation_id & setup_action
+// CompleteInstallationRequest complete the installation given the installation_id & setup_action.
 type CompleteInstallationRequest struct {
 	InstallationID int64       `json:"installation_id"`
 	SetupAction    SetupAction `json:"setup_action"`
 }
 
-// GithubActionResultRequest github action result is sent to quantum along with branch name
+// GithubActionResultRequest github action result is sent to quantum along with branch name.
 type GithubActionResultRequest struct {
 	Branch    string `json:"branch"`
 	RepoID    string `json:"repo_id"`
@@ -306,7 +306,7 @@ type OCIImageRegistry string
 // SetupAction defines model for SetupAction.
 type SetupAction string
 
-// WorkflowResponse workflow status & run id
+// WorkflowResponse workflow status & run id.
 type WorkflowResponse struct {
 	RunID string `json:"run_id"`
 
@@ -314,7 +314,7 @@ type WorkflowResponse struct {
 	Status WorkflowStatus `json:"status"`
 }
 
-// WorkflowStatus the workflow status
+// WorkflowStatus the workflow status.
 type WorkflowStatus string
 
 // GithubArtifactReadyJSONRequestBody defines body for GithubArtifactReady for application/json ContentType.

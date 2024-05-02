@@ -293,10 +293,10 @@ func (v *RepoProvider) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// AWSDriver s3, sqs, sns, dynamodb, postgres, mysql etc
+// AWSDriver s3, sqs, sns, dynamodb, postgres, mysql etc.
 type AWSDriver string
 
-// BluePrintRegions BluePrintRegions sets the cloud regions where a blueprint can be deployed
+// BluePrintRegions BluePrintRegions sets the cloud regions where a blueprint can be deployed.
 type BluePrintRegions struct {
 	Aws     []string `json:"aws"`
 	Azure   []string `json:"azure"`
@@ -304,7 +304,7 @@ type BluePrintRegions struct {
 	Gcp     []string `json:"gcp"`
 }
 
-// Blueprint Blueprint contains a collection of Workload & Resource to define one single release
+// Blueprint Blueprint contains a collection of Workload & Resource to define one single release.
 type Blueprint struct {
 	CreatedAt      time.Time  `cql:"created_at" json:"created_at"`
 	ID             gocql.UUID `cql:"id" json:"id"`
@@ -345,7 +345,7 @@ type BlueprintCreateRequest struct {
 	StackID       gocql.UUID       `json:"stack_id"`
 }
 
-// BranchChanges Branch changes lines exceed
+// BranchChanges Branch changes lines exceed.
 type BranchChanges struct {
 	// Additions Number of additions
 	Additions int `json:"additions"`
@@ -369,16 +369,16 @@ type BranchChanges struct {
 	RepoUrl string `json:"repo_url"`
 }
 
-// CloudProvider aws, gcp, azure
+// CloudProvider aws, gcp, azure.
 type CloudProvider string
 
-// Driver gke, cloudrun, pubsub, s3, sqs, sns, dynamodb, postgres, mysql etc
+// Driver gke, cloudrun, pubsub, s3, sqs, sns, dynamodb, postgres, mysql etc.
 type Driver string
 
-// GCPDriver gke, cloudrun, pubsub etc
+// GCPDriver gke, cloudrun, pubsub etc.
 type GCPDriver string
 
-// LatestCommit get the latest commit information
+// LatestCommit get the latest commit information.
 type LatestCommit struct {
 	Branch    string `json:"branch"`
 	CommitUrl string `json:"commit_url"`
@@ -390,7 +390,7 @@ type LatestCommit struct {
 // MessageProvider defines model for MessageProvider.
 type MessageProvider string
 
-// ProviderConfiguration Provider config defines configuration specific to a cloud provider
+// ProviderConfiguration Provider config defines configuration specific to a cloud provider.
 type ProviderConfiguration struct {
 	Aws     string `json:"aws"`
 	Azure   string `json:"azure"`
@@ -444,7 +444,7 @@ type RepoListResponse = []Repo
 // RepoProvider defines model for RepoProvider.
 type RepoProvider string
 
-// Resource Resource defines the cloud provider resources for the app e.g. s3, sqs, etc
+// Resource Resource defines the cloud provider resources for the app e.g. s3, sqs, etc.
 type Resource struct {
 	// Config resource configruation e.g properties, output environment variables etc
 	Config    string    `cql:"config" json:"config"`
@@ -532,7 +532,7 @@ type StackCreateRequest struct {
 // StackListResponse defines model for StackListResponse.
 type StackListResponse = []Stack
 
-// Workload Workload defines a workload for the app
+// Workload Workload defines a workload for the app.
 type Workload struct {
 	// Builder json with keys: buildpack, dockerfile, script, external
 	Builder string `cql:"builder" json:"builder"`
