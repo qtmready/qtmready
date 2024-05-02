@@ -417,7 +417,7 @@ var (
 		M: &table.Metadata{
 			Name:    "repos",
 			Columns: []string{"created_at", "default_branch", "id", "is_monorepo", "name", "provider", "provider_id", "stack_id", "team_id", "updated_at"},
-			PartKey: []string{},
+			PartKey: []string{"team_id"},
 		},
 	}
 
@@ -509,7 +509,7 @@ var (
 		M: &table.Metadata{
 			Name:    "stacks",
 			Columns: []string{"config", "created_at", "id", "name", "slug", "team_id", "updated_at"},
-			PartKey: []string{},
+			PartKey: []string{"team_id"},
 		},
 	}
 

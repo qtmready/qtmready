@@ -261,7 +261,7 @@ var (
 		M: &table.Metadata{
 			Name:    "github_installations",
 			Columns: []string{"created_at", "id", "installation_id", "installation_login", "installation_type", "sender_id", "sender_login", "status", "team_id", "updated_at"},
-			PartKey: []string{},
+			PartKey: []string{"team_id"},
 		},
 	}
 
@@ -289,7 +289,7 @@ var (
 		M: &table.Metadata{
 			Name:    "github_repos",
 			Columns: []string{"created_at", "full_name", "github_id", "id", "installation_id", "name", "team_id", "updated_at"},
-			PartKey: []string{},
+			PartKey: []string{"team_id"},
 		},
 	}
 

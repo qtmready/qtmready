@@ -51,7 +51,7 @@ var (
 		M: &table.Metadata{
 			Name:    "slack",
 			Columns: []string{"channel_id", "channel_name", "created_at", "id", "team_id", "updated_at", "workspace_bot_token", "workspace_id", "workspace_name"},
-			PartKey: []string{},
+			PartKey: []string{"team_id"},
 		},
 	}
 
