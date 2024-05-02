@@ -255,7 +255,7 @@ var (
 		M: &table.Metadata{
 			Name:    "users",
 			Columns: []string{"created_at", "email", "first_name", "id", "is_active", "is_verified", "last_name", "password", "team_id", "updated_at"},
-			PartKey: []string{},
+			PartKey: []string{"team_id"},
 		},
 	}
 
