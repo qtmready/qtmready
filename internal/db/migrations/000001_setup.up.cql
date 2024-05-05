@@ -24,7 +24,7 @@ create table if not exists users
   is_active             boolean,
   created_at            timestamp,
   updated_at            timestamp,
-  primary key (id, team_id),
+  primary key (id),
 ) with comment = 'user, member of the team'
 and gc_grace_seconds = 0; -- gc_grace_seconds = 0 is set to avoid tombstones for deleted users.
 
