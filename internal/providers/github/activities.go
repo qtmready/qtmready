@@ -188,7 +188,7 @@ func (a *Activities) GetLatestCommit(ctx context.Context, repoID, branch string)
 
 // TODO - break it to smalller activities (create, delete and merge).
 func (a *Activities) RebaseAndMerge(
-	ctx context.Context, repoOwner string, repoName string, targetBranchName string, installationID int64,
+	ctx context.Context, repoOwner, repoName, targetBranchName string, installationID int64,
 ) (string, error) {
 	logger := activity.GetLogger(ctx)
 
@@ -277,9 +277,7 @@ func (a *Activities) RebaseAndMerge(
 	return *repoCommit.SHA, nil
 }
 
-func (a *Activities) TriggerCIAction(
-	ctx context.Context, installationID int64, repoOwner string, repoName string, targetBranch string,
-) error {
+func (a *Activities) TriggerCIAction(ctx context.Context, installationID int64, repoOwner, repoName, targetBranch string) error {
 	logger := activity.GetLogger(ctx)
 
 	logger.Debug("activity TriggerGithubAction started")
@@ -360,7 +358,7 @@ func (a *Activities) DeployChangeset(ctx context.Context, repoID string, changes
 	return nil
 }
 
-func (a *Activities) TagCommit(ctx context.Context, repoID string, commitSHA string, tagName string, tagMessage string) error {
+func (a *Activities) TagCommit(ctx context.Context, repoID, commitSHA, tagName, tagMessage string) error {
 	logger := activity.GetLogger(ctx)
 	// get installationID, repoName, repoOwner from github_repos table
 	githubRepo := &Repo{}
@@ -413,7 +411,7 @@ func (a *Activities) TagCommit(ctx context.Context, repoID string, commitSHA str
 	return nil
 }
 
-func (a *Activities) DeleteBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, branchName string) error {
+func (a *Activities) DeleteBranch(ctx context.Context, installationID int64, repoName, repoOwner, branchName string) error {
 	logger := activity.GetLogger(ctx)
 
 	// Get github client
@@ -444,7 +442,7 @@ func (a *Activities) DeleteBranch(ctx context.Context, installationID int64, rep
 }
 
 func (a *Activities) CreateBranch(
-	ctx context.Context, installationID int64, repoID int64, repoName string, repoOwner string, targetCommit string, newBranchName string,
+	ctx context.Context, installationID int64, repoID, repoName, repoOwner, targetCommit, newBranchName string,
 ) error {
 	logger := activity.GetLogger(ctx)
 
@@ -473,9 +471,7 @@ func (a *Activities) CreateBranch(
 	return nil
 }
 
-func (a *Activities) MergeBranch(
-	ctx context.Context, installationID int64, repoName string, repoOwner string, baseBranch string, targetBranch string,
-) error {
+func (a *Activities) MergeBranch(ctx context.Context, installationID int64, repoName, repoOwner, baseBranch, targetBranch string) error {
 	logger := activity.GetLogger(ctx)
 
 	// Get github client for operations
@@ -500,8 +496,7 @@ func (a *Activities) MergeBranch(
 	return nil
 }
 
-func (a *Activities) ChangesInBranch(
-	ctx context.Context, installationID int64, repoName string, repoOwner string, defaultBranch string, targetBranch string,
+func (a *Activities) ChangesInBranch(ctx context.Context, installationID int64, repoName, repoOwner, defaultBranch, targetBranch string,
 ) (*core.BranchChanges, error) {
 	logger := activity.GetLogger(ctx)
 
@@ -551,7 +546,7 @@ func (a *Activities) ChangesInBranch(
 	return branchChanges, nil
 }
 
-func (a *Activities) GetAllBranches(ctx context.Context, installationID int64, repoName string, repoOwner string) ([]string, error) {
+func (a *Activities) GetAllBranches(ctx context.Context, installationID int64, repoName, repoOwner string) ([]string, error) {
 	logger := activity.GetLogger(ctx)
 
 	// get github client
@@ -606,7 +601,7 @@ func (a *Activities) GetRepoTeamID(ctx context.Context, repoID string) (string, 
 	return prepo.TeamID.String(), nil
 }
 
-func (a *Activities) GetAllRelevantActions(ctx context.Context, installationID int64, repoName string, repoOwner string) error {
+func (a *Activities) GetAllRelevantActions(ctx context.Context, installationID int64, repoName, repoOwner string) error {
 	logger := activity.GetLogger(ctx)
 
 	// get github client

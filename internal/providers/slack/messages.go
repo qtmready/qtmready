@@ -28,9 +28,13 @@ import (
 	"go.breu.io/quantm/internal/core"
 )
 
+const (
+	footer = "Powered by quantm"
+)
+
 func formatLineThresholdExceededAttachment(repoName, branchName string, threshold int, branchChanges *core.BranchChanges) slack.Attachment {
 	return slack.Attachment{
-		Color:     "danger",
+		Color:     "warning",
 		Pretext:   "The number of lines in this pull request exceeds the allowed threshold. Please review and adjust accordingly.", // TODO: need to finalize
 		Title:     "PR Lines Exceed",
 		TitleLink: branchChanges.CompareUrl,
@@ -65,14 +69,14 @@ func formatLineThresholdExceededAttachment(repoName, branchName string, threshol
 			},
 		},
 		MarkdownIn: []string{"fields"},
-		Footer:     "Lines Exceed",
+		Footer:     footer,
 		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
 	}
 }
 
 func formatMergeConflictAttachment(merge *core.LatestCommit) slack.Attachment {
 	return slack.Attachment{
-		Color:     "danger",
+		Color:     "warning",
 		Pretext:   "Merge conflict detected. Please resolve the conflict.", // TODO: need to finalize
 		Title:     "Merge Conflict",
 		TitleLink: merge.CommitUrl,
@@ -81,14 +85,14 @@ func formatMergeConflictAttachment(merge *core.LatestCommit) slack.Attachment {
 			createBranchField(merge.Branch, merge.CommitUrl),
 		},
 		MarkdownIn: []string{"fields"},
-		Footer:     "Merge Conflict",
+		Footer:     footer,
 		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
 	}
 }
 
 func formatStaleBranchAttachment(staleBranch *core.LatestCommit) slack.Attachment {
 	return slack.Attachment{
-		Color:     "danger",
+		Color:     "warning",
 		Pretext:   "Stale branch is detected. Please review and take necessary action.", // TODO: need to finalize
 		Title:     "Stale Branch",
 		TitleLink: staleBranch.CommitUrl,
@@ -96,8 +100,8 @@ func formatStaleBranchAttachment(staleBranch *core.LatestCommit) slack.Attachmen
 			createRepositoryField(staleBranch.RepoName, staleBranch.RepoUrl),
 			createBranchField(staleBranch.Branch, staleBranch.CommitUrl),
 		},
-		MarkdownIn: []string{"fields"}, // TODO
-		Footer:     "Stale Branch",
+		MarkdownIn: []string{"fields"},
+		Footer:     footer,
 		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
 	}
 }
