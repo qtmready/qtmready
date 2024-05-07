@@ -32,14 +32,14 @@ func GetSlackClientAndChannelID(teamID string) (*slack.Client, string, error) {
 	params := db.QueryParams{"team_id": teamID}
 
 	if err := db.Get(s, params); err != nil {
-		slog.Info("Failed to get the slack record", slog.Any("e", err))
+		slog.Error("Failed to get the slack record", slog.Any("e", err))
 		return nil, "", err
 	}
 
 	// Decode the base64-encoded encrypted token.
 	decode, err := base64.StdEncoding.DecodeString(s.WorkspaceBotToken)
 	if err != nil {
-		slog.Info("Failed to decode the token", slog.Any("e", err))
+		slog.Error("Failed to decode the token", slog.Any("e", err))
 		return nil, "", err
 	}
 
@@ -49,12 +49,16 @@ func GetSlackClientAndChannelID(teamID string) (*slack.Client, string, error) {
 	// Decrypt the token.
 	decryptedToken, err := decrypt(decode, key)
 	if err != nil {
-		slog.Info("Failed to decrypt the token", slog.Any("e", err))
+		slog.Error("Failed to decrypt the token", slog.Any("e", err))
 		return nil, "", err
 	}
 
 	// Create a Slack client using the decrypted access token.
-	client := slack.New(string(decryptedToken))
+	client, err := instance.GetSlackClient(string(decryptedToken))
+	if err != nil {
+		slog.Error("Failed to get the slack client", slog.Any("e", err))
+		return nil, "", err
+	}
 
 	return client, s.ChannelID, nil
 }
