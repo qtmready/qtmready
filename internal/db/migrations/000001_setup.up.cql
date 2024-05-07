@@ -25,8 +25,7 @@ create table if not exists users
   created_at            timestamp,
   updated_at            timestamp,
   primary key (id),
-) with comment = 'user, member of the team'
-and gc_grace_seconds = 0; -- gc_grace_seconds = 0 is set to avoid tombstones for deleted users.
+) with comment = 'user, member of the team';
 
 create index if not exists on users (team_id);
 create index if not exists on users (email);
