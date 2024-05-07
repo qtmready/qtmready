@@ -34,8 +34,9 @@ const (
 
 func formatLineThresholdExceededAttachment(repoName, branchName string, threshold int, branchChanges *core.BranchChanges) slack.Attachment {
 	return slack.Attachment{
-		Color:     "warning",
-		Pretext:   "The number of lines in this pull request exceeds the allowed threshold. Please review and adjust accordingly.", // TODO: need to finalize
+		Color: "warning",
+		Pretext: "The number of lines in this pull request exceeds the allowed threshold. " +
+			"Please review and adjust accordingly.", // TODO: need to finalize
 		Title:     "PR Lines Exceed",
 		TitleLink: branchChanges.CompareUrl,
 		Fields: []slack.AttachmentField{
