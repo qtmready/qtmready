@@ -1,8 +1,6 @@
 name: release
 on:
   pull_request:
-    types:
-      - closed
   workflow_dispatch:
   push:
     branches:
@@ -17,7 +15,6 @@ env:
 
 jobs:
   build:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-20.04
     permissions:
       contents: "read"
@@ -66,8 +63,6 @@ jobs:
           location: ${{ env.GKE_CLUSTER_ZONE }}
 
       - name: Inject go-build-cache into Docker
-        # v1 was composed of two actions: "inject" and "extract".
-        # v2 is unified to a single action.
         uses: reproducible-containers/buildkit-cache-dance@v2.1.2
         with:
           cache-source: go-build-cache
