@@ -234,7 +234,7 @@ func CheckEarlyWarning(
 
 	// create new ref
 	if err := workflow.
-		ExecuteActivity(pctx, rpa.CreateBranch, installationID, pushEvent.RepoID, repoName, repoOwner, commit.SHA, temp).
+		ExecuteActivity(pctx, rpa.CreateBranch, installationID, repoID, repoName, repoOwner, commit.SHA, temp).
 		Get(ctx, nil); err != nil {
 		logger.Error("Repo provider activities: Create branch activity", "error", err)
 		return err

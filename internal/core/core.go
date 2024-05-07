@@ -55,19 +55,16 @@ type (
 	RepoProviderActivities interface {
 		GetLatestCommit(ctx context.Context, repoID, branchName string) (*LatestCommit, error)
 		DeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error
-		TagCommit(ctx context.Context, repoID string, commitSHA string, tagName string, tagMessage string) error
-		CreateBranch(ctx context.Context, installationID int64, repoID int64, repoName string, repoOwner string, targetCommit string,
-			newBranchName string) error
-		DeleteBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, branchName string) error
-		MergeBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, baseBranch string,
-			targetBranch string) error
-		ChangesInBranch(ctx context.Context, installationID int64, repoName string, repoOwner string, defaultBranch string,
-			targetBranch string) (*BranchChanges, error)
-		GetAllBranches(ctx context.Context, installationID int64, repoName string, repoOwner string) ([]string, error)
-		TriggerCIAction(ctx context.Context, installationID int64, repoOwner string, repoName string, targetBranch string) error
+		TagCommit(ctx context.Context, repoID, commitSHA, tagName, tagMessage string) error
+		CreateBranch(ctx context.Context, installationID int64, repoID, repoName, repoOwner, targetCommit, newBranchName string) error
+		DeleteBranch(ctx context.Context, installationID int64, repoName, repoOwner, branchName string) error
+		MergeBranch(ctx context.Context, installationID int64, repoName, repoOwner, baseBranch, targetBranch string) error
+		ChangesInBranch(ctx context.Context, installationID int64, repoName, repoOwner, defaultBranch, targetBranch string,
+		) (*BranchChanges, error)
+		GetAllBranches(ctx context.Context, installationID int64, repoName, repoOwner string) ([]string, error)
+		TriggerCIAction(ctx context.Context, installationID int64, repoOwner, repoName, targetBranch string) error
 		GetRepoTeamID(ctx context.Context, repoID string) (string, error)
-		RebaseAndMerge(ctx context.Context, repoOwner string, repoName string, targetBranchName string,
-			installationID int64) (string, error)
+		RebaseAndMerge(ctx context.Context, repoOwner, repoName, targetBranchName string, installationID int64) (string, error)
 		GetAllRelevantActions(ctx context.Context, installationID int64, repoName string, repoOwner string) error
 	}
 
