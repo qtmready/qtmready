@@ -36,7 +36,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 		return err
 	}
 
-	shared.Logger().Info("installation event received ...")
+	shared.Logger().Info("installation event received ...", "action", payload.Action)
 
 	workflows := &Workflows{}
 	opts := shared.Temporal().
@@ -74,6 +74,8 @@ func handleWorkflowRunEvent(ctx echo.Context) error {
 		return err
 	}
 
+	shared.Logger().Info("workflow run event received ...", "action", payload.Action)
+
 	workflows := &Workflows{}
 	opts := shared.Temporal().
 		Queue(shared.ProvidersQueue).
@@ -105,6 +107,8 @@ func handlePushEvent(ctx echo.Context) error {
 		shared.Logger().Error("unable to bind payload ...", "error", err)
 		return err
 	}
+
+	shared.Logger().Info("push event received ...", "action", payload)
 
 	// the value will be `NoCommit` if we have a tag push, or squash merge.
 	if payload.After == NoCommit {
@@ -139,7 +143,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		return err
 	}
 
-	shared.Logger().Info("handlePullRequestEvent executing...")
+	shared.Logger().Info("pull request event received ...", "action", payload.Action)
 
 	w := &Workflows{}
 	opts := shared.Temporal().
@@ -202,6 +206,8 @@ func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 	if err := ctx.Bind(payload); err != nil {
 		return err
 	}
+
+	shared.Logger().Info("installation repositories event received...", "action", payload.Action)
 
 	w := &Workflows{}
 	opts := shared.Temporal().
