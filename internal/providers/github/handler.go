@@ -268,6 +268,8 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 
 	if handle, exists := handlers[event]; exists {
 		return handle(ctx)
+	} else {
+		shared.Logger().Warn("Github Webhook: Unsupported event", "event", event)
 	}
 
 	return shared.NewAPIError(http.StatusBadRequest, ErrInvalidEvent)
