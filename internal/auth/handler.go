@@ -213,15 +213,8 @@ func (s *ServerHandler) CreateTeam(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	// NOTE: delete the existing user from database and create a new user with team_id
-	// TODO: need to move it to temporal workflow and activities or temp database table.
-	if err := db.Delete(user); err != nil {
-		slog.Error("error delete user", "error", err)
-		return shared.NewAPIError(http.StatusNotFound, err)
-	}
-
 	user.TeamID = team.ID
-	if err := db.Create(user); err != nil {
+	if err := db.Save(user); err != nil {
 		slog.Error("error creating user", "error", err)
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
