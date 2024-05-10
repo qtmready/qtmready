@@ -87,6 +87,7 @@ type (
 const (
 	SetupActionDelete  SetupAction = "delete"
 	SetupActionInstall SetupAction = "install"
+	SetupActionRequest SetupAction = "request"
 	SetupActionUpdate  SetupAction = "update"
 )
 
@@ -95,6 +96,7 @@ var (
 	SetupActionMap = SetupActionMapType{
 		SetupActionDelete.String():  SetupActionDelete,
 		SetupActionInstall.String(): SetupActionInstall,
+		SetupActionRequest.String(): SetupActionRequest,
 		SetupActionUpdate.String():  SetupActionUpdate,
 	}
 )

@@ -462,6 +462,10 @@ func onInstallationWebhookSignal(
 			logger.Info("installation removed, skipping complete installation request ...")
 
 			status.RequestDone = true
+		case "request":
+			logger.Info("installation request to organization owner ...")
+
+			status.RequestDone = true
 		default:
 			logger.Info("installation created, waiting for complete installation request ...")
 		}
