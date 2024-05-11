@@ -18,7 +18,7 @@ func PrepareMutexActivity(ctx context.Context, payload *Handler) (*workflow.Exec
 
 	exe, err := shared.Temporal().
 		Client().
-		SignalWithStartWorkflow(ctx, opts.ID, WorkflowSignalPrepare.String(), payload, opts, Workflow, payload)
+		SignalWithStartWorkflow(context.Background(), opts.ID, WorkflowSignalPrepare.String(), payload, opts, Workflow, payload)
 
 	if err != nil {
 		return &workflow.Execution{}, err

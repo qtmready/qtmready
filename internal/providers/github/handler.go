@@ -61,7 +61,6 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 	workflows := &Workflows{}
 	opts := shared.Temporal().
 		Queue(shared.ProvidersQueue).
-		// GetWorkflowOptions("github", strconv.Itoa(int(payload.InstallationID)), WebhookEventInstallation.String())
 		WorkflowOptions(
 			shared.WithWorkflowBlock("github"),
 			shared.WithWorkflowBlockID(strconv.Itoa(int(payload.InstallationID))),
@@ -82,7 +81,15 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 		return err
 	}
 
-	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: exe.GetID(), Status: WorkflowStatusQueued})
+	_ = exe.Get(ctx.Request().Context(), nil)
+
+	repos := make([]Repo, 0)
+
+	if err := db.Filter(&Repo{}, &repos, db.QueryParams{"team_id": teamID.String()}); err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusOK, repos)
 }
 
 func (s *ServerHandler) GithubGetRepos(ctx echo.Context) error {

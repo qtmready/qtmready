@@ -952,8 +952,7 @@ func (r CliGitMergeResponse) StatusCode() int {
 type GithubCompleteInstallationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *WorkflowResponse
-	JSON201      *WorkflowResponse
+	JSON200      *[]Repo
 	JSON400      *externalRef0.BadRequest
 	JSON401      *externalRef0.Unauthorized
 	JSON404      *externalRef0.NotFound
@@ -1260,18 +1259,11 @@ func ParseGithubCompleteInstallationResponse(rsp *http.Response) (*GithubComplet
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest WorkflowResponse
+		var dest []Repo
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest WorkflowResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest externalRef0.BadRequest
@@ -1506,9 +1498,14 @@ func (w *ServerInterfaceWrapper) GithubArtifactReady(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GithubActionResult(ctx echo.Context) error {
 	var err error
 
+	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(APIKeyAuthScopes, []string{})
+
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubActionResult
-	err = handler(ctx)
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
 
 	return err
 }
@@ -1518,9 +1515,12 @@ func (w *ServerInterfaceWrapper) GithubActionResult(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) CliGitMerge(ctx echo.Context) error {
 	var err error
 
+	ctx.Set(APIKeyAuthScopes, []string{})
+
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CliGitMerge
-	err = handler(ctx)
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
 
 	return err
 }
