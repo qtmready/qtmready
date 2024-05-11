@@ -114,11 +114,14 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 			logger.Debug("repository", "repository", repository)
 
 			repo := &Repo{
-				GithubID:       repository.ID,
-				InstallationID: installation.InstallationID,
-				Name:           repository.Name,
-				FullName:       repository.FullName,
-				TeamID:         installation.TeamID,
+				GithubID:        repository.ID,
+				InstallationID:  installation.InstallationID,
+				Name:            repository.Name,
+				FullName:        repository.FullName,
+				DefaultBranch:   "main",
+				HasEarlyWarning: false,
+				IsActive:        true,
+				TeamID:          installation.TeamID,
 			}
 
 			future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateGithubRepo, repo)
@@ -137,8 +140,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 	return nil
 }
 
-// PostInstall is executed after the installation is complete.
-func (w *Workflows) PostInstall(ctx workflow.Context, teamID string) error {
+// RefreshDefaultBranch refresh the default branch for all repositories associated with the given teamID.
+func (w *Workflows) RefreshDefaultBranch(ctx workflow.Context, teamID string) error {
 	return nil
 }
 

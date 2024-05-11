@@ -54,7 +54,7 @@ func main() {
 	// provider workflows
 	providerWrkr.RegisterWorkflow(ghwfs.OnInstallationEvent)
 	providerWrkr.RegisterWorkflow(ghwfs.OnInstallationRepositoriesEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.PostInstall)
+	providerWrkr.RegisterWorkflow(ghwfs.RefreshDefaultBranch)
 	providerWrkr.RegisterWorkflow(ghwfs.OnPushEvent)
 	providerWrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
 	providerWrkr.RegisterWorkflow(ghwfs.OnLabelEvent)

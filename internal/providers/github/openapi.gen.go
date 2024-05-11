@@ -274,21 +274,24 @@ func (githubinstallation *Installation) GetTable() itable.ITable {
 
 // Repo defines model for GithubRepo.
 type Repo struct {
-	CreatedAt      time.Time  `json:"created_at"`
-	FullName       string     `json:"full_name"`
-	GithubID       int64      `json:"github_id"`
-	ID             gocql.UUID `json:"id"`
-	InstallationID int64      `json:"installation_id"`
-	Name           string     `json:"name"`
-	TeamID         gocql.UUID `json:"team_id"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	CreatedAt       time.Time  `json:"created_at"`
+	DefaultBranch   string     `json:"default_branch"`
+	FullName        string     `json:"full_name"`
+	GithubID        int64      `json:"github_id"`
+	HasEarlyWarning bool       `json:"has_early_warning"`
+	ID              gocql.UUID `json:"id"`
+	InstallationID  int64      `json:"installation_id"`
+	IsActive        bool       `json:"is_active"`
+	Name            string     `json:"name"`
+	TeamID          gocql.UUID `json:"team_id"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 var (
 	githubrepoMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "github_repos",
-			Columns: []string{"created_at", "full_name", "github_id", "id", "installation_id", "name", "team_id", "updated_at"},
+			Columns: []string{"created_at", "default_branch", "full_name", "github_id", "has_early_warning", "id", "installation_id", "is_active", "name", "team_id", "updated_at"},
 			PartKey: []string{"team_id"},
 		},
 	}
