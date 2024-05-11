@@ -87,7 +87,6 @@ type (
 const (
 	SetupActionDelete  SetupAction = "delete"
 	SetupActionInstall SetupAction = "install"
-	SetupActionRequest SetupAction = "request"
 	SetupActionUpdate  SetupAction = "update"
 )
 
@@ -96,7 +95,6 @@ var (
 	SetupActionMap = SetupActionMapType{
 		SetupActionDelete.String():  SetupActionDelete,
 		SetupActionInstall.String(): SetupActionInstall,
-		SetupActionRequest.String(): SetupActionRequest,
 		SetupActionUpdate.String():  SetupActionUpdate,
 	}
 )
@@ -952,7 +950,7 @@ func (r CliGitMergeResponse) StatusCode() int {
 type GithubCompleteInstallationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]Repo
+	JSON201      *WorkflowResponse
 	JSON400      *externalRef0.BadRequest
 	JSON401      *externalRef0.Unauthorized
 	JSON404      *externalRef0.NotFound
@@ -1258,12 +1256,12 @@ func ParseGithubCompleteInstallationResponse(rsp *http.Response) (*GithubComplet
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []Repo
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest WorkflowResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON200 = &dest
+		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest externalRef0.BadRequest
@@ -1498,14 +1496,9 @@ func (w *ServerInterfaceWrapper) GithubArtifactReady(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GithubActionResult(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{})
-
-	ctx.Set(APIKeyAuthScopes, []string{})
-
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubActionResult
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	err = handler(ctx)
 
 	return err
 }
@@ -1515,12 +1508,9 @@ func (w *ServerInterfaceWrapper) GithubActionResult(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) CliGitMerge(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(APIKeyAuthScopes, []string{})
-
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CliGitMerge
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	err = handler(ctx)
 
 	return err
 }

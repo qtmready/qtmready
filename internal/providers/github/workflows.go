@@ -137,6 +137,11 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 	return nil
 }
 
+// PostInstall is executed after the installation is complete.
+func (w *Workflows) PostInstall(ctx workflow.Context, teamID string) error {
+	return nil
+}
+
 // OnPushEvent checks if the push event is associated with an open pull request.If so, it will get the idempotent key for
 // the immutable rollout. Depending upon the target branch, it will either queue the rollout or update the existing
 // rollout.
