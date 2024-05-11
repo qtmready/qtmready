@@ -85,17 +85,23 @@ type (
 
 // Defines values for SetupAction.
 const (
-	SetupActionDelete  SetupAction = "delete"
-	SetupActionInstall SetupAction = "install"
-	SetupActionUpdate  SetupAction = "update"
+	SetupActionDelete                 SetupAction = "delete"
+	SetupActionInstall                SetupAction = "install"
+	SetupActionNewPermissionsAccepted SetupAction = "new_permissions_accepted"
+	SetupActionRequest                SetupAction = "request"
+	SetupActionSuspend                SetupAction = "suspend"
+	SetupActionUnsuspend              SetupAction = "unsuspend"
 )
 
 // SetupActionMap returns all known values for SetupAction.
 var (
 	SetupActionMap = SetupActionMapType{
-		SetupActionDelete.String():  SetupActionDelete,
-		SetupActionInstall.String(): SetupActionInstall,
-		SetupActionUpdate.String():  SetupActionUpdate,
+		SetupActionDelete.String():                 SetupActionDelete,
+		SetupActionInstall.String():                SetupActionInstall,
+		SetupActionNewPermissionsAccepted.String(): SetupActionNewPermissionsAccepted,
+		SetupActionRequest.String():                SetupActionRequest,
+		SetupActionSuspend.String():                SetupActionSuspend,
+		SetupActionUnsuspend.String():              SetupActionUnsuspend,
 	}
 )
 
@@ -1499,9 +1505,14 @@ func (w *ServerInterfaceWrapper) GithubArtifactReady(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GithubActionResult(ctx echo.Context) error {
 	var err error
 
+	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(APIKeyAuthScopes, []string{})
+
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubActionResult
-	err = handler(ctx)
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
 
 	return err
 }
@@ -1511,9 +1522,14 @@ func (w *ServerInterfaceWrapper) GithubActionResult(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) CliGitMerge(ctx echo.Context) error {
 	var err error
 
+	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(APIKeyAuthScopes, []string{})
+
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.CliGitMerge
-	err = handler(ctx)
+	secure := w.Handler.SecureHandler
+	err = secure(handler, ctx)
 
 	return err
 }
