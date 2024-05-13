@@ -150,6 +150,13 @@ func (a *Activities) GetLatestCommit(ctx context.Context, repoID, branch string)
 	logger := activity.GetLogger(ctx)
 	prepo := &Repo{}
 
+	logger.Info(
+		"Starting Activity: GetLatestCommit with ...",
+		"repoID", repoID,
+		"branch", branch,
+		"github_private_key", Instance().PrivateKey,
+	)
+
 	if err := db.Get(prepo, db.QueryParams{"github_id": repoID}); err != nil {
 		return nil, err
 	}
