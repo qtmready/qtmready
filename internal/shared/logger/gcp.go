@@ -28,33 +28,33 @@ import (
 )
 
 type (
-	SimpleCloudRunHandler struct {
+	GoogleCloudHandler struct {
 		handler slog.Handler
 	}
 )
 
-func NewSimpleCloudRunHandler(writer io.Writer, options *slog.HandlerOptions) slog.Handler {
+func NewGoogleCloudHandler(writer io.Writer, options *slog.HandlerOptions) slog.Handler {
 	options.ReplaceAttr = replaceattr
 
 	handler := slog.NewJSONHandler(writer, options)
 
-	return &SimpleCloudRunHandler{handler: handler}
+	return &GoogleCloudHandler{handler: handler}
 }
 
-func (h *SimpleCloudRunHandler) Enabled(ctx context.Context, level slog.Level) bool {
+func (h *GoogleCloudHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	return h.handler.Enabled(ctx, level)
 }
 
-func (h *SimpleCloudRunHandler) Handle(ctx context.Context, rec slog.Record) error {
+func (h *GoogleCloudHandler) Handle(ctx context.Context, rec slog.Record) error {
 	return h.handler.Handle(ctx, h.enrich(ctx, rec))
 }
 
-func (h *SimpleCloudRunHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return &SimpleCloudRunHandler{handler: h.handler.WithAttrs(attrs)}
+func (h *GoogleCloudHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &GoogleCloudHandler{handler: h.handler.WithAttrs(attrs)}
 }
 
-func (h *SimpleCloudRunHandler) WithGroup(name string) slog.Handler {
-	return &SimpleCloudRunHandler{handler: h.handler.WithGroup(name)}
+func (h *GoogleCloudHandler) WithGroup(name string) slog.Handler {
+	return &GoogleCloudHandler{handler: h.handler.WithGroup(name)}
 }
 
 // enrich adds the trace ID to the record so it is correlated with the Cloud Run request log
@@ -62,7 +62,7 @@ func (h *SimpleCloudRunHandler) WithGroup(name string) slog.Handler {
 // # LINKS
 //   - https://cloud.google.com/trace/docs/trace-log-integration
 //   - https://cloud.google.com/logging/docs/view/correlate-logs#view-correlated-log-entries
-func (h *SimpleCloudRunHandler) enrich(ctx context.Context, record slog.Record) slog.Record {
+func (h *GoogleCloudHandler) enrich(ctx context.Context, record slog.Record) slog.Record {
 	rec := record.Clone()
 
 	span := trace.SpanFromContext(ctx)

@@ -24,6 +24,7 @@ import (
 	"strings"
 	"sync"
 
+	"cloud.google.com/go/compute/metadata"
 	"github.com/go-playground/validator/v10"
 	"github.com/sethvargo/go-password/password"
 
@@ -73,6 +74,7 @@ func Logger() *slog.Logger {
 	debug := Service().GetDebug()
 	level := slog.LevelInfo
 	opts := &slog.HandlerOptions{AddSource: !debug}
+	gcp := metadata.OnGCE()
 
 	lgrOnce.Do(func() {
 		switch {
@@ -81,8 +83,8 @@ func Logger() *slog.Logger {
 			opts.Level = level
 			handler = slog.NewTextHandler(os.Stdout, opts)
 
-		case Service().GetCloudRunJob() != "unset" || Service().GetCloudRunService() != "unset":
-			handler = logger.NewSimpleCloudRunHandler(os.Stdout, opts)
+		case gcp:
+			handler = logger.NewGoogleCloudHandler(os.Stdout, opts)
 
 		default:
 			handler = slog.NewJSONHandler(os.Stdout, opts)
