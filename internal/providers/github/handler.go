@@ -96,7 +96,7 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 			ctx.Request().Context(),
 			opts,
 			workflows.RefreshDefaultBranch,
-			teamID,
+			teamID.String(),
 		)
 	if err != nil {
 		return err
