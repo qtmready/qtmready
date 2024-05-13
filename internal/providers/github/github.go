@@ -20,6 +20,7 @@ package github
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"fmt"
 	"net/http"
@@ -32,6 +33,19 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/mutex"
+)
+
+type (
+	Config struct {
+		AppID              int64  `env:"GITHUB_APP_ID"`
+		ClientID           string `env:"GITHUB_CLIENT_ID"`
+		WebhookSecret      string `env:"GITHUB_WEBHOOK_SECRET"`
+		PrivateKey         string `env:"GITHUB_PRIVATE_KEY"`
+		PrivateKeyIsBase64 bool   `env:"GITHUB_PRIVATE_KEY_IS_BASE64" env-default:"false"` // If true, the private key is base64 encoded
+		Activities         *Activities
+	}
+
+	ConfigOption func(*Config)
 )
 
 var (
@@ -54,39 +68,48 @@ func NewGithub(options ...ConfigOption) *Config {
 }
 
 func WithAppID(id int64) ConfigOption {
-	return func(g *Config) {
-		g.AppID = id
+	return func(config *Config) {
+		config.AppID = id
 	}
 }
 
 func WithClientID(id string) ConfigOption {
-	return func(g *Config) {
-		g.ClientID = id
+	return func(config *Config) {
+		config.ClientID = id
 	}
 }
 
 func WithWebhookSecret(secret string) ConfigOption {
-	return func(g *Config) {
-		g.WebhookSecret = secret
+	return func(config *Config) {
+		config.WebhookSecret = secret
 	}
 }
 
 func WithPrivateKey(key string) ConfigOption {
-	return func(g *Config) {
-		g.PrivateKey = key
+	return func(config *Config) {
+		config.PrivateKey = key
 	}
 }
 
 func WithActivities(activities *Activities) ConfigOption {
-	return func(g *Config) {
-		g.Activities = activities
+	return func(config *Config) {
+		config.Activities = activities
 	}
 }
 
 func WithConfigFromEnv() ConfigOption {
-	return func(g *Config) {
-		if err := cleanenv.ReadEnv(g); err != nil {
+	return func(config *Config) {
+		if err := cleanenv.ReadEnv(config); err != nil {
 			panic(fmt.Errorf("failed to read environment variables: %w", err))
+		}
+
+		if config.PrivateKeyIsBase64 {
+			key, err := base64.StdEncoding.DecodeString(config.PrivateKey)
+			if err != nil {
+				panic(fmt.Errorf("failed to decode base64 private key: %w", err))
+			}
+
+			config.PrivateKey = string(key)
 		}
 	}
 }
@@ -127,24 +150,12 @@ func LockInstance(ctx workflow.Context, repoID string) (mutex.Mutex, error) {
 	return lock, nil
 }
 
-type (
-	Config struct {
-		AppID         int64  `env:"GITHUB_APP_ID"`
-		ClientID      string `env:"GITHUB_CLIENT_ID"`
-		WebhookSecret string `env:"GITHUB_WEBHOOK_SECRET"`
-		PrivateKey    string `env:"GITHUB_PRIVATE_KEY"`
-		Activities    *Activities
-	}
-
-	ConfigOption func(*Config)
-)
-
-func (g *Config) GetActivities() *Activities {
-	return g.Activities
+func (config *Config) GetActivities() *Activities {
+	return config.Activities
 }
 
-func (g *Config) GetClientFromInstallation(installationID int64) (*gh.Client, error) {
-	transport, err := ghinstallation.New(http.DefaultTransport, g.AppID, installationID, []byte(g.PrivateKey))
+func (config *Config) GetClientFromInstallation(installationID int64) (*gh.Client, error) {
+	transport, err := ghinstallation.New(http.DefaultTransport, config.AppID, installationID, []byte(config.PrivateKey))
 	if err != nil {
 		return nil, err
 	}
@@ -154,8 +165,8 @@ func (g *Config) GetClientFromInstallation(installationID int64) (*gh.Client, er
 	return client, nil
 }
 
-func (g *Config) VerifyWebhookSignature(payload []byte, signature string) error {
-	result := g.SignPayload(payload)
+func (config *Config) VerifyWebhookSignature(payload []byte, signature string) error {
+	result := config.SignPayload(payload)
 
 	if result != signature {
 		return ErrVerifySignature
@@ -164,8 +175,8 @@ func (g *Config) VerifyWebhookSignature(payload []byte, signature string) error 
 	return nil
 }
 
-func (g *Config) SignPayload(payload []byte) string {
-	key := hmac.New(sha256.New, []byte(g.WebhookSecret))
+func (config *Config) SignPayload(payload []byte) string {
+	key := hmac.New(sha256.New, []byte(config.WebhookSecret))
 	key.Write(payload)
 	result := "sha256=" + hex.EncodeToString(key.Sum(nil))
 
