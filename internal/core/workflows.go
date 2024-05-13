@@ -303,37 +303,30 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 	// get push event data via workflow signal
 	ch := workflow.GetSignalChannel(ctx, shared.WorkflowPushEvent.String())
 
-	signalPayload := &shared.PushEventSignal{}
+	payload := &shared.PushEventSignal{}
 
 	// receive signal payload
-	ch.Receive(ctx, signalPayload)
+	ch.Receive(ctx, payload)
 
 	timeout := 100 * time.Second
+	id := fmt.Sprintf("repo.%s.branch.%s", payload.RepoName, payload.RefBranch)
 	lock := mutex.New(
-		mutex.WithResourceID(signalPayload.RepoName+"-"+signalPayload.RefBranch),
+		mutex.WithResourceID(id),
 		mutex.WithTimeout(timeout+(10*time.Second)),
 		mutex.WithHandler(ctx),
 	)
 
 	if err := lock.Prepare(ctx); err != nil {
-		return err // or handle error
+		return err
 	}
 
 	if err := lock.Acquire(ctx); err != nil {
-		return err // or handle error
+		return err
 	}
 
-	branchName := signalPayload.RefBranch
-	installationID := signalPayload.InstallationID
-	repoID := strconv.FormatInt(signalPayload.RepoID, 10)
-	repoName := signalPayload.RepoName
-	repoOwner := signalPayload.RepoOwner
-	defaultBranch := signalPayload.DefaultBranch
-	repoProvider := signalPayload.RepoProvider
+	logger.Debug("Branch controller", "signal payload", payload)
 
-	logger.Debug("Branch controller", "signal payload", signalPayload)
-
-	rpa := Instance().RepoProvider(RepoProvider(repoProvider))
+	rpa := Instance().RepoProvider(RepoProvider(payload.RepoProvider))
 	mpa := Instance().MessageProvider(MessageProviderSlack) // TODO - maybe not hardcode to slack and get from payload
 
 	providerActOpts := workflow.ActivityOptions{
@@ -343,18 +336,19 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 			MaximumAttempts: 1,
 		},
 	}
-	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
+	actx := workflow.WithActivityOptions(ctx, providerActOpts)
 
 	commit := &LatestCommit{}
-	if err := workflow.ExecuteActivity(pctx, rpa.GetLatestCommit, repoID, branchName).Get(ctx, commit); err != nil {
+	if err := workflow.ExecuteActivity(actx, rpa.GetLatestCommit, (strconv.FormatInt(payload.RepoID, 10)), payload.RefBranch).
+		Get(ctx, commit); err != nil {
 		logger.Error("Repo provider activities: Get latest commit activity", "error", err)
 		return err
 	}
 
 	// if the push comes at the default branch i.e. main rebase all branches with main
-	if branchName == defaultBranch {
+	if payload.RefBranch == payload.DefaultBranch {
 		var branchNames []string
-		if err := workflow.ExecuteActivity(pctx, rpa.GetAllBranches, installationID, repoName, repoOwner).
+		if err := workflow.ExecuteActivity(actx, rpa.GetAllBranches, payload.InstallationID, payload.RepoName, payload.RepoOwner).
 			Get(ctx, &branchNames); err != nil {
 			logger.Error("Repo provider activities: Get all branches activity", "error", err)
 			return err
@@ -363,26 +357,27 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 		logger.Debug("Branch controller", "Total branches", len(branchNames))
 
 		for _, branch := range branchNames {
-			if strings.Contains(branch, "-tempcopy-for-target-") || branch == defaultBranch {
+			if strings.Contains(branch, "-tempcopy-for-target-") || branch == payload.DefaultBranch {
 				// no need to do rebase with quantm created temp branches
 				continue
 			}
 
 			logger.Debug("Branch controller", "Testing conflicts with branch", branch)
 
-			if err := workflow.
-				ExecuteActivity(pctx, rpa.MergeBranch, installationID, repoName, repoOwner, defaultBranch, branch).
+			if err := workflow.ExecuteActivity(
+				actx, rpa.MergeBranch, payload.InstallationID, payload.RepoName, payload.RepoOwner, payload.DefaultBranch, branch,
+			).
 				Get(ctx, nil); err != nil {
 				logger.Error("Repo provider activities: Merge branch activity", "error", err)
 
 				// get the teamID from repo table
 				teamID := ""
-				if err := workflow.ExecuteActivity(pctx, rpa.GetRepoTeamID, repoID).Get(ctx, &teamID); err != nil {
+				if err := workflow.ExecuteActivity(actx, rpa.GetRepoTeamID, payload.RepoID).Get(ctx, &teamID); err != nil {
 					logger.Error("Repo provider activities: Get repo TeamID activity", "error", err)
 					return err
 				}
 
-				if err = workflow.ExecuteActivity(pctx, mpa.SendMergeConflictsMessage, teamID, commit).Get(ctx, nil); err != nil {
+				if err = workflow.ExecuteActivity(actx, mpa.SendMergeConflictsMessage, teamID, commit).Get(ctx, nil); err != nil {
 					logger.Error("Message provider activities: Send merge conflicts message activity", "error", err)
 					return err
 				}
@@ -396,7 +391,7 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 	}
 
 	// check if the target branch would have merge conflicts with the default branch or it has too much changes
-	if err := CheckEarlyWarning(ctx, rpa, mpa, signalPayload); err != nil {
+	if err := CheckEarlyWarning(ctx, rpa, mpa, payload); err != nil {
 		return err
 	}
 
@@ -410,9 +405,9 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 		ChildWorkflowOptions(
 			shared.WithWorkflowParent(ctx),
 			shared.WithWorkflowBlock("repo"),
-			shared.WithWorkflowBlockID(repoID),
+			shared.WithWorkflowBlockID(strconv.FormatInt(payload.RepoID, 10)),
 			shared.WithWorkflowElement("branch"),
-			shared.WithWorkflowElementID(branchName),
+			shared.WithWorkflowElementID(payload.RefBranch),
 			shared.WithWorkflowProp("type", "stale_detection"),
 		)
 	opts.ParentClosePolicy = enums.PARENT_CLOSE_POLICY_ABANDON
@@ -420,11 +415,13 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 	var execution workflow.Execution
 
 	cctx := workflow.WithChildOptions(ctx, opts)
-	err := workflow.ExecuteChildWorkflow(cctx,
+	err := workflow.ExecuteChildWorkflow(
+		cctx,
 		wf.StaleBranchDetection,
-		signalPayload,
-		branchName,
-		commit.SHA).
+		payload,
+		payload.RefBranch,
+		commit.SHA,
+	).
 		GetChildWorkflowExecution().
 		Get(cctx, &execution)
 
