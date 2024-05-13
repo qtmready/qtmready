@@ -372,7 +372,7 @@ func (w *Workflows) BranchController(ctx workflow.Context) error {
 
 				// get the teamID from repo table
 				teamID := ""
-				if err := workflow.ExecuteActivity(actx, rpa.GetRepoTeamID, payload.RepoID).Get(ctx, &teamID); err != nil {
+				if err := workflow.ExecuteActivity(actx, rpa.GetRepoTeamID, strconv.FormatInt(payload.RepoID, 10)).Get(ctx, &teamID); err != nil {
 					logger.Error("Repo provider activities: Get repo TeamID activity", "error", err)
 					return err
 				}
