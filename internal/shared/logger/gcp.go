@@ -66,7 +66,7 @@ func (h *GoogleCloudHandler) enrich(ctx context.Context, record slog.Record) slo
 	rec := record.Clone()
 
 	span := trace.SpanFromContext(ctx)
-	if span != nil {
+	if span != nil && span.SpanContext().IsValid() {
 		if metadata.OnGCE() {
 			project, _ := metadata.ProjectID()
 			rec.Add("logging.googleapis.com/trace", fmt.Sprintf(
