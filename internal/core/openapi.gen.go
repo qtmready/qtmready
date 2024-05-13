@@ -390,6 +390,14 @@ type LatestCommit struct {
 // MessageProvider defines model for MessageProvider.
 type MessageProvider string
 
+// MessageProviderData defines model for MessageProviderData.
+type MessageProviderData struct {
+	ChannelID     string `json:"channel_id"`
+	ChannelName   string `json:"channel_name"`
+	WorkspaceID   string `json:"workspace_id"`
+	WorkspaceName string `json:"workspace_name"`
+}
+
 // ProviderConfiguration Provider config defines configuration specific to a cloud provider.
 type ProviderConfiguration struct {
 	Aws     string `json:"aws"`
@@ -400,23 +408,26 @@ type ProviderConfiguration struct {
 
 // Repo defines model for Repo.
 type Repo struct {
-	CreatedAt     time.Time    `cql:"created_at" json:"created_at"`
-	DefaultBranch string       `cql:"default_branch" json:"default_branch"`
-	ID            gocql.UUID   `cql:"id" json:"id"`
-	IsMonorepo    bool         `cql:"is_monorepo" json:"is_monorepo"`
-	Name          string       `cql:"name" json:"name"`
-	Provider      RepoProvider `cql:"provider" json:"provider"`
-	ProviderID    string       `cql:"provider_id" json:"provider_id"`
-	StackID       gocql.UUID   `cql:"stack_id" json:"stack_id"`
-	TeamID        gocql.UUID   `cql:"team_id" json:"team_id"`
-	UpdatedAt     time.Time    `cql:"updated_at" json:"updated_at"`
+	CreatedAt           time.Time            `cql:"created_at" json:"created_at"`
+	DefaultBranch       string               `cql:"default_branch" json:"default_branch"`
+	ID                  gocql.UUID           `cql:"id" json:"id"`
+	IsMonorepo          bool                 `cql:"is_monorepo" json:"is_monorepo"`
+	MessageProvider     *MessageProvider     `cql:"message_provider" json:"message_provider,omitempty"`
+	MessageProviderData *MessageProviderData `cql:"message_provider_data" json:"message_provider_data,omitempty"`
+	MessageProviderId   *string              `cql:"message_provider_id" json:"message_provider_id,omitempty"`
+	Name                string               `cql:"name" json:"name"`
+	Provider            RepoProvider         `cql:"provider" json:"provider"`
+	ProviderID          string               `cql:"provider_id" json:"provider_id"`
+	StackID             gocql.UUID           `cql:"stack_id" json:"stack_id"`
+	TeamID              gocql.UUID           `cql:"team_id" json:"team_id"`
+	UpdatedAt           time.Time            `cql:"updated_at" json:"updated_at"`
 }
 
 var (
 	repoMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "repos",
-			Columns: []string{"created_at", "default_branch", "id", "is_monorepo", "name", "provider", "provider_id", "stack_id", "team_id", "updated_at"},
+			Columns: []string{"created_at", "default_branch", "id", "is_monorepo", "message_provider", "message_provider_data", "message_provider_id", "name", "provider", "provider_id", "stack_id", "team_id", "updated_at"},
 			PartKey: []string{"team_id"},
 		},
 	}
