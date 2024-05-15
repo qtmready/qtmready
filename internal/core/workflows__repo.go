@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -24,7 +23,7 @@ func CheckEarlyWarning(
 	logger := workflow.GetLogger(ctx)
 	branchName := pushEvent.RefBranch
 	installationID := pushEvent.InstallationID
-	repoID := strconv.FormatInt(pushEvent.RepoID, 10)
+	repoID := pushEvent.RepoID.String()
 	repoName := pushEvent.RepoName
 	repoOwner := pushEvent.RepoOwner
 	defaultBranch := pushEvent.DefaultBranch
@@ -166,7 +165,7 @@ func (w *RepoWorkflows) BranchController(ctx workflow.Context) error {
 	actx := workflow.WithActivityOptions(ctx, providerActOpts)
 
 	commit := &LatestCommit{}
-	if err := workflow.ExecuteActivity(actx, rpa.GetLatestCommit, (strconv.FormatInt(payload.RepoID, 10)), payload.RefBranch).
+	if err := workflow.ExecuteActivity(actx, rpa.GetLatestCommit, (payload.RepoID.String()), payload.RefBranch).
 		Get(ctx, commit); err != nil {
 		logger.Error("Repo provider activities: Get latest commit activity", "error", err)
 		return err
@@ -199,7 +198,7 @@ func (w *RepoWorkflows) BranchController(ctx workflow.Context) error {
 
 				// get the teamID from repo table
 				teamID := ""
-				if err := workflow.ExecuteActivity(actx, rpa.GetRepoTeamID, strconv.FormatInt(payload.RepoID, 10)).Get(ctx, &teamID); err != nil {
+				if err := workflow.ExecuteActivity(actx, rpa.GetRepoTeamID, payload.RepoID.String()).Get(ctx, &teamID); err != nil {
 					logger.Error("Repo provider activities: Get repo TeamID activity", "error", err)
 					return err
 				}
@@ -232,7 +231,7 @@ func (w *RepoWorkflows) BranchController(ctx workflow.Context) error {
 		ChildWorkflowOptions(
 			shared.WithWorkflowParent(ctx),
 			shared.WithWorkflowBlock("repo"),
-			shared.WithWorkflowBlockID(strconv.FormatInt(payload.RepoID, 10)),
+			shared.WithWorkflowBlockID(payload.RepoID.String()),
 			shared.WithWorkflowElement("branch"),
 			shared.WithWorkflowElementID(payload.RefBranch),
 			shared.WithWorkflowProp("type", "stale_detection"),
@@ -265,7 +264,7 @@ func (w *RepoWorkflows) StaleBranchDetection(
 	ctx workflow.Context, event *shared.PushEventSignal, branchName string, lastBranchCommit string,
 ) error {
 	logger := workflow.GetLogger(ctx)
-	repoID := strconv.FormatInt(event.RepoID, 10)
+	repoID := event.RepoID.String()
 	// Sleep for 5 days before raising stale detection
 	_ = workflow.Sleep(ctx, 5*24*time.Hour)
 	// _ = workflow.Sleep(ctx, 30*time.Second)

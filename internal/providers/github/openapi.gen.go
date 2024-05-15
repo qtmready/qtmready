@@ -26,6 +26,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/scylladb/gocqlx/v2/table"
+	"go.breu.io/quantm/internal/shared"
 	externalRef0 "go.breu.io/quantm/internal/shared"
 )
 
@@ -206,8 +207,8 @@ type CliGitMerge struct {
 
 // CompleteInstallationRequest complete the installation given the installation_id & setup_action.
 type CompleteInstallationRequest struct {
-	InstallationID int64       `json:"installation_id"`
-	SetupAction    SetupAction `json:"setup_action"`
+	InstallationID shared.Int64 `json:"installation_id"`
+	SetupAction    SetupAction  `json:"setup_action"`
 }
 
 // GithubActionResultRequest github action result is sent to quantum along with branch name.
@@ -221,15 +222,15 @@ type GithubActionResultRequest struct {
 
 // GithubEventsState defines model for GithubEventsState.
 type GithubEventsState struct {
-	CreatedAt           time.Time  `json:"created_at"`
-	EventType           string     `json:"event_type"`
-	EventsData          string     `json:"events_data"`
-	GithubWorkflowID    int64      `json:"github_workflow_id"`
-	GithubWorkflowRunID int64      `json:"github_workflow_run_id"`
-	ID                  gocql.UUID `json:"id"`
-	RepoName            string     `json:"repo_name"`
-	Status              string     `json:"status"`
-	UpdatedAt           time.Time  `json:"updated_at"`
+	CreatedAt           time.Time    `json:"created_at"`
+	EventType           string       `json:"event_type"`
+	EventsData          string       `json:"events_data"`
+	GithubWorkflowID    shared.Int64 `json:"github_workflow_id"`
+	GithubWorkflowRunID shared.Int64 `json:"github_workflow_run_id"`
+	ID                  gocql.UUID   `json:"id"`
+	RepoName            string       `json:"repo_name"`
+	Status              string       `json:"status"`
+	UpdatedAt           time.Time    `json:"updated_at"`
 }
 
 var (
@@ -250,16 +251,16 @@ func (githubeventsstate *GithubEventsState) GetTable() itable.ITable {
 
 // Installation defines model for GithubInstallation.
 type Installation struct {
-	CreatedAt         time.Time  `json:"created_at"`
-	ID                gocql.UUID `json:"id"`
-	InstallationID    int64      `json:"installation_id" validate:"required,db_unique"`
-	InstallationLogin string     `json:"installation_login"`
-	InstallationType  string     `json:"installation_type"`
-	SenderID          int64      `json:"sender_id"`
-	SenderLogin       string     `json:"sender_login"`
-	Status            string     `json:"status"`
-	TeamID            gocql.UUID `json:"team_id"`
-	UpdatedAt         time.Time  `json:"updated_at"`
+	CreatedAt         time.Time    `json:"created_at"`
+	ID                gocql.UUID   `json:"id"`
+	InstallationID    shared.Int64 `json:"installation_id" validate:"required,db_unique"`
+	InstallationLogin string       `json:"installation_login"`
+	InstallationType  string       `json:"installation_type"`
+	SenderID          shared.Int64 `json:"sender_id"`
+	SenderLogin       string       `json:"sender_login"`
+	Status            string       `json:"status"`
+	TeamID            gocql.UUID   `json:"team_id"`
+	UpdatedAt         time.Time    `json:"updated_at"`
 }
 
 var (
@@ -280,17 +281,17 @@ func (githubinstallation *Installation) GetTable() itable.ITable {
 
 // Repo defines model for GithubRepo.
 type Repo struct {
-	CreatedAt       time.Time  `json:"created_at"`
-	DefaultBranch   string     `json:"default_branch"`
-	FullName        string     `json:"full_name"`
-	GithubID        int64      `json:"github_id"`
-	HasEarlyWarning bool       `json:"has_early_warning"`
-	ID              gocql.UUID `json:"id"`
-	InstallationID  int64      `json:"installation_id"`
-	IsActive        bool       `json:"is_active"`
-	Name            string     `json:"name"`
-	TeamID          gocql.UUID `json:"team_id"`
-	UpdatedAt       time.Time  `json:"updated_at"`
+	CreatedAt       time.Time    `json:"created_at"`
+	DefaultBranch   string       `json:"default_branch"`
+	FullName        string       `json:"full_name"`
+	GithubID        shared.Int64 `json:"github_id"`
+	HasEarlyWarning bool         `json:"has_early_warning"`
+	ID              gocql.UUID   `json:"id"`
+	InstallationID  shared.Int64 `json:"installation_id"`
+	IsActive        bool         `json:"is_active"`
+	Name            string       `json:"name"`
+	TeamID          gocql.UUID   `json:"team_id"`
+	UpdatedAt       time.Time    `json:"updated_at"`
 }
 
 var (

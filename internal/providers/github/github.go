@@ -33,6 +33,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/mutex"
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -154,8 +155,8 @@ func (config *Config) GetActivities() *Activities {
 	return config.Activities
 }
 
-func (config *Config) GetClientFromInstallation(installationID int64) (*gh.Client, error) {
-	transport, err := ghinstallation.New(http.DefaultTransport, config.AppID, installationID, []byte(config.PrivateKey))
+func (config *Config) GetClientFromInstallation(installationID shared.Int64) (*gh.Client, error) {
+	transport, err := ghinstallation.New(http.DefaultTransport, config.AppID, installationID.Int64(), []byte(config.PrivateKey))
 	if err != nil {
 		return nil, err
 	}

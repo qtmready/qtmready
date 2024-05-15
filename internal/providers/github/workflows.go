@@ -20,7 +20,6 @@ package github
 import (
 	"context"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -177,7 +176,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 		Queue(shared.CoreQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("repo"),
-			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+			shared.WithWorkflowBlockID(payload.Repository.ID.String()),
 			shared.WithWorkflowElement("branch"),
 			shared.WithWorkflowElementID(branchName),
 			shared.WithWorkflowProp("type", "branch_controller"),
@@ -233,7 +232,7 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 			Queue(shared.CoreQueue).
 			WorkflowOptions(
 				shared.WithWorkflowBlock("repo"),
-				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+				shared.WithWorkflowBlockID(payload.Repository.ID.String()),
 				shared.WithWorkflowElement("PR"),
 				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
 				shared.WithWorkflowProp("type", "merge_queue"),
@@ -295,7 +294,7 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 			Queue(shared.CoreQueue).
 			WorkflowOptions(
 				shared.WithWorkflowBlock("repo"),
-				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
+				shared.WithWorkflowBlockID(payload.Repository.ID.String()),
 				shared.WithWorkflowElement("PR"),
 				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
 				shared.WithWorkflowProp("type", "merge_queue"),

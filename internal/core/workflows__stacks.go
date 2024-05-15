@@ -19,7 +19,6 @@ package core
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -465,7 +464,7 @@ func onDeploymentStartedSignal(ctx workflow.Context, stackID string, deployments
 				shared.WithWorkflowParent(ctx),
 				shared.WithWorkflowElement("get_assets"),
 				shared.WithWorkflowMod("trigger"),
-				shared.WithWorkflowModID(strconv.FormatInt(payload.TriggerID, 10)),
+				shared.WithWorkflowModID(payload.TriggerID.String()),
 			)
 
 		getAssetsPayload := &GetAssetsPayload{

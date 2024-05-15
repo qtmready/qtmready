@@ -73,7 +73,7 @@ type (
 
 	PullRequestEvent struct {
 		Action       string         `json:"action"`
-		Number       int64          `json:"number"`
+		Number       shared.Int64   `json:"number"`
 		PullRequest  PullRequest    `json:"pull_request"`
 		Repository   RepositoryPR   `json:"repository"`
 		Organization *Organization  `json:"organization"`
@@ -93,9 +93,9 @@ type (
 	}
 
 	CompleteInstallationSignal struct {
-		InstallationID int64       `json:"installation_id"`
-		SetupAction    SetupAction `json:"setup_action"`
-		TeamID         gocql.UUID  `json:"team_id"`
+		InstallationID shared.Int64 `json:"installation_id"`
+		SetupAction    SetupAction  `json:"setup_action"`
+		TeamID         gocql.UUID   `json:"team_id"`
 	}
 
 	ArtifactReadySignal struct {
@@ -106,7 +106,7 @@ type (
 
 	GithubActionResult struct {
 		Branch         string
-		InstallationID int64
+		InstallationID shared.Int64
 		RepoID         string
 		RepoName       string
 		RepoOwner      string

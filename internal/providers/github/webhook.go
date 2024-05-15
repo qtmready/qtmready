@@ -21,7 +21,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/labstack/echo/v4"
 
@@ -43,7 +42,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
 			shared.WithWorkflowElement(WebhookEventInstallation.String()),
 		)
 
@@ -83,7 +82,7 @@ func handleWorkflowRunEvent(ctx echo.Context) error {
 			shared.WithWorkflowBlock("github"),
 			shared.WithWorkflowBlockID(payload.Repository.Name),
 			shared.WithWorkflowElement("workflow_run"),
-			shared.WithWorkflowElementID(strconv.FormatInt(payload.WR.ID, 10)),
+			shared.WithWorkflowElementID(payload.WR.ID.String()),
 		)
 
 	exe, err := shared.Temporal().Client().ExecuteWorkflow(
@@ -120,9 +119,9 @@ func handlePushEvent(ctx echo.Context) error {
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
 			shared.WithWorkflowElement("repo"),
-			shared.WithWorkflowElementID(strconv.FormatInt(payload.Repository.ID, 10)),
+			shared.WithWorkflowElementID(payload.Repository.ID.String()),
 			shared.WithWorkflowMod(WebhookEventPush.String()),
 			shared.WithWorkflowProp("ref", payload.Ref),
 		)
@@ -150,13 +149,13 @@ func handlePullRequestEvent(ctx echo.Context) error {
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
 			shared.WithWorkflowElement("repo"),
-			shared.WithWorkflowElementID(strconv.FormatInt(payload.Repository.ID, 10)),
+			shared.WithWorkflowElementID(payload.Repository.ID.String()),
 			shared.WithWorkflowMod(WebhookEventPullRequest.String()),
 			shared.WithWorkflowModID(fmt.Sprintf(
 				"%s-%s",
-				strconv.FormatInt(payload.PullRequest.ID, 10),
+				payload.PullRequest.ID.String(),
 				payload.Action,
 			)),
 		)
@@ -214,7 +213,7 @@ func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
 			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Installation.ID, 10)),
+			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
 			shared.WithWorkflowElement(WebhookEventInstallationRepositories.String()),
 		)
 
