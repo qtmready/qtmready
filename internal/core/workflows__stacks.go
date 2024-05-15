@@ -314,7 +314,7 @@ func (w *StackWorkflows) GetAssets(ctx workflow.Context, payload *GetAssetsPaylo
 	// signal parent workflow
 	parent := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
 	_ = workflow.
-		SignalExternalWorkflow(ctx, parent, "", WorkflowSignalAssetsRetrieved.String(), assets).
+		SignalExternalWorkflow(ctx, parent, "", StackSignalAssetsRerieved.String(), assets).
 		Get(ctx, nil)
 
 	return nil
@@ -377,7 +377,7 @@ func (w *StackWorkflows) ProvisionInfra(ctx workflow.Context, assets *Assets) er
 	shared.Logger().Info("Signaling infra provisioned")
 
 	prWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
-	_ = workflow.SignalExternalWorkflow(ctx, prWorkflowID, "", WorkflowSignalInfraProvisioned.String(), assets).Get(ctx, nil)
+	_ = workflow.SignalExternalWorkflow(ctx, prWorkflowID, "", StackSignalInfraProvisioned.String(), assets).Get(ctx, nil)
 
 	return nil
 }
@@ -427,7 +427,7 @@ func (w *StackWorkflows) Deploy(ctx workflow.Context, stackID string, lock *mute
 	_ = lock.Release(ctx)
 
 	prWorkflowID := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
-	workflow.SignalExternalWorkflow(ctx, prWorkflowID, "", WorkflowSignalDeploymentCompleted.String(), assets)
+	workflow.SignalExternalWorkflow(ctx, prWorkflowID, "", StackSignalDeploymentComplete.String(), assets)
 
 	return nil
 }
