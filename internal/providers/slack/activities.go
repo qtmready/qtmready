@@ -25,6 +25,7 @@ import (
 	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -101,13 +102,12 @@ func (a *Activities) SendMergeConflictsMessage(ctx context.Context, teamID strin
 }
 
 func (a *Activities) CompleteOauthResponse(ctx context.Context, code string) (*core.MessageProviderData, error) {
-	logger := activity.GetLogger(ctx)
-
 	var c HTTPClient
 
+	// NOTE: these activities are used in api not in temporal workflow use shared.Logger()
 	response, err := slack.GetOAuthV2Response(&c, ClientID(), ClientSecret(), code, ClientRedirectURL())
 	if err != nil {
-		logger.Error("Failed get response from slack oauth", "Error", err)
+		shared.Logger().Error("Failed get response from slack oauth", "Error", err)
 		return nil, err
 	}
 
@@ -117,7 +117,7 @@ func (a *Activities) CompleteOauthResponse(ctx context.Context, code string) (*c
 	// Encrypt the access token.
 	encryptedToken, err := encrypt([]byte(response.AccessToken), key)
 	if err != nil {
-		logger.Error("Failed to encrypt bot token", "Error", err)
+		shared.Logger().Error("Failed to encrypt bot token", "Error", err)
 		return nil, err
 	}
 

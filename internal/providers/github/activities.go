@@ -30,6 +30,7 @@ import (
 
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -660,15 +661,15 @@ func (a *Activities) GetAllRelevantActions(ctx context.Context, installationID i
 }
 
 func (a *Activities) GetRepoByProviderID(ctx context.Context, providerID string) (*core.RepoProviderData, error) {
-	logger := activity.GetLogger(ctx)
 	prepo := &Repo{}
 
+	// NOTE: these activities are used in api not in temporal workflow use shared.Logger()
 	if err := db.Get(prepo, db.QueryParams{"github_id": providerID}); err != nil {
-		logger.Error("GetRepoByProviderID failed", "Error", err)
+		shared.Logger().Error("GetRepoByProviderID failed", "Error", err)
 		return nil, err
 	}
 
-	logger.Info("GetRepoByProviderID Activity", "Get Repo by Provider ID successfully")
+	shared.Logger().Info("Get Repo by Provider ID successfully")
 
 	rpd := &core.RepoProviderData{
 		Name:          prepo.Name,
@@ -679,15 +680,15 @@ func (a *Activities) GetRepoByProviderID(ctx context.Context, providerID string)
 }
 
 func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, providerID string) error {
-	logger := activity.GetLogger(ctx)
 	prepo := &Repo{}
 
+	// NOTE: these activities are used in api not in temporal workflow use shared.Logger()
 	if err := db.Get(prepo, db.QueryParams{"github_id": providerID}); err != nil {
-		logger.Error("UpdateRepoHasRarlWarning failed", "Error", err)
+		shared.Logger().Error("UpdateRepoHasRarlWarning failed", "Error", err)
 		return err
 	}
 
-	logger.Info("UpdateRepoHasRarlWarning Activity", "Update Repo Has Rarly Warning successfully")
+	shared.Logger().Info("Update Repo Has Rarly Warning successfully")
 
 	prepo.HasEarlyWarning = true
 
