@@ -448,12 +448,10 @@ func (repo *Repo) GetTable() itable.ITable {
 
 // RepoCreateRequest defines model for RepoCreateRequest.
 type RepoCreateRequest struct {
-	DefaultBranch string       `json:"default_branch"`
-	IsMonorepo    bool         `json:"is_monorepo"`
-	Name          string       `json:"name"`
-	Provider      RepoProvider `json:"provider"`
-	ProviderID    string       `json:"provider_id"`
-	StackID       gocql.UUID   `json:"stack_id"`
+	Code       string       `json:"code"`
+	IsMonorepo bool         `json:"is_monorepo"`
+	Provider   RepoProvider `json:"provider"`
+	ProviderID string       `json:"provider_id"`
 }
 
 // RepoListResponse defines model for RepoListResponse.
@@ -461,6 +459,12 @@ type RepoListResponse = []Repo
 
 // RepoProvider defines model for RepoProvider.
 type RepoProvider string
+
+// RepoProviderData defines model for RepoProviderData.
+type RepoProviderData struct {
+	DefaultBranch string `json:"default_branch"`
+	Name          string `json:"name"`
+}
 
 // Resource Resource defines the cloud provider resources for the app e.g. s3, sqs, etc.
 type Resource struct {

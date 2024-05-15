@@ -66,6 +66,8 @@ type (
 		GetRepoTeamID(ctx context.Context, repoID string) (string, error)
 		RebaseAndMerge(ctx context.Context, repoOwner, repoName, targetBranchName string, installationID int64) (string, error)
 		GetAllRelevantActions(ctx context.Context, installationID int64, repoName string, repoOwner string) error
+		GetRepoByProviderID(ctx context.Context, providerID string) (*RepoProviderData, error)
+		UpdateRepoHasRarlyWarning(ctx context.Context, providerID string) error
 	}
 
 	CloudProviderActivities interface {
@@ -77,6 +79,7 @@ type (
 		SendNumberOfLinesExceedMessage(ctx context.Context, teamID, repoName, branchName string, threshold int,
 			branchChnages *BranchChanges) error
 		SendMergeConflictsMessage(ctx context.Context, teamID string, merge *LatestCommit) error
+		CompleteOauthResponse(ctx context.Context, code string) (*MessageProviderData, error)
 	}
 
 	Providers struct {

@@ -651,3 +651,42 @@ func (a *Activities) GetAllRelevantActions(ctx context.Context, installationID i
 
 	return nil
 }
+
+func (a *Activities) GetRepoByProviderID(ctx context.Context, providerID string) (*core.RepoProviderData, error) {
+	logger := activity.GetLogger(ctx)
+	prepo := &Repo{}
+
+	if err := db.Get(prepo, db.QueryParams{"github_id": providerID}); err != nil {
+		logger.Error("GetRepoByProviderID failed", "Error", err)
+		return nil, err
+	}
+
+	logger.Info("GetRepoByProviderID Activity", "Get Repo by Provider ID successfully")
+
+	rpd := &core.RepoProviderData{
+		Name:          prepo.Name,
+		DefaultBranch: prepo.DefaultBranch,
+	}
+
+	return rpd, nil
+}
+
+func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, providerID string) error {
+	logger := activity.GetLogger(ctx)
+	prepo := &Repo{}
+
+	if err := db.Get(prepo, db.QueryParams{"github_id": providerID}); err != nil {
+		logger.Error("UpdateRepoHasRarlWarning failed", "Error", err)
+		return err
+	}
+
+	logger.Info("UpdateRepoHasRarlWarning Activity", "Update Repo Has Rarly Warning successfully")
+
+	prepo.HasEarlyWarning = true
+
+	if err := db.Save(prepo); err != nil {
+		return err
+	}
+
+	return nil
+}

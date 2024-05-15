@@ -226,21 +226,52 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 
 	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
 
-	repo := &Repo{
-		Name:          request.Name,
-		StackID:       request.StackID,
-		ProviderID:    request.ProviderID,
-		DefaultBranch: request.DefaultBranch,
-		IsMonorepo:    request.IsMonorepo,
-		Provider:      request.Provider,
-		TeamID:        teamID,
+	// repo provider activities instance
+	rpa := Instance().RepoProvider(request.Provider)
+
+	// repo provider data
+	rpd, err := rpa.GetRepoByProviderID(context.Background(), request.ProviderID)
+	if err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
+
+	shared.Logger().Debug("repo provider data", "debug", rpd)
+
+	// message provider activities instance
+	mpa := Instance().MessageProvider(MessageProviderSlack) // TODO - maybe not hardcode to slack and get from payload
+
+	// message provider slack data
+	mpsd, err := mpa.CompleteOauthResponse(context.Background(), request.Code)
+	if err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	shared.Logger().Debug("slack provider data", "debug", mpsd)
+
+	repo := &Repo{
+		Name:                rpd.Name,
+		DefaultBranch:       rpd.DefaultBranch,
+		ProviderID:          request.ProviderID,
+		IsMonorepo:          request.IsMonorepo,
+		Provider:            request.Provider,
+		TeamID:              teamID,
+		MessageProviderData: *mpsd,
+	}
+
+	shared.Logger().Debug("core repe data", "debug", repo)
 
 	if err := db.Save(repo); err != nil {
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
-	return ctx.JSON(http.StatusCreated, repo)
+	// NOTE: handle transaction as well
+	//
+	// update the provider repo early warning
+	if err := rpa.UpdateRepoHasRarlyWarning(context.Background(), request.ProviderID); err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	return ctx.JSON(http.StatusNoContent, nil)
 }
 
 func (s *ServerHandler) ListRepos(ctx echo.Context) error {
