@@ -90,6 +90,12 @@ func main() {
 	core.RegisterHandlers(web, core.NewServerHandler(auth.Middleware))
 	github.RegisterHandlers(web, github.NewServerHandler(auth.Middleware))
 	slack.RegisterHandlers(web, slack.NewServerHandler(auth.Middleware))
+
+	core.Instance(
+		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
+		core.WithMessageProvider(core.MessageProviderSlack, &slack.Activities{}),
+	)
+
 	slog.Info("setting up metrics")
 
 	metrics := echo.New()

@@ -227,7 +227,7 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
 
 	// repo provider activities instance
-	rpa := Instance().RepoProvider(request.Provider)
+	rpa := Instance().RepoProvider(RepoProvider(request.Provider.String()))
 
 	// repo provider data
 	rpd, err := rpa.GetRepoByProviderID(context.Background(), request.ProviderID)

@@ -33,7 +33,7 @@ type (
 )
 
 func (e *providerNotFoundError) Error() string {
-	return fmt.Sprintf("provider %s not found. plese register your providers first.", e.name)
+	return fmt.Sprintf("provider %s not found. please register your providers first.", e.name)
 }
 
 func NewProviderNotFoundError(name string) error {
@@ -45,5 +45,5 @@ func NewResourceNotFoundError(name string, provider string) error {
 }
 
 func (e *resourceNotFoundError) Error() string {
-	return fmt.Sprintf("resource %s not found. plese register your resource with the provider %s first.", e.name, e.provider)
+	return fmt.Sprintf("resource %s not found. plepleasese register your resource with the provider %s first.", e.name, e.provider)
 }
