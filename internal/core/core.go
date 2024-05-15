@@ -40,9 +40,9 @@ type (
 	// workflows. We may need to revisit this design in the future.
 	Core interface {
 		RegisterRepoProvider(RepoProvider, RepoIO)
+		ResgisterMessageProvider(MessageProvider, MessageIO)
 		RegisterCloudProvider(CloudProvider, CloudIO)
 		RegisterCloudResource(provider CloudProvider, driver Driver, resource ResourceConstructor)
-		ResgisterMessageProvider(MessageProvider, MessageIO)
 
 		RepoProvider(RepoProvider) RepoIO
 		CloudProvider(CloudProvider) CloudIO
@@ -277,26 +277,26 @@ func (c *core) MessageProvider(name MessageProvider) MessageIO {
 }
 
 // WithMessageProvider registers a repo provider with the core.
-func WithMessageProvider(name MessageProvider, provider MessageIO) Option {
+func WithMessageProvider(provider MessageProvider, io MessageIO) Option {
 	return func(c Core) {
-		shared.Logger().Info("core: registering message provider", "name", name.String())
-		c.ResgisterMessageProvider(name, provider)
+		shared.Logger().Info("core: registering message provider", "name", provider.String())
+		c.ResgisterMessageProvider(provider, io)
 	}
 }
 
 // WithRepoProvider registers a repo provider with the core.
-func WithRepoProvider(name RepoProvider, provider RepoIO) Option {
+func WithRepoProvider(provider RepoProvider, io RepoIO) Option {
 	return func(c Core) {
-		shared.Logger().Info("core: registering repo provider", "name", name.String())
-		c.RegisterRepoProvider(name, provider)
+		shared.Logger().Info("core: registering repo provider", "name", provider.String())
+		c.RegisterRepoProvider(provider, io)
 	}
 }
 
 // WithCloudProvider registers a cloud provider with the core.
-func WithCloudProvider(name CloudProvider, provider CloudIO) Option {
+func WithCloudProvider(provider CloudProvider, io CloudIO) Option {
 	return func(c Core) {
-		shared.Logger().Info("core: registering cloud provider", "name", name.String())
-		c.RegisterCloudProvider(name, provider)
+		shared.Logger().Info("core: registering cloud provider", "name", provider.String())
+		c.RegisterCloudProvider(provider, io)
 	}
 }
 
