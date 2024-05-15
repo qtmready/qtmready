@@ -504,7 +504,7 @@ func (a *Activities) MergeBranch(ctx context.Context, installationID int64, repo
 	return nil
 }
 
-func (a *Activities) ChangesInBranch(ctx context.Context, installationID int64, repoName, repoOwner, defaultBranch, targetBranch string,
+func (a *Activities) DetectChange(ctx context.Context, installationID int64, repoName, repoOwner, defaultBranch, targetBranch string,
 ) (*core.BranchChanges, error) {
 	logger := activity.GetLogger(ctx)
 

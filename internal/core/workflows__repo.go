@@ -97,7 +97,7 @@ func CheckEarlyWarning(
 
 	branchChnages := &BranchChanges{}
 
-	if err := workflow.ExecuteActivity(pctx, rpa.ChangesInBranch, installationID, repoName, repoOwner, defaultBranch, branchName).
+	if err := workflow.ExecuteActivity(pctx, rpa.DetectChange, installationID, repoName, repoOwner, defaultBranch, branchName).
 		Get(ctx, branchChnages); err != nil {
 		logger.Error("Repo provider activities: Changes in branch  activity", "error", err)
 		return err

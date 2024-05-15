@@ -52,6 +52,93 @@ type (
 
 	Option func(Core)
 
+	RepoIOGetLatestCommitPayload struct {
+		RepoID     string `json:"repo_id"`
+		BranchName string `json:"branch_name"`
+	}
+
+	RepoIODeployChangesetPayload struct {
+		RepoID      string      `json:"repo_id"`
+		ChangesetID *gocql.UUID `json:"changeset_id"`
+	}
+
+	RepoIOTagCommitPayload struct {
+		RepoID     string `json:"repo_id"`
+		CommitSHA  string `json:"commit_sha"`
+		TagName    string `json:"tag_name"`
+		TagMessage string `json:"tag_message"`
+	}
+
+	RepoIOCreateBranchPayload struct {
+		InstallationID int64  `json:"installation_id"`
+		RepoID         string `json:"repo_id"`
+		RepoName       string `json:"repo_name"`
+		RepoOwner      string `json:"repo_owner"`
+		Commit         string `json:"target_commit"`
+		BranchName     string `json:"branch_name"`
+	}
+
+	RepoIODeleteBranchPayload struct {
+		InstallationID int64  `json:"installation_id"`
+		RepoName       string `json:"repo_name"`
+		RepoOwner      string `json:"repo_owner"`
+		BranchName     string `json:"branch_name"`
+	}
+
+	RepoIOMergeBranchPayload struct {
+		InstallationID int64  `json:"installation_id"`
+		RepoName       string `json:"repo_name"`
+		RepoOwner      string `json:"repo_owner"`
+		BaseBranch     string `json:"base_branch"`
+		TargetBranch   string `json:"target_branch"`
+	}
+
+	RepoIORebaseAndMergePayload struct {
+		RepoOwner        string `json:"repo_owner"`
+		RepoName         string `json:"repo_name"`
+		TargetBranchName string `json:"target_branch_name"`
+		InstallationID   int64  `json:"installation_id"`
+	}
+
+	RepoIODetectChangePayload struct {
+		InstallationID int64  `json:"installation_id"`
+		RepoName       string `json:"repo_name"`
+		RepoOwner      string `json:"repo_owner"`
+		DefaultBranch  string `json:"default_branch"`
+		TargetBranch   string `json:"target_branch"`
+	}
+
+	RepoIOGetAllBranchesPayload struct {
+		InstallationID int64  `json:"installation_id"`
+		RepoName       string `json:"repo_name"`
+		RepoOwner      string `json:"repo_owner"`
+	}
+
+	RepoIOTriggerCIActionPayload struct {
+		InstallationID int64  `json:"installation_id"`
+		RepoOwner      string `json:"repo_owner"`
+		RepoName       string `json:"repo_name"`
+		TargetBranch   string `json:"target_branch"`
+	}
+
+	RepoIOGetRepoTeamIDPayload struct {
+		RepoID string `json:"repo_id"`
+	}
+
+	RepoIOGetAllRelevantActionsPayload struct {
+		InstallationID int64  `json:"installation_id"`
+		RepoName       string `json:"repo_name"`
+		RepoOwner      string `json:"repo_owner"`
+	}
+
+	RepoIOGetRepoByProviderIDPayload struct {
+		ProviderID string `json:"provider_id"`
+	}
+
+	RepoIOUpdateRepoHasRarlyWarningPayload struct {
+		ProviderID string `json:"provider_id"`
+	}
+
 	// RepoIO is the interface that defines the operations that can be performed on a repository.
 	RepoIO interface {
 		GetLatestCommit(ctx context.Context, repoID, branchName string) (*LatestCommit, error)
@@ -60,12 +147,12 @@ type (
 		CreateBranch(ctx context.Context, installationID int64, repoID, repoName, repoOwner, targetCommit, newBranchName string) error
 		DeleteBranch(ctx context.Context, installationID int64, repoName, repoOwner, branchName string) error
 		MergeBranch(ctx context.Context, installationID int64, repoName, repoOwner, baseBranch, targetBranch string) error
-		ChangesInBranch(ctx context.Context, installationID int64, repoName, repoOwner, defaultBranch, targetBranch string,
+		RebaseAndMerge(ctx context.Context, repoOwner, repoName, targetBranchName string, installationID int64) (string, error)
+		DetectChange(ctx context.Context, installationID int64, repoName, repoOwner, defaultBranch, targetBranch string,
 		) (*BranchChanges, error)
 		GetAllBranches(ctx context.Context, installationID int64, repoName, repoOwner string) ([]string, error)
 		TriggerCIAction(ctx context.Context, installationID int64, repoOwner, repoName, targetBranch string) error
 		GetRepoTeamID(ctx context.Context, repoID string) (string, error)
-		RebaseAndMerge(ctx context.Context, repoOwner, repoName, targetBranchName string, installationID int64) (string, error)
 		GetAllRelevantActions(ctx context.Context, installationID int64, repoName string, repoOwner string) error
 		GetRepoByProviderID(ctx context.Context, providerID string) (*RepoProviderData, error)
 		UpdateRepoHasRarlyWarning(ctx context.Context, providerID string) error
