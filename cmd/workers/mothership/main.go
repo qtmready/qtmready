@@ -48,17 +48,18 @@ func main() {
 		core.WithMessageProvider(core.MessageProviderSlack, &slack.Activities{}),
 	)
 
-	ghwfs := &github.Workflows{}
-	cwfs := &core.Workflows{}
+	githubwfs := &github.Workflows{}
+	stackwfs := &core.StackWorkflows{}
+	repowfs := &core.RepoWorkflows{}
 
 	// provider workflows
-	providerWrkr.RegisterWorkflow(ghwfs.OnInstallationEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.OnInstallationRepositoriesEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.RefreshDefaultBranch)
-	providerWrkr.RegisterWorkflow(ghwfs.OnPushEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.OnPullRequestEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.OnLabelEvent)
-	providerWrkr.RegisterWorkflow(ghwfs.OnWorkflowRunEvent)
+	providerWrkr.RegisterWorkflow(githubwfs.OnInstallationEvent)
+	providerWrkr.RegisterWorkflow(githubwfs.OnInstallationRepositoriesEvent)
+	providerWrkr.RegisterWorkflow(githubwfs.RefreshDefaultBranch)
+	providerWrkr.RegisterWorkflow(githubwfs.OnPushEvent)
+	providerWrkr.RegisterWorkflow(githubwfs.OnPullRequestEvent)
+	providerWrkr.RegisterWorkflow(githubwfs.OnLabelEvent)
+	providerWrkr.RegisterWorkflow(githubwfs.OnWorkflowRunEvent)
 
 	// provider activities
 	providerWrkr.RegisterActivity(&github.Activities{})
@@ -68,15 +69,17 @@ func main() {
 	coreWrkr.RegisterWorkflow(mutex.Workflow)
 	providerWrkr.RegisterWorkflow(mutex.Workflow)
 
-	// core workflows
-	coreWrkr.RegisterWorkflow(cwfs.StackController)
-	coreWrkr.RegisterWorkflow(cwfs.Deploy)
-	coreWrkr.RegisterWorkflow(cwfs.GetAssets)
-	coreWrkr.RegisterWorkflow(cwfs.ProvisionInfra)
-	coreWrkr.RegisterWorkflow(cwfs.DeProvisionInfra)
-	coreWrkr.RegisterWorkflow(cwfs.BranchController)
-	coreWrkr.RegisterWorkflow(cwfs.StaleBranchDetection)
-	coreWrkr.RegisterWorkflow(cwfs.PollMergeQueue)
+	// stack workflows
+	coreWrkr.RegisterWorkflow(stackwfs.StackController)
+	coreWrkr.RegisterWorkflow(stackwfs.Deploy)
+	coreWrkr.RegisterWorkflow(stackwfs.GetAssets)
+	coreWrkr.RegisterWorkflow(stackwfs.ProvisionInfra)
+	coreWrkr.RegisterWorkflow(stackwfs.DeProvisionInfra)
+
+	// repo workflows
+	coreWrkr.RegisterWorkflow(repowfs.BranchController)
+	coreWrkr.RegisterWorkflow(repowfs.StaleBranchDetection)
+	coreWrkr.RegisterWorkflow(repowfs.PollMergeQueue)
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.Activities{})

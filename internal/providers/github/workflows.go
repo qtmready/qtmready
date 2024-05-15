@@ -172,7 +172,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 		RepoProvider:   "github",
 	}
 
-	cw := &core.Workflows{}
+	cw := &core.RepoWorkflows{}
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
 		WorkflowOptions(
@@ -228,7 +228,7 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent
 	case "quantm ready":
 		logger.Debug("quantm ready label applied")
 
-		cw := &core.Workflows{}
+		cw := &core.RepoWorkflows{}
 		opts := shared.Temporal().
 			Queue(shared.CoreQueue).
 			WorkflowOptions(
@@ -376,7 +376,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 			shared.WithWorkflowBlockID(coreRepo.StackID.String()),
 		)
 
-	cw := &core.Workflows{}
+	cw := &core.StackWorkflows{}
 	_, _ = shared.Temporal().Client().SignalWithStartWorkflow(
 		context.Background(),
 		corePRWfID,

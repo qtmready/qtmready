@@ -176,7 +176,7 @@ func (s *ServerHandler) CreateStack(ctx echo.Context) error {
 		reason for going with infinite workflow instead of starting with signal is to follow the
 		temporal guideline which state that workflow ids should not be resued
 	*/
-	w := &Workflows{}
+	w := &StackWorkflows{}
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
 		WorkflowOptions(

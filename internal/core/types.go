@@ -81,6 +81,15 @@ type (
 		ChangesetID gocql.UUID
 		Infra       JsonInfra
 	}
+
+	GetAssetsPayload struct {
+		StackID       string
+		RepoID        gocql.UUID
+		ChangeSetID   gocql.UUID
+		Image         string
+		ImageRegistry string
+		Digest        string
+	}
 )
 
 func NewAssets() *Assets {
