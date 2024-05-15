@@ -2,9 +2,11 @@ package core
 
 import (
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
+	"github.com/gocql/gocql"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -17,102 +19,27 @@ type (
 	RepoWorkflows struct{}
 )
 
-func CheckEarlyWarning(
-	ctx workflow.Context, rpa RepoIO, mpa MessageIO, pushEvent *shared.PushEventSignal,
-) error {
+// RepoCtrl is the controller for all the workflows related to the repository.
+//
+// NOTE: This workflow is only meant to be started with SignalWithStartWorkflow.
+func (w *RepoWorkflows) RepoCtrl(ctx workflow.Context, id gocql.UUID) error {
+	// prelude
 	logger := workflow.GetLogger(ctx)
-	branchName := pushEvent.RefBranch
-	installationID := pushEvent.InstallationID
-	repoID := pushEvent.RepoID.String()
-	repoName := pushEvent.RepoName
-	repoOwner := pushEvent.RepoOwner
-	defaultBranch := pushEvent.DefaultBranch
+	selector := workflow.NewSelector(ctx)
+	done := false
 
-	providerActOpts := workflow.ActivityOptions{
-		StartToCloseTimeout: 10 * time.Second,
-		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
-		RetryPolicy: &temporal.RetryPolicy{
-			MaximumAttempts: 1,
-		},
+	logger.Info("repo ctrl: init ...", slog.String("repo_id", id.String()))
+
+	// setting up channels
+	pushChannel := workflow.GetSignalChannel(ctx, RepoSignalPush.String())
+
+	// setting up callbacks for channels
+	selector.AddReceive(pushChannel, onPush(ctx))
+
+	// TODO: need to come up with logic to shutdown when not required.
+	for !done {
+		selector.Select(ctx)
 	}
-	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
-
-	// check merge conflicts
-	// create a temporary copy of default branch for the target branch (under inspection)
-	// if the rebase with the target branch returns error, raise warning
-	logger.Info("Check early warning", "push event", pushEvent)
-
-	commit := &LatestCommit{}
-	if err := workflow.ExecuteActivity(pctx, rpa.GetLatestCommit, repoID, defaultBranch).Get(ctx, commit); err != nil {
-		logger.Error("Repo provider activities: Get latest commit activity", "error", err)
-		return err
-	}
-
-	// create a temp branch/ref
-	temp := defaultBranch + "-tempcopy-for-target-" + branchName
-
-	// delete the branch if it is present already
-	if err := workflow.ExecuteActivity(pctx, rpa.DeleteBranch, installationID, repoName, repoOwner, temp).
-		Get(ctx, nil); err != nil {
-		logger.Error("Repo provider activities: Delete branch activity", "error", err)
-		return err
-	}
-
-	// create new ref
-	if err := workflow.
-		ExecuteActivity(pctx, rpa.CreateBranch, installationID, repoID, repoName, repoOwner, commit.SHA, temp).
-		Get(ctx, nil); err != nil {
-		logger.Error("Repo provider activities: Create branch activity", "error", err)
-		return err
-	}
-
-	// get the teamID from repo table
-	teamID := ""
-	if err := workflow.ExecuteActivity(pctx, rpa.GetRepoTeamID, repoID).Get(ctx, &teamID); err != nil {
-		logger.Error("Repo provider activities: Get repo teamID activity", "error", err)
-		return err
-	}
-
-	if err := workflow.ExecuteActivity(pctx, rpa.MergeBranch, installationID, repoName, repoOwner, temp, branchName).
-		Get(ctx, nil); err != nil {
-		// dont want to retry this workflow so not returning error, just log and return
-		logger.Error("Repo provider activities: Merge branch activity", "error", err)
-
-		// send slack notification
-		if err = workflow.ExecuteActivity(pctx, mpa.SendMergeConflictsMessage, teamID, commit).Get(ctx, nil); err != nil {
-			logger.Error("Message provider activities: Send merge conflicts message activity", "error", err)
-			return err
-		}
-
-		return nil
-	}
-
-	logger.Info("Merge conflicts NOT detected")
-
-	// detect 200+ changes
-	// calculate all changes between default branch (e.g. main) with the target branch
-	// raise warning if the changes are more than 200 lines
-	logger.Info("Going to detect 200+ changes")
-
-	branchChnages := &BranchChanges{}
-
-	if err := workflow.ExecuteActivity(pctx, rpa.DetectChange, installationID, repoName, repoOwner, defaultBranch, branchName).
-		Get(ctx, branchChnages); err != nil {
-		logger.Error("Repo provider activities: Changes in branch  activity", "error", err)
-		return err
-	}
-
-	threshold := 200
-	if branchChnages.Changes > threshold {
-		if err := workflow.
-			ExecuteActivity(pctx, mpa.SendNumberOfLinesExceedMessage, teamID, repoName, branchName, threshold, branchChnages).
-			Get(ctx, nil); err != nil {
-			logger.Error("Message provider activities: Send number of lines exceed message activity", "error", err)
-			return err
-		}
-	}
-
-	logger.Info("200+ changes NOT detected")
 
 	return nil
 }
@@ -217,7 +144,7 @@ func (w *RepoWorkflows) BranchController(ctx workflow.Context) error {
 	}
 
 	// check if the target branch would have merge conflicts with the default branch or it has too much changes
-	if err := CheckEarlyWarning(ctx, rpa, mpa, payload); err != nil {
+	if err := _early(ctx, rpa, mpa, payload); err != nil {
 		return err
 	}
 
@@ -358,4 +285,106 @@ func (w *RepoWorkflows) PollMergeQueue(ctx workflow.Context) error {
 	logger.Info("github action triggered")
 
 	return nil
+}
+
+func _early(ctx workflow.Context, rpa RepoIO, mpa MessageIO, pushEvent *shared.PushEventSignal) error {
+	logger := workflow.GetLogger(ctx)
+	branchName := pushEvent.RefBranch
+	installationID := pushEvent.InstallationID
+	repoID := pushEvent.RepoID.String()
+	repoName := pushEvent.RepoName
+	repoOwner := pushEvent.RepoOwner
+	defaultBranch := pushEvent.DefaultBranch
+
+	providerActOpts := workflow.ActivityOptions{
+		StartToCloseTimeout: 10 * time.Second,
+		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
+		RetryPolicy: &temporal.RetryPolicy{
+			MaximumAttempts: 1,
+		},
+	}
+	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
+
+	// check merge conflicts
+	// create a temporary copy of default branch for the target branch (under inspection)
+	// if the rebase with the target branch returns error, raise warning
+	logger.Info("Check early warning", "push event", pushEvent)
+
+	commit := &LatestCommit{}
+	if err := workflow.ExecuteActivity(pctx, rpa.GetLatestCommit, repoID, defaultBranch).Get(ctx, commit); err != nil {
+		logger.Error("Repo provider activities: Get latest commit activity", "error", err)
+		return err
+	}
+
+	// create a temp branch/ref
+	temp := defaultBranch + "-tempcopy-for-target-" + branchName
+
+	// delete the branch if it is present already
+	if err := workflow.ExecuteActivity(pctx, rpa.DeleteBranch, installationID, repoName, repoOwner, temp).
+		Get(ctx, nil); err != nil {
+		logger.Error("Repo provider activities: Delete branch activity", "error", err)
+		return err
+	}
+
+	// create new ref
+	if err := workflow.
+		ExecuteActivity(pctx, rpa.CreateBranch, installationID, repoID, repoName, repoOwner, commit.SHA, temp).
+		Get(ctx, nil); err != nil {
+		logger.Error("Repo provider activities: Create branch activity", "error", err)
+		return err
+	}
+
+	// get the teamID from repo table
+	teamID := ""
+	if err := workflow.ExecuteActivity(pctx, rpa.GetRepoTeamID, repoID).Get(ctx, &teamID); err != nil {
+		logger.Error("Repo provider activities: Get repo teamID activity", "error", err)
+		return err
+	}
+
+	if err := workflow.ExecuteActivity(pctx, rpa.MergeBranch, installationID, repoName, repoOwner, temp, branchName).
+		Get(ctx, nil); err != nil {
+		// dont want to retry this workflow so not returning error, just log and return
+		logger.Error("Repo provider activities: Merge branch activity", "error", err)
+
+		// send slack notification
+		if err = workflow.ExecuteActivity(pctx, mpa.SendMergeConflictsMessage, teamID, commit).Get(ctx, nil); err != nil {
+			logger.Error("Message provider activities: Send merge conflicts message activity", "error", err)
+			return err
+		}
+
+		return nil
+	}
+
+	logger.Info("Merge conflicts NOT detected")
+
+	// detect 200+ changes
+	// calculate all changes between default branch (e.g. main) with the target branch
+	// raise warning if the changes are more than 200 lines
+	logger.Info("Going to detect 200+ changes")
+
+	branchChnages := &BranchChanges{}
+
+	if err := workflow.ExecuteActivity(pctx, rpa.DetectChange, installationID, repoName, repoOwner, defaultBranch, branchName).
+		Get(ctx, branchChnages); err != nil {
+		logger.Error("Repo provider activities: Changes in branch  activity", "error", err)
+		return err
+	}
+
+	threshold := 200
+	if branchChnages.Changes > threshold {
+		if err := workflow.
+			ExecuteActivity(pctx, mpa.SendNumberOfLinesExceedMessage, teamID, repoName, branchName, threshold, branchChnages).
+			Get(ctx, nil); err != nil {
+			logger.Error("Message provider activities: Send number of lines exceed message activity", "error", err)
+			return err
+		}
+	}
+
+	logger.Info("200+ changes NOT detected")
+
+	return nil
+}
+
+func onPush(ctx workflow.Context) shared.ChannelHandler {
+	return func(channel workflow.ReceiveChannel, more bool) {}
 }
