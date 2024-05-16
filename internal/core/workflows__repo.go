@@ -405,7 +405,7 @@ func onPush(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
 		channel.Receive(ctx, payload)
 
 		//
-		if repo.DefaultBranch == payload.RefBranch {
+		if repo.DefaultBranch == payload.Branch {
 			logger.Info(
 				"repo_ctrl/push: ignore ...",
 				slog.String("repo_id", repo.ID.String()),
