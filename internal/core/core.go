@@ -54,24 +54,20 @@ type (
 
 	// RepoIO is the interface that defines the operations that can be performed on a repository.
 	RepoIO interface {
-		GetLatestCommit(ctx context.Context, repoID, branchName string) (*LatestCommit, error)
-		DeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error
-		TagCommit(ctx context.Context, repoID, commitSHA, tagName, tagMessage string) error
-		CreateBranch(
-			ctx context.Context, installationID shared.Int64, repoID, repoName, repoOwner, targetCommit, newBranchName string,
-		) error
-		DeleteBranch(ctx context.Context, installationID shared.Int64, repoName, repoOwner, branchName string) error
-		MergeBranch(ctx context.Context, installationID shared.Int64, repoName, repoOwner, baseBranch, targetBranch string) error
-		RebaseAndMerge(ctx context.Context, repoOwner, repoName, targetBranchName string, installationID shared.Int64) (string, error)
-		DetectChange(
-			ctx context.Context, installationID shared.Int64, repoName, repoOwner, defaultBranch, targetBranch string,
-		) (*BranchChanges, error)
-		GetAllBranches(ctx context.Context, installationID shared.Int64, repoName, repoOwner string) ([]string, error)
-		TriggerCIAction(ctx context.Context, installationID shared.Int64, repoOwner, repoName, targetBranch string) error
-		GetRepoTeamID(ctx context.Context, repoID string) (string, error)
-		GetAllRelevantActions(ctx context.Context, installationID shared.Int64, repoName string, repoOwner string) error
-		GetRepoByProviderID(ctx context.Context, providerID string) (*RepoProviderData, error)
-		UpdateRepoHasRarlyWarning(ctx context.Context, providerID string) error
+		GetLatestCommit(ctx context.Context, payload *RepoIOGetLatestCommitPayload) (*LatestCommit, error)
+		DeployChangeset(ctx context.Context, payload *RepoIODeployChangesetPayload) error
+		TagCommit(ctx context.Context, payload *RepoIOTagCommitPayload) error
+		CreateBranch(ctx context.Context, payload *RepoIOCreateBranchPayload) error
+		DeleteBranch(ctx context.Context, payload *RepoIODeleteBranchPayload) error
+		MergeBranch(ctx context.Context, payload *RepoIOMergeBranchPayload) error
+		RebaseAndMerge(ctx context.Context, payload *RepoIORebaseAndMergePayload) (string, error)
+		DetectChange(ctx context.Context, payload *RepoIODetectChangePayload) (*BranchChanges, error)
+		GetAllBranches(ctx context.Context, payload *RepoIOGetAllBranchesPayload) ([]string, error)
+		TriggerCIAction(ctx context.Context, payload *RepoIOTriggerCIActionPayload) error
+		GetRepoTeamID(ctx context.Context, payload *RepoIOGetRepoTeamIDPayload) (string, error)
+		GetAllRelevantActions(ctx context.Context, payload *RepoIOGetAllRelevantActionsPayload) error
+		GetRepoByProviderID(ctx context.Context, payload *RepoIOGetRepoByProviderIDPayload) (*RepoProviderData, error)
+		UpdateRepoHasRarlyWarning(ctx context.Context, payload *RepoIOUpdateRepoHasRarlyWarningPayload) error
 	}
 
 	// CloudIO is the interface that defines the operations that can be performed on a cloud provider.

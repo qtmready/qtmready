@@ -116,16 +116,23 @@ func (w *StackWorkflows) StackController(ctx workflow.Context, stackID string) e
 	logger.Info("Stack controller", "changeset created", changeset)
 
 	for idx, repo := range repos.Data {
-		provider := repo.ProviderID
-		commitID := repoMarkers[idx].CommitID
-
 		p := Instance().RepoProvider(repo.Provider) // get the specific provider
 
-		if err := workflow.ExecuteActivity(pctx, p.TagCommit, provider, commitID, changesetID.String(), "Tagged by quantm"); err != nil {
+		tagcommitPayload := &RepoIOTagCommitPayload{
+			RepoID:     repo.ProviderID,
+			CommitSHA:  repoMarkers[idx].CommitID,
+			TagName:    changesetID.String(),
+			TagMessage: "Tagged by quantm",
+		}
+		if err := workflow.ExecuteActivity(pctx, p.TagCommit, tagcommitPayload); err != nil {
 			logger.Error("Repo provider activities: Tag commit activity", "error", err)
 		}
 
-		if err := workflow.ExecuteActivity(pctx, p.DeployChangeset, repo.ProviderID, changeset.ID).Get(ctx, nil); err != nil {
+		deploysetPayload := &RepoIODeployChangesetPayload{
+			RepoID:      repo.ProviderID,
+			ChangesetID: &changeset.ID,
+		}
+		if err := workflow.ExecuteActivity(pctx, p.DeployChangeset, deploysetPayload).Get(ctx, nil); err != nil {
 			logger.Error("Repo provider activities: Deploy changeset activity", "error", err)
 		}
 	}

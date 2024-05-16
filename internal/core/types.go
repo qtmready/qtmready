@@ -145,6 +145,31 @@ type (
 	}
 )
 
+// MessageIO payloads.
+type (
+	MessageIOSendStaleBranchMessagePayload struct {
+		TeamID string        `json:"team_id"`
+		Stale  *LatestCommit `json:"slate"`
+	}
+
+	MessageIOSendNumberOfLinesExceedMessagePayload struct {
+		TeamID        string         `json:"team_id"`
+		RepoName      string         `json:"repo_name"`
+		BranchName    string         `json:"branch_name"`
+		Threshold     int            `json:"threshold"`
+		BranchChnages *BranchChanges `json:"branch_chnages"`
+	}
+
+	MessageIOSendMergeConflictsMessagePayload struct {
+		TeamID string        `json:"team_id"`
+		Merge  *LatestCommit `json:"merge"`
+	}
+
+	MessageIOCompleteOauthResponsePayload struct {
+		Code string `json:"code"`
+	}
+)
+
 type (
 	Infra               map[gocql.UUID]CloudResource // Map of resource Name and provider
 	JsonInfra           map[gocql.UUID][]byte

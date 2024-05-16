@@ -99,9 +99,13 @@ func (w *RepoWorkflows) BranchController(ctx workflow.Context) error {
 	}
 	actx := workflow.WithActivityOptions(ctx, providerActOpts)
 
+	commitPayload := &RepoIOGetLatestCommitPayload{
+		RepoID:     payload.RepoID.String(),
+		BranchName: payload.RefBranch,
+	}
 	commit := &LatestCommit{}
-	if err := workflow.ExecuteActivity(actx, rpa.GetLatestCommit, (payload.RepoID.String()), payload.RefBranch).
-		Get(ctx, commit); err != nil {
+
+	if err := workflow.ExecuteActivity(actx, rpa.GetLatestCommit, commitPayload).Get(ctx, commit); err != nil {
 		logger.Error("Repo provider activities: Get latest commit activity", "error", err)
 		return err
 	}
@@ -109,8 +113,14 @@ func (w *RepoWorkflows) BranchController(ctx workflow.Context) error {
 	// if the push comes at the default branch i.e. main rebase all branches with main
 	if payload.RefBranch == payload.DefaultBranch {
 		var branchNames []string
-		if err := workflow.ExecuteActivity(actx, rpa.GetAllBranches, payload.InstallationID, payload.RepoName, payload.RepoOwner).
-			Get(ctx, &branchNames); err != nil {
+
+		allBranchesPayload := &RepoIOGetAllBranchesPayload{
+			InstallationID: payload.InstallationID,
+			RepoName:       payload.RepoName,
+			RepoOwner:      payload.RepoOwner,
+		}
+
+		if err := workflow.ExecuteActivity(actx, rpa.GetAllBranches, allBranchesPayload).Get(ctx, &branchNames); err != nil {
 			logger.Error("Repo provider activities: Get all branches activity", "error", err)
 			return err
 		}
@@ -131,9 +141,13 @@ func (w *RepoWorkflows) BranchController(ctx workflow.Context) error {
 				Get(ctx, nil); err != nil {
 				logger.Error("Repo provider activities: Merge branch activity", "error", err)
 
+				repoTeamIDPayload := &RepoIOGetRepoTeamIDPayload{
+					RepoID: payload.RepoID.String(),
+				}
+
 				// get the teamID from repo table
 				teamID := ""
-				if err := workflow.ExecuteActivity(actx, rpa.GetRepoTeamID, payload.RepoID.String()).Get(ctx, &teamID); err != nil {
+				if err := workflow.ExecuteActivity(actx, rpa.GetRepoTeamID, repoTeamIDPayload).Get(ctx, &teamID); err != nil {
 					logger.Error("Repo provider activities: Get repo TeamID activity", "error", err)
 					return err
 				}
@@ -218,17 +232,25 @@ func (w *RepoWorkflows) StaleBranchDetection(
 	}
 	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
 
+	commitPayload := &RepoIOGetLatestCommitPayload{
+		RepoID:     repoID,
+		BranchName: branchName,
+	}
 	commit := &LatestCommit{}
-	if err := workflow.ExecuteActivity(pctx, rpa.GetLatestCommit, repoID, branchName).Get(ctx, &commit); err != nil {
+
+	if err := workflow.ExecuteActivity(pctx, rpa.GetLatestCommit, commitPayload).Get(ctx, &commit); err != nil {
 		logger.Error("Repo provider activities: Get latest commit activity", "error", err)
 		return err
 	}
 
 	// check if the branchName branch has the lastBranchCommit as the latest commit
 	if lastBranchCommit == commit.SHA {
+		repoTeamIDPayload := &RepoIOGetRepoTeamIDPayload{
+			RepoID: repoID,
+		}
 		// get the teamID from repo table
 		teamID := ""
-		if err := workflow.ExecuteActivity(pctx, rpa.GetRepoTeamID, repoID).Get(ctx, &teamID); err != nil {
+		if err := workflow.ExecuteActivity(pctx, rpa.GetRepoTeamID, repoTeamIDPayload).Get(ctx, &teamID); err != nil {
 			logger.Error("Repo provider activities: Get repo TeamID activity", "error", err)
 			return err
 		}
@@ -253,14 +275,14 @@ func (w *RepoWorkflows) PollMergeQueue(ctx workflow.Context) error {
 
 	// wait for github action to return success status
 	ch := workflow.GetSignalChannel(ctx, shared.MergeQueueStarted.String())
-	element := &shared.MergeQueueSignal{}
-	ch.Receive(ctx, &element)
+	mergeQueueSignal := &shared.MergeQueueSignal{}
+	ch.Receive(ctx, &mergeQueueSignal)
 
 	logger.Debug("PollMergeQueue first signal received")
-	logger.Info("PollMergeQueue", "data recvd", element)
+	logger.Info("PollMergeQueue", "data recvd", mergeQueueSignal)
 
 	// actually merge now
-	rpa := Instance().RepoProvider(RepoProvider(element.RepoProvider))
+	rpa := Instance().RepoProvider(RepoProvider(mergeQueueSignal.RepoProvider))
 	providerActOpts := workflow.ActivityOptions{
 		StartToCloseTimeout: 60 * time.Second,
 		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
@@ -270,9 +292,13 @@ func (w *RepoWorkflows) PollMergeQueue(ctx workflow.Context) error {
 	}
 	pctx := workflow.WithActivityOptions(ctx, providerActOpts)
 
+	relevantActionsPayload := RepoIOGetAllRelevantActionsPayload{
+		InstallationID: mergeQueueSignal.InstallationID,
+		RepoName:       mergeQueueSignal.RepoName,
+		RepoOwner:      mergeQueueSignal.RepoOwner,
+	}
 	// get list of all available github workflow actions/files
-	if err := workflow.ExecuteActivity(pctx, rpa.GetAllRelevantActions, element.InstallationID, element.RepoName,
-		element.RepoOwner).Get(ctx, nil); err != nil {
+	if err := workflow.ExecuteActivity(pctx, rpa.GetAllRelevantActions, relevantActionsPayload).Get(ctx, nil); err != nil {
 		logger.Error("error getting all labeled actions", "error", err)
 		return err
 	}
@@ -284,8 +310,13 @@ func (w *RepoWorkflows) PollMergeQueue(ctx workflow.Context) error {
 
 	logger.Debug("PollMergeQueue second signal received")
 
-	if err := workflow.ExecuteActivity(pctx, rpa.RebaseAndMerge, element.RepoOwner, element.RepoName, element.Branch,
-		element.InstallationID).Get(ctx, nil); err != nil {
+	rebasePayload := &RepoIORebaseAndMergePayload{
+		RepoOwner:        mergeQueueSignal.RepoOwner,
+		RepoName:         mergeQueueSignal.RepoName,
+		InstallationID:   mergeQueueSignal.InstallationID,
+		TargetBranchName: mergeQueueSignal.Branch,
+	}
+	if err := workflow.ExecuteActivity(pctx, rpa.RebaseAndMerge, rebasePayload).Get(ctx, nil); err != nil {
 		logger.Error("error rebasing & merging activity", "error", err)
 		return err
 	}
@@ -318,8 +349,13 @@ func _early(ctx workflow.Context, rpa RepoIO, mpa MessageIO, pushEvent *shared.P
 	// if the rebase with the target branch returns error, raise warning
 	logger.Info("Check early warning", "push event", pushEvent)
 
+	commitPayload := &RepoIOGetLatestCommitPayload{
+		RepoID:     repoID,
+		BranchName: defaultBranch,
+	}
 	commit := &LatestCommit{}
-	if err := workflow.ExecuteActivity(pctx, rpa.GetLatestCommit, repoID, defaultBranch).Get(ctx, commit); err != nil {
+
+	if err := workflow.ExecuteActivity(pctx, rpa.GetLatestCommit, commitPayload).Get(ctx, commit); err != nil {
 		logger.Error("Repo provider activities: Get latest commit activity", "error", err)
 		return err
 	}
@@ -327,30 +363,51 @@ func _early(ctx workflow.Context, rpa RepoIO, mpa MessageIO, pushEvent *shared.P
 	// create a temp branch/ref
 	temp := defaultBranch + "-tempcopy-for-target-" + branchName
 
+	deletebranchPayload := &RepoIODeleteBranchPayload{
+		InstallationID: installationID,
+		RepoName:       repoName,
+		RepoOwner:      repoOwner,
+		BranchName:     temp,
+	}
+
 	// delete the branch if it is present already
-	if err := workflow.ExecuteActivity(pctx, rpa.DeleteBranch, installationID, repoName, repoOwner, temp).
-		Get(ctx, nil); err != nil {
+	if err := workflow.ExecuteActivity(pctx, rpa.DeleteBranch, deletebranchPayload).Get(ctx, nil); err != nil {
 		logger.Error("Repo provider activities: Delete branch activity", "error", err)
 		return err
 	}
 
+	createbranchPayload := &RepoIOCreateBranchPayload{
+		InstallationID: installationID,
+		RepoID:         repoID,
+		RepoName:       repoName,
+		RepoOwner:      repoOwner,
+		Commit:         commit.SHA,
+		BranchName:     temp,
+	}
 	// create new ref
-	if err := workflow.
-		ExecuteActivity(pctx, rpa.CreateBranch, installationID, repoID, repoName, repoOwner, commit.SHA, temp).
-		Get(ctx, nil); err != nil {
+	if err := workflow.ExecuteActivity(pctx, rpa.CreateBranch, createbranchPayload).Get(ctx, nil); err != nil {
 		logger.Error("Repo provider activities: Create branch activity", "error", err)
 		return err
 	}
 
+	repoTeamIDPayload := &RepoIOGetRepoTeamIDPayload{
+		RepoID: repoID,
+	}
 	// get the teamID from repo table
 	teamID := ""
-	if err := workflow.ExecuteActivity(pctx, rpa.GetRepoTeamID, repoID).Get(ctx, &teamID); err != nil {
+	if err := workflow.ExecuteActivity(pctx, rpa.GetRepoTeamID, repoTeamIDPayload).Get(ctx, &teamID); err != nil {
 		logger.Error("Repo provider activities: Get repo teamID activity", "error", err)
 		return err
 	}
 
-	if err := workflow.ExecuteActivity(pctx, rpa.MergeBranch, installationID, repoName, repoOwner, temp, branchName).
-		Get(ctx, nil); err != nil {
+	mergebranchPayload := &RepoIOMergeBranchPayload{
+		InstallationID: installationID,
+		RepoName:       repoName,
+		RepoOwner:      repoOwner,
+		BaseBranch:     branchName,
+		TargetBranch:   temp,
+	}
+	if err := workflow.ExecuteActivity(pctx, rpa.MergeBranch, mergebranchPayload).Get(ctx, nil); err != nil {
 		// dont want to retry this workflow so not returning error, just log and return
 		logger.Error("Repo provider activities: Merge branch activity", "error", err)
 
@@ -370,10 +427,17 @@ func _early(ctx workflow.Context, rpa RepoIO, mpa MessageIO, pushEvent *shared.P
 	// raise warning if the changes are more than 200 lines
 	logger.Info("Going to detect 200+ changes")
 
+	detectChangePayload := &RepoIODetectChangePayload{
+		InstallationID: installationID,
+		RepoName:       repoName,
+		RepoOwner:      repoOwner,
+		DefaultBranch:  defaultBranch,
+		TargetBranch:   branchName,
+	}
+
 	branchChnages := &BranchChanges{}
 
-	if err := workflow.ExecuteActivity(pctx, rpa.DetectChange, installationID, repoName, repoOwner, defaultBranch, branchName).
-		Get(ctx, branchChnages); err != nil {
+	if err := workflow.ExecuteActivity(pctx, rpa.DetectChange, detectChangePayload).Get(ctx, branchChnages); err != nil {
 		logger.Error("Repo provider activities: Changes in branch  activity", "error", err)
 		return err
 	}

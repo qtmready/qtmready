@@ -45,5 +45,5 @@ func NewResourceNotFoundError(name string, provider string) error {
 }
 
 func (e *resourceNotFoundError) Error() string {
-	return fmt.Sprintf("resource %s not found. plepleasese register your resource with the provider %s first.", e.name, e.provider)
+	return fmt.Sprintf("resource %s not found. please register your resource with the provider %s first.", e.name, e.provider)
 }

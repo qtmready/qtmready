@@ -23,7 +23,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/gocql/gocql"
 	gh "github.com/google/go-github/v53/github"
 	"go.temporal.io/sdk/activity"
 
@@ -146,18 +145,18 @@ func (a *Activities) GetStack(ctx context.Context, repo *core.Repo) (*core.Stack
 }
 
 // GetLatestCommit gets latest commit for default branch of the provided repo.
-func (a *Activities) GetLatestCommit(ctx context.Context, repoID, branch string) (*core.LatestCommit, error) {
+func (a *Activities) GetLatestCommit(ctx context.Context, payload *core.RepoIOGetLatestCommitPayload) (*core.LatestCommit, error) {
 	logger := activity.GetLogger(ctx)
 	prepo := &Repo{}
 
 	logger.Info(
 		"Starting Activity: GetLatestCommit with ...",
-		"repoID", repoID,
-		"branch", branch,
+		"repoID", payload.RepoID,
+		"branch", payload.BranchName,
 		"github_private_key", Instance().PrivateKey,
 	)
 
-	if err := db.Get(prepo, db.QueryParams{"github_id": repoID}); err != nil {
+	if err := db.Get(prepo, db.QueryParams{"github_id": payload.RepoID}); err != nil {
 		return nil, err
 	}
 
@@ -174,7 +173,8 @@ func (a *Activities) GetLatestCommit(ctx context.Context, repoID, branch string)
 		return nil, err
 	}
 
-	gb, _, err := client.Repositories.GetBranch(context.Background(), strings.Split(prepo.FullName, "/")[0], prepo.Name, branch, false)
+	gb, _, err := client.Repositories.
+		GetBranch(context.Background(), strings.Split(prepo.FullName, "/")[0], prepo.Name, payload.BranchName, false)
 	if err != nil {
 		logger.Error("GetBranch for Github Repo failed", "Error", err)
 		return nil, err
@@ -194,11 +194,10 @@ func (a *Activities) GetLatestCommit(ctx context.Context, repoID, branch string)
 }
 
 // TODO - break it to smalller activities (create, delete and merge).
-func (a *Activities) RebaseAndMerge(
-	ctx context.Context, repoOwner, repoName, targetBranchName string, installationID shared.Int64) (string, error) {
+func (a *Activities) RebaseAndMerge(ctx context.Context, payload *core.RepoIORebaseAndMergePayload) (string, error) {
 	logger := activity.GetLogger(ctx)
 
-	client, err := Instance().GetClientFromInstallation(installationID)
+	client, err := Instance().GetClientFromInstallation(payload.InstallationID)
 	if err != nil {
 		logger.Error("GetClientFromInstallation failed", "Error", err)
 		return "", err
@@ -206,17 +205,17 @@ func (a *Activities) RebaseAndMerge(
 
 	// Get the default branch (e.g., "main")
 	// TODO: move to some genernic function or activity
-	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
+	repo, _, err := client.Repositories.Get(ctx, payload.RepoOwner, payload.RepoName)
 	if err != nil {
 		logger.Error("RebaseAndMerge Activity", "Error", err)
 		return "", err
 	}
 
 	defaultBranch := *repo.DefaultBranch
-	newBranchName := defaultBranch + "-tempcopy-for-target-" + targetBranchName
+	newBranchName := defaultBranch + "-tempcopy-for-target-" + payload.TargetBranchName
 
 	// Get the latest commit SHA of the default branch
-	commits, _, err := client.Repositories.ListCommits(ctx, repoOwner, repoName, &gh.CommitsListOptions{
+	commits, _, err := client.Repositories.ListCommits(ctx, payload.RepoOwner, payload.RepoName, &gh.CommitsListOptions{
 		SHA: defaultBranch,
 	})
 	if err != nil {
@@ -240,7 +239,7 @@ func (a *Activities) RebaseAndMerge(
 		},
 	}
 
-	_, _, err = client.Git.CreateRef(ctx, repoOwner, repoName, ref)
+	_, _, err = client.Git.CreateRef(ctx, payload.RepoOwner, payload.RepoName, ref)
 	if err != nil {
 		logger.Error("RebaseAndMerge Activity", "Error", err)
 		return "", err
@@ -251,18 +250,18 @@ func (a *Activities) RebaseAndMerge(
 	// Perform rebase of the target branch with the new branch
 	rebaseRequest := &gh.RepositoryMergeRequest{
 		Base:          &newBranchName,
-		Head:          &targetBranchName,
-		CommitMessage: gh.String("Rebasing " + targetBranchName + " with " + newBranchName),
+		Head:          &payload.TargetBranchName,
+		CommitMessage: gh.String("Rebasing " + payload.TargetBranchName + " with " + newBranchName),
 	}
 
-	_, _, err = client.Repositories.Merge(ctx, repoOwner, repoName, rebaseRequest)
+	_, _, err = client.Repositories.Merge(ctx, payload.RepoOwner, payload.RepoName, rebaseRequest)
 	if err != nil {
 		logger.Error("RebaseAndMerge Activity", "Error", err)
 		return "", err
 	}
 
 	logger.Info("RebaseAndMerge Activity", "status",
-		fmt.Sprintf("Branch %s rebased with %s successfully.\n", targetBranchName, newBranchName))
+		fmt.Sprintf("Branch %s rebased with %s successfully.\n", payload.TargetBranchName, newBranchName))
 
 	// Perform rebase of the new branch with the main branch
 	rebaseRequest = &gh.RepositoryMergeRequest{
@@ -271,7 +270,7 @@ func (a *Activities) RebaseAndMerge(
 		CommitMessage: gh.String("Rebasing " + newBranchName + " with " + defaultBranch),
 	}
 
-	repoCommit, _, err := client.Repositories.Merge(ctx, repoOwner, repoName, rebaseRequest)
+	repoCommit, _, err := client.Repositories.Merge(ctx, payload.RepoOwner, payload.RepoName, rebaseRequest)
 	if err != nil {
 		logger.Error("RebaseAndMerge Activity", "Error", err)
 		return err.Error(), err
@@ -283,12 +282,12 @@ func (a *Activities) RebaseAndMerge(
 	return *repoCommit.SHA, nil
 }
 
-func (a *Activities) TriggerCIAction(ctx context.Context, installationID shared.Int64, repoOwner, repoName, targetBranch string) error {
+func (a *Activities) TriggerCIAction(ctx context.Context, payload *core.RepoIOTriggerCIActionPayload) error {
 	logger := activity.GetLogger(ctx)
 
 	logger.Debug("activity TriggerGithubAction started")
 
-	client, err := Instance().GetClientFromInstallation(installationID)
+	client, err := Instance().GetClientFromInstallation(payload.InstallationID)
 	if err != nil {
 		logger.Error("GetClientFromInstallation failed", "Error", err)
 		return err
@@ -297,13 +296,13 @@ func (a *Activities) TriggerCIAction(ctx context.Context, installationID shared.
 	workflowName := "cicd_quantm.yaml" //TODO: either fix this or obtain it somehow
 
 	paylod := gh.CreateWorkflowDispatchEventRequest{
-		Ref: targetBranch,
+		Ref: payload.TargetBranch,
 		Inputs: map[string]any{
-			"target-branch": targetBranch,
+			"target-branch": payload.TargetBranch,
 		},
 	}
 
-	res, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, repoOwner, repoName, workflowName, paylod)
+	res, err := client.Actions.CreateWorkflowDispatchEventByFileName(ctx, payload.RepoOwner, payload.RepoName, workflowName, paylod)
 	if err != nil {
 		logger.Error("TriggerGithubAction", "Error", err)
 		return err
@@ -314,17 +313,16 @@ func (a *Activities) TriggerCIAction(ctx context.Context, installationID shared.
 	return nil
 }
 
-func (a *Activities) DeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error {
+func (a *Activities) DeployChangeset(ctx context.Context, payload *core.RepoIODeployChangesetPayload) error {
 	logger := activity.GetLogger(ctx)
-
-	logger.Debug("DeployChangeset", "github activity DeployChangeset started for changeset", changesetID)
+	logger.Debug("DeployChangeset", "github activity DeployChangeset started for changeset", payload.ChangesetID)
 
 	gh_action_name := "deploy_quantm.yaml" //TODO: fixed it for now
 
 	// get installationID, repoName, repoOwner from github_repos table
 	githubRepo := &Repo{}
 	params := db.QueryParams{
-		"github_id": repoID,
+		"github_id": payload.RepoID,
 	}
 
 	if err := db.Get(githubRepo, params); err != nil {
@@ -340,7 +338,7 @@ func (a *Activities) DeployChangeset(ctx context.Context, repoID string, changes
 	paylod := gh.CreateWorkflowDispatchEventRequest{
 		Ref: "main",
 		Inputs: map[string]any{
-			"changesetId": changesetID,
+			"changesetId": payload.ChangesetID,
 		},
 	}
 
@@ -364,12 +362,12 @@ func (a *Activities) DeployChangeset(ctx context.Context, repoID string, changes
 	return nil
 }
 
-func (a *Activities) TagCommit(ctx context.Context, repoID, commitSHA, tagName, tagMessage string) error {
+func (a *Activities) TagCommit(ctx context.Context, payload *core.RepoIOTagCommitPayload) error {
 	logger := activity.GetLogger(ctx)
 	// get installationID, repoName, repoOwner from github_repos table
 	githubRepo := &Repo{}
 	params := db.QueryParams{
-		"github_id": repoID,
+		"github_id": payload.RepoID,
 	}
 
 	if err := db.Get(githubRepo, params); err != nil {
@@ -383,10 +381,10 @@ func (a *Activities) TagCommit(ctx context.Context, repoID, commitSHA, tagName, 
 	}
 
 	tag := &gh.Tag{
-		Tag:     &tagName,
-		Message: &tagMessage,
+		Tag:     &payload.TagName,
+		Message: &payload.TagMessage,
 		Object: &gh.GitObject{
-			SHA:  &commitSHA,
+			SHA:  &payload.CommitSHA,
 			Type: gh.String("commit"), // Specify the type of object being tagged
 		},
 	}
@@ -406,10 +404,10 @@ func (a *Activities) TagCommit(ctx context.Context, repoID, commitSHA, tagName, 
 	}
 
 	// Push the tag to the remote repository
-	ref := "refs/tags/" + tagName
+	ref := "refs/tags/" + payload.TagName
 	if _, _, err = client.Git.CreateRef(ctx, repoOwner, repoName, &gh.Reference{
 		Ref:    &ref,
-		Object: &gh.GitObject{SHA: &commitSHA},
+		Object: &gh.GitObject{SHA: &payload.CommitSHA},
 	}); err != nil {
 		logger.Error("TagCommit: pushing tag to remote repository", "Error", err)
 	}
@@ -417,11 +415,11 @@ func (a *Activities) TagCommit(ctx context.Context, repoID, commitSHA, tagName, 
 	return nil
 }
 
-func (a *Activities) DeleteBranch(ctx context.Context, installationID shared.Int64, repoName, repoOwner, branchName string) error {
+func (a *Activities) DeleteBranch(ctx context.Context, payload *core.RepoIODeleteBranchPayload) error {
 	logger := activity.GetLogger(ctx)
 
 	// Get github client
-	client, err := Instance().GetClientFromInstallation(installationID)
+	client, err := Instance().GetClientFromInstallation(payload.InstallationID)
 	if err != nil {
 		logger.Error("GetClientFromInstallation failed", "Error", err)
 		return err
@@ -429,11 +427,11 @@ func (a *Activities) DeleteBranch(ctx context.Context, installationID shared.Int
 
 	// Create a new branch based on the latest defaultBranch commit
 	ref := &gh.Reference{
-		Ref: gh.String("refs/heads/" + branchName),
+		Ref: gh.String("refs/heads/" + payload.BranchName),
 	}
 
 	// delete the temp ref if its present before
-	if _, err := client.Git.DeleteRef(context.Background(), repoOwner, repoName, *ref.Ref); err != nil {
+	if _, err := client.Git.DeleteRef(context.Background(), payload.RepoOwner, payload.RepoName, *ref.Ref); err != nil {
 		logger.Error("DeleteBranch", "Error deleting ref"+*ref.Ref, err)
 
 		if strings.Contains(err.Error(), "422 Reference does not exist") {
@@ -447,13 +445,11 @@ func (a *Activities) DeleteBranch(ctx context.Context, installationID shared.Int
 	return nil
 }
 
-func (a *Activities) CreateBranch(
-	ctx context.Context, installationID shared.Int64, repoID, repoName, repoOwner, targetCommit, newBranchName string,
-) error {
+func (a *Activities) CreateBranch(ctx context.Context, payload *core.RepoIOCreateBranchPayload) error {
 	logger := activity.GetLogger(ctx)
 
 	// Get github client
-	client, err := Instance().GetClientFromInstallation(installationID)
+	client, err := Instance().GetClientFromInstallation(payload.InstallationID)
 	if err != nil {
 		logger.Error("GetClientFromInstallation failed", "Error", err)
 		return err
@@ -461,14 +457,14 @@ func (a *Activities) CreateBranch(
 
 	// Create a new branch based on the latest defaultBranch commit
 	ref := &gh.Reference{
-		Ref: gh.String("refs/heads/" + newBranchName),
+		Ref: gh.String("refs/heads/" + payload.BranchName),
 		Object: &gh.GitObject{
-			SHA: &targetCommit,
+			SHA: &payload.Commit,
 		},
 	}
 
 	// create new ref
-	if _, _, err = client.Git.CreateRef(context.Background(), repoOwner, repoName, ref); err != nil {
+	if _, _, err = client.Git.CreateRef(context.Background(), payload.RepoOwner, payload.RepoName, ref); err != nil {
 		logger.Error("CreateBranch activity", "Error", err)
 		// dont want to retry this workflow so not returning error, just log and return
 		return nil
@@ -477,11 +473,11 @@ func (a *Activities) CreateBranch(
 	return nil
 }
 
-func (a *Activities) MergeBranch(ctx context.Context, installationID shared.Int64, repoName, repoOwner, baseBranch, targetBranch string) error {
+func (a *Activities) MergeBranch(ctx context.Context, payload *core.RepoIOMergeBranchPayload) error {
 	logger := activity.GetLogger(ctx)
 
 	// Get github client for operations
-	client, err := Instance().GetClientFromInstallation(installationID)
+	client, err := Instance().GetClientFromInstallation(payload.InstallationID)
 	if err != nil {
 		logger.Error("GetClientFromInstallation failed", "Error", err)
 		return err
@@ -489,12 +485,12 @@ func (a *Activities) MergeBranch(ctx context.Context, installationID shared.Int6
 
 	// targetBranch will be merged into the baseBranch
 	rebaseReq := &gh.RepositoryMergeRequest{
-		Base:          &baseBranch,
-		Head:          &targetBranch,
-		CommitMessage: gh.String("Rebasing " + targetBranch + " with " + baseBranch),
+		Base:          &payload.BaseBranch,
+		Head:          &payload.TargetBranch,
+		CommitMessage: gh.String("Rebasing " + payload.TargetBranch + " with " + payload.BaseBranch),
 	}
 
-	if _, _, err := client.Repositories.Merge(context.Background(), repoOwner, repoName, rebaseReq); err != nil {
+	if _, _, err := client.Repositories.Merge(context.Background(), payload.RepoOwner, payload.RepoName, rebaseReq); err != nil {
 		logger.Error("Merge failed", "Error", err)
 		return err
 	}
@@ -502,25 +498,25 @@ func (a *Activities) MergeBranch(ctx context.Context, installationID shared.Int6
 	return nil
 }
 
-func (a *Activities) DetectChange(ctx context.Context, installationID shared.Int64, repoName, repoOwner, defaultBranch, targetBranch string,
-) (*core.BranchChanges, error) {
+func (a *Activities) DetectChange(ctx context.Context, payload *core.RepoIODetectChangePayload) (*core.BranchChanges, error) {
 	logger := activity.GetLogger(ctx)
 
 	// Get github client for operations
-	client, err := Instance().GetClientFromInstallation(installationID)
+	client, err := Instance().GetClientFromInstallation(payload.InstallationID)
 	if err != nil {
 		logger.Error("GetClientFromInstallation failed", "Error", err)
 		return nil, err
 	}
 
 	// TODO: move to some genernic function or activity
-	repo, _, err := client.Repositories.Get(ctx, repoOwner, repoName)
+	repo, _, err := client.Repositories.Get(ctx, payload.RepoOwner, payload.RepoName)
 	if err != nil {
 		logger.Error("ChangesInBranch Activity", "Error", err)
 		return nil, err
 	}
 
-	comparison, _, err := client.Repositories.CompareCommits(context.Background(), repoOwner, repoName, defaultBranch, targetBranch, nil)
+	comparison, _, err := client.Repositories.
+		CompareCommits(context.Background(), payload.RepoOwner, payload.RepoName, payload.DefaultBranch, payload.TargetBranch, nil)
 	if err != nil {
 		logger.Error("Error in ChangesInBranch", "Error", err)
 		return nil, err
@@ -547,16 +543,16 @@ func (a *Activities) DetectChange(ctx context.Context, installationID shared.Int
 		Files:      changedFiles,
 	}
 
-	logger.Debug("ChangesInBranch", "total changes in branch "+targetBranch, changes)
+	logger.Debug("ChangesInBranch", "total changes in branch "+payload.TargetBranch, changes)
 
 	return branchChanges, nil
 }
 
-func (a *Activities) GetAllBranches(ctx context.Context, installationID shared.Int64, repoName, repoOwner string) ([]string, error) {
+func (a *Activities) GetAllBranches(ctx context.Context, payload *core.RepoIOGetAllBranchesPayload) ([]string, error) {
 	logger := activity.GetLogger(ctx)
 
 	// get github client
-	client, err := Instance().GetClientFromInstallation(installationID)
+	client, err := Instance().GetClientFromInstallation(payload.InstallationID)
 	if err != nil {
 		logger.Error("GetClientFromInstallation failed", "Error", err)
 		return nil, err
@@ -567,7 +563,7 @@ func (a *Activities) GetAllBranches(ctx context.Context, installationID shared.I
 	page := 1
 
 	for {
-		branches, resp, err := client.Repositories.ListBranches(ctx, repoOwner, repoName, &gh.BranchListOptions{
+		branches, resp, err := client.Repositories.ListBranches(ctx, payload.RepoOwner, payload.RepoName, &gh.BranchListOptions{
 			ListOptions: gh.ListOptions{
 				Page:    page,
 				PerPage: 30, // Adjust this value as needed
@@ -593,11 +589,11 @@ func (a *Activities) GetAllBranches(ctx context.Context, installationID shared.I
 	return branchNames, nil
 }
 
-func (a *Activities) GetRepoTeamID(ctx context.Context, repoID string) (string, error) {
+func (a *Activities) GetRepoTeamID(ctx context.Context, payload *core.RepoIOGetRepoTeamIDPayload) (string, error) {
 	logger := activity.GetLogger(ctx)
 	prepo := &Repo{}
 
-	if err := db.Get(prepo, db.QueryParams{"github_id": repoID}); err != nil {
+	if err := db.Get(prepo, db.QueryParams{"github_id": payload.RepoID}); err != nil {
 		logger.Error("GetRepoTeamID failed", "Error", err)
 		return "", err
 	}
@@ -607,18 +603,18 @@ func (a *Activities) GetRepoTeamID(ctx context.Context, repoID string) (string, 
 	return prepo.TeamID.String(), nil
 }
 
-func (a *Activities) GetAllRelevantActions(ctx context.Context, installationID shared.Int64, repoName, repoOwner string) error {
+func (a *Activities) GetAllRelevantActions(ctx context.Context, payload *core.RepoIOGetAllRelevantActionsPayload) error {
 	logger := activity.GetLogger(ctx)
 
 	// get github client
-	client, err := Instance().GetClientFromInstallation(installationID)
+	client, err := Instance().GetClientFromInstallation(payload.InstallationID)
 	if err != nil {
 		logger.Error("GetClientFromInstallation failed", "Error", err)
 		return err
 	}
 
 	// List repository workflows
-	workflows, _, err := client.Actions.ListWorkflows(ctx, repoOwner, repoName, nil)
+	workflows, _, err := client.Actions.ListWorkflows(ctx, payload.RepoOwner, payload.RepoName, nil)
 	if err != nil {
 		return err
 	}
@@ -626,12 +622,12 @@ func (a *Activities) GetAllRelevantActions(ctx context.Context, installationID s
 	// var labeledWorkflows []string
 
 	// initialize workflow status record map
-	actionWorkflowStatuses[repoName] = make(map[string]string)
+	actionWorkflowStatuses[payload.RepoName] = make(map[string]string)
 
 	// Iterate through each workflow
 	for _, workflow := range workflows.Workflows {
 		// Download the content of the workflow file
-		content, _, err := client.Repositories.DownloadContents(ctx, repoOwner, repoName, *workflow.Path, nil)
+		content, _, err := client.Repositories.DownloadContents(ctx, payload.RepoOwner, payload.RepoName, *workflow.Path, nil)
 		if err != nil {
 			return err
 		}
@@ -650,19 +646,20 @@ func (a *Activities) GetAllRelevantActions(ctx context.Context, installationID s
 			logger.Debug("action file: " + *workflow.Path)
 
 			// labeledWorkflows = append(labeledWorkflows, *workflow.Path)
-
-			actionWorkflowStatuses[repoName][*workflow.Path] = "idle"
+			actionWorkflowStatuses[payload.RepoName][*workflow.Path] = "idle"
 		}
 	}
 
 	return nil
 }
 
-func (a *Activities) GetRepoByProviderID(ctx context.Context, providerID string) (*core.RepoProviderData, error) {
+func (a *Activities) GetRepoByProviderID(
+	ctx context.Context, payload *core.RepoIOGetRepoByProviderIDPayload,
+) (*core.RepoProviderData, error) {
 	prepo := &Repo{}
 
 	// NOTE: these activities are used in api not in temporal workflow use shared.Logger()
-	if err := db.Get(prepo, db.QueryParams{"github_id": providerID}); err != nil {
+	if err := db.Get(prepo, db.QueryParams{"github_id": payload.ProviderID}); err != nil {
 		shared.Logger().Error("GetRepoByProviderID failed", "Error", err)
 		return nil, err
 	}
@@ -677,11 +674,11 @@ func (a *Activities) GetRepoByProviderID(ctx context.Context, providerID string)
 	return rpd, nil
 }
 
-func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, providerID string) error {
+func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *core.RepoIOUpdateRepoHasRarlyWarningPayload) error {
 	prepo := &Repo{}
 
 	// NOTE: these activities are used in api not in temporal workflow use shared.Logger()
-	if err := db.Get(prepo, db.QueryParams{"github_id": providerID}); err != nil {
+	if err := db.Get(prepo, db.QueryParams{"github_id": payload.ProviderID}); err != nil {
 		shared.Logger().Error("UpdateRepoHasRarlWarning failed", "Error", err)
 		return err
 	}

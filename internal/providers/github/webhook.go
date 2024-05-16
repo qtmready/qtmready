@@ -107,7 +107,7 @@ func handlePushEvent(ctx echo.Context) error {
 		return err
 	}
 
-	shared.Logger().Info("push event received ...", "action", payload)
+	shared.Logger().Info("push event received ...", "action", payload.Installation.ID)
 
 	// the value will be `NoCommit` if we have a tag push, or squash merge.
 	if payload.After == NoCommit {

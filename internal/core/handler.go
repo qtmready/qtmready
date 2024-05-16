@@ -229,8 +229,11 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 	// repo provider activities instance
 	rpa := Instance().RepoProvider(RepoProvider(request.Provider.String()))
 
+	repoByProviderIDPaylaod := &RepoIOGetRepoByProviderIDPayload{
+		ProviderID: request.ProviderID,
+	}
 	// repo provider data
-	rpd, err := rpa.GetRepoByProviderID(context.Background(), request.ProviderID)
+	rpd, err := rpa.GetRepoByProviderID(context.Background(), repoByProviderIDPaylaod)
 	if err != nil {
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
@@ -264,10 +267,13 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
+	updateProviderRepoPayload := &RepoIOUpdateRepoHasRarlyWarningPayload{
+		ProviderID: request.ProviderID,
+	}
 	// NOTE: handle transaction as well
 	//
 	// update the provider repo early warning
-	if err := rpa.UpdateRepoHasRarlyWarning(context.Background(), request.ProviderID); err != nil {
+	if err := rpa.UpdateRepoHasRarlyWarning(context.Background(), updateProviderRepoPayload); err != nil {
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
