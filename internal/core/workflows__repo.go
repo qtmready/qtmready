@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gocql/gocql"
 	"go.temporal.io/api/enums/v1"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
@@ -22,25 +21,34 @@ type (
 // RepoCtrl is the controller for all the workflows related to the repository.
 //
 // NOTE: This workflow is only meant to be started with SignalWithStartWorkflow.
-func (w *RepoWorkflows) RepoCtrl(ctx workflow.Context, id gocql.UUID) error {
+func (w *RepoWorkflows) RepoCtrl(ctx workflow.Context, repo *Repo) error {
 	// prelude
 	logger := workflow.GetLogger(ctx)
 	selector := workflow.NewSelector(ctx)
 	done := false
 
-	logger.Info("repo ctrl: init ...", slog.String("repo_id", id.String()))
+	logger.Info("repo_ctrl: init ...", slog.String("repo_id", repo.ID.String()))
 
 	// setting up channels
 	pushChannel := workflow.GetSignalChannel(ctx, RepoSignalPush.String())
 
 	// setting up callbacks for channels
-	selector.AddReceive(pushChannel, onPush(ctx))
+	selector.AddReceive(pushChannel, onPush(ctx, repo)) // post processing for push event recieved on repo.
 
 	// TODO: need to come up with logic to shutdown when not required.
 	for !done {
 		selector.Select(ctx)
 	}
 
+	return nil
+}
+
+// DefaultBranchCtrl is the controller for the default branch.
+func (w *RepoWorkflows) DefaultBranchCtrl(ctx workflow.Context) error {
+	return nil
+}
+
+func (w *RepoWorkflows) FeatureBranchCtrl(ctx workflow.Context) error {
 	return nil
 }
 
@@ -385,6 +393,26 @@ func _early(ctx workflow.Context, rpa RepoIO, mpa MessageIO, pushEvent *shared.P
 	return nil
 }
 
-func onPush(ctx workflow.Context) shared.ChannelHandler {
-	return func(channel workflow.ReceiveChannel, more bool) {}
+// onPush is the cordination function for the push event signal.
+func onPush(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
+	logger := workflow.GetLogger(ctx)
+
+	return func(channel workflow.ReceiveChannel, more bool) {
+		logger.Info("repo_ctrl/push: init ...", slog.String("repo_id", repo.ID.String()))
+
+		// get the push event data
+		payload := &RepoSignalPushPayload{}
+		channel.Receive(ctx, payload)
+
+		//
+		if repo.DefaultBranch == payload.RefBranch {
+			logger.Info(
+				"repo_ctrl/push: ignore ...",
+				slog.String("repo_id", repo.ID.String()),
+				slog.String("reason", "push event on default branch"),
+			)
+
+			return
+		}
+	}
 }
