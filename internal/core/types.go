@@ -47,7 +47,7 @@ const (
 
 type (
 	RepoSignalPushPayload struct {
-		Branch string `json:"ref_branch"`
+		BranchRef string `json:"branch_ref"`
 	}
 
 	RepoSignalPullRequestLabelPayload struct{}

@@ -152,6 +152,48 @@ func (a *Activities) TagGcpImage(ctx context.Context, image string, digest strin
 	return nil
 }
 
+func (a Activities) SignalDefaultBranch(ctx context.Context, repo *Repo, signal shared.WorkflowSignal, payload any) error {
+	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
+		shared.WithWorkflowBlock("repo"),
+		shared.WithWorkflowBlockID(repo.ID.String()),
+		shared.WithWorkflowElement("branch"),
+		shared.WithWorkflowElementID(repo.DefaultBranch),
+	)
+
+	w := &RepoWorkflows{}
+
+	_, err := shared.Temporal().
+		Client().
+		SignalWithStartWorkflow(context.Background(), opts.ID, signal.String(), payload, opts, w.DefaultBranchCtrl, repo)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (a Activities) SignalFeatureBranch(ctx context.Context, repo *Repo, signal shared.WorkflowSignal, payload any, branch string) error {
+	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
+		shared.WithWorkflowBlock("repo"),
+		shared.WithWorkflowBlockID(repo.ID.String()),
+		shared.WithWorkflowElement("branch"),
+		shared.WithWorkflowElementID(branch),
+	)
+
+	w := &RepoWorkflows{}
+
+	_, err := shared.Temporal().
+		Client().
+		SignalWithStartWorkflow(context.Background(), opts.ID, signal.String(), payload, opts, w.DefaultBranchCtrl, repo)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func ParseArtifactRegistryImage(image string) (*ArtifactRegistryImage, error) {
 	arImage := new(ArtifactRegistryImage)
 
