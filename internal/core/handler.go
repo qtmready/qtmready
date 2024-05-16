@@ -257,6 +257,7 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 		ProviderID:          request.ProviderID,
 		IsMonorepo:          request.IsMonorepo,
 		Provider:            request.Provider,
+		Threshold:           request.Threshold,
 		TeamID:              teamID,
 		MessageProviderData: *mpsd,
 	}

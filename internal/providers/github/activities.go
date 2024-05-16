@@ -659,7 +659,7 @@ func (a *Activities) GetRepoByProviderID(
 	prepo := &Repo{}
 
 	// NOTE: these activities are used in api not in temporal workflow use shared.Logger()
-	if err := db.Get(prepo, db.QueryParams{"github_id": payload.ProviderID}); err != nil {
+	if err := db.Get(prepo, db.QueryParams{"id": payload.ProviderID}); err != nil {
 		shared.Logger().Error("GetRepoByProviderID failed", "Error", err)
 		return nil, err
 	}
@@ -678,18 +678,18 @@ func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *cor
 	prepo := &Repo{}
 
 	// NOTE: these activities are used in api not in temporal workflow use shared.Logger()
-	if err := db.Get(prepo, db.QueryParams{"github_id": payload.ProviderID}); err != nil {
+	if err := db.Get(prepo, db.QueryParams{"id": payload.ProviderID}); err != nil {
 		shared.Logger().Error("UpdateRepoHasRarlWarning failed", "Error", err)
 		return err
 	}
-
-	shared.Logger().Info("Update Repo Has Rarly Warning successfully")
 
 	prepo.HasEarlyWarning = true
 
 	if err := db.Save(prepo); err != nil {
 		return err
 	}
+
+	shared.Logger().Info("Update Repo Has Rarly Warning successfully")
 
 	return nil
 }

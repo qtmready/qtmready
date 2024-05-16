@@ -75,7 +75,7 @@ create table if not exists repos
   name                      varchar,
   created_at                timestamp,
   updated_at                timestamp,
-  primary key               (id, team_id, stack_id),
+  primary key               ((id, team_id), stack_id),
 ) with comment = 'repo associated with the app';
 
 create index if not exists on repos (team_id);
@@ -96,7 +96,7 @@ create table if not exists workloads (
 	builder                   varchar,
 	created_at                timestamp,
 	updated_at                timestamp,
-  primary key   (id, team_id, stack_id, repo_id, resource_id),
+  primary key   ((id, team_id), resource_id, repo_id, stack_id),
 ) with comment = 'workload is the container definition';
 
 create index if not exists on workloads (team_id);
@@ -115,7 +115,7 @@ create table if not exists resources (
 	is_immutable               boolean,
 	created_at                 timestamp,
 	updated_at                 timestamp,
-  primary key   (id, team_id, stack_id),
+  primary key   ((id, team_id), stack_id),
 ) with comment = 'resource defines the resource on cloud e.g. sqs, s3 etc';
 
 create index if not exists on resources (team_id);
@@ -131,7 +131,7 @@ create table if not exists blueprints (
 	rollout_budget             varchar,
 	created_at                 timestamp,
 	updated_at                 timestamp,
-  primary key         (id, team_id, stack_id),
+  primary key         ((id, team_id), stack_id),
 ) with comment = 'blueprint defines the configuration for the progressive rollout';
 
 create index if not exists on blueprints (team_id);
@@ -145,7 +145,7 @@ create table if not exists changesets (
   created_by          varchar,
   created_at          timestamp,
   updated_at          timestamp,
-  primary key         (id, team_id, stack_id),
+  primary key         ((id, team_id), stack_id),
 ) with comment = 'changeset defines the state of the stack defined by calver';
 
 create index if not exists on changesets (team_id);
@@ -159,7 +159,7 @@ create table if not exists rollouts (
 	state               varchar,
 	created_at          timestamp,
 	updated_at          timestamp,
-  primary key         (id, team_id, stack_id),
+  primary key         ((id, team_id), stack_id),
 ) with comment = 'rollouts is the result of a blueprint being applied';
 
 create index if not exists on rollouts (team_id);
@@ -194,7 +194,7 @@ create table if not exists github_repos (
   installation_id   bigint,
   created_at        timestamp,
   updated_at        timestamp,
-  primary key       (id, team_id, installation_id),
+  primary key       ((id, team_id), installation_id),
 ) with comment = 'repositories provided by github installation';
 
 create index if not exists on github_repos (team_id);

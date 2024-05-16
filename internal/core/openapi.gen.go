@@ -427,6 +427,7 @@ type Repo struct {
 	ProviderID          string              `cql:"provider_id" json:"provider_id"`
 	StackID             gocql.UUID          `cql:"stack_id" json:"stack_id"`
 	TeamID              gocql.UUID          `cql:"team_id" json:"team_id"`
+	Threshold           int                 `cql:"threshold" json:"threshold"`
 	UpdatedAt           time.Time           `cql:"updated_at" json:"updated_at"`
 }
 
@@ -434,7 +435,7 @@ var (
 	repoMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "repos",
-			Columns: []string{"created_at", "default_branch", "id", "is_monorepo", "message_provider", "message_provider_data", "name", "provider", "provider_id", "stack_id", "team_id", "updated_at"},
+			Columns: []string{"created_at", "default_branch", "id", "is_monorepo", "message_provider", "message_provider_data", "name", "provider", "provider_id", "stack_id", "team_id", "threshold", "updated_at"},
 			PartKey: []string{"team_id"},
 		},
 	}
@@ -452,6 +453,7 @@ type RepoCreateRequest struct {
 	IsMonorepo bool         `json:"is_monorepo"`
 	Provider   RepoProvider `json:"provider"`
 	ProviderID string       `json:"provider_id"`
+	Threshold  int          `json:"threshold"`
 }
 
 // RepoListResponse defines model for RepoListResponse.

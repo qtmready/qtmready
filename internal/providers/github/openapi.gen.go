@@ -299,7 +299,7 @@ var (
 		M: &table.Metadata{
 			Name:    "github_repos",
 			Columns: []string{"created_at", "default_branch", "full_name", "github_id", "has_early_warning", "id", "installation_id", "is_active", "name", "team_id", "updated_at"},
-			PartKey: []string{"team_id"},
+			PartKey: []string{"id", "team_id"},
 		},
 	}
 
