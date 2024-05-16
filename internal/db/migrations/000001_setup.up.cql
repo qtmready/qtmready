@@ -30,6 +30,20 @@ create table if not exists users
 create index if not exists on users (team_id);
 create index if not exists on users (email);
 
+create table if not exists guards
+(
+  id                        uuid,
+  name                      varchar,
+  hashed                    varchar,
+  lookup_id                 uuid,
+  lookup_type               varchar,
+  created_at                timestamp,
+  updated_at                timestamp,
+  primary key               (id),
+) with comment = 'encrypted api keys for external services';
+
+create index if not exists on guards (lookup_id);
+
 create table if not exists oauth_accounts
 (
   id                        uuid,
@@ -65,17 +79,21 @@ create index if not exists on stacks (slug);
 
 create table if not exists repos
 (
-  id                        uuid,
-  team_id                   uuid,
-  stack_id                  uuid,
-  default_branch            varchar,
-  is_monorepo               boolean,
-  provider                  varchar,
-  provider_id               varchar,
-  name                      varchar,
-  created_at                timestamp,
-  updated_at                timestamp,
-  primary key               ((id, team_id), stack_id),
+  id                                  uuid,
+  team_id                             uuid,
+  stack_id                            uuid,
+  default_branch                      varchar,
+  is_monorepo                         boolean,
+  provider                            varchar,
+  provider_id                         varchar,
+  name                                varchar,
+  message_provider                    varchar,
+  message_provider_id                 varchar,
+  message_provider_data               blob,
+  threshold                           int,
+  created_at                          timestamp,
+  updated_at                          timestamp,
+  primary key                         (id, team_id),
 ) with comment = 'repo associated with the app';
 
 create index if not exists on repos (team_id);
@@ -96,7 +114,7 @@ create table if not exists workloads (
 	builder                   varchar,
 	created_at                timestamp,
 	updated_at                timestamp,
-  primary key   ((id, team_id), resource_id, repo_id, stack_id),
+  primary key               (id, team_id),
 ) with comment = 'workload is the container definition';
 
 create index if not exists on workloads (team_id);
@@ -115,7 +133,7 @@ create table if not exists resources (
 	is_immutable               boolean,
 	created_at                 timestamp,
 	updated_at                 timestamp,
-  primary key   ((id, team_id), stack_id),
+  primary key                (id, team_id),
 ) with comment = 'resource defines the resource on cloud e.g. sqs, s3 etc';
 
 create index if not exists on resources (team_id);
@@ -131,7 +149,7 @@ create table if not exists blueprints (
 	rollout_budget             varchar,
 	created_at                 timestamp,
 	updated_at                 timestamp,
-  primary key         ((id, team_id), stack_id),
+  primary key                (id, team_id),
 ) with comment = 'blueprint defines the configuration for the progressive rollout';
 
 create index if not exists on blueprints (team_id);
@@ -145,7 +163,7 @@ create table if not exists changesets (
   created_by          varchar,
   created_at          timestamp,
   updated_at          timestamp,
-  primary key         ((id, team_id), stack_id),
+  primary key         (id, team_id),
 ) with comment = 'changeset defines the state of the stack defined by calver';
 
 create index if not exists on changesets (team_id);
@@ -159,7 +177,7 @@ create table if not exists rollouts (
 	state               varchar,
 	created_at          timestamp,
 	updated_at          timestamp,
-  primary key         ((id, team_id), stack_id),
+  primary key         (id, team_id)
 ) with comment = 'rollouts is the result of a blueprint being applied';
 
 create index if not exists on rollouts (team_id);
@@ -186,15 +204,18 @@ create index if not exists on github_installations (team_id);
 create index if not exists on github_installations (installation_id);
 
 create table if not exists github_repos (
-  id                uuid,
-  team_id           uuid,
-  github_id         bigint,
-  name              varchar,
-  full_name         varchar,
-  installation_id   bigint,
-  created_at        timestamp,
-  updated_at        timestamp,
-  primary key       ((id, team_id), installation_id),
+  id                                uuid,
+  team_id                           uuid,
+  github_id                         bigint,
+  name                              varchar,
+  full_name                         varchar,
+  installation_id                   bigint,
+  default_branch                    varchar,
+  is_active                         boolean,
+  has_early_warning                 boolean,
+  created_at                        timestamp,
+  updated_at                        timestamp,
+  primary key                       (id, team_id)
 ) with comment = 'repositories provided by github installation';
 
 create index if not exists on github_repos (team_id);
@@ -206,16 +227,16 @@ create index if not exists on github_repos (full_name);
 -- providers/slack
 
 create table if not exists slack (
-  id                      uuid,
-  team_id                 uuid,
-  channel_id              varchar,
-  channel_name            varchar,
-  workspace_name          varchar,
-  workspace_id            varchar,
-  workspace_bot_token     varchar,
-  created_at              timestamp,
-  updated_at              timestamp,
-  primary key             (id, team_id),
+  id                                uuid,
+  team_id                           uuid,
+  channel_id                        varchar,
+  channel_name                      varchar,
+  workspace_name                    varchar,
+  workspace_id                      varchar,
+  workspace_bot_token               varchar,
+  created_at                        timestamp,
+  updated_at                        timestamp,
+  primary key                       (id, team_id),
 ) with comment = 'slack channel info storage';
 
 create index if not exists on slack (team_id);
