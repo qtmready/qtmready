@@ -805,6 +805,7 @@ func (a *Activities) GetCoreRepoByProviderID(ctx context.Context, id string) (*c
 	return repo, nil
 }
 
+// SignalCoreRepoCtrl signals the core repository control workflow with the given signal and payload.
 func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *core.Repo, signal shared.WorkflowSignal, payload any) error {
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
