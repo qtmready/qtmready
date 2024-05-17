@@ -15,7 +15,9 @@ import (
 )
 
 type (
-	RepoWorkflows struct{}
+	RepoWorkflows struct {
+		acts *RepoActivities
+	}
 )
 
 // RepoCtrl is the controller for all the workflows related to the repository.
@@ -33,7 +35,7 @@ func (w *RepoWorkflows) RepoCtrl(ctx workflow.Context, repo *Repo) error {
 	pushChannel := workflow.GetSignalChannel(ctx, RepoSignalPush.String())
 
 	// setting up callbacks for channels
-	selector.AddReceive(pushChannel, onRepoPush(ctx, repo)) // post processing for push event recieved on repo.
+	selector.AddReceive(pushChannel, w.onRepoPush(ctx, repo)) // post processing for push event recieved on repo.
 
 	// TODO: need to come up with logic to shutdown when not required.
 	for !done {
@@ -48,7 +50,8 @@ func (w *RepoWorkflows) DefaultBranchCtrl(ctx workflow.Context, repo *Repo) erro
 	return nil
 }
 
-func (w *RepoWorkflows) FeatureBranchCtrl(ctx workflow.Context, repo *Repo) error {
+// BranchCtrl is the controller for all the branches except the default branch.
+func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo) error {
 	return nil
 }
 
@@ -458,9 +461,8 @@ func _early(ctx workflow.Context, rpa RepoIO, mpa MessageIO, pushEvent *shared.P
 }
 
 // onRepoPush is the cordination function for the push event signal.
-func onRepoPush(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
+func (w *RepoWorkflows) onRepoPush(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
-	activities := &StackActivities{}
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 
 	ctx = workflow.WithActivityOptions(ctx, opts)
@@ -476,7 +478,7 @@ func onRepoPush(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
 		if RefFromBranchName(repo.DefaultBranch) == payload.BranchRef {
 			logger.Info("repo_ctrl/push: signaling default branch ...", slog.String("repo_id", repo.ID.String()))
 
-			err := workflow.ExecuteActivity(ctx, activities.SignalDefaultBranch, repo, RepoSignalPush, payload).Get(ctx, nil)
+			err := workflow.ExecuteActivity(ctx, w.acts.SignalDefaultBranch, repo, RepoSignalPush, payload).Get(ctx, nil)
 			if err != nil {
 				logger.Warn("repo_ctrl/push: retrying signal ...", slog.String("repo_id", repo.ID.String()))
 			}
@@ -488,7 +490,7 @@ func onRepoPush(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
 
 		branch := BranchNameFromRef(payload.BranchRef)
 
-		err := workflow.ExecuteActivity(ctx, activities.SignalFeatureBranch, repo, RepoSignalPush, payload, branch).Get(ctx, nil)
+		err := workflow.ExecuteActivity(ctx, w.acts.SignalBranch, repo, RepoSignalPush, payload, branch).Get(ctx, nil)
 		if err != nil {
 			logger.Warn("repo_ctrl/push: retrying signal ...", slog.String("repo_id", repo.ID.String()))
 		}
