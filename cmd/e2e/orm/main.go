@@ -43,12 +43,14 @@ func main() {
 	repos := make([]core.Repo, 0)
 
 	if err := db.Filter(&core.Repo{}, &repos, db.QueryParams{"is_monorepo": "true"}); err != nil {
+		shared.Logger().Error("Error filter repos", "error", err)
 	}
 
-	for idx, rs := range repos {
-		rs.Name = fmt.Sprintf("repo-%d", idx)
+	for idx := range repos {
+		repo := repos[idx]
+		repo.Name = fmt.Sprintf("repo-%d", idx)
 
-		if err := db.Save(&rs); err != nil {
+		if err := db.Save(&repo); err != nil {
 			shared.Logger().Error("Error saving repo", "error", err)
 		}
 	}

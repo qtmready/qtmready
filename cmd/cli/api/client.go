@@ -28,7 +28,9 @@ import (
 	"go.breu.io/quantm/internal/providers/github"
 )
 
-var Client client
+var (
+	Client client
+)
 
 type (
 	client struct {
@@ -48,7 +50,7 @@ func (c *client) CheckStatus(r *http.Response, successCodes ...int) {
 		}
 	}
 
-	if pass == false {
+	if !pass {
 		fmt.Printf("Command failed with status code: %d\r\n", r.StatusCode)
 	}
 }
