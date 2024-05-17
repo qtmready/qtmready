@@ -653,7 +653,9 @@ func (a *Activities) GetAllRelevantActions(ctx context.Context, payload *core.Re
 	return nil
 }
 
-func (a *Activities) GetRepoByProviderID(ctx context.Context, payload *core.RepoIOGetRepoByProviderIDPayload) (*core.RepoProviderData, error) {
+func (a *Activities) GetRepoByProviderID(
+	ctx context.Context, payload *core.RepoIOGetRepoByProviderIDPayload,
+) (*core.RepoProviderData, error) {
 	prepo := &Repo{}
 
 	// NOTE: these activities are used in api not in temporal workflow use shared.Logger()
@@ -755,29 +757,32 @@ func (a *Activities) GetOrgUsers(ctx context.Context, payload *core.RepoIOGetOrg
 
 func (a *Activities) RefreshDefaultBranches(ctx context.Context, payload *core.RepoIORefreshDefaultBranchesPayload) error {
 	logger := activity.GetLogger(ctx)
-	prepo := &Repo{}
 
-	if err := db.Get(prepo, db.QueryParams{"team_id": payload.TeamID}); err != nil {
-		logger.Error("RefreshDefaultBranches: Unable to get the gitub repo", "Error", err)
-		return err
+	prepos := make([]*Repo, 0)
+	if err := db.Filter(&Repo{}, prepos, db.QueryParams{"team_id": payload.TeamID}); err != nil {
+		shared.Logger().Error("Error filter repos", "error", err)
 	}
 
-	client, err := Instance().GetClientFromInstallation(prepo.InstallationID)
+	client, err := Instance().GetClientFromInstallation(prepos[0].InstallationID)
 	if err != nil {
 		logger.Error("GetClientFromInstallation failed", "Error", err)
 		return err
 	}
 
-	repo, _, err := client.Repositories.Get(ctx, strings.Split(prepo.FullName, "/")[0], prepo.Name)
-	if err != nil {
-		logger.Error("RefreshDefaultBranches Activity", "Error", err)
-		return err
-	}
+	// Save the github org users
+	for _, prepo := range prepos {
+		repo, _, err := client.Repositories.Get(ctx, strings.Split(prepo.FullName, "/")[0], prepo.Name)
+		if err != nil {
+			logger.Error("RefreshDefaultBranches Activity", "Error", err)
+			return err
+		}
 
-	prepo.DefaultBranch = *repo.DefaultBranch
-	if err := db.Save(prepo); err != nil {
-		logger.Error("Error saving ggithub repo", "Error", err)
-		return err
+		prepo.DefaultBranch = *repo.DefaultBranch
+
+		if err := db.Save(prepo); err != nil {
+			logger.Error("Error saving ggithub repo", "Error", err)
+			return err
+		}
 	}
 
 	return nil
