@@ -802,9 +802,9 @@ func (a *Activities) GetReposForInstallation(ctx context.Context, installationID
 // GetCoreRepoByProviderID retrieves a core repository by its provider ID.
 func (a *Activities) GetCoreRepoByProviderID(ctx context.Context, id string) (*core.Repo, error) {
 	repo := &core.Repo{}
-	if err := db.Get(repo, db.QueryParams{"provider_id": id}); err != nil {
+	if err := db.Get(repo, db.QueryParams{"provider_id": "'" + id + "'"}); err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	return repo, nil
 }
