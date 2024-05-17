@@ -139,8 +139,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 	return nil
 }
 
-// RefreshDefaultBranch refresh the default branch for all repositories associated with the given teamID.
-func (w *Workflows) RefreshDefaultBranch(ctx workflow.Context, teamID string) error {
+// PostInstall refresh the default branch for all repositories associated with the given teamID and gets orgs users.
+func (w *Workflows) PostInstall(ctx workflow.Context, teamID string) error {
 	return nil
 }
 

@@ -279,6 +279,32 @@ func (githubinstallation *Installation) GetTable() itable.ITable {
 	return githubinstallationTable
 }
 
+// GithubOrgMembers defines model for GithubOrgMembers.
+type GithubOrgMembers struct {
+	Company   string     `json:"company"`
+	CreatedAt time.Time  `json:"created_at"`
+	Email     string     `json:"email"`
+	ID        gocql.UUID `json:"id"`
+	Name      string     `json:"name"`
+	UpdatedAt time.Time  `json:"updated_at"`
+}
+
+var (
+	githuborgmembersMeta = itable.Metadata{
+		M: &table.Metadata{
+			Name:    "github_org_members",
+			Columns: []string{"company", "created_at", "email", "id", "name", "updated_at"},
+			PartKey: []string{"id"},
+		},
+	}
+
+	githuborgmembersTable = itable.New(*githuborgmembersMeta.M)
+)
+
+func (githuborgmembers *GithubOrgMembers) GetTable() itable.ITable {
+	return githuborgmembersTable
+}
+
 // Repo defines model for GithubRepo.
 type Repo struct {
 	CreatedAt       time.Time    `json:"created_at"`

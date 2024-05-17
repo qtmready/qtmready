@@ -693,3 +693,94 @@ func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *cor
 
 	return nil
 }
+
+func (a *Activities) GetOrgUsers(ctx context.Context, payload *core.RepoIOGetOrgUsersPayload) error {
+	logger := activity.GetLogger(ctx)
+	prepo := &Repo{}
+
+	if err := db.Get(prepo, db.QueryParams{"team_id": payload.TeamID}); err != nil {
+		logger.Error("GetOrgUsers: Unable to get the gitub repo", "Error", err)
+		return err
+	}
+
+	client, err := Instance().GetClientFromInstallation(prepo.InstallationID)
+	if err != nil {
+		logger.Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	olopts := &gh.OrganizationsListOptions{
+		ListOptions: gh.ListOptions{
+			Page:    1,
+			PerPage: 1, // Adjust this value as needed
+		},
+	}
+
+	// NOTE: make dynamic and get the sepecific organizations
+	orgs, _, err := client.Organizations.ListAll(ctx, olopts)
+	if err != nil {
+		logger.Error("List the organizations failed", "Error", err)
+		return err
+	}
+
+	lmopts := &gh.ListMembersOptions{
+		ListOptions: gh.ListOptions{
+			Page:    1,
+			PerPage: 1, // Adjust this value as needed
+		},
+	}
+
+	members, _, err := client.Organizations.ListMembers(ctx, *orgs[0].Name, lmopts)
+	if err != nil {
+		logger.Error("List the organization members failed", "Error", err)
+		return err
+	}
+
+	logger.Info("organization members count: ", len(members))
+
+	// Save the github org users
+	for _, member := range members {
+		m := GithubOrgMembers{
+			Name:    *member.Name,
+			Email:   *member.Email,
+			Company: *member.Company,
+		}
+
+		if err := db.Save(&m); err != nil {
+			logger.Error("Error saving github org members", "Error", err)
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (a *Activities) RefreshDefaultBranches(ctx context.Context, payload *core.RepoIORefreshDefaultBranchesPayload) error {
+	logger := activity.GetLogger(ctx)
+	prepo := &Repo{}
+
+	if err := db.Get(prepo, db.QueryParams{"team_id": payload.TeamID}); err != nil {
+		logger.Error("RefreshDefaultBranches: Unable to get the gitub repo", "Error", err)
+		return err
+	}
+
+	client, err := Instance().GetClientFromInstallation(prepo.InstallationID)
+	if err != nil {
+		logger.Error("GetClientFromInstallation failed", "Error", err)
+		return err
+	}
+
+	repo, _, err := client.Repositories.Get(ctx, strings.Split(prepo.FullName, "/")[0], prepo.Name)
+	if err != nil {
+		logger.Error("RefreshDefaultBranches Activity", "Error", err)
+		return err
+	}
+
+	prepo.DefaultBranch = *repo.DefaultBranch
+	if err := db.Save(prepo); err != nil {
+		logger.Error("Error saving ggithub repo", "Error", err)
+		return err
+	}
+
+	return nil
+}

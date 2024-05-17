@@ -143,6 +143,14 @@ type (
 	RepoIOUpdateRepoHasRarlyWarningPayload struct {
 		ProviderID string `json:"provider_id"`
 	}
+
+	RepoIOGetOrgUsersPayload struct {
+		TeamID string `json:"team_id"`
+	}
+
+	RepoIORefreshDefaultBranchesPayload struct {
+		TeamID string `json:"team_id"`
+	}
 )
 
 // MessageIO payloads.

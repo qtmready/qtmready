@@ -68,6 +68,8 @@ type (
 		GetAllRelevantActions(ctx context.Context, payload *RepoIOGetAllRelevantActionsPayload) error
 		GetRepoByProviderID(ctx context.Context, payload *RepoIOGetRepoByProviderIDPayload) (*RepoProviderData, error)
 		UpdateRepoHasRarlyWarning(ctx context.Context, payload *RepoIOUpdateRepoHasRarlyWarningPayload) error
+		GetOrgUsers(ctx context.Context, payload *RepoIOGetOrgUsersPayload) error
+		RefreshDefaultBranches(ctx context.Context, payload *RepoIORefreshDefaultBranchesPayload) error
 	}
 
 	// CloudIO is the interface that defines the operations that can be performed on a cloud provider.

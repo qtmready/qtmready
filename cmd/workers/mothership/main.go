@@ -55,7 +55,7 @@ func main() {
 	// provider workflows
 	providerWrkr.RegisterWorkflow(githubwfs.OnInstallationEvent)
 	providerWrkr.RegisterWorkflow(githubwfs.OnInstallationRepositoriesEvent)
-	providerWrkr.RegisterWorkflow(githubwfs.RefreshDefaultBranch)
+	providerWrkr.RegisterWorkflow(githubwfs.PostInstall)
 	providerWrkr.RegisterWorkflow(githubwfs.OnPushEvent)
 	providerWrkr.RegisterWorkflow(githubwfs.OnPullRequestEvent)
 	providerWrkr.RegisterWorkflow(githubwfs.OnLabelEvent)
