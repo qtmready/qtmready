@@ -20,6 +20,7 @@ package github
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -110,11 +111,13 @@ func handlePushEvent(ctx echo.Context) error {
 	shared.Logger().Info("push event received ...", "action", payload.Installation.ID)
 
 	// the value will be `NoCommit` if we have a tag push, or squash merge.
+	// TODO: handle tag.
 	if payload.After == NoCommit {
-		return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: db.NullUUID, Status: WorkflowStatusSkipped})
+		return ctx.JSON(http.StatusNoContent, nil)
 	}
 
 	w := &Workflows{}
+	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
 	opts := shared.Temporal().
 		Queue(shared.ProvidersQueue).
 		WorkflowOptions(
@@ -123,15 +126,80 @@ func handlePushEvent(ctx echo.Context) error {
 			shared.WithWorkflowElement("repo"),
 			shared.WithWorkflowElementID(payload.Repository.ID.String()),
 			shared.WithWorkflowMod(WebhookEventPush.String()),
-			shared.WithWorkflowProp("ref", payload.Ref),
+			shared.WithWorkflowModID(delievery),
 		)
 
-	exe, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPushEvent, payload)
+	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPushEvent, payload)
 	if err != nil {
+		shared.Logger().Error("unable to signal OnPushEvent ...", "options", opts, "error", err)
+		return nil
+	}
+
+	repos := make([]Repo, 0)
+	err = db.Filter(
+		&Repo{},
+		&repos,
+		db.QueryParams{
+			"installation_id": payload.Installation.ID.String(),
+			"github_id":       payload.Repository.ID.String(),
+		},
+	)
+
+	if err != nil {
+		shared.Logger().Error("unable to filter repos ...", "error", err)
 		return err
 	}
 
-	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
+	if len(repos) == 0 {
+		shared.Logger().Warn(
+			"webhook/push: unknown repo",
+			slog.Int64("github_repo__installation_id", payload.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", payload.Repository.ID.Int64()),
+		)
+
+		return ctx.JSON(http.StatusNoContent, nil)
+	}
+
+	githubrepo := repos[0]
+
+	if !githubrepo.HasEarlyWarning {
+		shared.Logger().Warn(
+			"webhook/push: uncofigured repo",
+			slog.Int64("github_repo__installation_id", payload.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", payload.Repository.ID.Int64()),
+			slog.String("github_repo__id", githubrepo.ID.String()),
+		)
+
+		return ctx.JSON(http.StatusNoContent, nil)
+	}
+
+	shared.Logger().Info(
+		"webhook/push: configured repo",
+		slog.Int64("github_repo__installation_id", payload.Installation.ID.Int64()),
+		slog.Int64("github_repo__github_id", payload.Repository.ID.Int64()),
+		slog.String("github_repo__id", githubrepo.ID.String()),
+	)
+
+	// w := &Workflows{}
+	// opts := shared.Temporal().
+	// 	Queue(shared.ProvidersQueue).
+	// 	WorkflowOptions(
+	// 		shared.WithWorkflowBlock("github"),
+	// 		shared.WithWorkflowBlockID(payload.Installation.ID.String()),
+	// 		shared.WithWorkflowElement("repo"),
+	// 		shared.WithWorkflowElementID(payload.Repository.ID.String()),
+	// 		shared.WithWorkflowMod(WebhookEventPush.String()),
+	// 		shared.WithWorkflowProp("ref", payload.Ref),
+	// 	)
+
+	// exe, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPushEvent, payload)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
+
+	return ctx.JSON(http.StatusOK, nil)
 }
 
 // handlePullRequestEvent handles GitHub pull request event.
