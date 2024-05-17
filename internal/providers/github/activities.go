@@ -38,25 +38,16 @@ type (
 
 // CreateOrUpdateInstallation creates or update the Installation.
 func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *Installation) (*Installation, error) {
-	log := activity.GetLogger(ctx)
 	installation, err := a.GetInstallation(ctx, payload.InstallationID)
 
 	// if we get the installation, the error will be nil
 	if err == nil {
-		log.Info("installation found, updating status ...")
-
 		installation.Status = payload.Status
 	} else {
-		log.Info("installation not found, creating ...")
-		log.Debug("payload", "payload", payload)
-
 		installation = payload
 	}
 
-	log.Info("saving installation ...")
-
 	if err := db.Save(installation); err != nil {
-		log.Error("error saving installation", "error", err)
 		return installation, err
 	}
 
@@ -804,7 +795,7 @@ func (a *Activities) GetReposForInstallation(ctx context.Context, installationID
 	return repos, nil
 }
 
-// GetCoreRepoByProviderID retrieves a core repository by its provider ID.
+// GetCoreRepoByProviderID retrieves a core repository given the db id of the github repository.
 func (a *Activities) GetCoreRepoByProviderID(ctx context.Context, id string) (*core.Repo, error) {
 	repo := &core.Repo{}
 	if err := db.Get(repo, db.QueryParams{"provider_id": "'" + id + "'"}); err != nil {
@@ -812,4 +803,21 @@ func (a *Activities) GetCoreRepoByProviderID(ctx context.Context, id string) (*c
 	}
 
 	return repo, nil
+}
+
+func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *core.Repo, signal shared.WorkflowSignal, payload any) error {
+	opts := shared.Temporal().
+		Queue(shared.CoreQueue).
+		WorkflowOptions(
+			shared.WithWorkflowBlock("repo"),
+			shared.WithWorkflowBlockID(repo.ID.String()),
+		)
+
+	rw := &core.RepoWorkflows{}
+
+	_, err := shared.Temporal().
+		Client().
+		SignalWithStartWorkflow(context.Background(), opts.ID, signal.String(), payload, opts, rw.RepoCtrl, repo)
+
+	return err
 }
