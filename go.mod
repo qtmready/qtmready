@@ -24,7 +24,7 @@ require (
 	github.com/go-playground/validator/v10 v10.20.0
 	github.com/gocql/gocql v1.6.0
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/google/go-github/v53 v53.2.0
+	github.com/google/go-github/v62 v62.0.0
 	github.com/gosimple/slug v1.14.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jxskiss/base62 v1.1.0

@@ -25,7 +25,7 @@ import (
 	"strconv"
 
 	"github.com/gocql/gocql"
-	gh "github.com/google/go-github/v53/github"
+	gh "github.com/google/go-github/v62/github"
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/quantm/internal/auth"

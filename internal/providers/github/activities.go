@@ -23,7 +23,7 @@ import (
 	"io"
 	"strings"
 
-	gh "github.com/google/go-github/v53/github"
+	gh "github.com/google/go-github/v62/github"
 	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/quantm/internal/core"
@@ -174,7 +174,7 @@ func (a *Activities) GetLatestCommit(ctx context.Context, payload *core.RepoIOGe
 	}
 
 	gb, _, err := client.Repositories.
-		GetBranch(context.Background(), strings.Split(prepo.FullName, "/")[0], prepo.Name, payload.BranchName, false)
+		GetBranch(context.Background(), strings.Split(prepo.FullName, "/")[0], prepo.Name, payload.BranchName, 10)
 	if err != nil {
 		logger.Error("GetBranch for Github Repo failed", "Error", err)
 		return nil, err

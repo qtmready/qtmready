@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	gh "github.com/google/go-github/v53/github"
+	gh "github.com/google/go-github/v62/github"
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.temporal.io/sdk/workflow"
 
