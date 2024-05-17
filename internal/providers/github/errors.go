@@ -21,6 +21,10 @@ import (
 	"errors"
 )
 
+type (
+	MissingConfigurationError struct{}
+)
+
 var (
 	ErrNoEventToParse               = errors.New("no event specified to parse")
 	ErrInvalidHTTPMethod            = errors.New("invalid HTTP Method")

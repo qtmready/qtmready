@@ -653,9 +653,7 @@ func (a *Activities) GetAllRelevantActions(ctx context.Context, payload *core.Re
 	return nil
 }
 
-func (a *Activities) GetRepoByProviderID(
-	ctx context.Context, payload *core.RepoIOGetRepoByProviderIDPayload,
-) (*core.RepoProviderData, error) {
+func (a *Activities) GetRepoByProviderID(ctx context.Context, payload *core.RepoIOGetRepoByProviderIDPayload) (*core.RepoProviderData, error) {
 	prepo := &Repo{}
 
 	// NOTE: these activities are used in api not in temporal workflow use shared.Logger()
@@ -783,4 +781,30 @@ func (a *Activities) RefreshDefaultBranches(ctx context.Context, payload *core.R
 	}
 
 	return nil
+}
+
+// GetRepoForInstallation filters repositories by installation ID and GitHub ID.
+// A repo on GitHub can be associated with multiple installations. This function is used to get the repo for a specific installation.
+func (a *Activities) GetReposForInstallation(ctx context.Context, installationID, githubID string) ([]Repo, error) {
+	var repos []Repo
+	err := db.Filter(&Repo{}, &repos, db.QueryParams{
+		"installation_id": installationID,
+		"github_id":       githubID,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return repos, nil
+}
+
+// GetCoreRepoByProviderID retrieves a core repository by its provider ID.
+func (a *Activities) GetCoreRepoByProviderID(ctx context.Context, id string) (*core.Repo, error) {
+	repo := &core.Repo{}
+	if err := db.Get(repo, db.QueryParams{"provider_id": id}); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
 }

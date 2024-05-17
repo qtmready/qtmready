@@ -20,7 +20,7 @@ package github
 import (
 	"context"
 	"fmt"
-	"strings"
+	"log/slog"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -75,11 +75,11 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 
 	// keep listening for signals until we have received both the installation id and the team id
 	for !(status.WebhookDone && status.RequestDone) {
-		logger.Info("waiting for signals ....")
+		logger.Info("github/installation: waiting for signals ....")
 		selector.Select(ctx)
 	}
 
-	logger.Info("all signals received, processing ...")
+	logger.Info("github/installation: all signals received, processing ...")
 
 	// Finalizing the installation
 	installation := &Installation{
@@ -99,17 +99,17 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 		Get(actx, installation)
 
 	if err != nil {
-		logger.Error("error saving installation", "error", err)
+		logger.Error("github/installation: error ...", "error", err)
 		return err
 	}
 
 	// If webhook.Action == "created", save the repository information to the database.
 	if webhook.Action == "created" {
-		logger.Info("saving associated repositories ...")
+		logger.Info("github/installation: saving associated repositories ...")
 
 		// asynchronously save the repos
 		for _, repository := range webhook.Repositories {
-			logger.Info("saving repository ...")
+			logger.Info("github/installation: saving repository ...")
 			logger.Debug("repository", "repository", repository)
 
 			repo := &Repo{
@@ -133,8 +133,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 		}
 	}
 
-	logger.Info("installation complete")
-	logger.Debug("installation", "installation", installation)
+	logger.Info("github/installation: complete")
 
 	return nil
 }
@@ -149,53 +148,115 @@ func (w *Workflows) PostInstall(ctx workflow.Context, teamID string) error {
 // rollout.
 func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error {
 	logger := workflow.GetLogger(ctx)
-	logger.Info("received push event ...")
+	opts := workflow.ActivityOptions{
+		StartToCloseTimeout: 60 * time.Second,
+	}
+	_ctx := workflow.WithActivityOptions(ctx, opts)
+	repos := make([]Repo, 0)
+	corepo := &core.Repo{}
 
-	branchName := payload.Ref
-	if parts := strings.Split(payload.Ref, "/"); len(parts) == 3 {
-		branchName = parts[len(parts)-1]
+	logger.Info(
+		"github/push: preparing ...",
+		slog.Int64("github_repo__installation_id", payload.Installation.ID.Int64()),
+		slog.Int64("github_repo__github_id", payload.Repository.ID.Int64()),
+	)
+
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.GetReposForInstallation, payload.Installation.ID.String(), payload.Repository.ID.String()).
+		Get(_ctx, &repos); err != nil {
+		logger.Warn("github/push: database error, retrying ... ")
 	}
 
-	if strings.Contains(branchName, "-tempcopy-for-target-") {
-		logger.Debug("OnPushEvent", "push on temp branch", branchName)
+	if len(repos) == 0 {
+		logger.Warn(
+			"github/push: unknown repo",
+			slog.Int64("github_repo__installation_id", payload.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", payload.Repository.ID.Int64()),
+		)
+
 		return nil
 	}
 
-	signalPayload := &shared.PushEventSignal{
-		RefBranch:      branchName,
-		RepoID:         payload.Repository.ID,
-		RepoName:       payload.Repository.Name,
-		RepoOwner:      payload.Repository.Owner.Login,
-		DefaultBranch:  payload.Repository.DefaultBranch,
-		InstallationID: payload.Installation.ID,
-		RepoProvider:   "github",
-	}
-
-	cw := &core.RepoWorkflows{}
-	opts := shared.Temporal().
-		Queue(shared.CoreQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("repo"),
-			shared.WithWorkflowBlockID(payload.Repository.ID.String()),
-			shared.WithWorkflowElement("branch"),
-			shared.WithWorkflowElementID(branchName),
-			shared.WithWorkflowProp("type", "branch_controller"),
+	// TODO: handle the unique together case during installation.
+	if len(repos) > 1 {
+		logger.Warn(
+			"github/push: multiple repos found",
+			slog.Int64("github_repo__installation_id", payload.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", payload.Repository.ID.Int64()),
 		)
-
-	_, err := shared.Temporal().
-		Client().SignalWithStartWorkflow(
-		context.Background(),
-		opts.ID,
-		shared.WorkflowPushEvent.String(),
-		signalPayload,
-		opts,
-		cw.BranchController,
-	)
-	if err != nil {
-		logger.Error("OnPushEvent: Error signaling workflow", "error", err)
-		return err
 	}
 
+	repo := repos[0]
+
+	if !repo.HasEarlyWarning || !repo.IsActive {
+		logger.Warn(
+			"webhook/push: uncofigured repo",
+			slog.Int64("github_repo__installation_id", payload.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", payload.Repository.ID.Int64()),
+			slog.String("github_repo__id", repo.ID.String()),
+		)
+	}
+
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.GetCoreRepoByProviderID, repo.ID.String()).
+		Get(_ctx, corepo); err != nil {
+		logger.Warn("github/push: database error, retrying ... ")
+	}
+
+	logger.Info(
+		"github/push: signal core repo ...",
+		slog.Int64("github_repo__installation_id", payload.Installation.ID.Int64()),
+		slog.Int64("github_repo__github_id", payload.Repository.ID.Int64()),
+		slog.String("github_repo__id", repo.ID.String()),
+		slog.String("core_repo__id", corepo.ID.String()),
+	)
+
+	// branchName := payload.Ref
+	// if parts := strings.Split(payload.Ref, "/"); len(parts) == 3 {
+	// 	branchName = parts[len(parts)-1]
+	// }
+
+	// if strings.Contains(branchName, "-tempcopy-for-target-") {
+	// 	logger.Debug("OnPushEvent", "push on temp branch", branchName)
+	// 	return nil
+	// }
+
+	// signalPayload := &shared.PushEventSignal{
+	// 	RefBranch:      branchName,
+	// 	RepoID:         payload.Repository.ID,
+	// 	RepoName:       payload.Repository.Name,
+	// 	RepoOwner:      payload.Repository.Owner.Login,
+	// 	DefaultBranch:  payload.Repository.DefaultBranch,
+	// 	InstallationID: payload.Installation.ID,
+	// 	RepoProvider:   "github",
+	// }
+
+	// cw := &core.RepoWorkflows{}
+	// opts := shared.Temporal().
+	// 	Queue(shared.CoreQueue).
+	// 	WorkflowOptions(
+	// 		shared.WithWorkflowBlock("repo"),
+	// 		shared.WithWorkflowBlockID(payload.Repository.ID.String()),
+	// 		shared.WithWorkflowElement("branch"),
+	// 		shared.WithWorkflowElementID(branchName),
+	// 		shared.WithWorkflowProp("type", "branch_controller"),
+	// 	)
+
+	// _, err := shared.Temporal().
+	// 	Client().SignalWithStartWorkflow(
+	// 	context.Background(),
+	// 	opts.ID,
+	// 	shared.WorkflowPushEvent.String(),
+	// 	signalPayload,
+	// 	opts,
+	// 	cw.BranchController,
+	// )
+	// if err != nil {
+	// 	logger.Error("OnPushEvent: Error signaling workflow", "error", err)
+	// 	return err
+	// }
+
+	// return nil
 	return nil
 }
 
