@@ -436,7 +436,7 @@ var (
 		M: &table.Metadata{
 			Name:    "repos",
 			Columns: []string{"created_at", "default_branch", "id", "is_monorepo", "message_provider", "message_provider_data", "name", "provider", "provider_id", "stack_id", "team_id", "threshold", "updated_at"},
-			PartKey: []string{"team_id"},
+			PartKey: []string{"id", "team_id"},
 		},
 	}
 

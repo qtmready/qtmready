@@ -19,6 +19,7 @@ package db
 
 import (
 	"reflect"
+	"slices"
 	"time"
 
 	iqb "github.com/Guilospanck/igocqlx/qb"
@@ -158,10 +159,10 @@ func Update[T Entity](entity T) error {
 	setval(entity, "UpdatedAt", now)
 
 	tbl := entity.GetTable()
-	columns := removeIDColumn(tbl.Metadata().M.Columns)
+	columns := removePartKey(tbl.Metadata().M.Columns, tbl.Metadata().M.PartKey)
 	stmnt, names := qb.Update(tbl.Name()).
 		Set(columns...).
-		Where(qb.Eq("id")).
+		Where(whereClause(tbl.Metadata().M.PartKey)...).
 		ToCql()
 
 	query := DB().Session.Query(stmnt, names)
@@ -194,13 +195,23 @@ func setval(entity Entity, name string, val any) {
 	elem.FieldByName(name).Set(reflect.ValueOf(val))
 }
 
-func removeIDColumn(columns []string) []string {
+func removePartKey(columns, keys []string) []string {
 	result := make([]string, 0)
 
 	for _, col := range columns {
-		if col != "id" {
+		if !slices.Contains(keys, col) {
 			result = append(result, col)
 		}
+	}
+
+	return result
+}
+
+func whereClause(keys []string) []qb.Cmp {
+	result := make([]qb.Cmp, 0)
+
+	for _, key := range keys {
+		result = append(result, qb.Eq(key))
 	}
 
 	return result
