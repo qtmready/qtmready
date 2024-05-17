@@ -118,7 +118,7 @@ func Filter(entity Entity, dest any, params QueryParams) error {
 //	user := User{Email: "user@example.com"}
 //	user, err := db.Save(&user)
 func Save[T Entity](entity T) error {
-	pk := getID(entity)
+	pk := _id(entity)
 
 	if pk.String() == NullUUID {
 		return Create(entity)
@@ -137,9 +137,9 @@ func Create[T Entity](entity T) error {
 func CreateWithID[T Entity](entity T, pk gocql.UUID) error {
 	now := time.Now()
 
-	setval(entity, "ID", pk)
-	setval(entity, "CreatedAt", now)
-	setval(entity, "UpdatedAt", now)
+	_set(entity, "ID", pk)
+	_set(entity, "CreatedAt", now)
+	_set(entity, "UpdatedAt", now)
 
 	if err := entity.PreCreate(); err != nil {
 		return err
@@ -156,13 +156,14 @@ func CreateWithID[T Entity](entity T, pk gocql.UUID) error {
 // NOTE: you must pass the complete struct.
 func Update[T Entity](entity T) error {
 	now := time.Now()
-	setval(entity, "UpdatedAt", now)
+	_set(entity, "UpdatedAt", now)
 
 	tbl := entity.GetTable()
-	columns := removePartKey(tbl.Metadata().M.Columns, tbl.Metadata().M.PartKey)
+	columns := _delPK(tbl.Metadata().M.Columns, tbl.Metadata().M.PartKey)
+	clause := _wherePK(tbl.Metadata().M.PartKey)
 	stmnt, names := qb.Update(tbl.Name()).
 		Set(columns...).
-		Where(whereClause(tbl.Metadata().M.PartKey)...).
+		Where(clause...).
 		ToCql()
 
 	query := DB().Session.Query(stmnt, names)
@@ -185,17 +186,17 @@ func Delete[T Entity](entity T) error {
 }
 
 // gets the ID of the entity. The entity value is a pointer to the struct.
-func getID(entity Entity) gocql.UUID {
+func _id(entity Entity) gocql.UUID {
 	return reflect.ValueOf(entity).Elem().FieldByName("ID").Interface().(gocql.UUID)
 }
 
 // Set the value of the field of the entity. The entity value is a pointer to the struct.
-func setval(entity Entity, name string, val any) {
+func _set(entity Entity, name string, val any) {
 	elem := reflect.ValueOf(entity).Elem()
 	elem.FieldByName(name).Set(reflect.ValueOf(val))
 }
 
-func removePartKey(columns, keys []string) []string {
+func _delPK(columns, keys []string) []string {
 	result := make([]string, 0)
 
 	for _, col := range columns {
@@ -207,7 +208,7 @@ func removePartKey(columns, keys []string) []string {
 	return result
 }
 
-func whereClause(keys []string) []qb.Cmp {
+func _wherePK(keys []string) []qb.Cmp {
 	result := make([]qb.Cmp, 0)
 
 	for _, key := range keys {
