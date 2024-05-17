@@ -449,11 +449,12 @@ func (repo *Repo) GetTable() itable.ITable {
 
 // RepoCreateRequest defines model for RepoCreateRequest.
 type RepoCreateRequest struct {
-	Code       string       `json:"code"`
-	IsMonorepo bool         `json:"is_monorepo"`
-	Provider   RepoProvider `json:"provider"`
-	ProviderID string       `json:"provider_id"`
-	Threshold  int          `json:"threshold"`
+	IsMonorepo          bool                `json:"is_monorepo"`
+	MessageProvider     MessageProvider     `json:"message_provider"`
+	MessageProviderData MessageProviderData `json:"message_provider_data"`
+	Provider            RepoProvider        `json:"provider"`
+	ProviderID          string              `json:"provider_id"`
+	Threshold           int                 `json:"threshold"`
 }
 
 // RepoListResponse defines model for RepoListResponse.

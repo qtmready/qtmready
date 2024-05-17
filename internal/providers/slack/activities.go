@@ -19,13 +19,10 @@ package slack
 
 import (
 	"context"
-	"encoding/base64"
 
-	"github.com/slack-go/slack"
 	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/quantm/internal/core"
-	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -99,37 +96,4 @@ func (a *Activities) SendMergeConflictsMessage(ctx context.Context, teamID strin
 	logger.Info("Slack notification sent successfully")
 
 	return nil
-}
-
-func (a *Activities) CompleteOauthResponse(ctx context.Context, code string) (*core.MessageProviderData, error) {
-	var c HTTPClient
-
-	// NOTE: these activities are used in api not in temporal workflow use shared.Logger()
-	response, err := slack.GetOAuthV2Response(&c, ClientID(), ClientSecret(), code, ClientRedirectURL())
-	if err != nil {
-		shared.Logger().Error("Failed get response from slack oauth", "Error", err)
-		return nil, err
-	}
-
-	// Generate a key for AES-256.
-	key := generateKey(response.Team.ID)
-
-	// Encrypt the access token.
-	encryptedToken, err := encrypt([]byte(response.AccessToken), key)
-	if err != nil {
-		shared.Logger().Error("Failed to encrypt bot token", "Error", err)
-		return nil, err
-	}
-
-	mpsd := core.MessageProviderData{
-		Slack: &core.MessageProviderSlackData{
-			BotToken:      base64.StdEncoding.EncodeToString(encryptedToken), // Store the base64-encoded encrypted token
-			ChannelID:     response.IncomingWebhook.ChannelID,
-			ChannelName:   response.IncomingWebhook.Channel,
-			WorkspaceName: response.Team.Name,
-			WorkspaceID:   response.Team.ID,
-		},
-	}
-
-	return &mpsd, nil
 }

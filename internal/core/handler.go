@@ -238,19 +238,6 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
-	shared.Logger().Debug("repo provider data", "debug", rpd)
-
-	// message provider activities instance
-	mpa := Instance().MessageProvider(MessageProviderSlack) // TODO - maybe not hardcode to slack and get from payload
-
-	// message provider slack data
-	mpsd, err := mpa.CompleteOauthResponse(context.Background(), request.Code)
-	if err != nil {
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
-
-	shared.Logger().Debug("slack provider data", "debug", mpsd)
-
 	repo := &Repo{
 		Name:                rpd.Name,
 		DefaultBranch:       rpd.DefaultBranch,
@@ -259,10 +246,9 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 		Provider:            request.Provider,
 		Threshold:           request.Threshold,
 		TeamID:              teamID,
-		MessageProviderData: *mpsd,
+		MessageProvider:     request.MessageProvider,
+		MessageProviderData: request.MessageProviderData,
 	}
-
-	shared.Logger().Debug("core repe data", "debug", repo)
 
 	if err := db.Save(repo); err != nil {
 		return shared.NewAPIError(http.StatusInternalServerError, err)

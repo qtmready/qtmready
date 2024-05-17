@@ -5,6 +5,7 @@ generate:
   client: true
 import-mapping:
   "../../shared/v1/schema.yaml": go.breu.io/quantm/internal/shared
+  "../../core/v1/schema.yaml": go.breu.io/quantm/internal/core
 compatibility:
   always-prefix-enum-values: true
 output: openapi.gen.go

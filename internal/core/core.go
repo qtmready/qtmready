@@ -81,7 +81,6 @@ type (
 		SendNumberOfLinesExceedMessage(ctx context.Context, teamID, repoName, branchName string, threshold int,
 			branchChnages *BranchChanges) error
 		SendMergeConflictsMessage(ctx context.Context, teamID string, merge *LatestCommit) error
-		CompleteOauthResponse(ctx context.Context, code string) (*MessageProviderData, error)
 	}
 
 	// Providers is a struct that holds the different providers that are registered with the core.
