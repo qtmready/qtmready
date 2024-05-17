@@ -146,7 +146,7 @@ func (w *Workflows) PostInstall(ctx workflow.Context, teamID string) error {
 // OnPushEvent checks if the push event is associated with an open pull request.If so, it will get the idempotent key for
 // the immutable rollout. Depending upon the target branch, it will either queue the rollout or update the existing
 // rollout.
-func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error {
+func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	logger := workflow.GetLogger(ctx)
 	opts := workflow.ActivityOptions{
 		StartToCloseTimeout: 60 * time.Second,
@@ -157,12 +157,12 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 
 	logger.Info(
 		"github/push: preparing ...",
-		slog.Int64("github_repo__installation_id", payload.Installation.ID.Int64()),
-		slog.Int64("github_repo__github_id", payload.Repository.ID.Int64()),
+		slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+		slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
 	)
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.GetReposForInstallation, payload.Installation.ID.String(), payload.Repository.ID.String()).
+		ExecuteActivity(_ctx, activities.GetReposForInstallation, event.Installation.ID.String(), event.Repository.ID.String()).
 		Get(_ctx, &repos); err != nil {
 		logger.Warn("github/push: database error, retrying ... ")
 	}
@@ -170,8 +170,8 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	if len(repos) == 0 {
 		logger.Warn(
 			"github/push: unknown repo",
-			slog.Int64("github_repo__installation_id", payload.Installation.ID.Int64()),
-			slog.Int64("github_repo__github_id", payload.Repository.ID.Int64()),
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
 		)
 
 		return nil
@@ -181,8 +181,8 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	if len(repos) > 1 {
 		logger.Warn(
 			"github/push: multiple repos found",
-			slog.Int64("github_repo__installation_id", payload.Installation.ID.Int64()),
-			slog.Int64("github_repo__github_id", payload.Repository.ID.Int64()),
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
 		)
 	}
 
@@ -191,8 +191,8 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	if !repo.HasEarlyWarning || !repo.IsActive {
 		logger.Warn(
 			"webhook/push: uncofigured repo",
-			slog.Int64("github_repo__installation_id", payload.Installation.ID.Int64()),
-			slog.Int64("github_repo__github_id", payload.Repository.ID.Int64()),
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
 			slog.String("github_repo__id", repo.ID.String()),
 		)
 	}
@@ -200,16 +200,38 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	if err := workflow.
 		ExecuteActivity(_ctx, activities.GetCoreRepoByProviderID, repo.ID.String()).
 		Get(_ctx, corepo); err != nil {
-		logger.Warn("github/push: database error, retrying ... ")
+		logger.Warn(
+			"github/push: database error, retrying ... ",
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+			slog.String("github_repo__id", repo.ID.String()),
+			slog.String("core_repo__id", corepo.ID.String()),
+		)
 	}
 
 	logger.Info(
 		"github/push: signal core repo ...",
-		slog.Int64("github_repo__installation_id", payload.Installation.ID.Int64()),
-		slog.Int64("github_repo__github_id", payload.Repository.ID.Int64()),
+		slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+		slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
 		slog.String("github_repo__id", repo.ID.String()),
 		slog.String("core_repo__id", corepo.ID.String()),
 	)
+
+	payload := &core.RepoSignalPushPayload{
+		BranchRef: event.Ref,
+	}
+
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, corepo, core.RepoSignalPush, payload).
+		Get(_ctx, nil); err != nil {
+		logger.Warn(
+			"github/push: signal error, retrying ...",
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+			slog.String("github_repo__id", repo.ID.String()),
+			slog.String("core_repo__id", corepo.ID.String()),
+		)
+	}
 
 	// branchName := payload.Ref
 	// if parts := strings.Split(payload.Ref, "/"); len(parts) == 3 {

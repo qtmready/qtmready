@@ -80,6 +80,9 @@ func main() {
 	coreWrkr.RegisterWorkflow(repowfs.BranchController)
 	coreWrkr.RegisterWorkflow(repowfs.StaleBranchDetection)
 	coreWrkr.RegisterWorkflow(repowfs.PollMergeQueue)
+	coreWrkr.RegisterWorkflow(repowfs.RepoCtrl)
+	coreWrkr.RegisterWorkflow(repowfs.DefaultBranchCtrl)
+	coreWrkr.RegisterWorkflow(repowfs.BranchCtrl)
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.StackActivities{})
