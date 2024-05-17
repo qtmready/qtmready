@@ -317,6 +317,7 @@ type Blueprint struct {
 	Regions       BluePrintRegions `cql:"regions" json:"regions"`
 	RolloutBudget string           `cql:"rollout_budget" json:"rollout_budget"`
 	StackID       gocql.UUID       `cql:"stack_id" json:"stack_id"`
+	TeamID        gocql.UUID       `cql:"team_id" json:"team_id"`
 	UpdatedAt     time.Time        `cql:"updated_at" json:"updated_at"`
 }
 
@@ -324,8 +325,8 @@ var (
 	blueprintMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "blueprints",
-			Columns: []string{"created_at", "id", "name", "provider_config", "regions", "rollout_budget", "stack_id", "updated_at"},
-			PartKey: []string{},
+			Columns: []string{"created_at", "id", "name", "provider_config", "regions", "rollout_budget", "stack_id", "team_id", "updated_at"},
+			PartKey: []string{"id", "team_id"},
 		},
 	}
 
@@ -484,6 +485,7 @@ type Resource struct {
 	// Provider aws, gcp, azure
 	Provider  CloudProvider `cql:"provider" json:"provider"`
 	StackID   gocql.UUID    `cql:"stack_id" json:"stack_id"`
+	TeamID    gocql.UUID    `cql:"team_id" json:"team_id"`
 	UpdatedAt time.Time     `cql:"updated_at" json:"updated_at"`
 }
 
@@ -491,8 +493,8 @@ var (
 	resourceMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "resources",
-			Columns: []string{"config", "created_at", "driver", "id", "is_immutable", "name", "provider", "stack_id", "updated_at"},
-			PartKey: []string{},
+			Columns: []string{"config", "created_at", "driver", "id", "is_immutable", "name", "provider", "stack_id", "team_id", "updated_at"},
+			PartKey: []string{"id", "team_id"},
 		},
 	}
 
@@ -534,7 +536,7 @@ var (
 		M: &table.Metadata{
 			Name:    "stacks",
 			Columns: []string{"config", "created_at", "id", "name", "slug", "team_id", "updated_at"},
-			PartKey: []string{"team_id"},
+			PartKey: []string{"id", "team_id"},
 		},
 	}
 
@@ -574,6 +576,7 @@ type Workload struct {
 	RepoPath   string     `cql:"repo_path" json:"repo_path"`
 	ResourceID gocql.UUID `cql:"resource_id" json:"resource_id"`
 	StackID    gocql.UUID `cql:"stack_id" json:"stack_id"`
+	TeamID     gocql.UUID `cql:"team_id" json:"team_id"`
 	UpdatedAt  time.Time  `cql:"updated_at" json:"updated_at"`
 }
 
@@ -581,8 +584,8 @@ var (
 	workloadMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "workloads",
-			Columns: []string{"builder", "container", "created_at", "id", "kind", "name", "repo_id", "repo_path", "resource_id", "stack_id", "updated_at"},
-			PartKey: []string{},
+			Columns: []string{"builder", "container", "created_at", "id", "kind", "name", "repo_id", "repo_path", "resource_id", "stack_id", "team_id", "updated_at"},
+			PartKey: []string{"id", "team_id"},
 		},
 	}
 

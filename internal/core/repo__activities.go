@@ -10,6 +10,9 @@ type (
 	RepoActivities struct{}
 )
 
+// SignalDefaultBranch signals the default branch of a repository with a given workflow signal and payload.
+// It uses Temporal to queue the workflow and passes the necessary options and parameters.
+// If the signal and workflow start are successful, it returns nil. Otherwise, it returns an error.
 func (a *RepoActivities) SignalDefaultBranch(ctx context.Context, repo *Repo, signal shared.WorkflowSignal, payload any) error {
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
 		shared.WithWorkflowBlock("repo"),
@@ -31,6 +34,10 @@ func (a *RepoActivities) SignalDefaultBranch(ctx context.Context, repo *Repo, si
 	return nil
 }
 
+// SignalBranch signals a branch other than the default branch of a repository.
+// It queues a workflow task with the specified signal, payload, repository, and branch.
+// The workflow task is executed asynchronously using Temporal.
+// It returns an error if there was a problem signaling the branch.
 func (a *RepoActivities) SignalBranch(ctx context.Context, repo *Repo, signal shared.WorkflowSignal, payload any, branch string) error {
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
 		shared.WithWorkflowBlock("repo"),

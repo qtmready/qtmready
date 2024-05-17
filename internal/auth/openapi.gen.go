@@ -108,7 +108,7 @@ var (
 		M: &table.Metadata{
 			Name:    "oauth_accounts",
 			Columns: []string{"created_at", "expires_at", "id", "provider", "provider_account_id", "type", "updated_at", "user_id"},
-			PartKey: []string{},
+			PartKey: []string{"id"},
 		},
 	}
 
@@ -189,7 +189,7 @@ var (
 		M: &table.Metadata{
 			Name:    "teams",
 			Columns: []string{"created_at", "id", "name", "slug", "updated_at"},
-			PartKey: []string{},
+			PartKey: []string{"id"},
 		},
 	}
 
@@ -255,7 +255,7 @@ var (
 		M: &table.Metadata{
 			Name:    "users",
 			Columns: []string{"created_at", "email", "first_name", "id", "is_active", "is_verified", "last_name", "password", "team_id", "updated_at"},
-			PartKey: []string{"team_id"},
+			PartKey: []string{"id"},
 		},
 	}
 

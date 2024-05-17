@@ -24,7 +24,7 @@ create table if not exists users
   is_active             boolean,
   created_at            timestamp,
   updated_at            timestamp,
-  primary key (id),
+  primary key           (id),
 ) with comment = 'user, member of the team';
 
 create index if not exists on users (team_id);

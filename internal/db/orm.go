@@ -196,11 +196,11 @@ func _set(entity Entity, name string, val any) {
 	elem.FieldByName(name).Set(reflect.ValueOf(val))
 }
 
-func _delPK(columns, keys []string) []string {
+func _delPK(columns, part []string) []string {
 	result := make([]string, 0)
 
 	for _, col := range columns {
-		if !slices.Contains(keys, col) {
+		if !slices.Contains(part, col) {
 			result = append(result, col)
 		}
 	}
