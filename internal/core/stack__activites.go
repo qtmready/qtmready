@@ -32,12 +32,8 @@ import (
 	"go.breu.io/quantm/internal/shared"
 )
 
-var (
-	activities *Activities
-)
-
 type (
-	Activities            struct{}
+	StackActivities       struct{}
 	ArtifactRegistryImage struct {
 		Location   string
 		Project    string
@@ -48,7 +44,7 @@ type (
 )
 
 // GetResources gets resources from DB against a stack.
-func (a *Activities) GetResources(ctx context.Context, stackID string) (*SlicedResult[Resource], error) {
+func (a *StackActivities) GetResources(ctx context.Context, stackID string) (*SlicedResult[Resource], error) {
 	log := activity.GetLogger(ctx)
 	resources := make([]Resource, 0)
 	err := db.Filter(&Resource{}, &resources, db.QueryParams{"stack_id": stackID})
@@ -61,7 +57,7 @@ func (a *Activities) GetResources(ctx context.Context, stackID string) (*SlicedR
 }
 
 // GetWorkloads gets workloads from DB against a stack.
-func (a *Activities) GetWorkloads(ctx context.Context, stackID string) (*SlicedResult[Workload], error) {
+func (a *StackActivities) GetWorkloads(ctx context.Context, stackID string) (*SlicedResult[Workload], error) {
 	log := activity.GetLogger(ctx)
 	workloads := make([]Workload, 0)
 	err := db.Filter(&Workload{}, &workloads, db.QueryParams{"stack_id": stackID})
@@ -74,7 +70,7 @@ func (a *Activities) GetWorkloads(ctx context.Context, stackID string) (*SlicedR
 }
 
 // GetWorkloads gets workloads from DB against a stack.
-func (a *Activities) GetRepos(ctx context.Context, stackID string) (*SlicedResult[Repo], error) {
+func (a *StackActivities) GetRepos(ctx context.Context, stackID string) (*SlicedResult[Repo], error) {
 	log := activity.GetLogger(ctx)
 	repos := make([]Repo, 0)
 	err := db.Filter(&Repo{}, &repos, db.QueryParams{"stack_id": stackID})
@@ -87,7 +83,7 @@ func (a *Activities) GetRepos(ctx context.Context, stackID string) (*SlicedResul
 }
 
 // GetBluePrint gets blueprint from DB against a stack.
-func (a *Activities) GetBluePrint(ctx context.Context, stackID string) (*Blueprint, error) {
+func (a *StackActivities) GetBluePrint(ctx context.Context, stackID string) (*Blueprint, error) {
 	log := activity.GetLogger(ctx)
 	blueprint := &Blueprint{}
 	params := db.QueryParams{"stack_id": stackID}
@@ -101,13 +97,13 @@ func (a *Activities) GetBluePrint(ctx context.Context, stackID string) (*Bluepri
 }
 
 // CreateChangeset create changeset entity with provided ID.
-func (a *Activities) CreateChangeset(ctx context.Context, changeSet *ChangeSet, id gocql.UUID) error {
+func (a *StackActivities) CreateChangeset(ctx context.Context, changeSet *ChangeSet, id gocql.UUID) error {
 	err := db.CreateWithID(changeSet, id)
 	return err
 }
 
 // TagGcpImage creates a new tag on a docker image in GCP artifact registry.
-func (a *Activities) TagGcpImage(ctx context.Context, image string, digest string, tag string) error {
+func (a *StackActivities) TagGcpImage(ctx context.Context, image string, digest string, tag string) error {
 	logger := activity.GetLogger(ctx)
 
 	c, err := artifactregistry.NewRESTClient(ctx)
@@ -152,7 +148,7 @@ func (a *Activities) TagGcpImage(ctx context.Context, image string, digest strin
 	return nil
 }
 
-func (a Activities) SignalDefaultBranch(ctx context.Context, repo *Repo, signal shared.WorkflowSignal, payload any) error {
+func (a StackActivities) SignalDefaultBranch(ctx context.Context, repo *Repo, signal shared.WorkflowSignal, payload any) error {
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
 		shared.WithWorkflowBlock("repo"),
 		shared.WithWorkflowBlockID(repo.ID.String()),
@@ -173,7 +169,7 @@ func (a Activities) SignalDefaultBranch(ctx context.Context, repo *Repo, signal 
 	return nil
 }
 
-func (a Activities) SignalFeatureBranch(ctx context.Context, repo *Repo, signal shared.WorkflowSignal, payload any, branch string) error {
+func (a StackActivities) SignalFeatureBranch(ctx context.Context, repo *Repo, signal shared.WorkflowSignal, payload any, branch string) error {
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
 		shared.WithWorkflowBlock("repo"),
 		shared.WithWorkflowBlockID(repo.ID.String()),

@@ -34,7 +34,9 @@ const (
 )
 
 type (
-	StackWorkflows struct{}
+	StackWorkflows struct {
+		stack *StackActivities
+	}
 )
 
 // ChangesetController controls the rollout lifecycle for one changeset.
@@ -61,7 +63,7 @@ func (w *StackWorkflows) StackController(ctx workflow.Context, stackID string) e
 
 	// get repos for stack
 	repos := SlicedResult[Repo]{}
-	if err := workflow.ExecuteActivity(actx, activities.GetRepos, stackID).Get(ctx, &repos); err != nil {
+	if err := workflow.ExecuteActivity(actx, w.stack.GetRepos, stackID).Get(ctx, &repos); err != nil {
 		logger.Error("Get repos activity", "error", err)
 		return err
 	}
@@ -109,7 +111,7 @@ func (w *StackWorkflows) StackController(ctx workflow.Context, stackID string) e
 		StackID:     stackUUID,
 	}
 
-	if err := workflow.ExecuteActivity(actx, activities.CreateChangeset, changeset, changeset.ID).Get(ctx, nil); err != nil {
+	if err := workflow.ExecuteActivity(actx, w.stack.CreateChangeset, changeset, changeset.ID).Get(ctx, nil); err != nil {
 		logger.Error("Create changeset activity", "error", err)
 	}
 
@@ -218,7 +220,7 @@ func (w *StackWorkflows) GetAssets(ctx workflow.Context, payload *GetAssetsPaylo
 	pctx := workflow.WithActivityOptions(ctx, providerActivityOpts)
 
 	// get resources for stack
-	future = workflow.ExecuteActivity(actx, activities.GetResources, payload.StackID)
+	future = workflow.ExecuteActivity(actx, w.stack.GetResources, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &resources); err != nil {
 			logger.Error("GetResources providers failed", "error", err)
@@ -227,7 +229,7 @@ func (w *StackWorkflows) GetAssets(ctx workflow.Context, payload *GetAssetsPaylo
 	})
 
 	// get workloads for stack
-	future = workflow.ExecuteActivity(actx, activities.GetWorkloads, payload.StackID)
+	future = workflow.ExecuteActivity(actx, w.stack.GetWorkloads, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &workloads); err != nil {
 			logger.Error("GetWorkloads providers failed", "error", err)
@@ -236,7 +238,7 @@ func (w *StackWorkflows) GetAssets(ctx workflow.Context, payload *GetAssetsPaylo
 	})
 
 	// get repos for stack
-	future = workflow.ExecuteActivity(actx, activities.GetRepos, payload.StackID)
+	future = workflow.ExecuteActivity(actx, w.stack.GetRepos, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &repos); err != nil {
 			logger.Error("GetRepos providers failed", "error", err)
@@ -245,7 +247,7 @@ func (w *StackWorkflows) GetAssets(ctx workflow.Context, payload *GetAssetsPaylo
 	})
 
 	// get blueprint for stack
-	future = workflow.ExecuteActivity(actx, activities.GetBluePrint, payload.StackID)
+	future = workflow.ExecuteActivity(actx, w.stack.GetBluePrint, payload.StackID)
 	selector.AddFuture(future, func(f workflow.Future) {
 		if err = f.Get(ctx, &blueprint); err != nil {
 			logger.Error("GetBluePrint providers failed", "error", err)
@@ -267,7 +269,7 @@ func (w *StackWorkflows) GetAssets(ctx workflow.Context, payload *GetAssetsPaylo
 	// TODO: update it to tag one or multiple images against every workload
 	switch payload.ImageRegistry {
 	case "GCPArtifactRegistry":
-		err := workflow.ExecuteActivity(actx, activities.TagGcpImage, payload.Image, payload.Digest, payload.ChangeSetID).Get(ctx, nil)
+		err := workflow.ExecuteActivity(actx, w.stack.TagGcpImage, payload.Image, payload.Digest, payload.ChangeSetID).Get(ctx, nil)
 		if err != nil {
 			return err
 		}
@@ -306,7 +308,7 @@ func (w *StackWorkflows) GetAssets(ctx workflow.Context, payload *GetAssetsPaylo
 		StackID:     stackID,
 	}
 
-	err = workflow.ExecuteActivity(actx, activities.CreateChangeset, changeset, payload.ChangeSetID).Get(ctx, nil)
+	err = workflow.ExecuteActivity(actx, w.stack.CreateChangeset, changeset, payload.ChangeSetID).Get(ctx, nil)
 	if err != nil {
 		logger.Error("Error in creating changeset")
 	}

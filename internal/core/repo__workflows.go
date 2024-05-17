@@ -460,7 +460,7 @@ func _early(ctx workflow.Context, rpa RepoIO, mpa MessageIO, pushEvent *shared.P
 // onRepoPush is the cordination function for the push event signal.
 func onRepoPush(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
-	activities := &Activities{}
+	activities := &StackActivities{}
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 
 	ctx = workflow.WithActivityOptions(ctx, opts)

@@ -82,7 +82,7 @@ func main() {
 	coreWrkr.RegisterWorkflow(repowfs.PollMergeQueue)
 
 	// core activities
-	coreWrkr.RegisterActivity(&core.Activities{})
+	coreWrkr.RegisterActivity(&core.StackActivities{})
 	coreWrkr.RegisterActivity(&cloudrun.Activities{})
 
 	// mutex activity
