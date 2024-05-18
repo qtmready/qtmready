@@ -178,7 +178,7 @@ func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
 		return err
 	}
 
-	client, err := Instance().GetClientFromInstallation(repo.InstallationID)
+	client, err := Instance().GetClientForInstallation(repo.InstallationID)
 
 	if err != nil {
 		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)

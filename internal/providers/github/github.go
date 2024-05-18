@@ -155,7 +155,7 @@ func (config *Config) GetActivities() *Activities {
 	return config.Activities
 }
 
-func (config *Config) GetClientFromInstallation(installationID shared.Int64) (*gh.Client, error) {
+func (config *Config) GetClientForInstallation(installationID shared.Int64) (*gh.Client, error) {
 	transport, err := ghinstallation.New(http.DefaultTransport, config.AppID, installationID.Int64(), []byte(config.PrivateKey))
 	if err != nil {
 		return nil, err

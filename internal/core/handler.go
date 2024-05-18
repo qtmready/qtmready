@@ -226,7 +226,7 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 
 	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
 	data, err := Instance().
-		RepoProvider(request.Provider).
+		RepoIO(request.Provider).
 		GetRepoData(ctx.Request().Context(), request.CtrlID.String())
 
 	if err != nil {
@@ -251,7 +251,7 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 	}
 
 	if err := Instance().
-		RepoProvider(request.Provider).
+		RepoIO(request.Provider).
 		SetEarlyWarning(ctx.Request().Context(), request.CtrlID.String(), true); err != nil {
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}

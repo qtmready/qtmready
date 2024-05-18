@@ -239,7 +239,7 @@ type (
 	}
 
 	Owner struct {
-		Name              string       `json:"owner"`
+		Name              string       `json:"name"`
 		Login             string       `json:"login"`
 		ID                shared.Int64 `json:"id"`
 		NodeID            string       `json:"node_id"`

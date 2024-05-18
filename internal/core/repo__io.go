@@ -16,14 +16,15 @@ const (
 // RepoIO signal payloads.
 type (
 	RepoSignalPushPayload struct {
-		BranchRef  string         `json:"branch_ref"`
-		Before     string         `json:"before"`
-		After      string         `json:"after"`
-		Name       string         `json:"name"`
-		Owner      string         `json:"owner"`
-		CtrlID     string         `json:"ctrl_id"` // ID is the repo ID in the quantm DB. Should be UUID
-		ProviderID string         `json:"provider_id"`
-		Commits    []RepoIOCommit `json:"commits"`
+		BranchRef      string         `json:"branch_ref"`
+		Before         string         `json:"before"`
+		After          string         `json:"after"`
+		Name           string         `json:"name"`
+		Owner          string         `json:"owner"`
+		CtrlID         string         `json:"ctrl_id"` // ID is the repo ID in the quantm DB. Should be UUID
+		InstallationID shared.Int64   `json:"installation_id"`
+		ProviderID     string         `json:"provider_id"`
+		Commits        []RepoIOCommit `json:"commits"`
 	}
 
 	RepoSignalPullRequestLabelPayload struct{}
@@ -51,5 +52,11 @@ type (
 		Name          string `json:"name"`
 		DefaultBranch string `json:"default_branch"`
 		ProviderID    string `json:"provider_id"`
+	}
+
+	RepoIOGetAllBranchesPayload struct {
+		InstallationID shared.Int64 `json:"installation_id"`
+		RepoName       string       `json:"repo_name"`
+		RepoOwner      string       `json:"repo_owner"`
 	}
 )

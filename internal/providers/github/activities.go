@@ -692,7 +692,7 @@ func (a *Activities) GetOrgUsers(ctx context.Context, payload *core.RepoIOGetOrg
 		return err
 	}
 
-	client, err := Instance().GetClientFromInstallation(prepo.InstallationID)
+	client, err := Instance().GetClientForInstallation(prepo.InstallationID)
 	if err != nil {
 		logger.Error("GetClientFromInstallation failed", "Error", err)
 		return err
@@ -752,7 +752,7 @@ func (a *Activities) RefreshDefaultBranches(ctx context.Context, payload *core.R
 		shared.Logger().Error("Error filter repos", "error", err)
 	}
 
-	client, err := Instance().GetClientFromInstallation(prepos[0].InstallationID)
+	client, err := Instance().GetClientForInstallation(prepos[0].InstallationID)
 	if err != nil {
 		logger.Error("GetClientFromInstallation failed", "Error", err)
 		return err

@@ -31,6 +31,8 @@ func (a *RepoActivities) SignalDefaultBranch(ctx context.Context, repo *Repo, si
 		return err
 	}
 
+	shared.Logger().Info("signaled default branch", "repo", repo.ID, "signal", signal, "payload", payload)
+
 	return nil
 }
 

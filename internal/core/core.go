@@ -44,7 +44,7 @@ type (
 		RegisterCloudProvider(CloudProvider, CloudIO)
 		RegisterCloudResource(provider CloudProvider, driver Driver, resource ResourceConstructor)
 
-		RepoProvider(RepoProvider) RepoIO
+		RepoIO(RepoProvider) RepoIO
 		CloudProvider(CloudProvider) CloudIO
 		ResourceConstructor(CloudProvider, Driver) ResourceConstructor
 		MessageProvider(MessageProvider) MessageIO
@@ -58,7 +58,7 @@ type (
 		GetRepoData(ctx context.Context, id string) (*RepoIORepoData, error)
 		// SetEarlyWarning sets the early warning flag for the provider repo.
 		SetEarlyWarning(ctx context.Context, id string, value bool) error
-		GetAllBranches(ctx context.Context) error
+		GetAllBranches(ctx context.Context, payload *RepoIOGetAllBranchesPayload) ([]string, error)
 		// GetLatestCommit(ctx context.Context, payload *RepoIOGetLatestCommitPayload) (*LatestCommit, error)
 		// DeployChangeset(ctx context.Context, payload *RepoIODeployChangesetPayload) error
 		// TagCommit(ctx context.Context, payload *RepoIOTagCommitPayload) error
@@ -153,7 +153,7 @@ func (c *core) RegisterCloudProvider(provider CloudProvider, activities CloudIO)
 	c.providers.cloud[provider] = activities
 }
 
-func (c *core) RepoProvider(name RepoProvider) RepoIO {
+func (c *core) RepoIO(name RepoProvider) RepoIO {
 	if p, ok := c.providers.repos[name]; ok {
 		return p
 	}

@@ -87,7 +87,9 @@ func main() {
 	// core activities
 	coreWrkr.RegisterActivity(&core.StackActivities{})
 	coreWrkr.RegisterActivity(&core.RepoActivities{})
+	// RepoIO & CloudIO
 	coreWrkr.RegisterActivity(&cloudrun.Activities{})
+	coreWrkr.RegisterActivity(&github.RepoIO{})
 
 	// mutex activity
 	coreWrkr.RegisterActivity(mutex.PrepareMutexActivity)

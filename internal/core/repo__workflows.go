@@ -54,6 +54,11 @@ func (w *RepoWorkflows) DefaultBranchCtrl(ctx workflow.Context, repo *Repo) erro
 	selector := workflow.NewSelector(ctx)
 	done := false
 
+	// channels
+	// push event signal
+	pushchannel := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
+	selector.AddReceive(pushchannel, w.onDefaultBranchPush(ctx, repo)) // post processing for push event recieved on repo.
+
 	logger.Info(("branch_ctrl/default: init ..."),
 		slog.String("repo_id", repo.ID.String()),
 		slog.String("provider", repo.Provider.String()),
@@ -523,5 +528,20 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 
 	return func(channel workflow.ReceiveChannel, more bool) {
 		logger.Info("branch_ctrl/default/push: init ...", slog.String("repo_id", repo.ID.String()))
+
+		// get the push event data
+		payload := &RepoSignalPushPayload{}
+		channel.Receive(ctx, payload)
+
+		// get all branches
+		branches := []string{}
+		if err := workflow.ExecuteActivity(
+			ctx,
+			Instance().RepoIO(repo.Provider).GetAllBranches,
+			&RepoIOGetAllBranchesPayload{InstallationID: payload.InstallationID, RepoName: payload.Name, RepoOwner: payload.Owner},
+		).Get(ctx, &branches); err != nil {
+			logger.Error("branch_ctrl/default/push: error getting branches", slog.String("error", err.Error()))
+			return
+		}
 	}
 }

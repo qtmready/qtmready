@@ -97,12 +97,6 @@ type (
 		TargetBranch   string       `json:"target_branch"`
 	}
 
-	RepoIOGetAllBranchesPayload struct {
-		InstallationID shared.Int64 `json:"installation_id"`
-		RepoName       string       `json:"repo_name"`
-		RepoOwner      string       `json:"repo_owner"`
-	}
-
 	RepoIOTriggerCIActionPayload struct {
 		InstallationID shared.Int64 `json:"installation_id"`
 		RepoOwner      string       `json:"repo_owner"`
