@@ -52,31 +52,6 @@ type (
 
 	Option func(Core)
 
-	// RepoIO is the interface that defines the operations that can be performed on a repository.
-	RepoIO interface {
-		// GetRepoData gets the name & default branch for the provider repo.
-		GetRepoData(ctx context.Context, id string) (*RepoIORepoData, error)
-		// SetEarlyWarning sets the early warning flag for the provider repo.
-		SetEarlyWarning(ctx context.Context, id string, value bool) error
-		GetAllBranches(ctx context.Context, payload *RepoIOGetAllBranchesPayload) ([]string, error)
-		// GetLatestCommit(ctx context.Context, payload *RepoIOGetLatestCommitPayload) (*LatestCommit, error)
-		// DeployChangeset(ctx context.Context, payload *RepoIODeployChangesetPayload) error
-		// TagCommit(ctx context.Context, payload *RepoIOTagCommitPayload) error
-		// CreateBranch(ctx context.Context, payload *RepoIOCreateBranchPayload) error
-		// DeleteBranch(ctx context.Context, payload *RepoIODeleteBranchPayload) error
-		// MergeBranch(ctx context.Context, payload *RepoIOMergeBranchPayload) error
-		// RebaseAndMerge(ctx context.Context, payload *RepoIORebaseAndMergePayload) (string, error)
-		// DetectChange(ctx context.Context, payload *RepoIODetectChangePayload) (*BranchChanges, error)
-		// GetAllBranches(ctx context.Context, payload *RepoIOGetAllBranchesPayload) ([]string, error)
-		// TriggerCIAction(ctx context.Context, payload *RepoIOTriggerCIActionPayload) error
-		// GetRepoTeamID(ctx context.Context, payload *RepoIOGetRepoTeamIDPayload) (string, error)
-		// GetAllRelevantActions(ctx context.Context, payload *RepoIOGetAllRelevantActionsPayload) error
-		// GetRepoByProviderID(ctx context.Context, payload *RepoIOGetRepoByProviderIDPayload) (*RepoProviderData, error)
-		// UpdateRepoHasRarlyWarning(ctx context.Context, payload *RepoIOUpdateRepoHasRarlyWarningPayload) error
-		// GetOrgUsers(ctx context.Context, payload *RepoIOGetOrgUsersPayload) error
-		// RefreshDefaultBranches(ctx context.Context, payload *RepoIORefreshDefaultBranchesPayload) error
-	}
-
 	// CloudIO is the interface that defines the operations that can be performed on a cloud provider.
 	CloudIO interface {
 		FillMe()

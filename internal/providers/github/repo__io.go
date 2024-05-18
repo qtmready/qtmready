@@ -79,3 +79,9 @@ func (r *RepoIO) GetAllBranches(ctx context.Context, payload *core.RepoIOGetAllB
 	// Get all branches for the repo
 	return branches, nil
 }
+
+// Clone shallow clones a repository at a sepcific commit.
+// see https://stackoverflow.com/a/76334845
+func (r *RepoIO) Clone(ctx context.Context, payload *core.RepoIOClonePayload) error {
+	return nil
+}
