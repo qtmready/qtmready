@@ -227,20 +227,20 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
 
 	// repo provider activities instance
-	rpa := Instance().RepoProvider(RepoProvider(request.Provider.String()))
+	// rpa := Instance().RepoProvider(RepoProvider(request.Provider.String()))
 
-	repoByProviderIDPaylaod := &RepoIOGetRepoByProviderIDPayload{
-		ProviderID: request.ProviderID,
-	}
+	// repoByProviderIDPaylaod := &RepoIOGetRepoByProviderIDPayload{
+	// 	ProviderID: request.ProviderID,
+	// }
 	// repo provider data
-	rpd, err := rpa.GetRepoByProviderID(context.Background(), repoByProviderIDPaylaod)
-	if err != nil {
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
+	// rpd, err := rpa.GetRepoByProviderID(context.Background(), repoByProviderIDPaylaod)
+	// if err != nil {
+	// 	return shared.NewAPIError(http.StatusInternalServerError, err)
+	// }
 
 	repo := &Repo{
-		Name:                rpd.Name,
-		DefaultBranch:       rpd.DefaultBranch,
+		// Name:                rpd.Name,
+		// DefaultBranch:       rpd.DefaultBranch,
 		ProviderID:          request.ProviderID,
 		IsMonorepo:          request.IsMonorepo,
 		Provider:            request.Provider,
@@ -254,15 +254,15 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
-	updateProviderRepoPayload := &RepoIOUpdateRepoHasRarlyWarningPayload{
-		ProviderID: request.ProviderID,
-	}
+	// updateProviderRepoPayload := &RepoIOUpdateRepoHasRarlyWarningPayload{
+	// 	ProviderID: request.ProviderID,
+	// }
 	// NOTE: handle transaction as well
 	//
 	// update the provider repo early warning
-	if err := rpa.UpdateRepoHasRarlyWarning(context.Background(), updateProviderRepoPayload); err != nil {
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
+	// if err := rpa.UpdateRepoHasRarlyWarning(context.Background(), updateProviderRepoPayload); err != nil {
+	// 	return shared.NewAPIError(http.StatusInternalServerError, err)
+	// }
 
 	return ctx.JSON(http.StatusNoContent, nil)
 }

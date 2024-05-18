@@ -18,20 +18,27 @@
 package core
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/gocql/gocql"
-	"go.temporal.io/sdk/workflow"
-
 	"go.breu.io/quantm/internal/core/mutex"
 	"go.breu.io/quantm/internal/shared"
+	"go.temporal.io/sdk/workflow"
 )
 
-const (
-	unLockTimeOutStackMutex             time.Duration = time.Minute * 30 // TODO: adjust this
-	OnPullRequestWorkflowPRSignalsLimit               = 1000             // TODO: adjust this
-)
+// import (
+// 	"fmt"
+// 	"time"
+
+// 	"github.com/gocql/gocql"
+// 	"go.temporal.io/sdk/workflow"
+
+// 	"go.breu.io/quantm/internal/core/mutex"
+// 	"go.breu.io/quantm/internal/shared"
+// )
+
+// const (
+// 	unLockTimeOutStackMutex             time.Duration = time.Minute * 30 // TODO: adjust this
+// 	OnPullRequestWorkflowPRSignalsLimit               = 1000             // TODO: adjust this
+// )
 
 type (
 	StackWorkflows struct {
@@ -50,140 +57,140 @@ func (w *StackWorkflows) ChangesetController(id string) error {
 //
 // The workflow waits for the signals from the git provider. It consumes events for PR created, updated, merged etc.
 func (w *StackWorkflows) StackController(ctx workflow.Context, stackID string) error {
-	logger := workflow.GetLogger(ctx)
-	// wait for merge complete signal
-	ch := workflow.GetSignalChannel(ctx, shared.WorkflowSignalCreateChangeset.String())
-	payload := &shared.CreateChangesetSignal{}
-	ch.Receive(ctx, payload)
-
-	logger.Info("Stack controller", "signal payload", payload)
-
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
-
-	// get repos for stack
-	repos := SlicedResult[Repo]{}
-	if err := workflow.ExecuteActivity(actx, w.stack.GetRepos, stackID).Get(ctx, &repos); err != nil {
-		logger.Error("Get repos activity", "error", err)
-		return err
-	}
-
-	logger.Info("Stack controller: going to create repomarkers")
-
-	providerActivityOpts := workflow.ActivityOptions{
-		StartToCloseTimeout: 60 * time.Second,
-		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
-	}
-	pctx := workflow.WithActivityOptions(ctx, providerActivityOpts)
-
-	// get commits against the repos
-	repoMarkers := make([]ChangeSetRepoMarker, len(repos.Data))
-	for idx, repo := range repos.Data {
-		marker := &repoMarkers[idx]
-		p := Instance().RepoProvider(repo.Provider) // get the specific provider
-
-		commit := LatestCommit{}
-		if err := workflow.ExecuteActivity(pctx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).Get(ctx, &commit); err != nil {
-			logger.Error("Repo provider activities: Get latest commit activity", "error", err)
-			return err
-		}
-
-		marker.CommitID = commit.SHA
-		marker.Provider = repo.Provider.String()
-		marker.RepoID = repo.ID.String()
-		logger.Debug("Debug only", "Commit ID updated for repo ", marker.RepoID)
-
-		// update commit id for the recently changed repo
-		if marker.RepoID == payload.RepoID {
-			marker.CommitID = payload.CommitID
-			marker.HasChanged = true // the repo in which commit was made
-		}
-
-		logger.Debug("Debug only", "Repo", repo, "Repo marker", marker)
-	}
-
-	// create changeset before deploying the updated changeset
-	changesetID, _ := gocql.RandomUUID()
-	stackUUID, _ := gocql.ParseUUID(stackID)
-	changeset := &ChangeSet{
-		RepoMarkers: repoMarkers,
-		ID:          changesetID,
-		StackID:     stackUUID,
-	}
-
-	if err := workflow.ExecuteActivity(actx, w.stack.CreateChangeset, changeset, changeset.ID).Get(ctx, nil); err != nil {
-		logger.Error("Create changeset activity", "error", err)
-	}
-
-	logger.Info("Stack controller", "changeset created", changeset)
-
-	for idx, repo := range repos.Data {
-		p := Instance().RepoProvider(repo.Provider) // get the specific provider
-
-		tagcommitPayload := &RepoIOTagCommitPayload{
-			RepoID:     repo.ProviderID,
-			CommitSHA:  repoMarkers[idx].CommitID,
-			TagName:    changesetID.String(),
-			TagMessage: "Tagged by quantm",
-		}
-		if err := workflow.ExecuteActivity(pctx, p.TagCommit, tagcommitPayload); err != nil {
-			logger.Error("Repo provider activities: Tag commit activity", "error", err)
-		}
-
-		deploysetPayload := &RepoIODeployChangesetPayload{
-			RepoID:      repo.ProviderID,
-			ChangesetID: &changeset.ID,
-		}
-		if err := workflow.ExecuteActivity(pctx, p.DeployChangeset, deploysetPayload).Get(ctx, nil); err != nil {
-			logger.Error("Repo provider activities: Deploy changeset activity", "error", err)
-		}
-	}
-
-	logger.Info("deployment done........")
-
-	// // deployment map is designed to be used in OnPullRequestWorkflow only
 	// logger := workflow.GetLogger(ctx)
-	// lockID := "stack." + stackID // stack.<stack id>
-	// deployments := make(Deployments)
+	// // wait for merge complete signal
+	// ch := workflow.GetSignalChannel(ctx, shared.WorkflowSignalCreateChangeset.String())
+	// payload := &shared.CreateChangesetSignal{}
+	// ch.Receive(ctx, payload)
 
-	// // the idea is to save active infra which will be serving all the traffic and use this active infra as reference for next deployment
-	// // this is not being used that as active infra for cloud run is being fetched from the cloud which is not an efficient approach
-	// activeInfra := make(Infra)
+	// logger.Info("Stack controller", "signal payload", payload)
 
-	// // create and initialize mutex, initializing mutex will start a mutex workflow
-	// logger.Info("creating mutex for stack", "stack", stackID)
+	// activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	// actx := workflow.WithActivityOptions(ctx, activityOpts)
 
-	// lock := mutex.New(
-	// 	mutex.WithCallerContext(ctx),
-	// 	mutex.WithID(lockID),
-	// )
-
-	// if err := lock.Start(ctx); err != nil {
-	// 	logger.Debug("unable to start mutex workflow", "error", err)
+	// // get repos for stack
+	// repos := SlicedResult[Repo]{}
+	// if err := workflow.ExecuteActivity(actx, w.stack.GetRepos, stackID).Get(ctx, &repos); err != nil {
+	// 	logger.Error("Get repos activity", "error", err)
+	// 	return err
 	// }
 
-	// triggerChannel := workflow.GetSignalChannel(ctx, shared.WorkflowSignalDeploymentStarted.String())
-	// assetsChannel := workflow.GetSignalChannel(ctx, WorkflowSignalAssetsRetrieved.String())
-	// infraChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInfraProvisioned.String())
-	// deploymentChannel := workflow.GetSignalChannel(ctx, WorkflowSignalDeploymentCompleted.String())
-	// manualOverrideChannel := workflow.GetSignalChannel(ctx, WorkflowSignalManualOverride.String())
+	// logger.Info("Stack controller: going to create repomarkers")
 
-	// selector := workflow.NewSelector(ctx)
-	// selector.AddReceive(triggerChannel, onDeploymentStartedSignal(ctx, stackID, deployments))
-	// selector.AddReceive(assetsChannel, onAssetsRetrievedSignal(ctx, stackID, deployments))
-	// selector.AddReceive(infraChannel, onInfraProvisionedSignal(ctx, stackID, lock, deployments, activeInfra))
-	// selector.AddReceive(deploymentChannel, onDeploymentCompletedSignal(ctx, stackID, deployments))
-	// selector.AddReceive(manualOverrideChannel, onManualOverrideSignal(ctx, stackID, deployments))
+	// providerActivityOpts := workflow.ActivityOptions{
+	// 	StartToCloseTimeout: 60 * time.Second,
+	// 	TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
+	// }
+	// pctx := workflow.WithActivityOptions(ctx, providerActivityOpts)
 
-	// // var prSignalsCounter int = 0
-	// // return continue as new if this workflow has processed signals upto a limit
-	// // if prSignalsCounter >= OnPullRequestWorkflowPRSignalsLimit {
-	// // 	return workflow.NewContinueAsNewError(ctx, w.OnPullRequestWorkflow, stackID)
+	// // get commits against the repos
+	// repoMarkers := make([]ChangeSetRepoMarker, len(repos.Data))
+	// for idx, repo := range repos.Data {
+	// 	marker := &repoMarkers[idx]
+	// 	p := Instance().RepoProvider(repo.Provider) // get the specific provider
+
+	// 	commit := LatestCommit{}
+	// 	if err := workflow.ExecuteActivity(pctx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).Get(ctx, &commit); err != nil {
+	// 		logger.Error("Repo provider activities: Get latest commit activity", "error", err)
+	// 		return err
+	// 	}
+
+	// 	marker.CommitID = commit.SHA
+	// 	marker.Provider = repo.Provider.String()
+	// 	marker.RepoID = repo.ID.String()
+	// 	logger.Debug("Debug only", "Commit ID updated for repo ", marker.RepoID)
+
+	// 	// update commit id for the recently changed repo
+	// 	if marker.RepoID == payload.RepoID {
+	// 		marker.CommitID = payload.CommitID
+	// 		marker.HasChanged = true // the repo in which commit was made
+	// 	}
+
+	// 	logger.Debug("Debug only", "Repo", repo, "Repo marker", marker)
+	// }
+
+	// // create changeset before deploying the updated changeset
+	// changesetID, _ := gocql.RandomUUID()
+	// stackUUID, _ := gocql.ParseUUID(stackID)
+	// changeset := &ChangeSet{
+	// 	RepoMarkers: repoMarkers,
+	// 	ID:          changesetID,
+	// 	StackID:     stackUUID,
+	// }
+
+	// if err := workflow.ExecuteActivity(actx, w.stack.CreateChangeset, changeset, changeset.ID).Get(ctx, nil); err != nil {
+	// 	logger.Error("Create changeset activity", "error", err)
+	// }
+
+	// logger.Info("Stack controller", "changeset created", changeset)
+
+	// for idx, repo := range repos.Data {
+	// 	p := Instance().RepoProvider(repo.Provider) // get the specific provider
+
+	// 	tagcommitPayload := &RepoIOTagCommitPayload{
+	// 		RepoID:     repo.ProviderID,
+	// 		CommitSHA:  repoMarkers[idx].CommitID,
+	// 		TagName:    changesetID.String(),
+	// 		TagMessage: "Tagged by quantm",
+	// 	}
+	// 	if err := workflow.ExecuteActivity(pctx, p.TagCommit, tagcommitPayload); err != nil {
+	// 		logger.Error("Repo provider activities: Tag commit activity", "error", err)
+	// 	}
+
+	// 	deploysetPayload := &RepoIODeployChangesetPayload{
+	// 		RepoID:      repo.ProviderID,
+	// 		ChangesetID: &changeset.ID,
+	// 	}
+	// 	if err := workflow.ExecuteActivity(pctx, p.DeployChangeset, deploysetPayload).Get(ctx, nil); err != nil {
+	// 		logger.Error("Repo provider activities: Deploy changeset activity", "error", err)
+	// 	}
+	// }
+
+	// logger.Info("deployment done........")
+
+	// // // deployment map is designed to be used in OnPullRequestWorkflow only
+	// // logger := workflow.GetLogger(ctx)
+	// // lockID := "stack." + stackID // stack.<stack id>
+	// // deployments := make(Deployments)
+
+	// // // the idea is to save active infra which will be serving all the traffic and use this active infra as reference for next deployment
+	// // // this is not being used that as active infra for cloud run is being fetched from the cloud which is not an efficient approach
+	// // activeInfra := make(Infra)
+
+	// // // create and initialize mutex, initializing mutex will start a mutex workflow
+	// // logger.Info("creating mutex for stack", "stack", stackID)
+
+	// // lock := mutex.New(
+	// // 	mutex.WithCallerContext(ctx),
+	// // 	mutex.WithID(lockID),
+	// // )
+
+	// // if err := lock.Start(ctx); err != nil {
+	// // 	logger.Debug("unable to start mutex workflow", "error", err)
 	// // }
-	// for {
-	// 	logger.Info("waiting for signals ....")
-	// 	selector.Select(ctx)
-	// }
+
+	// // triggerChannel := workflow.GetSignalChannel(ctx, shared.WorkflowSignalDeploymentStarted.String())
+	// // assetsChannel := workflow.GetSignalChannel(ctx, WorkflowSignalAssetsRetrieved.String())
+	// // infraChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInfraProvisioned.String())
+	// // deploymentChannel := workflow.GetSignalChannel(ctx, WorkflowSignalDeploymentCompleted.String())
+	// // manualOverrideChannel := workflow.GetSignalChannel(ctx, WorkflowSignalManualOverride.String())
+
+	// // selector := workflow.NewSelector(ctx)
+	// // selector.AddReceive(triggerChannel, onDeploymentStartedSignal(ctx, stackID, deployments))
+	// // selector.AddReceive(assetsChannel, onAssetsRetrievedSignal(ctx, stackID, deployments))
+	// // selector.AddReceive(infraChannel, onInfraProvisionedSignal(ctx, stackID, lock, deployments, activeInfra))
+	// // selector.AddReceive(deploymentChannel, onDeploymentCompletedSignal(ctx, stackID, deployments))
+	// // selector.AddReceive(manualOverrideChannel, onManualOverrideSignal(ctx, stackID, deployments))
+
+	// // // var prSignalsCounter int = 0
+	// // // return continue as new if this workflow has processed signals upto a limit
+	// // // if prSignalsCounter >= OnPullRequestWorkflowPRSignalsLimit {
+	// // // 	return workflow.NewContinueAsNewError(ctx, w.OnPullRequestWorkflow, stackID)
+	// // // }
+	// // for {
+	// // 	logger.Info("waiting for signals ....")
+	// // 	selector.Select(ctx)
+	// // }
 
 	return nil
 }
@@ -195,136 +202,136 @@ func (w *StackWorkflows) DeProvisionInfra(ctx workflow.Context, stackID string, 
 
 // GetAssets gets assets for stack including resources, workloads and blueprint.
 func (w *StackWorkflows) GetAssets(ctx workflow.Context, payload *GetAssetsPayload) error {
-	var (
-		future workflow.Future
-		err    error = nil
-	)
+	// var (
+	// 	future workflow.Future
+	// 	err    error = nil
+	// )
 
-	logger := workflow.GetLogger(ctx)
-	assets := NewAssets()
-	workloads := SlicedResult[Workload]{}
-	resources := SlicedResult[Resource]{}
-	repos := SlicedResult[Repo]{}
-	blueprint := Blueprint{}
+	// logger := workflow.GetLogger(ctx)
+	// assets := NewAssets()
+	// workloads := SlicedResult[Workload]{}
+	// resources := SlicedResult[Resource]{}
+	// repos := SlicedResult[Repo]{}
+	// blueprint := Blueprint{}
 
-	shared.Logger().Info("Get assets workflow")
+	// shared.Logger().Info("Get assets workflow")
 
-	selector := workflow.NewSelector(ctx)
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
+	// selector := workflow.NewSelector(ctx)
+	// activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	// actx := workflow.WithActivityOptions(ctx, activityOpts)
 
-	providerActivityOpts := workflow.ActivityOptions{
-		StartToCloseTimeout: 60 * time.Second,
-		TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
-	}
-	pctx := workflow.WithActivityOptions(ctx, providerActivityOpts)
+	// providerActivityOpts := workflow.ActivityOptions{
+	// 	StartToCloseTimeout: 60 * time.Second,
+	// 	TaskQueue:           shared.Temporal().Queue(shared.ProvidersQueue).Name(),
+	// }
+	// pctx := workflow.WithActivityOptions(ctx, providerActivityOpts)
 
-	// get resources for stack
-	future = workflow.ExecuteActivity(actx, w.stack.GetResources, payload.StackID)
-	selector.AddFuture(future, func(f workflow.Future) {
-		if err = f.Get(ctx, &resources); err != nil {
-			logger.Error("GetResources providers failed", "error", err)
-			return
-		}
-	})
+	// // get resources for stack
+	// future = workflow.ExecuteActivity(actx, w.stack.GetResources, payload.StackID)
+	// selector.AddFuture(future, func(f workflow.Future) {
+	// 	if err = f.Get(ctx, &resources); err != nil {
+	// 		logger.Error("GetResources providers failed", "error", err)
+	// 		return
+	// 	}
+	// })
 
-	// get workloads for stack
-	future = workflow.ExecuteActivity(actx, w.stack.GetWorkloads, payload.StackID)
-	selector.AddFuture(future, func(f workflow.Future) {
-		if err = f.Get(ctx, &workloads); err != nil {
-			logger.Error("GetWorkloads providers failed", "error", err)
-			return
-		}
-	})
+	// // get workloads for stack
+	// future = workflow.ExecuteActivity(actx, w.stack.GetWorkloads, payload.StackID)
+	// selector.AddFuture(future, func(f workflow.Future) {
+	// 	if err = f.Get(ctx, &workloads); err != nil {
+	// 		logger.Error("GetWorkloads providers failed", "error", err)
+	// 		return
+	// 	}
+	// })
 
-	// get repos for stack
-	future = workflow.ExecuteActivity(actx, w.stack.GetRepos, payload.StackID)
-	selector.AddFuture(future, func(f workflow.Future) {
-		if err = f.Get(ctx, &repos); err != nil {
-			logger.Error("GetRepos providers failed", "error", err)
-			return
-		}
-	})
+	// // get repos for stack
+	// future = workflow.ExecuteActivity(actx, w.stack.GetRepos, payload.StackID)
+	// selector.AddFuture(future, func(f workflow.Future) {
+	// 	if err = f.Get(ctx, &repos); err != nil {
+	// 		logger.Error("GetRepos providers failed", "error", err)
+	// 		return
+	// 	}
+	// })
 
-	// get blueprint for stack
-	future = workflow.ExecuteActivity(actx, w.stack.GetBluePrint, payload.StackID)
-	selector.AddFuture(future, func(f workflow.Future) {
-		if err = f.Get(ctx, &blueprint); err != nil {
-			logger.Error("GetBluePrint providers failed", "error", err)
-			return
-		}
-	})
+	// // get blueprint for stack
+	// future = workflow.ExecuteActivity(actx, w.stack.GetBluePrint, payload.StackID)
+	// selector.AddFuture(future, func(f workflow.Future) {
+	// 	if err = f.Get(ctx, &blueprint); err != nil {
+	// 		logger.Error("GetBluePrint providers failed", "error", err)
+	// 		return
+	// 	}
+	// })
 
-	// TODO: come up with a better logic for this
-	for i := 0; i < 4; i++ {
-		selector.Select(ctx)
-		// return if providers failed. TODO: handle race conditions as the 'err' variable is shared among all providers
-		if err != nil {
-			logger.Error("Exiting due to providers failure")
-			return err
-		}
-	}
+	// // TODO: come up with a better logic for this
+	// for i := 0; i < 4; i++ {
+	// 	selector.Select(ctx)
+	// 	// return if providers failed. TODO: handle race conditions as the 'err' variable is shared among all providers
+	// 	if err != nil {
+	// 		logger.Error("Exiting due to providers failure")
+	// 		return err
+	// 	}
+	// }
 
-	// Tag the build image with changeset ID
-	// TODO: update it to tag one or multiple images against every workload
-	switch payload.ImageRegistry {
-	case "GCPArtifactRegistry":
-		err := workflow.ExecuteActivity(actx, w.stack.TagGcpImage, payload.Image, payload.Digest, payload.ChangeSetID).Get(ctx, nil)
-		if err != nil {
-			return err
-		}
-	default:
-		shared.Logger().Error("This image registry is not supported in quantm yet", "registry", payload.ImageRegistry)
-	}
+	// // Tag the build image with changeset ID
+	// // TODO: update it to tag one or multiple images against every workload
+	// switch payload.ImageRegistry {
+	// case "GCPArtifactRegistry":
+	// 	err := workflow.ExecuteActivity(actx, w.stack.TagGcpImage, payload.Image, payload.Digest, payload.ChangeSetID).Get(ctx, nil)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// default:
+	// 	shared.Logger().Error("This image registry is not supported in quantm yet", "registry", payload.ImageRegistry)
+	// }
 
-	// get commits against the repos
-	repoMarker := make([]ChangeSetRepoMarker, len(repos.Data))
+	// // get commits against the repos
+	// repoMarker := make([]ChangeSetRepoMarker, len(repos.Data))
 
-	for idx, repo := range repos.Data {
-		marker := &repoMarker[idx]
-		// p := Instance().Provider(repo.Provider) // get the specific provider
-		p := Instance().RepoProvider(repo.Provider) // get the specific provider
+	// for idx, repo := range repos.Data {
+	// 	marker := &repoMarker[idx]
+	// 	// p := Instance().Provider(repo.Provider) // get the specific provider
+	// 	p := Instance().RepoProvider(repo.Provider) // get the specific provider
 
-		commit := LatestCommit{}
-		if err := workflow.
-			ExecuteActivity(pctx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).
-			Get(ctx, &commit); err != nil {
-			logger.Error("Error in getting latest commit ID", "repo", repo.Name, "provider", repo.Provider)
-			return fmt.Errorf("Error in getting latest commit ID repo:%s, provider:%s", repo.Name, repo.Provider.String())
-		}
+	// 	commit := LatestCommit{}
+	// 	if err := workflow.
+	// 		ExecuteActivity(pctx, p.GetLatestCommit, repo.ProviderID, repo.DefaultBranch).
+	// 		Get(ctx, &commit); err != nil {
+	// 		logger.Error("Error in getting latest commit ID", "repo", repo.Name, "provider", repo.Provider)
+	// 		return fmt.Errorf("Error in getting latest commit ID repo:%s, provider:%s", repo.Name, repo.Provider.String())
+	// 	}
 
-		marker.CommitID = commit.SHA
-		marker.HasChanged = repo.ID == payload.RepoID
-		marker.Provider = repo.Provider.String()
-		marker.RepoID = repo.ID.String()
-		logger.Debug("Repo", "Name", repo.Name, "Repo marker", marker)
-	}
+	// 	marker.CommitID = commit.SHA
+	// 	marker.HasChanged = repo.ID == payload.RepoID
+	// 	marker.Provider = repo.Provider.String()
+	// 	marker.RepoID = repo.ID.String()
+	// 	logger.Debug("Repo", "Name", repo.Name, "Repo marker", marker)
+	// }
 
-	// save changeset
-	stackID, _ := gocql.ParseUUID(payload.StackID)
-	changeset := &ChangeSet{
-		RepoMarkers: repoMarker,
-		ID:          payload.ChangeSetID,
-		StackID:     stackID,
-	}
+	// // save changeset
+	// stackID, _ := gocql.ParseUUID(payload.StackID)
+	// changeset := &ChangeSet{
+	// 	RepoMarkers: repoMarker,
+	// 	ID:          payload.ChangeSetID,
+	// 	StackID:     stackID,
+	// }
 
-	err = workflow.ExecuteActivity(actx, w.stack.CreateChangeset, changeset, payload.ChangeSetID).Get(ctx, nil)
-	if err != nil {
-		logger.Error("Error in creating changeset")
-	}
+	// err = workflow.ExecuteActivity(actx, w.stack.CreateChangeset, changeset, payload.ChangeSetID).Get(ctx, nil)
+	// if err != nil {
+	// 	logger.Error("Error in creating changeset")
+	// }
 
-	assets.ChangesetID = payload.ChangeSetID
-	assets.Blueprint = blueprint
-	assets.Repos = append(assets.Repos, repos.Data...)
-	assets.Resources = append(assets.Resources, resources.Data...)
-	assets.Workloads = append(assets.Workloads, workloads.Data...)
-	logger.Debug("Assets retrieved", "Assets", assets)
+	// assets.ChangesetID = payload.ChangeSetID
+	// assets.Blueprint = blueprint
+	// assets.Repos = append(assets.Repos, repos.Data...)
+	// assets.Resources = append(assets.Resources, resources.Data...)
+	// assets.Workloads = append(assets.Workloads, workloads.Data...)
+	// logger.Debug("Assets retrieved", "Assets", assets)
 
-	// signal parent workflow
-	parent := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
-	_ = workflow.
-		SignalExternalWorkflow(ctx, parent, "", StackSignalAssetsRerieved.String(), assets).
-		Get(ctx, nil)
+	// // signal parent workflow
+	// parent := workflow.GetInfo(ctx).ParentWorkflowExecution.ID
+	// _ = workflow.
+	// 	SignalExternalWorkflow(ctx, parent, "", StackSignalAssetsRerieved.String(), assets).
+	// 	Get(ctx, nil)
 
 	return nil
 }

@@ -19,7 +19,6 @@ package github
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"time"
 
@@ -294,107 +293,107 @@ func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, payload *GithubWork
 	return nil
 }
 
-func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent) error {
-	logger := workflow.GetLogger(ctx)
+// func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent) error {
+// 	logger := workflow.GetLogger(ctx)
 
-	logger.Info("received PR label event ...")
+// 	logger.Info("received PR label event ...")
 
-	installationID := payload.Installation.ID
-	repoOwner := payload.Repository.Owner.Login
-	repoName := payload.Repository.Name
-	pullRequestID := payload.Number
-	label := payload.Label.Name
-	branch := payload.PullRequest.Head.Ref
+// 	installationID := payload.Installation.ID
+// 	repoOwner := payload.Repository.Owner.Login
+// 	repoName := payload.Repository.Name
+// 	pullRequestID := payload.Number
+// 	label := payload.Label.Name
+// 	branch := payload.PullRequest.Head.Ref
 
-	switch label {
-	case "quantm ready":
-		logger.Debug("quantm ready label applied")
+// 	switch label {
+// 	case "quantm ready":
+// 		logger.Debug("quantm ready label applied")
 
-		cw := &core.RepoWorkflows{}
-		opts := shared.Temporal().
-			Queue(shared.CoreQueue).
-			WorkflowOptions(
-				shared.WithWorkflowBlock("repo"),
-				shared.WithWorkflowBlockID(payload.Repository.ID.String()),
-				shared.WithWorkflowElement("PR"),
-				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
-				shared.WithWorkflowProp("type", "merge_queue"),
-			)
+// 		cw := &core.RepoWorkflows{}
+// 		opts := shared.Temporal().
+// 			Queue(shared.CoreQueue).
+// 			WorkflowOptions(
+// 				shared.WithWorkflowBlock("repo"),
+// 				shared.WithWorkflowBlockID(payload.Repository.ID.String()),
+// 				shared.WithWorkflowElement("PR"),
+// 				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
+// 				shared.WithWorkflowProp("type", "merge_queue"),
+// 			)
 
-		payload2 := &shared.MergeQueueSignal{
-			PullRequestID:  pullRequestID,
-			InstallationID: installationID,
-			RepoOwner:      repoOwner,
-			RepoName:       repoName,
-			Branch:         branch,
-			RepoProvider:   "github",
-		}
+// 		payload2 := &shared.MergeQueueSignal{
+// 			PullRequestID:  pullRequestID,
+// 			InstallationID: installationID,
+// 			RepoOwner:      repoOwner,
+// 			RepoName:       repoName,
+// 			Branch:         branch,
+// 			RepoProvider:   "github",
+// 		}
 
-		if _, err := shared.Temporal().Client().
-			SignalWithStartWorkflow(
-				context.Background(),
-				opts.ID,
-				shared.MergeQueueStarted.String(),
-				payload2,
-				opts,
-				cw.PollMergeQueue,
-			); err != nil {
-			logger.Error("OnLabelEvent: Error signaling workflow", "error", err)
-			return err
-		}
+// 		if _, err := shared.Temporal().Client().
+// 			SignalWithStartWorkflow(
+// 				context.Background(),
+// 				opts.ID,
+// 				shared.MergeQueueStarted.String(),
+// 				payload2,
+// 				opts,
+// 				cw.PollMergeQueue,
+// 			); err != nil {
+// 			logger.Error("OnLabelEvent: Error signaling workflow", "error", err)
+// 			return err
+// 		}
 
-		logger.Info("PR sent to MergeQueue")
+// 		logger.Info("PR sent to MergeQueue")
 
-	case "quantm now":
-		logger.Debug("quantm now label applied")
+// 	case "quantm now":
+// 		logger.Debug("quantm now label applied")
 
-		// check if all workflows are completed!
-		for {
-			allCompleted := true
+// 		// check if all workflows are completed!
+// 		for {
+// 			allCompleted := true
 
-			for _, value := range actionWorkflowStatuses[repoName] {
-				if value != "completed" {
-					// return here since all are not completed
-					allCompleted = false
+// 			for _, value := range actionWorkflowStatuses[repoName] {
+// 				if value != "completed" {
+// 					// return here since all are not completed
+// 					allCompleted = false
 
-					logger.Warn("all actions were not successful")
+// 					logger.Warn("all actions were not successful")
 
-					break
-				}
-			}
+// 					break
+// 				}
+// 			}
 
-			if allCompleted {
-				break
-			}
+// 			if allCompleted {
+// 				break
+// 			}
 
-			_ = workflow.Sleep(ctx, 30*time.Second)
+// 			_ = workflow.Sleep(ctx, 30*time.Second)
 
-			logger.Debug("checking again all actions statuses")
-		}
+// 			logger.Debug("checking again all actions statuses")
+// 		}
 
-		// cw := &core.Workflows{}
-		opts := shared.Temporal().
-			Queue(shared.CoreQueue).
-			WorkflowOptions(
-				shared.WithWorkflowBlock("repo"),
-				shared.WithWorkflowBlockID(payload.Repository.ID.String()),
-				shared.WithWorkflowElement("PR"),
-				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
-				shared.WithWorkflowProp("type", "merge_queue"),
-			)
+// 		// cw := &core.Workflows{}
+// 		opts := shared.Temporal().
+// 			Queue(shared.CoreQueue).
+// 			WorkflowOptions(
+// 				shared.WithWorkflowBlock("repo"),
+// 				shared.WithWorkflowBlockID(payload.Repository.ID.String()),
+// 				shared.WithWorkflowElement("PR"),
+// 				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
+// 				shared.WithWorkflowProp("type", "merge_queue"),
+// 			)
 
-		if err := shared.Temporal().Client().
-			SignalWorkflow(context.Background(), opts.ID, "", shared.MergeTriggered.String(), nil); err != nil {
-			logger.Error("OnLabelEvent: Error signaling workflow", "error", err)
-			return err
-		}
+// 		if err := shared.Temporal().Client().
+// 			SignalWorkflow(context.Background(), opts.ID, "", shared.MergeTriggered.String(), nil); err != nil {
+// 			logger.Error("OnLabelEvent: Error signaling workflow", "error", err)
+// 			return err
+// 		}
 
-	default:
-		logger.Debug("undefined label applied!")
-	}
+// 	default:
+// 		logger.Debug("undefined label applied!")
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // OnPullRequestEvent workflow is responsible to get or create the idempotency key for the changeset controller workflow.
 // Regardless of the action on PR, the algorithm needs to arrive at the same idempotency key! One possible way is

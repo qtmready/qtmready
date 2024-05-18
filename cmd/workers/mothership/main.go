@@ -58,7 +58,7 @@ func main() {
 	providerWrkr.RegisterWorkflow(githubwfs.PostInstall)
 	providerWrkr.RegisterWorkflow(githubwfs.OnPushEvent)
 	providerWrkr.RegisterWorkflow(githubwfs.OnPullRequestEvent)
-	providerWrkr.RegisterWorkflow(githubwfs.OnLabelEvent)
+	// providerWrkr.RegisterWorkflow(githubwfs.OnLabelEvent)
 	providerWrkr.RegisterWorkflow(githubwfs.OnWorkflowRunEvent)
 
 	// provider activities
@@ -77,15 +77,16 @@ func main() {
 	coreWrkr.RegisterWorkflow(stackwfs.DeProvisionInfra)
 
 	// repo workflows
-	coreWrkr.RegisterWorkflow(repowfs.BranchController)
-	coreWrkr.RegisterWorkflow(repowfs.StaleBranchDetection)
-	coreWrkr.RegisterWorkflow(repowfs.PollMergeQueue)
+	// coreWrkr.RegisterWorkflow(repowfs.BranchController)
+	// coreWrkr.RegisterWorkflow(repowfs.StaleBranchDetection)
+	// coreWrkr.RegisterWorkflow(repowfs.PollMergeQueue)
 	coreWrkr.RegisterWorkflow(repowfs.RepoCtrl)
 	coreWrkr.RegisterWorkflow(repowfs.DefaultBranchCtrl)
 	coreWrkr.RegisterWorkflow(repowfs.BranchCtrl)
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.StackActivities{})
+	coreWrkr.RegisterActivity(&core.RepoActivities{})
 	coreWrkr.RegisterActivity(&cloudrun.Activities{})
 
 	// mutex activity
