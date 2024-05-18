@@ -26,7 +26,7 @@ func (w *RepoWorkflows) RepoCtrl(ctx workflow.Context, repo *Repo) error {
 
 	// channels
 	// push event signal
-	pushchannel := workflow.GetSignalChannel(ctx, RepoSignalPush.String())
+	pushchannel := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
 	selector.AddReceive(pushchannel, w.onRepoPush(ctx, repo)) // post processing for push event recieved on repo.
 
 	logger.Info(
@@ -496,7 +496,7 @@ func (w *RepoWorkflows) onRepoPush(ctx workflow.Context, repo *Repo) shared.Chan
 		if RefFromBranchName(repo.DefaultBranch) == payload.BranchRef {
 			logger.Info("repo_ctrl/push: signaling default branch ...", slog.String("repo_id", repo.ID.String()))
 
-			err := workflow.ExecuteActivity(ctx, w.acts.SignalDefaultBranch, repo, RepoSignalPush, payload).Get(ctx, nil)
+			err := workflow.ExecuteActivity(ctx, w.acts.SignalDefaultBranch, repo, RepoIOSignalPush, payload).Get(ctx, nil)
 			if err != nil {
 				logger.Warn("repo_ctrl/push: retrying signal ...", slog.String("repo_id", repo.ID.String()))
 			}
@@ -508,7 +508,7 @@ func (w *RepoWorkflows) onRepoPush(ctx workflow.Context, repo *Repo) shared.Chan
 
 		branch := BranchNameFromRef(payload.BranchRef)
 
-		err := workflow.ExecuteActivity(ctx, w.acts.SignalBranch, repo, RepoSignalPush, payload, branch).Get(ctx, nil)
+		err := workflow.ExecuteActivity(ctx, w.acts.SignalBranch, repo, RepoIOSignalPush, payload, branch).Get(ctx, nil)
 		if err != nil {
 			logger.Warn("repo_ctrl/push: retrying signal ...", slog.String("repo_id", repo.ID.String()))
 		}

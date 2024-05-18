@@ -19,9 +19,10 @@ package core
 
 import (
 	"github.com/gocql/gocql"
+	"go.temporal.io/sdk/workflow"
+
 	"go.breu.io/quantm/internal/core/mutex"
 	"go.breu.io/quantm/internal/shared"
-	"go.temporal.io/sdk/workflow"
 )
 
 // import (

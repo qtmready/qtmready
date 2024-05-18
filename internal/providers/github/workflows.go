@@ -227,7 +227,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, corepo, core.RepoSignalPush, payload).
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, corepo, core.RepoIOSignalPush, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
 			"github/push: signal error, retrying ...",

@@ -18,8 +18,6 @@
 package core
 
 import (
-	"time"
-
 	"github.com/gocql/gocql"
 
 	"go.breu.io/quantm/internal/shared"
@@ -41,50 +39,8 @@ const (
 	CreatingDeployment
 )
 
-const (
-	RepoSignalPush              shared.WorkflowSignal = "repo__push"
-	RepoSignalPullRequestLabel  shared.WorkflowSignal = "repo__pull_request__label"
-	RepoSignalPullRequestMerged shared.WorkflowSignal = "repo__pull_request__merged"
-)
-
-type (
-	RepoSignalPushPayload struct {
-		BranchRef  string         `json:"branch_ref"`
-		Before     string         `json:"before"`
-		After      string         `json:"after"`
-		Name       string         `json:"name"`
-		Owner      string         `json:"owner"`
-		CtrlID     string         `json:"ctrl_id"` // ID is the repo ID in the quantm DB. Should be UUID
-		ProviderID string         `json:"provider_id"`
-		Commits    []RepoIOCommit `json:"commits"`
-	}
-
-	RepoSignalPullRequestLabelPayload struct{}
-
-	RepoSignalPullRequestMergedPayload struct{}
-)
-
 // RepoIO payloads.
 type (
-	RepoIOChanges struct {
-		Added    []string `json:"added"`
-		Removed  []string `json:"removed"`
-		Modified []string `json:"modified"`
-	}
-	RepoIOCommit struct {
-		SHA       string        `json:"sha"`
-		Message   string        `json:"message"`
-		Author    string        `json:"author"`
-		Timestamp time.Time     `json:"timestamp"`
-		Changes   RepoIOChanges `json:"changes"`
-	}
-
-	RepoIORepoData struct {
-		Name          string `json:"name"`
-		DefaultBranch string `json:"default_branch"`
-		ProviderID    string `json:"provider_id"`
-	}
-
 	RepoIOGetLatestCommitPayload struct {
 		RepoID     string `json:"repo_id"`
 		BranchName string `json:"branch_name"`
