@@ -86,6 +86,7 @@ create table if not exists repos
   is_monorepo                         boolean,
   provider                            varchar,
   provider_id                         varchar,
+  ctrl_id                             uuid,
   name                                varchar,
   message_provider                    varchar,
   message_provider_id                 varchar,
@@ -100,6 +101,7 @@ create index if not exists on repos (team_id);
 create index if not exists on repos (stack_id);
 create index if not exists on repos (provider);
 create index if not exists on repos (provider_id);
+create index if not exists on repos (ctrl_id);
 
 create table if not exists workloads (
   id                        uuid,
@@ -187,16 +189,16 @@ create index if not exists on rollouts (stack_id);
 
 create table if not exists github_installations
 (
-  id                 uuid,
-  team_id            uuid,
-  installation_id    bigint,
-  installation_type  varchar,
-  installation_login varchar,
-  sender_id          bigint,
-  sender_login       varchar,
-  status             varchar,
-  created_at         timestamp,
-  updated_at         timestamp,
+  id                            uuid,
+  team_id                       uuid,
+  installation_id               bigint,
+  installation_type             varchar,
+  installation_login            varchar,
+  sender_id                     bigint,
+  sender_login                  varchar,
+  status                        varchar,
+  created_at                    timestamp,
+  updated_at                    timestamp,
   primary key (id, team_id),
 ) with comment = 'github app installation association with the team';
 

@@ -793,10 +793,10 @@ func (a *Activities) GetReposForInstallation(ctx context.Context, installationID
 	return repos, nil
 }
 
-// GetCoreRepoByProviderID retrieves a core repository given the db id of the github repository.
-func (a *Activities) GetCoreRepoByProviderID(ctx context.Context, id string) (*core.Repo, error) {
+// GetCoreRepoByCtrlID retrieves a core repository given the db id of the github repository.
+func (a *Activities) GetCoreRepoByCtrlID(ctx context.Context, id string) (*core.Repo, error) {
 	repo := &core.Repo{}
-	if err := db.Get(repo, db.QueryParams{"provider_id": "'" + id + "'"}); err != nil {
+	if err := db.Get(repo, db.QueryParams{"ctrl_id": id}); err != nil {
 		return nil, err
 	}
 

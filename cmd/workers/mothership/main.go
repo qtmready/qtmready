@@ -43,7 +43,7 @@ func main() {
 	coreWrkr := shared.Temporal().Worker(shared.CoreQueue)
 
 	core.Instance(
-		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
+		core.WithRepoProvider(core.RepoProviderGithub, &github.RepoIO{}),
 		core.WithCloudResource(core.CloudProviderGCP, core.DriverCloudrun, &cloudrun.Constructor{}),
 		core.WithMessageProvider(core.MessageProviderSlack, &slack.Activities{}),
 	)

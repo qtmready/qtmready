@@ -54,6 +54,11 @@ type (
 
 	// RepoIO is the interface that defines the operations that can be performed on a repository.
 	RepoIO interface {
+		// GetRepoData gets the name & default branch for the provider repo.
+		GetRepoData(ctx context.Context, id string) (*RepoIORepoData, error)
+		// SetEarlyWarning sets the early warning flag for the provider repo.
+		SetEarlyWarning(ctx context.Context, id string, value bool) error
+		GetAllBranches(ctx context.Context) error
 		// GetLatestCommit(ctx context.Context, payload *RepoIOGetLatestCommitPayload) (*LatestCommit, error)
 		// DeployChangeset(ctx context.Context, payload *RepoIODeployChangesetPayload) error
 		// TagCommit(ctx context.Context, payload *RepoIOTagCommitPayload) error

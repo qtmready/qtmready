@@ -417,7 +417,13 @@ type ProviderConfiguration struct {
 
 // Repo defines model for Repo.
 type Repo struct {
-	CreatedAt           time.Time           `cql:"created_at" json:"created_at"`
+	CreatedAt time.Time `cql:"created_at" json:"created_at"`
+
+	// CtrlId references the id field of the repos tables against the provider. For us, this means, that it will be the id field for
+	//   - github_repos
+	//   - gitlab_repos
+	// etc.
+	CtrlID              gocql.UUID          `cql:"ctrl_id" json:"ctrl_id"`
 	DefaultBranch       string              `cql:"default_branch" json:"default_branch"`
 	ID                  gocql.UUID          `cql:"id" json:"id"`
 	IsMonorepo          bool                `cql:"is_monorepo" json:"is_monorepo"`
@@ -436,7 +442,7 @@ var (
 	repoMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "repos",
-			Columns: []string{"created_at", "default_branch", "id", "is_monorepo", "message_provider", "message_provider_data", "name", "provider", "provider_id", "stack_id", "team_id", "threshold", "updated_at"},
+			Columns: []string{"created_at", "ctrl_id", "default_branch", "id", "is_monorepo", "message_provider", "message_provider_data", "name", "provider", "provider_id", "stack_id", "team_id", "threshold", "updated_at"},
 			PartKey: []string{"id", "team_id"},
 		},
 	}
@@ -450,11 +456,11 @@ func (repo *Repo) GetTable() itable.ITable {
 
 // RepoCreateRequest defines model for RepoCreateRequest.
 type RepoCreateRequest struct {
+	CtrlID              gocql.UUID          `json:"ctrl_id"`
 	IsMonorepo          bool                `json:"is_monorepo"`
 	MessageProvider     MessageProvider     `json:"message_provider"`
 	MessageProviderData MessageProviderData `json:"message_provider_data"`
 	Provider            RepoProvider        `json:"provider"`
-	ProviderID          string              `json:"provider_id"`
 	Threshold           int                 `json:"threshold"`
 }
 

@@ -225,6 +225,13 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 	}
 
 	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
+	data, err := Instance().
+		RepoProvider(request.Provider).
+		GetRepoData(ctx.Request().Context(), request.CtrlID.String())
+
+	if err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
 
 	// repo provider activities instance
 	// rpa := Instance().RepoProvider(RepoProvider(request.Provider.String()))
@@ -239,11 +246,12 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 	// }
 
 	repo := &Repo{
-		// Name:                rpd.Name,
-		// DefaultBranch:       rpd.DefaultBranch,
-		ProviderID:          request.ProviderID,
+		Name:                data.Name,
+		DefaultBranch:       data.DefaultBranch,
 		IsMonorepo:          request.IsMonorepo,
 		Provider:            request.Provider,
+		ProviderID:          data.ProviderID,
+		CtrlID:              request.CtrlID,
 		Threshold:           request.Threshold,
 		TeamID:              teamID,
 		MessageProvider:     request.MessageProvider,

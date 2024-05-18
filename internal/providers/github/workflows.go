@@ -197,7 +197,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.GetCoreRepoByProviderID, repo.ID.String()).
+		ExecuteActivity(_ctx, activities.GetCoreRepoByCtrlID, repo.ID.String()).
 		Get(_ctx, corepo); err != nil {
 		logger.Warn(
 			"github/push: database error, retrying ... ",
@@ -217,7 +217,13 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	)
 
 	payload := &core.RepoSignalPushPayload{
-		BranchRef: event.Ref,
+		BranchRef:  event.Ref,
+		Before:     event.Before,
+		After:      event.After,
+		Name:       event.Repository.Name,
+		Owner:      event.Repository.Owner.Name,
+		CtrlID:     repo.ID.String(),
+		ProviderID: repo.GithubID.String(),
 	}
 
 	if err := workflow.

@@ -92,7 +92,7 @@ func main() {
 	slack.RegisterHandlers(web, slack.NewServerHandler(auth.Middleware))
 
 	core.Instance(
-		core.WithRepoProvider(core.RepoProviderGithub, &github.Activities{}),
+		core.WithRepoProvider(core.RepoProviderGithub, &github.RepoIO{}),
 		core.WithMessageProvider(core.MessageProviderSlack, &slack.Activities{}),
 	)
 
