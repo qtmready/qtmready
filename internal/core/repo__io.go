@@ -25,12 +25,15 @@ type (
 		// SetEarlyWarning sets the early warning flag for the provider repo.
 		SetEarlyWarning(ctx context.Context, id string, value bool) error
 
+		// GetAllBranches gets all the branches for the provider repo.
 		GetAllBranches(ctx context.Context, payload *RepoIOInfoPayload) ([]string, error)
+
+		DetectChanges(ctx context.Context, payload *RepoSignalPushPayload) (*RepoIOChanges, error)
 
 		// TokenizedCloneURL returns the url with oauth token in it.
 		//
 		// NOTE - Since the url contains oauth token, it is best not to call this as activity.
-		// LINK -
+		// LINK - https://github.com/orgs/community/discussions/24575#discussioncomment-3244524
 		TokenizedCloneURL(ctx context.Context, payload *RepoIOInfoPayload) (string, error)
 
 		// GetLatestCommit(ctx context.Context, payload *RepoIOGetLatestCommitPayload) (*LatestCommit, error)
@@ -55,8 +58,8 @@ type (
 		BranchRef      string         `json:"branch_ref"`
 		Before         string         `json:"before"`
 		After          string         `json:"after"`
-		Name           string         `json:"name"`
-		Owner          string         `json:"owner"`
+		RepoName       string         `json:"repo_name"`
+		RepoOwner      string         `json:"repo_owner"`
 		CtrlID         string         `json:"ctrl_id"` // ID is the repo ID in the quantm DB. Should be UUID
 		InstallationID shared.Int64   `json:"installation_id"`
 		ProviderID     string         `json:"provider_id"`
@@ -83,9 +86,10 @@ type (
 	}
 
 	RepoIOChanges struct {
-		Added    []string `json:"added"`
-		Removed  []string `json:"removed"`
-		Modified []string `json:"modified"`
+		Added    []string     `json:"added"`
+		Removed  []string     `json:"removed"`
+		Modified []string     `json:"modified"`
+		Delta    shared.Int64 `json:"delta"`
 	}
 
 	RepoIOCommit struct {

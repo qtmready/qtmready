@@ -80,6 +80,11 @@ func (r *RepoIO) GetAllBranches(ctx context.Context, payload *core.RepoIOInfoPay
 	return branches, nil
 }
 
+// DetectChanges detects changes in a repository.
+func (r *RepoIO) DetectChanges(ctx context.Context, payload *core.RepoSignalPushPayload) (*core.RepoIOChanges, error) {
+	return nil, nil
+}
+
 // Clone shallow clones a repository at a sepcific commit.
 // see https://stackoverflow.com/a/76334845
 func (r *RepoIO) TokenizedCloneURL(ctx context.Context, payload *core.RepoIOInfoPayload) (string, error) {

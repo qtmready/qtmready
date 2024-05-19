@@ -76,7 +76,7 @@ func (w *RepoWorkflows) DefaultBranchCtrl(ctx workflow.Context, repo *Repo) erro
 func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch string) error {
 	// prelude
 	logger := workflow.GetLogger(ctx)
-	_logprefix := "branch_ctrl/" + branch + ":"
+	_logprefix := "branch_ctrl/" + branch + ":" //nolint:goconst
 	selector := workflow.NewSelector(ctx)
 	done := false
 
@@ -120,27 +120,42 @@ func (w *RepoWorkflows) onRepoPush(ctx workflow.Context, repo *Repo) shared.Chan
 		payload := &RepoSignalPushPayload{}
 		channel.Receive(ctx, payload)
 
-		logger.Info("repo_ctrl/push: init ...", slog.String("repo_id", repo.ID.String()))
+		logger.Info(
+			"repo_ctrl/push: init ...",
+			slog.String("repo_id", repo.ID.String()),
+		)
 
 		// TODO: default branch controller
 		if RefFromBranchName(repo.DefaultBranch) == payload.BranchRef {
-			logger.Info("repo_ctrl/push: signaling default branch ...", slog.String("repo_id", repo.ID.String()))
+			logger.Info(
+				"repo_ctrl/push: signaling default branch ...",
+				slog.String("repo_id", repo.ID.String()),
+			)
 
 			err := workflow.ExecuteActivity(ctx, w.acts.SignalDefaultBranch, repo, RepoIOSignalPush, payload).Get(ctx, nil)
 			if err != nil {
-				logger.Warn("repo_ctrl/push: retrying signal ...", slog.String("repo_id", repo.ID.String()))
+				logger.Warn(
+					"repo_ctrl/push: retrying signal ...",
+					slog.String("repo_id", repo.ID.String()),
+				)
 			}
 
 			return
 		}
 
-		logger.Info("repo_ctrl/push: signaling feature branch ...", "repo_id", repo.ID.String())
+		logger.Info(
+			"repo_ctrl/push: signaling feature branch ...",
+			slog.String("repo_id", repo.ID.String()),
+		)
 
 		branch := BranchNameFromRef(payload.BranchRef)
 
 		err := workflow.ExecuteActivity(ctx, w.acts.SignalBranch, repo, RepoIOSignalPush, payload, branch).Get(ctx, nil)
 		if err != nil {
-			logger.Warn("repo_ctrl/push: retrying signal ...", slog.String("repo_id", repo.ID.String()))
+			logger.Warn(
+				"repo_ctrl/push: retrying signal ...",
+				slog.String("repo_id", repo.ID.String()),
+			)
 		}
 	}
 }
@@ -172,7 +187,7 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 		if err := workflow.ExecuteActivity(
 			ctx,
 			Instance().RepoIO(repo.Provider).GetAllBranches,
-			&RepoIOInfoPayload{InstallationID: payload.InstallationID, RepoName: payload.Name, RepoOwner: payload.Owner},
+			&RepoIOInfoPayload{InstallationID: payload.InstallationID, RepoName: payload.RepoName, RepoOwner: payload.RepoOwner},
 		).Get(ctx, &branches); err != nil {
 			logger.Warn(
 				"branch_ctrl/default/push: error getting branches, retrying ...",
@@ -236,6 +251,18 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 			slog.String("branch", branch),
 			slog.String("msg_provider", repo.MessageProvider.String()),
 		)
+
+		if err := workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, payload).Get(ctx, nil); err != nil {
+			logger.Warn(
+				_logprefix+"error detecting changes, retrying ...",
+				slog.String("error", err.Error()),
+				slog.String("repo_id", repo.ID.String()),
+				slog.String("provider", repo.Provider.String()),
+				slog.String("provider_id", repo.ProviderID),
+				slog.String("branch", branch),
+				slog.String("msg_provider", repo.MessageProvider.String()),
+			)
+		}
 	}
 }
 
