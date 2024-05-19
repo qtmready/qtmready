@@ -85,6 +85,13 @@ type (
 		RepoOwner      string       `json:"repo_owner"`
 	}
 
+	RepoIOClonePayload struct {
+		Repo   *Repo                  `json:"repo"`   // Repo is the db record of the repo
+		Push   *RepoSignalPushPayload `json:"push"`   // Push event payload
+		Branch string                 `json:"branch"` // Branch to clone
+		Path   string                 `json:"path"`   // Path to clone to
+	}
+
 	RepoIOChanges struct {
 		Added    []string     `json:"added"`
 		Removed  []string     `json:"removed"`

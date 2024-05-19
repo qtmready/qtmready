@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/shared"
@@ -283,8 +284,38 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 			slog.String("provider", repo.Provider.String()),
 			slog.String("provider_id", repo.ProviderID),
 			slog.String("branch", branch),
-			slog.String("msg_provider", repo.MessageProvider.String()),
+			slog.String("sha", payload.After),
 		)
+
+		// sessionctx makes sure the activity is executed on the same worker.
+		sessionctx, _ := workflow.CreateSession(ctx, &workflow.SessionOptions{
+			ExecutionTimeout: 30 * time.Minute,
+			CreationTimeout:  60 * time.Second,
+		})
+		data := &RepoIOClonePayload{
+			Repo:   repo,
+			Push:   payload,
+			Branch: branch,
+			Path:   "",
+		}
+
+		// create a random path and make it part of the data. since we are using sessionctx, the path will be available
+		// to all activities executed in this session.
+		_ = workflow.SideEffect(sessionctx, func(ctx workflow.Context) any {
+			return "/tmp/" + uuid.New().String()
+		}).Get(&data.Path)
+
+		if err := workflow.ExecuteActivity(ctx, w.acts.CloneBranch, data).Get(ctx, nil); err != nil {
+			logger.Warn(
+				_logprefix+"error cloning branch, retrying ...",
+				slog.String("error", err.Error()),
+				slog.String("repo_id", repo.ID.String()),
+				slog.String("provider", repo.Provider.String()),
+				slog.String("provider_id", repo.ProviderID),
+				slog.String("branch", branch),
+				slog.String("sha", payload.After),
+			)
+		}
 	}
 }
 

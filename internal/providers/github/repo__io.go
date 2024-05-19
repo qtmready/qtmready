@@ -2,7 +2,10 @@ package github
 
 import (
 	"context"
+	"fmt"
+	"net/http"
 
+	"github.com/bradleyfalzon/ghinstallation/v2"
 	gh "github.com/google/go-github/v62/github"
 
 	"go.breu.io/quantm/internal/core"
@@ -88,5 +91,18 @@ func (r *RepoIO) DetectChanges(ctx context.Context, payload *core.RepoSignalPush
 // Clone shallow clones a repository at a sepcific commit.
 // see https://stackoverflow.com/a/76334845
 func (r *RepoIO) TokenizedCloneURL(ctx context.Context, payload *core.RepoIOInfoPayload) (string, error) {
-	return "", nil
+	installation, err := ghinstallation.New(
+		http.DefaultTransport, Instance().AppID, payload.InstallationID.Int64(), []byte(Instance().PrivateKey),
+	)
+
+	if err != nil {
+		return "", err
+	}
+
+	token, err := installation.Token(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return fmt.Sprintf("https://git:%s@github.com/%s/%s.git", token, payload.RepoOwner, payload.RepoName), nil
 }
