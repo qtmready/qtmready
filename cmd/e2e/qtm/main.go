@@ -12,8 +12,6 @@ import (
 	ghi "github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/google/uuid"
 
-	// gh "github.com/google/go-github/v62/github"
-
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/shared"
 )
@@ -39,6 +37,10 @@ func main() {
 	if err != nil {
 		shared.Logger().Error("error cloning repo", slog.Any("error", err.Error()))
 	}
+
+	out, err := cmd.CombinedOutput()
+
+	shared.Logger().Info("output ....", slog.Any("output", string(out)))
 }
 
 // git clone https://git:<token>@github.com/owner/repo.git

@@ -9,9 +9,10 @@ import (
 
 // RepoIO signals.
 const (
-	RepoIOSignalPush        shared.WorkflowSignal = "repo__push"
-	RepoIOPullRequestLabel  shared.WorkflowSignal = "repo__pull_request__label"
-	RepoIOPullRequestMerged shared.WorkflowSignal = "repo__pull_request__merged"
+	RepoIOSignalPush       shared.WorkflowSignal = "repo__push"
+	ReopIOSignalRebase     shared.WorkflowSignal = "repo__push__rebase"
+	RepoIOPullRequestLabel shared.WorkflowSignal = "repo__pull_request__label"
+	RepoIOPullRequestMerge shared.WorkflowSignal = "repo__pull_request__merge"
 )
 
 // RepoIO signal payloads.
@@ -20,10 +21,17 @@ type (
 	RepoIO interface {
 		// GetRepoData gets the name & default branch for the provider repo.
 		GetRepoData(ctx context.Context, id string) (*RepoIORepoData, error)
+
 		// SetEarlyWarning sets the early warning flag for the provider repo.
 		SetEarlyWarning(ctx context.Context, id string, value bool) error
-		GetAllBranches(ctx context.Context, payload *RepoIOGetAllBranchesPayload) ([]string, error)
-		Clone(ctx context.Context, payload *RepoIOClonePayload) error
+
+		GetAllBranches(ctx context.Context, payload *RepoIOInfoPayload) ([]string, error)
+
+		// TokenizedCloneURL returns the url with oauth token in it.
+		//
+		// NOTE - Since the url contains oauth token, it is best not to call this as activity.
+		// LINK -
+		TokenizedCloneURL(ctx context.Context, payload *RepoIOInfoPayload) (string, error)
 
 		// GetLatestCommit(ctx context.Context, payload *RepoIOGetLatestCommitPayload) (*LatestCommit, error)
 		// DeployChangeset(ctx context.Context, payload *RepoIODeployChangesetPayload) error
@@ -68,13 +76,11 @@ type (
 		ProviderID    string `json:"provider_id"`
 	}
 
-	RepoIOGetAllBranchesPayload struct {
+	RepoIOInfoPayload struct {
 		InstallationID shared.Int64 `json:"installation_id"`
 		RepoName       string       `json:"repo_name"`
 		RepoOwner      string       `json:"repo_owner"`
 	}
-
-	RepoIOClonePayload struct{}
 
 	RepoIOChanges struct {
 		Added    []string `json:"added"`

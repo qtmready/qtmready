@@ -49,7 +49,6 @@ func (w *RepoWorkflows) RepoCtrl(ctx workflow.Context, repo *Repo) error {
 // DefaultBranchCtrl is the controller for the default branch.
 func (w *RepoWorkflows) DefaultBranchCtrl(ctx workflow.Context, repo *Repo) error {
 	// prelude
-	// TODO: get all branches and rebase with default branch.
 	logger := workflow.GetLogger(ctx)
 	selector := workflow.NewSelector(ctx)
 	done := false
@@ -74,8 +73,192 @@ func (w *RepoWorkflows) DefaultBranchCtrl(ctx workflow.Context, repo *Repo) erro
 }
 
 // BranchCtrl is the controller for all the branches except the default branch.
-func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo) error {
+func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch string) error {
+	// prelude
+	logger := workflow.GetLogger(ctx)
+	_logprefix := "branch_ctrl/" + branch + ":"
+	selector := workflow.NewSelector(ctx)
+	done := false
+
+	// channels
+
+	// push event signal.
+	// detect changges. if changes are greater than threshold, send early warning message.
+	pushchannel := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
+	selector.AddReceive(pushchannel, w.onBranchPush(ctx, repo, branch)) // post processing for push event recieved on repo.
+
+	// rebase signal.
+	// attempts to rebase the branch with the base branch. if there are merge conflicts, sends message.
+	rebase := workflow.GetSignalChannel(ctx, ReopIOSignalRebase.String())
+	selector.AddReceive(rebase, w.onBranchRebase(ctx, repo, branch)) // post processing for early warning signal.
+
+	logger.Info(
+		_logprefix+"init ...",
+		slog.String("repo_id", repo.ID.String()),
+		slog.String("provider", repo.Provider.String()),
+		slog.String("provider_id", repo.ProviderID),
+		slog.String("branch", repo.DefaultBranch),
+	)
+
+	for !done {
+		selector.Select(ctx)
+	}
+
 	return nil
+}
+
+// onRepoPush is a channel handler that is called when a repository is pushed to.
+// It checks if the pushed branch is the default branch, and if so, signals the default branch.
+// Otherwise, it signals the feature branch.
+func (w *RepoWorkflows) onRepoPush(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
+	logger := workflow.GetLogger(ctx)
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	return func(channel workflow.ReceiveChannel, more bool) {
+		payload := &RepoSignalPushPayload{}
+		channel.Receive(ctx, payload)
+
+		logger.Info("repo_ctrl/push: init ...", slog.String("repo_id", repo.ID.String()))
+
+		// TODO: default branch controller
+		if RefFromBranchName(repo.DefaultBranch) == payload.BranchRef {
+			logger.Info("repo_ctrl/push: signaling default branch ...", slog.String("repo_id", repo.ID.String()))
+
+			err := workflow.ExecuteActivity(ctx, w.acts.SignalDefaultBranch, repo, RepoIOSignalPush, payload).Get(ctx, nil)
+			if err != nil {
+				logger.Warn("repo_ctrl/push: retrying signal ...", slog.String("repo_id", repo.ID.String()))
+			}
+
+			return
+		}
+
+		logger.Info("repo_ctrl/push: signaling feature branch ...", "repo_id", repo.ID.String())
+
+		branch := BranchNameFromRef(payload.BranchRef)
+
+		err := workflow.ExecuteActivity(ctx, w.acts.SignalBranch, repo, RepoIOSignalPush, payload, branch).Get(ctx, nil)
+		if err != nil {
+			logger.Warn("repo_ctrl/push: retrying signal ...", slog.String("repo_id", repo.ID.String()))
+		}
+	}
+}
+
+// onDefaultBranchPush is a workflow channel handler that is triggered when the default branch of a repository is pushed to.
+// It retrieves all branches in the repository, and signals for a rebase on any branches that are not the default branch and
+// not a Quantm-created branch.
+func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
+	logger := workflow.GetLogger(ctx)
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	return func(channel workflow.ReceiveChannel, more bool) {
+		payload := &RepoSignalPushPayload{}
+		channel.Receive(ctx, payload)
+
+		logger.Info(
+			"branch_ctrl/default/push: init ...",
+			slog.String("repo_id", repo.ID.String()),
+			slog.String("provider", repo.Provider.String()),
+			slog.String("provider_id", repo.ProviderID),
+			slog.String("branch", repo.DefaultBranch),
+			slog.String("msg_provider", repo.MessageProvider.String()),
+		)
+
+		// get all branches
+		branches := []string{}
+		if err := workflow.ExecuteActivity(
+			ctx,
+			Instance().RepoIO(repo.Provider).GetAllBranches,
+			&RepoIOInfoPayload{InstallationID: payload.InstallationID, RepoName: payload.Name, RepoOwner: payload.Owner},
+		).Get(ctx, &branches); err != nil {
+			logger.Warn(
+				"branch_ctrl/default/push: error getting branches, retrying ...",
+				slog.String("error", err.Error()),
+				slog.String("repo_id", repo.ID.String()),
+				slog.String("provider", repo.Provider.String()),
+				slog.String("provider_id", repo.ProviderID),
+				slog.String("branch", repo.DefaultBranch),
+				slog.String("msg_provider", repo.MessageProvider.String()),
+			)
+
+			return
+		}
+
+		// signal to rebase branches that are not default and not quantm created.k
+		for _, branch := range branches {
+			if branch != repo.DefaultBranch && !IsQuantmBranch(branch) {
+				logger.Info(
+					"branch_ctrl/default/push: signaling for rebase ...",
+					slog.String("repo_id", repo.ID.String()),
+					slog.String("provider", repo.Provider.String()),
+					slog.String("provider_id", repo.ProviderID),
+					slog.String("branch", branch),
+					slog.String("msg_provider", repo.MessageProvider.String()),
+				)
+
+				if err := workflow.
+					ExecuteActivity(ctx, w.acts.SignalBranch, repo, ReopIOSignalRebase, payload, branch).
+					Get(ctx, nil); err != nil {
+					logger.Warn(
+						"branch_ctrl/default/push: error signaling for rebase, retrying ...",
+						slog.String("repo_id", repo.ID.String()),
+						slog.String("provider", repo.Provider.String()),
+						slog.String("provider_id", repo.ProviderID),
+						slog.String("branch", branch),
+						slog.String("msg_provider", repo.MessageProvider.String()),
+					)
+				}
+			}
+		}
+	}
+}
+
+// onBranchPush is a shared.ChannelHandler that is called when a branch is pushed to a repository.
+func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch string) shared.ChannelHandler {
+	logger := workflow.GetLogger(ctx)
+	_logprefix := "branch_ctrl/" + branch + "/push:"
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	return func(channel workflow.ReceiveChannel, more bool) {
+		payload := &RepoSignalPushPayload{}
+		channel.Receive(ctx, payload)
+
+		logger.Info(
+			_logprefix+"detecting changes ...",
+			slog.String("repo_id", repo.ID.String()),
+			slog.String("provider", repo.Provider.String()),
+			slog.String("provider_id", repo.ProviderID),
+			slog.String("branch", branch),
+			slog.String("msg_provider", repo.MessageProvider.String()),
+		)
+	}
+}
+
+func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch string) shared.ChannelHandler {
+	logger := workflow.GetLogger(ctx)
+	_logprefix := "branch_ctrl/" + branch + "/rebase:"
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	return func(channel workflow.ReceiveChannel, more bool) {
+		payload := &RepoSignalPushPayload{}
+		channel.Receive(ctx, payload)
+
+		logger.Info(
+			_logprefix+"init ...",
+			slog.String("repo_id", repo.ID.String()),
+			slog.String("provider", repo.Provider.String()),
+			slog.String("provider_id", repo.ProviderID),
+			slog.String("branch", branch),
+			slog.String("msg_provider", repo.MessageProvider.String()),
+		)
+	}
 }
 
 // // when a push event is received by quantm, branch controller gets active.
@@ -482,66 +665,3 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo) error {
 
 // 	return nil
 // }
-
-// onRepoPush is the cordination function for the push event signal.
-func (w *RepoWorkflows) onRepoPush(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
-	logger := workflow.GetLogger(ctx)
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-
-	ctx = workflow.WithActivityOptions(ctx, opts)
-
-	return func(channel workflow.ReceiveChannel, more bool) {
-		logger.Info("repo_ctrl/push: init ...", slog.String("repo_id", repo.ID.String()))
-
-		// get the push event data
-		payload := &RepoSignalPushPayload{}
-		channel.Receive(ctx, payload)
-
-		// TODO: default branch controller
-		if RefFromBranchName(repo.DefaultBranch) == payload.BranchRef {
-			logger.Info("repo_ctrl/push: signaling default branch ...", slog.String("repo_id", repo.ID.String()))
-
-			err := workflow.ExecuteActivity(ctx, w.acts.SignalDefaultBranch, repo, RepoIOSignalPush, payload).Get(ctx, nil)
-			if err != nil {
-				logger.Warn("repo_ctrl/push: retrying signal ...", slog.String("repo_id", repo.ID.String()))
-			}
-
-			return
-		}
-
-		logger.Info("repo_ctrl/push: signaling feature branch ...", "repo_id", repo.ID.String())
-
-		branch := BranchNameFromRef(payload.BranchRef)
-
-		err := workflow.ExecuteActivity(ctx, w.acts.SignalBranch, repo, RepoIOSignalPush, payload, branch).Get(ctx, nil)
-		if err != nil {
-			logger.Warn("repo_ctrl/push: retrying signal ...", slog.String("repo_id", repo.ID.String()))
-		}
-	}
-}
-
-func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
-	logger := workflow.GetLogger(ctx)
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-
-	ctx = workflow.WithActivityOptions(ctx, opts)
-
-	return func(channel workflow.ReceiveChannel, more bool) {
-		logger.Info("branch_ctrl/default/push: init ...", slog.String("repo_id", repo.ID.String()))
-
-		// get the push event data
-		payload := &RepoSignalPushPayload{}
-		channel.Receive(ctx, payload)
-
-		// get all branches
-		branches := []string{}
-		if err := workflow.ExecuteActivity(
-			ctx,
-			Instance().RepoIO(repo.Provider).GetAllBranches,
-			&RepoIOGetAllBranchesPayload{InstallationID: payload.InstallationID, RepoName: payload.Name, RepoOwner: payload.Owner},
-		).Get(ctx, &branches); err != nil {
-			logger.Error("branch_ctrl/default/push: error getting branches", slog.String("error", err.Error()))
-			return
-		}
-	}
-}

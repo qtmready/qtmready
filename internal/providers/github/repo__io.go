@@ -44,7 +44,7 @@ func (r *RepoIO) SetEarlyWarning(ctx context.Context, id string, value bool) err
 	return nil
 }
 
-func (r *RepoIO) GetAllBranches(ctx context.Context, payload *core.RepoIOGetAllBranchesPayload) ([]string, error) {
+func (r *RepoIO) GetAllBranches(ctx context.Context, payload *core.RepoIOInfoPayload) ([]string, error) {
 	branches := make([]string, 0)
 	page := 1
 
@@ -82,6 +82,6 @@ func (r *RepoIO) GetAllBranches(ctx context.Context, payload *core.RepoIOGetAllB
 
 // Clone shallow clones a repository at a sepcific commit.
 // see https://stackoverflow.com/a/76334845
-func (r *RepoIO) Clone(ctx context.Context, payload *core.RepoIOClonePayload) error {
-	return nil
+func (r *RepoIO) TokenizedCloneURL(ctx context.Context, payload *core.RepoIOInfoPayload) (string, error) {
+	return "", nil
 }

@@ -37,9 +37,9 @@ func (a *RepoActivities) SignalDefaultBranch(ctx context.Context, repo *Repo, si
 }
 
 // SignalBranch signals a branch other than the default branch of a repository.
-// It queues a workflow task with the specified signal, payload, repository, and branch.
-// The workflow task is executed asynchronously using Temporal.
-// It returns an error if there was a problem signaling the branch.
+// This is mostly responsible for handling the early warning system.
+//
+//   - tries to rebase the commit on main back on to branch. if there are merge conflicts, sends message.
 func (a *RepoActivities) SignalBranch(ctx context.Context, repo *Repo, signal shared.WorkflowSignal, payload any, branch string) error {
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
 		shared.WithWorkflowBlock("repo"),

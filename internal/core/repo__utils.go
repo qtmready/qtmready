@@ -27,3 +27,9 @@ func CreateQuantmRef(branch string) string {
 func IsQuantmRef(ref string) bool {
 	return strings.HasPrefix(ref, "refs/heads/qtm/")
 }
+
+// IsQuantmBranch returns true if the given branch name starts with "qtm/".
+// This is a helper function used to identify branches that are part of the Quantm project.
+func IsQuantmBranch(branch string) bool {
+	return strings.HasPrefix(branch, "qtm/")
+}
