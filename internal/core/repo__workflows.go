@@ -314,13 +314,10 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 
 		defer workflow.CompleteSession(sessionctx)
 
-		// _ = workflow.ExecuteActivity(sessionctx, w.acts.A1).Get(sessionctx, nil)
-		// _ = workflow.ExecuteActivity(sessionctx, w.acts.A2).Get(sessionctx, nil)
-
 		if err := workflow.ExecuteActivity(sessionctx, w.acts.CloneBranch, data).
 			Get(sessionctx, nil); err != nil {
 			logger.Warn(
-				_logprefix+"error cloning branch, retrying ...",
+				_logprefix+"error cloning, retrying ...",
 				slog.String("error", err.Error()),
 				slog.String("repo_id", repo.ID.String()),
 				slog.String("provider", repo.Provider.String()),
@@ -333,7 +330,7 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 		if err := workflow.ExecuteActivity(sessionctx, w.acts.FetchBranch, data).
 			Get(sessionctx, nil); err != nil {
 			logger.Warn(
-				_logprefix+"error cloning branch, retrying ...",
+				_logprefix+"error fetching default branch, retrying ...",
 				slog.String("error", err.Error()),
 				slog.String("repo_id", repo.ID.String()),
 				slog.String("provider", repo.Provider.String()),
@@ -346,7 +343,7 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 		if err := workflow.ExecuteActivity(sessionctx, w.acts.RebaseAtCommit, data).
 			Get(sessionctx, nil); err != nil {
 			logger.Warn(
-				_logprefix+"error cloning branch, retrying ...",
+				_logprefix+"error rebasing, retrying ...",
 				slog.String("error", err.Error()),
 				slog.String("repo_id", repo.ID.String()),
 				slog.String("provider", repo.Provider.String()),
