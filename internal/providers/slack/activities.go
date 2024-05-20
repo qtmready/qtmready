@@ -52,21 +52,25 @@ func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID string, 
 	return nil
 }
 
-func (a *Activities) SendNumberOfLinesExceedMessage(
-	ctx context.Context, teamID, repoName, branchName string, threshold int, branchChanges *core.BranchChanges,
-) error {
+func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context, payload *core.LinesExceedSlackMessageProviderPayload) error {
 	logger := activity.GetLogger(ctx)
 
-	client, channelID, err := GetSlackClientAndChannelID(teamID)
+	token, err := decodeAndDecryptToken(payload.BotToken, payload.WorkspaceID)
 	if err != nil {
-		logger.Error("Error in GetSlackClientAndChannelID", "Error", err)
+		logger.Error("Error in decodeAndDecryptToken", "Error", err)
 		return err
 	}
 
-	attachment := formatLineThresholdExceededAttachment(repoName, branchName, threshold, branchChanges)
+	client, err := instance.GetSlackClient(token)
+	if err != nil {
+		logger.Error("Error in GetSlackClient", "Error", err)
+		return err
+	}
+
+	attachment := formatLineThresholdExceededAttachment(payload)
 
 	// Call function to send the message to Slack channel or specific workspace.
-	if err := notify(client, channelID, attachment); err != nil {
+	if err := notify(client, payload.ChannelID, attachment); err != nil {
 		logger.Error("Failed to post message to channel", "Error", err)
 		return err
 	}

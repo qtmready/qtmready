@@ -282,6 +282,7 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 			slog.String("msg_provider", repo.MessageProvider.String()),
 		)
 
+		// check the message provider if not ignore the early warning
 		if repo.MessageProvider != MessageProviderNone {
 			if err := workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, dcp).Get(ctx, changes); err != nil {
 				logger.Warn(
@@ -296,7 +297,29 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 			}
 
 			if changes.Delta > repo.Threshold {
-				//  TODO - call message provider activity
+				// line exceed message provider payload
+				lmp := &LinesExceedSlackMessageProviderPayload{
+					WorkspaceID:   repo.MessageProviderData.Slack.WorkspaceID,
+					ChannelID:     repo.MessageProviderData.Slack.ChannelID,
+					BotToken:      repo.MessageProviderData.Slack.BotToken,
+					RepoName:      repo.Name,
+					BranchName:    branch,
+					Threshold:     repo.Threshold,
+					DetectChanges: changes,
+				}
+				if err := workflow.
+					ExecuteActivity(ctx, Instance().MessageProvider(repo.MessageProvider).SendNumberOfLinesExceedMessage, lmp).
+					Get(ctx, nil); err != nil {
+					logger.Warn(
+						_logprefix+"error detecting changes, retrying ...",
+						slog.String("error", err.Error()),
+						slog.String("repo_id", repo.ID.String()),
+						slog.String("provider", repo.Provider.String()),
+						slog.String("provider_id", repo.ProviderID),
+						slog.String("branch", branch),
+						slog.String("msg_provider", repo.MessageProvider.String()),
+					)
+				}
 			}
 		}
 	}

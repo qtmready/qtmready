@@ -17,4 +17,19 @@
 
 package core
 
-type ()
+import (
+	"go.breu.io/quantm/internal/shared"
+)
+
+type (
+	// TODO: need to refine.
+	LinesExceedSlackMessageProviderPayload struct {
+		WorkspaceID   string         `json:"workspace_id"`
+		ChannelID     string         `json:"channel_id"`
+		BotToken      string         `json:"bot_token"`
+		RepoName      string         `json:"repo_name"`
+		BranchName    string         `json:"branch_name"`
+		Threshold     shared.Int64   `json:"threshold"`
+		DetectChanges *RepoIOChanges `json:"detect_changes"` // TODO - need to more refine
+	}
+)

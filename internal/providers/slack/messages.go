@@ -32,40 +32,40 @@ const (
 	footer = "Powered by quantm"
 )
 
-func formatLineThresholdExceededAttachment(repoName, branchName string, threshold int, branchChanges *core.BranchChanges) slack.Attachment {
+func formatLineThresholdExceededAttachment(payload *core.LinesExceedSlackMessageProviderPayload) slack.Attachment {
 	return slack.Attachment{
 		Color: "warning",
 		Pretext: "The number of lines in this pull request exceeds the allowed threshold. " +
 			"Please review and adjust accordingly.", // TODO: need to finalize
 		Title:     "PR Lines Exceed",
-		TitleLink: branchChanges.CompareUrl,
+		TitleLink: payload.DetectChanges.CompareUrl,
 		Fields: []slack.AttachmentField{
-			createRepositoryField(repoName, branchChanges.RepoUrl),
-			createBranchField(branchName, branchChanges.CompareUrl),
+			createRepositoryField(payload.RepoName, payload.DetectChanges.RepoUrl),
+			createBranchField(payload.BranchName, payload.DetectChanges.CompareUrl),
 			{
 				Title: "*Threshold*",
-				Value: fmt.Sprintf("%d", threshold),
+				Value: fmt.Sprintf("%d", payload.Threshold),
 				Short: true,
 			},
 			{
 				Title: "*Total Lines Count*",
-				Value: fmt.Sprintf("%d", branchChanges.Changes),
+				Value: fmt.Sprintf("%d", payload.DetectChanges.Delta),
 				Short: true,
 			},
 			{
 				Title: "*Lines Added*",
-				Value: fmt.Sprintf("%d", branchChanges.Additions),
+				Value: fmt.Sprintf("%d", payload.DetectChanges.Added),
 				Short: true,
 			},
 			{
 				Title: "*Lines Deleted*",
-				Value: fmt.Sprintf("%d", branchChanges.Deletions),
+				Value: fmt.Sprintf("%d", payload.DetectChanges.Removed),
 				Short: true,
 			},
 			{
 				Title: "*Details*",
 				Value: fmt.Sprintf("*Number of Files Changed:* %d\n*Files Changed:*\n%s",
-					branchChanges.FileCount, formatFilesList(branchChanges.Files)),
+					len(payload.DetectChanges.Modified), formatFilesList(payload.DetectChanges.Modified)),
 				Short: false,
 			},
 		},
