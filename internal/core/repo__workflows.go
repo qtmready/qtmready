@@ -273,6 +273,7 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 		}
 		changes := &RepoIOChanges{}
 
+		// TODO - handle repo errors on branch push
 		logger.Info(
 			_logprefix+"detecting changes ...",
 			slog.String("repo_id", repo.ID.String()),
@@ -311,7 +312,7 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 					ExecuteActivity(ctx, Instance().MessageProvider(repo.MessageProvider).SendNumberOfLinesExceedMessage, lmp).
 					Get(ctx, nil); err != nil {
 					logger.Warn(
-						_logprefix+"error detecting changes, retrying ...",
+						_logprefix+"error line exceed message sending, retrying ...",
 						slog.String("error", err.Error()),
 						slog.String("repo_id", repo.ID.String()),
 						slog.String("provider", repo.Provider.String()),
