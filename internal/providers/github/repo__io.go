@@ -10,6 +10,7 @@ import (
 
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -84,8 +85,47 @@ func (r *RepoIO) GetAllBranches(ctx context.Context, payload *core.RepoIOInfoPay
 }
 
 // DetectChanges detects changes in a repository.
-func (r *RepoIO) DetectChanges(ctx context.Context, payload *core.RepoSignalPushPayload) (*core.RepoIOChanges, error) {
-	return nil, nil
+func (r *RepoIO) DetectChanges(ctx context.Context, payload *core.RepoIODetectChangesPayload) (*core.RepoIOChanges, error) {
+	client, err := Instance().GetClientForInstallation(payload.InstallationID)
+	if err != nil {
+		return nil, err
+	}
+
+	// TODO - move to some genernic function or activity
+	// NOTE - need only repo URL... skip this call and get URL from payload or make it.
+	repo, _, err := client.Repositories.Get(ctx, payload.RepoOwner, payload.RepoName)
+	if err != nil {
+		return nil, err
+	}
+
+	comparison, _, err := client.Repositories.
+		CompareCommits(context.Background(), payload.RepoOwner, payload.RepoName, payload.DefaultBranch, payload.TargetBranch, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	var changes, additions, deletions int
+
+	files := make([]string, 0)
+
+	for _, file := range comparison.Files {
+		changes += file.GetChanges()
+		additions += file.GetAdditions()
+		deletions += file.GetDeletions()
+		files = append(files, *file.Filename)
+	}
+
+	// detect changes struct
+	dc := &core.RepoIOChanges{
+		Added:      shared.Int64(additions),
+		Removed:    shared.Int64(deletions),
+		Modified:   files,
+		Delta:      shared.Int64(changes),
+		CompareUrl: comparison.GetHTMLURL(),
+		RepoUrl:    repo.GetHTMLURL(),
+	}
+
+	return dc, nil
 }
 
 // Clone shallow clones a repository at a sepcific commit.

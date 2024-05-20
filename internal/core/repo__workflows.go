@@ -244,6 +244,16 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 		payload := &RepoSignalPushPayload{}
 		channel.Receive(ctx, payload)
 
+		// detect changes payload -> RepoIODetectChangesPayload
+		dcp := &RepoIODetectChangesPayload{
+			InstallationID: payload.InstallationID,
+			RepoName:       payload.RepoName,
+			RepoOwner:      payload.RepoOwner,
+			DefaultBranch:  repo.DefaultBranch,
+			TargetBranch:   branch,
+		}
+		changes := &RepoIOChanges{}
+
 		logger.Info(
 			_logprefix+"detecting changes ...",
 			slog.String("repo_id", repo.ID.String()),
@@ -253,7 +263,7 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 			slog.String("msg_provider", repo.MessageProvider.String()),
 		)
 
-		if err := workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, payload).Get(ctx, nil); err != nil {
+		if err := workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, dcp).Get(ctx, changes); err != nil {
 			logger.Warn(
 				_logprefix+"error detecting changes, retrying ...",
 				slog.String("error", err.Error()),

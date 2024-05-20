@@ -28,7 +28,7 @@ type (
 		// GetAllBranches gets all the branches for the provider repo.
 		GetAllBranches(ctx context.Context, payload *RepoIOInfoPayload) ([]string, error)
 
-		DetectChanges(ctx context.Context, payload *RepoSignalPushPayload) (*RepoIOChanges, error)
+		DetectChanges(ctx context.Context, payload *RepoIODetectChangesPayload) (*RepoIOChanges, error)
 
 		// TokenizedCloneURL returns the url with oauth token in it.
 		//
@@ -83,6 +83,7 @@ type (
 		InstallationID shared.Int64 `json:"installation_id"`
 		RepoName       string       `json:"repo_name"`
 		RepoOwner      string       `json:"repo_owner"`
+		DefaultBranch  string       `json:"defualt_branch"`
 	}
 
 	RepoIOClonePayload struct {
@@ -92,11 +93,21 @@ type (
 		Path   string                 `json:"path"`   // Path to clone to
 	}
 
+	RepoIODetectChangesPayload struct {
+		InstallationID shared.Int64 `json:"installation_id"`
+		RepoName       string       `json:"repo_name"`
+		RepoOwner      string       `json:"repo_owner"`
+		DefaultBranch  string       `json:"defualt_branch"`
+		TargetBranch   string       `json:"target_branch"`
+	}
+
 	RepoIOChanges struct {
-		Added    []string     `json:"added"`
-		Removed  []string     `json:"removed"`
-		Modified []string     `json:"modified"`
-		Delta    shared.Int64 `json:"delta"`
+		Added      shared.Int64 `json:"added"`
+		Removed    shared.Int64 `json:"removed"`
+		Modified   []string     `json:"modified"`
+		Delta      shared.Int64 `json:"delta"`
+		CompareUrl string       `json:"compare_url"`
+		RepoUrl    string       `json:"repo_url"`
 	}
 
 	RepoIOCommit struct {
