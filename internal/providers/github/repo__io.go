@@ -80,7 +80,6 @@ func (r *RepoIO) GetAllBranches(ctx context.Context, payload *core.RepoIOInfoPay
 		}
 	}
 
-	// Get all branches for the repo
 	return branches, nil
 }
 

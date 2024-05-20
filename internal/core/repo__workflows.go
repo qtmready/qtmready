@@ -236,7 +236,7 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch string) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 	_logprefix := "branch_ctrl/" + branch + "/push:"
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Minute}
 
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
@@ -281,11 +281,15 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 	logger := workflow.GetLogger(ctx)
 	_logprefix := "branch_ctrl/" + branch + "/rebase:"
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	w.acts = &RepoActivities{}
 
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
 		payload := &RepoSignalPushPayload{}
+		data := &RepoIOClonePayload{Repo: repo, Push: payload, Branch: branch, Path: ""}
+		sopts := &workflow.SessionOptions{ExecutionTimeout: 30 * time.Minute, CreationTimeout: 60 * time.Minute}
+
 		channel.Receive(ctx, payload)
 
 		logger.Info(
@@ -297,25 +301,50 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 			slog.String("sha", payload.After),
 		)
 
-		// sessionctx makes sure the activity is executed on the same worker.
-		sessionctx, _ := workflow.CreateSession(ctx, &workflow.SessionOptions{
-			ExecutionTimeout: 30 * time.Minute,
-			CreationTimeout:  60 * time.Second,
-		})
-		data := &RepoIOClonePayload{
-			Repo:   repo,
-			Push:   payload,
-			Branch: branch,
-			Path:   "",
-		}
-
 		// create a random path and make it part of the data. since we are using sessionctx, the path will be available
 		// to all activities executed in this session.
-		_ = workflow.SideEffect(sessionctx, func(ctx workflow.Context) any {
+		_ = workflow.SideEffect(ctx, func(ctx workflow.Context) any {
 			return "/tmp/" + uuid.New().String()
 		}).Get(&data.Path)
 
-		if err := workflow.ExecuteActivity(ctx, w.acts.CloneBranch, data).Get(ctx, nil); err != nil {
+		sessionctx, err := workflow.CreateSession(ctx, sopts)
+		if err != nil {
+			logger.Warn("unable to create session", "error", err.Error())
+		}
+
+		defer workflow.CompleteSession(sessionctx)
+
+		// _ = workflow.ExecuteActivity(sessionctx, w.acts.A1).Get(sessionctx, nil)
+		// _ = workflow.ExecuteActivity(sessionctx, w.acts.A2).Get(sessionctx, nil)
+
+		if err := workflow.ExecuteActivity(sessionctx, w.acts.CloneBranch, data).
+			Get(sessionctx, nil); err != nil {
+			logger.Warn(
+				_logprefix+"error cloning branch, retrying ...",
+				slog.String("error", err.Error()),
+				slog.String("repo_id", repo.ID.String()),
+				slog.String("provider", repo.Provider.String()),
+				slog.String("provider_id", repo.ProviderID),
+				slog.String("branch", branch),
+				slog.String("sha", payload.After),
+			)
+		}
+
+		if err := workflow.ExecuteActivity(sessionctx, w.acts.FetchBranch, data).
+			Get(sessionctx, nil); err != nil {
+			logger.Warn(
+				_logprefix+"error cloning branch, retrying ...",
+				slog.String("error", err.Error()),
+				slog.String("repo_id", repo.ID.String()),
+				slog.String("provider", repo.Provider.String()),
+				slog.String("provider_id", repo.ProviderID),
+				slog.String("branch", branch),
+				slog.String("sha", payload.After),
+			)
+		}
+
+		if err := workflow.ExecuteActivity(sessionctx, w.acts.RebaseAtCommit, data).
+			Get(sessionctx, nil); err != nil {
 			logger.Warn(
 				_logprefix+"error cloning branch, retrying ...",
 				slog.String("error", err.Error()),
