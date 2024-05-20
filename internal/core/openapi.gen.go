@@ -434,7 +434,7 @@ type Repo struct {
 	ProviderID          string              `cql:"provider_id" json:"provider_id"`
 	StackID             gocql.UUID          `cql:"stack_id" json:"stack_id"`
 	TeamID              gocql.UUID          `cql:"team_id" json:"team_id"`
-	Threshold           int                 `cql:"threshold" json:"threshold"`
+	Threshold           shared.Int64        `cql:"threshold" json:"threshold"`
 	UpdatedAt           time.Time           `cql:"updated_at" json:"updated_at"`
 }
 
@@ -461,7 +461,7 @@ type RepoCreateRequest struct {
 	MessageProvider     MessageProvider     `json:"message_provider"`
 	MessageProviderData MessageProviderData `json:"message_provider_data"`
 	Provider            RepoProvider        `json:"provider"`
-	Threshold           int                 `json:"threshold"`
+	Threshold           shared.Int64        `json:"threshold"`
 }
 
 // RepoListResponse defines model for RepoListResponse.
