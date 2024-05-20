@@ -1,10 +1,12 @@
 package core
 
 import (
+	"errors"
 	"log/slog"
 	"time"
 
 	"github.com/google/uuid"
+	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/shared"
@@ -236,7 +238,7 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch string) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 	_logprefix := "branch_ctrl/" + branch + "/push:"
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Minute}
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 10 * time.Minute}
 
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
@@ -280,7 +282,9 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch string) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 	_logprefix := "branch_ctrl/" + branch + "/rebase:"
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	retries := &temporal.RetryPolicy{NonRetryableErrorTypes: []string{"RepoIORebaseError"}}
+	sopts := &workflow.SessionOptions{ExecutionTimeout: 30 * time.Minute, CreationTimeout: 60 * time.Minute} // TODO: make it configurable.
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second, RetryPolicy: retries}
 	w.acts = &RepoActivities{}
 
 	ctx = workflow.WithActivityOptions(ctx, opts)
@@ -288,7 +292,6 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 	return func(channel workflow.ReceiveChannel, more bool) {
 		payload := &RepoSignalPushPayload{}
 		data := &RepoIOClonePayload{Repo: repo, Push: payload, Branch: branch, Path: ""}
-		sopts := &workflow.SessionOptions{ExecutionTimeout: 30 * time.Minute, CreationTimeout: 60 * time.Minute}
 
 		channel.Receive(ctx, payload)
 
@@ -342,15 +345,21 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 
 		if err := workflow.ExecuteActivity(sessionctx, w.acts.RebaseAtCommit, data).
 			Get(sessionctx, nil); err != nil {
-			logger.Warn(
-				_logprefix+"error rebasing, retrying ...",
-				slog.String("error", err.Error()),
-				slog.String("repo_id", repo.ID.String()),
-				slog.String("provider", repo.Provider.String()),
-				slog.String("provider_id", repo.ProviderID),
-				slog.String("branch", branch),
-				slog.String("sha", payload.After),
-			)
+			var rebaserr *RepoIORebaseError
+			if errors.As(err, &rebaserr) {
+				logger.Info(
+					_logprefix+"rebase error, sending merge conflict message ...",
+					slog.String("error", err.Error()),
+					slog.String("repo_id", repo.ID.String()),
+					slog.String("provider", repo.Provider.String()),
+					slog.String("provider_id", repo.ProviderID),
+					slog.String("branch", branch),
+					slog.String("sha", payload.After),
+				)
+
+				// TODO: send message to slack.
+				return
+			}
 		}
 	}
 }

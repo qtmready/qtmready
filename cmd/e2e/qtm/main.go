@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"os/exec"
+	"regexp"
 
 	ghi "github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/google/uuid"
@@ -44,8 +46,47 @@ func main() {
 	}
 
 	{
-		cmd := exec.Command("git", "-C", fmt.Sprintf("/tmp/%s", id.String()), "rebase", "d2c649da85e1ba213643542501987a5b6696f6ea")
-		out, _ := cmd.CombinedOutput()
+		cmd := exec.CommandContext(context.Background(), "git", "-C", fmt.Sprintf("/tmp/%s", id.String()), "rebase", "d2c649da85e1ba213643542501987a5b6696f6ea")
+
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			var exerr *exec.ExitError
+
+			if errors.As(err, &exerr) {
+				str := err.Error()
+				pattern := `(?m)^Could not apply ([0-9a-fA-F]{7})\.\.\. (.*)$`
+
+				// Compile the regex
+				re := regexp.MustCompile(pattern)
+
+				// Find all matches
+				matches := re.FindAllStringSubmatch(str, -1)
+				for _, match := range matches {
+					shared.Logger().Info(match[0])
+					shared.Logger().Info(match[1])
+					shared.Logger().Info(match[2])
+				}
+			}
+		}
+
+		pattern := `(?m)^Could not apply ([0-9a-fA-F]{7})\.\.\. (.*)$`
+
+		// Compile the regex
+		re := regexp.MustCompile(pattern)
+
+		// Find all matches
+		matches := re.FindAllStringSubmatch(string(out), -1)
+		// for _, match := range matches {
+		// 	shared.Logger().Info(match[0])
+		// 	shared.Logger().Info(match[1])
+		// 	shared.Logger().Info(match[2])
+		// }
+
+		if len(matches) > 0 {
+			sha, msg := matches[0][1], matches[0][2]
+
+			shared.Logger().Info("matches ....", slog.String("sha", sha), slog.String("msg", msg))
+		}
 
 		shared.Logger().Info("output ....", slog.Any("output", out))
 	}

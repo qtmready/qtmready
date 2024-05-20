@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os/exec"
+	"regexp"
 
 	"go.breu.io/quantm/internal/shared"
 )
@@ -149,6 +150,22 @@ func (a *RepoActivities) RebaseAtCommit(ctx context.Context, payload RepoIOClone
 			// - chore() updaing roles.tf file is the commit message.
 			//
 			// there are multiple stratagies we can take here.
+
+			str := err.Error()
+			pattern := `(?m)^Could not apply ([0-9a-fA-F]{7})\.\.\. (.*)$`
+
+			// Compile the regex
+			re := regexp.MustCompile(pattern)
+
+			// Find all matches
+			matches := re.FindAllStringSubmatch(str, -1)
+
+			if len(matches) > 0 {
+				sha, msg := matches[0][1], matches[0][2]
+
+				return NewRepoIORebaseError(sha, msg)
+			}
+
 			return nil
 		}
 
