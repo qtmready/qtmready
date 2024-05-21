@@ -59,9 +59,9 @@ type (
 
 	// MessageIO is the interface that defines the operations that can be performed on a message provider.
 	MessageIO interface {
-		SendStaleBranchMessage(ctx context.Context, teamID string, stale *LatestCommit) error
+		SendStaleBranchMessage(ctx context.Context, payload *MessageIOStaleBranchPayload) error
 		SendNumberOfLinesExceedMessage(ctx context.Context, payload *MessageIOLineExeededPayload) error
-		SendMergeConflictsMessage(ctx context.Context, teamID string, merge *LatestCommit) error
+		SendMergeConflictsMessage(ctx context.Context, payload *MessageIOMergeConflictPayload) error
 	}
 
 	// Providers is a struct that holds the different providers that are registered with the core.
