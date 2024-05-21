@@ -47,7 +47,7 @@ type (
 		RepoIO(RepoProvider) RepoIO
 		CloudProvider(CloudProvider) CloudIO
 		ResourceConstructor(CloudProvider, Driver) ResourceConstructor
-		MessageProvider(MessageProvider) MessageIO
+		MessageIO(MessageProvider) MessageIO
 	}
 
 	Option func(Core)
@@ -160,7 +160,7 @@ func (c *core) ResgisterMessageProvider(provider MessageProvider, activities Mes
 	c.providers.message[provider] = activities
 }
 
-func (c *core) MessageProvider(name MessageProvider) MessageIO {
+func (c *core) MessageIO(name MessageProvider) MessageIO {
 	if p, ok := c.providers.message[name]; ok {
 		return p
 	}

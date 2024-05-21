@@ -20,7 +20,6 @@ package core
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"os/exec"
 	"regexp"
@@ -127,17 +126,10 @@ func (a *RepoActivities) CloneBranch(ctx context.Context, payload *RepoIOClonePa
 func (a RepoActivities) FetchBranch(ctx context.Context, payload *RepoIOClonePayload) error {
 	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "fetch", "origin", payload.Repo.DefaultBranch) //nolint
 
-	out, err := cmd.CombinedOutput()
+	_, err := cmd.CombinedOutput()
 	if err != nil {
 		return err
 	}
-
-	slog.Info(
-		"default branch fetched",
-		slog.String("output", string(out)),
-		slog.String("repo_id", payload.Repo.ID.String()),
-		slog.String("branch", payload.Branch),
-	)
 
 	return nil
 }
@@ -147,48 +139,45 @@ func (a *RepoActivities) RebaseAtCommit(ctx context.Context, payload RepoIOClone
 
 	var exerr *exec.ExitError
 
-	out, err := cmd.CombinedOutput()
+	_, err := cmd.CombinedOutput()
 	if err != nil {
 		if errors.As(err, &exerr) {
-			slog.Info(
-				"rebased",
-				slog.String("error", err.Error()),
-				slog.String("type", fmt.Sprintf("%T", err)),
-				slog.String("output", string(out)),
-				slog.String("repo_id", payload.Repo.ID.String()),
-				slog.String("branch", payload.Branch),
-			)
+			str := err.Error()
+			pattern := `(?m)^Could not apply ([0-9a-fA-F]{7})\.\.\. (.*)$`
 
-			// handling rebase error.
-			{
-				str := err.Error()
-				pattern := `(?m)^Could not apply ([0-9a-fA-F]{7})\.\.\. (.*)$`
+			// Compile the regex
+			re := regexp.MustCompile(pattern)
 
-				// Compile the regex
-				re := regexp.MustCompile(pattern)
+			// Find all matches
+			matches := re.FindAllStringSubmatch(str, -1)
 
-				// Find all matches
-				matches := re.FindAllStringSubmatch(str, -1)
+			shared.Logger().Error("rebase error", "matches", matches)
 
-				if len(matches) > 0 {
-					sha, msg := matches[0][1], matches[0][2]
+			if len(matches) > 0 {
+				sha, msg := matches[0][1], matches[0][2]
 
-					return NewRepoIORebaseError(sha, msg)
-				}
+				return NewRepoIORebaseError(sha, msg)
 			}
-
-			return nil
 		}
 
 		return err
 	}
 
-	slog.Info(
-		"rebased",
-		slog.String("output", string(out)),
-		slog.String("repo_id", payload.Repo.ID.String()),
-		slog.String("branch", payload.Branch),
-	)
+	return nil
+}
+
+func (a *RepoActivities) Push(ctx context.Context, path string, force bool) error {
+	args := []string{"-C", path}
+	if force {
+		args = append(args, "--force")
+	}
+
+	cmd := exec.CommandContext(ctx, "git", args...)
+
+	_, err := cmd.CombinedOutput()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
