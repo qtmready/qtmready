@@ -40,8 +40,8 @@ func formatLineThresholdExceededAttachment(payload *core.MessageIOLineExeededPay
 		Title:     "PR Lines Exceed",
 		TitleLink: payload.DetectChanges.CompareUrl,
 		Fields: []slack.AttachmentField{
-			createRepositoryField(payload.RepoName, payload.DetectChanges.RepoUrl),
-			createBranchField(payload.BranchName, payload.DetectChanges.CompareUrl),
+			createRepositoryField(payload.MessageIOPayload.RepoName, payload.DetectChanges.RepoUrl),
+			createBranchField(payload.MessageIOPayload.BranchName, payload.DetectChanges.CompareUrl),
 			{
 				Title: "*Threshold*",
 				Value: fmt.Sprintf("%d", payload.Threshold),
@@ -75,15 +75,15 @@ func formatLineThresholdExceededAttachment(payload *core.MessageIOLineExeededPay
 	}
 }
 
-func formatMergeConflictAttachment(merge *core.LatestCommit) slack.Attachment {
+func formatMergeConflictAttachment(payload *core.MessageIOMergeConflictPayload) slack.Attachment {
 	return slack.Attachment{
 		Color:     "warning",
 		Pretext:   "Merge conflict detected. Please resolve the conflict.", // TODO: need to finalize
 		Title:     "Merge Conflict",
-		TitleLink: merge.CommitUrl,
+		TitleLink: payload.CommitUrl,
 		Fields: []slack.AttachmentField{
-			createRepositoryField(merge.RepoName, merge.RepoUrl),
-			createBranchField(merge.Branch, merge.CommitUrl),
+			createRepositoryField(payload.MessageIOPayload.RepoName, payload.RepoUrl),
+			createBranchField(payload.MessageIOPayload.BranchName, payload.CommitUrl),
 		},
 		MarkdownIn: []string{"fields"},
 		Footer:     footer,
@@ -91,15 +91,15 @@ func formatMergeConflictAttachment(merge *core.LatestCommit) slack.Attachment {
 	}
 }
 
-func formatStaleBranchAttachment(staleBranch *core.LatestCommit) slack.Attachment {
+func formatStaleBranchAttachment(payload *core.MessageIOStaleBranchPayload) slack.Attachment {
 	return slack.Attachment{
 		Color:     "warning",
 		Pretext:   "Stale branch is detected. Please review and take necessary action.", // TODO: need to finalize
 		Title:     "Stale Branch",
-		TitleLink: staleBranch.CommitUrl,
+		TitleLink: payload.CommitUrl,
 		Fields: []slack.AttachmentField{
-			createRepositoryField(staleBranch.RepoName, staleBranch.RepoUrl),
-			createBranchField(staleBranch.Branch, staleBranch.CommitUrl),
+			createRepositoryField(payload.MessageIOPayload.RepoName, payload.RepoUrl),
+			createBranchField(payload.MessageIOPayload.BranchName, payload.CommitUrl),
 		},
 		MarkdownIn: []string{"fields"},
 		Footer:     footer,

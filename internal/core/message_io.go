@@ -22,14 +22,33 @@ import (
 )
 
 type (
+	// NOTE - this base struct need for any type of message. getting from core repo.
+	MessageIOPayload struct {
+		WorkspaceID string `json:"workspace_id"`
+		ChannelID   string `json:"channel_id"`
+		BotToken    string `json:"bot_token"`
+		RepoName    string `json:"repo_name"`
+		BranchName  string `json:"branch_name"`
+	}
+
 	// TODO: need to refine.
 	MessageIOLineExeededPayload struct {
-		WorkspaceID   string         `json:"workspace_id"`
-		ChannelID     string         `json:"channel_id"`
-		BotToken      string         `json:"bot_token"`
-		RepoName      string         `json:"repo_name"`
-		BranchName    string         `json:"branch_name"`
-		Threshold     shared.Int64   `json:"threshold"`
-		DetectChanges *RepoIOChanges `json:"detect_changes"` // TODO - need to more refine
+		MessageIOPayload *MessageIOPayload `json:"message_io_payload"`
+		Threshold        shared.Int64      `json:"threshold"`
+		DetectChanges    *RepoIOChanges    `json:"detect_changes"`
+	}
+
+	// TODO: need to refine.
+	MessageIOMergeConflictPayload struct {
+		MessageIOPayload *MessageIOPayload `json:"message_io_payload"`
+		CommitUrl        string            `json:"commit_url"`
+		RepoUrl          string            `json:"repo_url"`
+	}
+
+	// TODO: need to refine.
+	MessageIOStaleBranchPayload struct {
+		MessageIOPayload *MessageIOPayload `json:"message_io_payload"`
+		CommitUrl        string            `json:"commit_url"`
+		RepoUrl          string            `json:"repo_url"`
 	}
 )

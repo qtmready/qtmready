@@ -30,19 +30,25 @@ type (
 	Activities struct{}
 )
 
-func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID string, stale *core.LatestCommit) error {
+func (a *Activities) SendStaleBranchMessage(ctx context.Context, payload *core.MessageIOStaleBranchPayload) error {
 	logger := activity.GetLogger(ctx)
 
-	client, channelID, err := GetSlackClientAndChannelID(teamID)
+	token, err := decodeAndDecryptToken(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)
 	if err != nil {
-		logger.Error("Error in GetSlackClientAndChannelID", "Error", err)
+		logger.Error("Error in decodeAndDecryptToken", "Error", err)
 		return err
 	}
 
-	attachment := formatStaleBranchAttachment(stale)
+	client, err := instance.GetSlackClient(token)
+	if err != nil {
+		logger.Error("Error in GetSlackClient", "Error", err)
+		return err
+	}
+
+	attachment := formatStaleBranchAttachment(payload)
 
 	// call blockset to send the message to slack channel or sepecific workspace.
-	if err := notify(client, channelID, attachment); err != nil {
+	if err := notify(client, payload.MessageIOPayload.ChannelID, attachment); err != nil {
 		logger.Error("Failed to post message to channel", "Error", err)
 		return err
 	}
@@ -55,7 +61,7 @@ func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID string, 
 func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context, payload *core.MessageIOLineExeededPayload) error {
 	logger := activity.GetLogger(ctx)
 
-	token, err := decodeAndDecryptToken(payload.BotToken, payload.WorkspaceID)
+	token, err := decodeAndDecryptToken(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)
 	if err != nil {
 		logger.Error("Error in decodeAndDecryptToken", "Error", err)
 		return err
@@ -70,7 +76,7 @@ func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context, payload
 	attachment := formatLineThresholdExceededAttachment(payload)
 
 	// Call function to send the message to Slack channel or specific workspace.
-	if err := notify(client, payload.ChannelID, attachment); err != nil {
+	if err := notify(client, payload.MessageIOPayload.ChannelID, attachment); err != nil {
 		logger.Error("Failed to post message to channel", "Error", err)
 		return err
 	}
@@ -80,19 +86,25 @@ func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context, payload
 	return nil
 }
 
-func (a *Activities) SendMergeConflictsMessage(ctx context.Context, teamID string, merge *core.LatestCommit) error {
+func (a *Activities) SendMergeConflictsMessage(ctx context.Context, payload *core.MessageIOMergeConflictPayload) error {
 	logger := activity.GetLogger(ctx)
 
-	client, channelID, err := GetSlackClientAndChannelID(teamID)
+	token, err := decodeAndDecryptToken(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)
 	if err != nil {
-		logger.Error("Error in GetSlackClientAndChannelID", "Error", err)
+		logger.Error("Error in decodeAndDecryptToken", "Error", err)
 		return err
 	}
 
-	attachment := formatMergeConflictAttachment(merge)
+	client, err := instance.GetSlackClient(token)
+	if err != nil {
+		logger.Error("Error in GetSlackClient", "Error", err)
+		return err
+	}
+
+	attachment := formatMergeConflictAttachment(payload)
 
 	// call blockset to send the message to slack channel or sepecific workspace.
-	if err := notify(client, channelID, attachment); err != nil {
+	if err := notify(client, payload.MessageIOPayload.ChannelID, attachment); err != nil {
 		logger.Error("Failed to post message to channel", "Error", err)
 		return err
 	}
