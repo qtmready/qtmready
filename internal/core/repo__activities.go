@@ -134,36 +134,41 @@ func (a RepoActivities) FetchBranch(ctx context.Context, payload *RepoIOClonePay
 	return nil
 }
 
-func (a *RepoActivities) RebaseAtCommit(ctx context.Context, payload RepoIOClonePayload) error {
+func (a *RepoActivities) RebaseAtCommit(ctx context.Context, payload RepoIOClonePayload) (*RepoIORebaseAtCommitResponse, error) {
 	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "rebase", payload.Push.After) // nolint
 
 	var exerr *exec.ExitError
 
-	_, err := cmd.CombinedOutput()
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		if errors.As(err, &exerr) {
-			str := err.Error()
-			pattern := `(?m)^Could not apply ([0-9a-fA-F]{7})\.\.\. (.*)$`
+			switch exerr.ExitCode() {
+			case 1:
+				stderr := string(out)
+				pattern := `(?m)^Could not apply ([0-9a-fA-F]{7})\.\.\. (.*)$`
 
-			// Compile the regex
-			re := regexp.MustCompile(pattern)
+				// Compile the regex
+				re := regexp.MustCompile(pattern)
 
-			// Find all matches
-			matches := re.FindAllStringSubmatch(str, -1)
+				// Find all matches
+				matches := re.FindAllStringSubmatch(stderr, -1)
 
-			shared.Logger().Error("rebase error", "matches", matches)
+				if len(matches) > 0 {
+					sha, msg := matches[0][1], matches[0][2]
 
-			if len(matches) > 0 {
-				sha, msg := matches[0][1], matches[0][2]
-
-				return NewRepoIORebaseError(sha, msg)
+					return &RepoIORebaseAtCommitResponse{SHA: sha, Message: msg}, NewRepoIORebaseError(sha, msg)
+				}
+			case 128:
+				return &RepoIORebaseAtCommitResponse{InProgress: true}, NewRepoIORebaseError("unknown", "unknown")
+			default:
+				return nil, err // retry
 			}
 		}
 
-		return err
+		return nil, err // retry
 	}
 
-	return nil
+	return nil, nil // rebase successful
 }
 
 func (a *RepoActivities) Push(ctx context.Context, path string, force bool) error {

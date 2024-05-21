@@ -134,4 +134,10 @@ type (
 		Timestamp time.Time     `json:"timestamp"`
 		Changes   RepoIOChanges `json:"changes"`
 	}
+
+	RepoIORebaseAtCommitResponse struct {
+		SHA        string `json:"sha"`
+		Message    string `json:"message"`
+		InProgress bool   `json:"in_progress"`
+	}
 )

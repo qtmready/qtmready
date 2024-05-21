@@ -248,6 +248,10 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 	}
 }
 
+// onBranchRebase is a workflow handler that handles the rebase operation for a given repository and branch.
+// It clones the repository, fetches the default branch, and then rebases the given branch at the specified commit.
+// If a merge conflict is detected during the rebase, it sends a message via the message provider.
+// In order to make sure that all the activities are executed on the same node, a session is created.
 func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch string) shared.ChannelHandler {
 	// _logger := workflow.GetLogger(ctx)
 	// _log := w.logbranch(_logger, "push", repo.ID.String(), repo.Provider.String(), repo.ProviderID, branch)
@@ -295,16 +299,23 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 
 		logger.Info("rebasing at commit ...", "sha", payload.After, "path", data.Path)
 
-		if err := workflow.ExecuteActivity(sessionctx, w.acts.RebaseAtCommit, data).
-			Get(sessionctx, nil); err != nil {
-			var rebaserr *RepoIORebaseError
-			if errors.As(err, &rebaserr) {
-				logger.Warn("error rebasing at commit, retrying ...", "error", rebaserr.Error(), "sha", payload.After, "path", data.Path)
+		rebase := &RepoIORebaseAtCommitResponse{}
+		if err := workflow.ExecuteActivity(sessionctx, w.acts.RebaseAtCommit, data).Get(sessionctx, rebase); err != nil {
+			var apperr *temporal.ApplicationError
+			if errors.As(err, &apperr) {
+				if apperr.Type() == "RepoIORebaseError" && !rebase.InProgress {
+					logger.Info("merge conflict detected ...", "sha", rebase.SHA, "commit_message", rebase.Message, "path", data.Path)
 
-				// TODO: send message to slack.
-				return
+					return // TODO: use the data from rabserr to send a message to the message provider, do a cleanup and return.
+				}
 			}
+
+			logger.Warn("system error while rebasing, retrying ...", "sha", payload.After, "path", data.Path)
 		}
+
+		// TODO: implement push and clean activities.
+		logger.Info("reabse successful, pushing changes ...", "sha", payload.After, "path", data.Path)
+		logger.Info("cleaning up ...", "sha", payload.After, "path", data.Path)
 	}
 }
 
