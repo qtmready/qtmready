@@ -52,7 +52,7 @@ func (a *Activities) SendStaleBranchMessage(ctx context.Context, teamID string, 
 	return nil
 }
 
-func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context, payload *core.LinesExceedSlackMessageProviderPayload) error {
+func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context, payload *core.MessageIOLineExeededPayload) error {
 	logger := activity.GetLogger(ctx)
 
 	token, err := decodeAndDecryptToken(payload.BotToken, payload.WorkspaceID)

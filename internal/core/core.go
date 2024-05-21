@@ -60,7 +60,7 @@ type (
 	// MessageIO is the interface that defines the operations that can be performed on a message provider.
 	MessageIO interface {
 		SendStaleBranchMessage(ctx context.Context, teamID string, stale *LatestCommit) error
-		SendNumberOfLinesExceedMessage(ctx context.Context, payload *LinesExceedSlackMessageProviderPayload) error
+		SendNumberOfLinesExceedMessage(ctx context.Context, payload *MessageIOLineExeededPayload) error
 		SendMergeConflictsMessage(ctx context.Context, teamID string, merge *LatestCommit) error
 	}
 

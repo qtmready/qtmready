@@ -32,7 +32,7 @@ const (
 	footer = "Powered by quantm"
 )
 
-func formatLineThresholdExceededAttachment(payload *core.LinesExceedSlackMessageProviderPayload) slack.Attachment {
+func formatLineThresholdExceededAttachment(payload *core.MessageIOLineExeededPayload) slack.Attachment {
 	return slack.Attachment{
 		Color: "warning",
 		Pretext: "The number of lines in this pull request exceeds the allowed threshold. " +

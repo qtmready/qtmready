@@ -159,28 +159,22 @@ func (a *RepoActivities) RebaseAtCommit(ctx context.Context, payload RepoIOClone
 				slog.String("branch", payload.Branch),
 			)
 
-			// TODO: Read err.Error(). Find all lines containing a line like
-			// Could not apply 1ac7130... chore() updating roles.tf file
-			// where
-			// - "Could not apply" signifies that rebasing failed
-			// - 1ac7130 is the commit sha
-			// - chore() updaing roles.tf file is the commit message.
-			//
-			// there are multiple stratagies we can take here.
+			// handling rebase error.
+			{
+				str := err.Error()
+				pattern := `(?m)^Could not apply ([0-9a-fA-F]{7})\.\.\. (.*)$`
 
-			str := err.Error()
-			pattern := `(?m)^Could not apply ([0-9a-fA-F]{7})\.\.\. (.*)$`
+				// Compile the regex
+				re := regexp.MustCompile(pattern)
 
-			// Compile the regex
-			re := regexp.MustCompile(pattern)
+				// Find all matches
+				matches := re.FindAllStringSubmatch(str, -1)
 
-			// Find all matches
-			matches := re.FindAllStringSubmatch(str, -1)
+				if len(matches) > 0 {
+					sha, msg := matches[0][1], matches[0][2]
 
-			if len(matches) > 0 {
-				sha, msg := matches[0][1], matches[0][2]
-
-				return NewRepoIORebaseError(sha, msg)
+					return NewRepoIORebaseError(sha, msg)
+				}
 			}
 
 			return nil

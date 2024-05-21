@@ -299,7 +299,7 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 
 			if changes.Delta > repo.Threshold {
 				// line exceed message provider payload
-				lmp := &LinesExceedSlackMessageProviderPayload{
+				lmp := &MessageIOLineExeededPayload{
 					WorkspaceID:   repo.MessageProviderData.Slack.WorkspaceID,
 					ChannelID:     repo.MessageProviderData.Slack.ChannelID,
 					BotToken:      repo.MessageProviderData.Slack.BotToken,

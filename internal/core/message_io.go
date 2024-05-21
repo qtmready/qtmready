@@ -23,7 +23,7 @@ import (
 
 type (
 	// TODO: need to refine.
-	LinesExceedSlackMessageProviderPayload struct {
+	MessageIOLineExeededPayload struct {
 		WorkspaceID   string         `json:"workspace_id"`
 		ChannelID     string         `json:"channel_id"`
 		BotToken      string         `json:"bot_token"`
