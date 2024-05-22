@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"os"
 	"os/exec"
 	"regexp"
 
@@ -134,6 +135,9 @@ func (a RepoActivities) FetchBranch(ctx context.Context, payload *RepoIOClonePay
 	return nil
 }
 
+// RebaseAtCommit attempts to rebase the repository at the given commit.
+// If the rebase fails, it returns the SHA and error message of the failed commit.
+// If the rebase is in progress, it returns an InProgress flag.
 func (a *RepoActivities) RebaseAtCommit(ctx context.Context, payload RepoIOClonePayload) (*RepoIORebaseAtCommitResponse, error) {
 	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "rebase", payload.Push.After) // nolint
 
@@ -171,6 +175,8 @@ func (a *RepoActivities) RebaseAtCommit(ctx context.Context, payload RepoIOClone
 	return nil, nil // rebase successful
 }
 
+// Push pushes the contents of the repository at the given path to the remote.
+// If force is true, the push will be forced (--force).
 func (a *RepoActivities) Push(ctx context.Context, path string, force bool) error {
 	args := []string{"-C", path}
 	if force {
@@ -181,6 +187,16 @@ func (a *RepoActivities) Push(ctx context.Context, path string, force bool) erro
 
 	_, err := cmd.CombinedOutput()
 	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// RemoveClonedAtPath removes the repo that was cloned at the given path.
+// If the path does not exist, RemoveClonedAtPath will return a nil error.
+func (a *RepoActivities) RemoveClonedAtPath(ctx context.Context, path string) error {
+	if err := os.RemoveAll(path); err != nil {
 		return err
 	}
 

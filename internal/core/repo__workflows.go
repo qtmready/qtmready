@@ -253,6 +253,10 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 // It clones the repository, fetches the default branch, and then rebases the given branch at the specified commit.
 // If a merge conflict is detected during the rebase, it sends a message via the message provider.
 // In order to make sure that all the activities are executed on the same node, a session is created.
+//
+// NOTE:  _ = workflow.ExecuteActivity(ctx, ...) might look blasphempous! right? well, it's not. In the scope of the temporal workflow,
+// the returned error is generally a temporal.ApplicationError, and will only happen if the number of retries is exhausted. We generally
+// return the error to tell us that workflow has failed. In this case, we are not interested in the error.
 func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch string) shared.ChannelHandler {
 	// _logger := workflow.GetLogger(ctx)
 	// _log := w.logbranch(_logger, "push", repo.ID.String(), repo.Provider.String(), repo.ProviderID, branch)
@@ -272,31 +276,16 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 
 		logger.Info("init ...", "sha", payload.After)
 
-		// create a random path and make it part of the data. since we are using sessionctx, the path will be available
-		// to all activities executed in this session.
-		_ = workflow.SideEffect(ctx, func(ctx workflow.Context) any {
-			return "/tmp/" + uuid.New().String()
-		}).Get(&data.Path)
+		_ = workflow.SideEffect(ctx, func(ctx workflow.Context) any { return "/tmp/" + uuid.New().String() }).Get(&data.Path)
 
-		sessionctx, err := workflow.CreateSession(ctx, sopts)
-		if err != nil {
-			logger.Warn("error creating session, retrying ...", "error", err.Error(), "sha", payload.After, "path", data.Path)
-			return
-		}
-
+		sessionctx, _ := workflow.CreateSession(ctx, sopts)
 		defer workflow.CompleteSession(sessionctx)
 
 		logger.Info("cloning repo at branch ...", "sha", payload.After, "target_branch", branch, "path", data.Path)
-
-		if err := workflow.ExecuteActivity(sessionctx, w.acts.CloneBranch, data).Get(sessionctx, nil); err != nil {
-			logger.Warn("error cloning branch, retrying ...", "error", err.Error(), "sha", payload.After, "path", data.Path)
-		}
+		_ = workflow.ExecuteActivity(sessionctx, w.acts.CloneBranch, data).Get(sessionctx, nil)
 
 		logger.Info("fetching default branch ...", "sha", payload.After, "path", data.Path)
-
-		if err := workflow.ExecuteActivity(sessionctx, w.acts.FetchBranch, data).Get(sessionctx, nil); err != nil {
-			logger.Warn("error fetching default branch, retrying ...", "error", err.Error(), "sha", payload.After, "path", data.Path)
-		}
+		_ = workflow.ExecuteActivity(sessionctx, w.acts.FetchBranch, data).Get(sessionctx, nil)
 
 		logger.Info("rebasing at commit ...", "sha", payload.After, "path", data.Path)
 
@@ -321,24 +310,20 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 
 					logger.Info("merge conflict ...", "sha", payload.After, payload.RepoName)
 
-					if err := workflow.
-						ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg).
-						Get(ctx, nil); err != nil {
-						logger.Warn("error sending message, retrying ...", "error", err.Error(), "sha", payload.After)
-					}
+					_ = workflow.ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg)
+					_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
 
 					return
 				}
 			}
 
-			logger.Warn("system error while rebasing, retrying ...", "sha", payload.After, "path", data.Path)
+			_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
 
 			return
 		}
 
-		// TODO: implement push and clean activities.
-		logger.Info("reabse successful, pushing changes ...", "sha", payload.After, "path", data.Path)
-		logger.Info("cleaning up ...", "sha", payload.After, "path", data.Path)
+		_ = workflow.ExecuteActivity(ctx, w.acts.Push, data.Path, true).Get(ctx, nil)
+		_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
 	}
 }
 
