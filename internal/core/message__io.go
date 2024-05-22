@@ -43,6 +43,7 @@ type (
 		MessageIOPayload *MessageIOPayload `json:"message_io_payload"`
 		CommitUrl        string            `json:"commit_url"`
 		RepoUrl          string            `json:"repo_url"`
+		SHA              string            `json:"sha"`
 	}
 
 	// TODO: need to refine.

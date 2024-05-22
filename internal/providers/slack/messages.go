@@ -37,8 +37,6 @@ func formatLineThresholdExceededAttachment(payload *core.MessageIOLineExeededPay
 		Color: "warning",
 		Pretext: "The number of lines in this pull request exceeds the allowed threshold. " +
 			"Please review and adjust accordingly.", // TODO: need to finalize
-		Title:     "PR Lines Exceed",
-		TitleLink: payload.DetectChanges.CompareUrl,
 		Fields: []slack.AttachmentField{
 			createRepositoryField(payload.MessageIOPayload.RepoName, payload.DetectChanges.RepoUrl, true),
 			createBranchField(payload.MessageIOPayload.BranchName, payload.DetectChanges.CompareUrl, true),
@@ -77,18 +75,17 @@ func formatLineThresholdExceededAttachment(payload *core.MessageIOLineExeededPay
 
 func formatMergeConflictAttachment(payload *core.MessageIOMergeConflictPayload) slack.Attachment {
 	return slack.Attachment{
-		Color:     "warning",
-		Pretext:   fmt.Sprintf("A recent commit on defualt %s branch has caused the merge conflict.", payload.MessageIOPayload.BranchName),
-		Title:     "Merge Conflict",
-		TitleLink: payload.CommitUrl,
+		Color: "warning",
+		Pretext: fmt.Sprintf("A recent commit on defualt branch has caused the merge conflict on <%s|%s> branch.",
+			payload.CommitUrl, payload.MessageIOPayload.BranchName),
 		Fields: []slack.AttachmentField{
 			{
 				Title: "*Commit SHA*",
-				Value: fmt.Sprintf("%s", payload.CommitUrl),
-				Short: false,
+				Value: fmt.Sprintf("<%s|%s>", payload.CommitUrl, payload.SHA[:7]),
+				Short: true,
 			},
-			createRepositoryField(payload.MessageIOPayload.RepoName, payload.RepoUrl, false),
-			createBranchField(payload.MessageIOPayload.BranchName, payload.CommitUrl, false),
+			createRepositoryField(payload.MessageIOPayload.RepoName, payload.RepoUrl, true),
+			createBranchField(payload.MessageIOPayload.BranchName, payload.CommitUrl, true),
 		},
 		MarkdownIn: []string{"fields"},
 		Footer:     footer,

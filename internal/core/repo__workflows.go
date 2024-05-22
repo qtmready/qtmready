@@ -300,6 +300,7 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 						},
 						CommitUrl: fmt.Sprintf("https://github.com/%s/%s/commits/%s", payload.RepoOwner, payload.RepoName, payload.After),
 						RepoUrl:   fmt.Sprintf("https://github.com/%s/%s", payload.RepoOwner, payload.RepoName),
+						SHA:       payload.After,
 					}
 
 					logger.Info("merge conflict detected, sending message ...", "sha", payload.After, payload.RepoName)
