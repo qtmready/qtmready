@@ -19,6 +19,7 @@ package core
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -306,11 +307,33 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 				if apperr.Type() == "RepoIORebaseError" && !rebase.InProgress {
 					logger.Info("merge conflict detected ...", "sha", rebase.SHA, "commit_message", rebase.Message, "path", data.Path)
 
-					return // TODO: use the data from rabserr to send a message to the message provider, do a cleanup and return.
+					msg := &MessageIOMergeConflictPayload{
+						MessageIOPayload: &MessageIOPayload{
+							WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
+							ChannelID:   repo.MessageProviderData.Slack.ChannelID,
+							BotToken:    repo.MessageProviderData.Slack.BotToken,
+							RepoName:    repo.Name,
+							BranchName:  branch,
+						},
+						CommitUrl: fmt.Sprintf("https://github.com/%s/%s/commits/%s", payload.RepoOwner, payload.RepoName, payload.After),
+						RepoUrl:   fmt.Sprintf("https://github.com/%s/%s", payload.RepoOwner, payload.RepoName),
+					}
+
+					logger.Info("merge conflict ...", "sha", payload.After, payload.RepoName)
+
+					if err := workflow.
+						ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg).
+						Get(ctx, nil); err != nil {
+						logger.Warn("error sending message, retrying ...", "error", err.Error(), "sha", payload.After)
+					}
+
+					return
 				}
 			}
 
 			logger.Warn("system error while rebasing, retrying ...", "sha", payload.After, "path", data.Path)
+
+			return
 		}
 
 		// TODO: implement push and clean activities.
