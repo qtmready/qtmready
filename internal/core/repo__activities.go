@@ -177,8 +177,8 @@ func (a *RepoActivities) RebaseAtCommit(ctx context.Context, payload RepoIOClone
 
 // Push pushes the contents of the repository at the given path to the remote.
 // If force is true, the push will be forced (--force).
-func (a *RepoActivities) Push(ctx context.Context, path string, force bool) error {
-	args := []string{"-C", path}
+func (a *RepoActivities) Push(ctx context.Context, branch, path string, force bool) error {
+	args := []string{"-C", path, "push", "origin", branch}
 	if force {
 		args = append(args, "--force")
 	}

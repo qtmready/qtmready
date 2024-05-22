@@ -311,6 +311,7 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 					logger.Info("merge conflict ...", "sha", payload.After, payload.RepoName)
 
 					_ = workflow.ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg)
+					_ = workflow.ExecuteActivity(ctx, w.acts.Push, branch, data.Path, true).Get(ctx, nil)
 					_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
 
 					return
@@ -322,7 +323,6 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 			return
 		}
 
-		_ = workflow.ExecuteActivity(ctx, w.acts.Push, data.Path, true).Get(ctx, nil)
 		_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
 	}
 }
