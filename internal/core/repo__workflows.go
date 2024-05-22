@@ -302,7 +302,7 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 						RepoUrl:   fmt.Sprintf("https://github.com/%s/%s", payload.RepoOwner, payload.RepoName),
 					}
 
-					logger.Info("merge conflict ...", "sha", payload.After, payload.RepoName)
+					logger.Info("merge conflict detected, sending message ...", "sha", payload.After, payload.RepoName)
 
 					_ = workflow.ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg)
 					_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)

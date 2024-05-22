@@ -90,6 +90,7 @@ func main() {
 	// RepoIO & CloudIO
 	coreWrkr.RegisterActivity(&cloudrun.Activities{})
 	coreWrkr.RegisterActivity(&github.RepoIO{})
+	coreWrkr.RegisterActivity(&slack.Activities{})
 
 	// mutex activity
 	coreWrkr.RegisterActivity(mutex.PrepareMutexActivity)
