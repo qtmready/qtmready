@@ -206,14 +206,11 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 		}
 		changes := &RepoIOChanges{}
 
-		// TODO - handle repo errors on branch push
 		// check the message provider if not ignore the early warning
 		if repo.MessageProvider != MessageProviderNone {
 			logger.Info("detecting changes ...", "sha", payload.After)
 
-			if err := workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, msg).Get(ctx, changes); err != nil {
-				logger.Warn("error detecting changes, retrying ...", "error", err.Error(), "sha", payload.After, "branch", branch)
-			}
+			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, msg).Get(ctx, changes)
 
 			if changes.Delta > repo.Threshold {
 				msg := &MessageIOLineExeededPayload{
@@ -230,11 +227,8 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 
 				logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
 
-				if err := workflow.
-					ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
-					Get(ctx, nil); err != nil {
-					logger.Warn("error sending message, retrying ...", "error", err.Error(), "sha", payload.After)
-				}
+				_ = workflow.
+					ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).Get(ctx, nil)
 
 				return
 			}

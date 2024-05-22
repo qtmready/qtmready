@@ -139,6 +139,28 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 
 // PostInstall refresh the default branch for all repositories associated with the given teamID and gets orgs users.
 func (w *Workflows) PostInstall(ctx workflow.Context, teamID string) error {
+	logger := workflow.GetLogger(ctx)
+	opts := workflow.ActivityOptions{
+		StartToCloseTimeout: 60 * time.Second,
+	}
+	_ctx := workflow.WithActivityOptions(ctx, opts)
+
+	bdp := &core.RepoIORefreshDefaultBranchesPayload{
+		TeamID: teamID,
+	}
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.RefreshDefaultBranches, bdp).Get(_ctx, nil); err != nil {
+		logger.Warn("github/refresh default branches: database error, retrying ... ")
+	}
+
+	op := &core.RepoIOGetOrgUsersPayload{
+		TeamID: teamID,
+	}
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.GetOrgUsers, op).Get(_ctx, nil); err != nil {
+		logger.Warn("github/org users: database error, retrying ... ")
+	}
+
 	return nil
 }
 
