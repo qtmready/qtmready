@@ -686,30 +686,34 @@ func (a *Activities) GetOrgUsers(ctx context.Context, payload *core.RepoIOGetOrg
 	logger := activity.GetLogger(ctx)
 	prepo := &Repo{}
 
+	// Get the repository information
 	if err := db.Get(prepo, db.QueryParams{"team_id": payload.TeamID}); err != nil {
-		logger.Error("GetOrgUsers: Unable to get the gitub repo", "Error", err)
+		logger.Error("GetOrgUsers: Unable to get the GitHub repo", "error", err)
 		return err
 	}
 
+	// Get the GitHub client for the installation
 	client, err := Instance().GetClientForInstallation(prepo.InstallationID)
 	if err != nil {
-		logger.Error("GetClientFromInstallation failed", "Error", err)
+		logger.Error("GetClientFromInstallation failed", "error", err)
 		return err
 	}
 
-	olopts := &gh.OrganizationsListOptions{
+	orgopts := &gh.OrganizationsListOptions{
 		ListOptions: gh.ListOptions{
 			Page:    1,
 			PerPage: 1, // Adjust this value as needed
 		},
 	}
 
-	// NOTE: make dynamic and get the sepecific organizations
-	orgs, _, err := client.Organizations.ListAll(ctx, olopts)
+	// List all organizations
+	orgs, _, err := client.Organizations.ListAll(ctx, orgopts)
 	if err != nil {
-		logger.Error("List the organizations failed", "Error", err)
+		logger.Error("List the organizations failed", "error", err)
 		return err
 	}
+
+	logger.Info("organizations count", "count", len(orgs))
 
 	lmopts := &gh.ListMembersOptions{
 		ListOptions: gh.ListOptions{
@@ -718,24 +722,27 @@ func (a *Activities) GetOrgUsers(ctx context.Context, payload *core.RepoIOGetOrg
 		},
 	}
 
+	// List members of the first organization
+	// NOTE - org Name is get only for github teams.
+	// If the username with no team hit this workflow get the activity error nil pointer dereference.
 	members, _, err := client.Organizations.ListMembers(ctx, *orgs[0].Name, lmopts)
 	if err != nil {
-		logger.Error("List the organization members failed", "Error", err)
+		logger.Error("List the organization members failed", "error", err)
 		return err
 	}
 
-	logger.Info("organization members count: ", len(members))
+	logger.Info("organization members count", "count", len(members))
 
-	// Save the github org users
+	// Save the GitHub org users
 	for _, member := range members {
 		m := GithubOrgMembers{
-			Name:    *member.Name,
-			Email:   *member.Email,
-			Company: *member.Company,
+			Name:    member.GetName(),
+			Email:   member.GetEmail(),
+			Company: member.GetCompany(),
 		}
 
 		if err := db.Save(&m); err != nil {
-			logger.Error("Error saving github org members", "Error", err)
+			logger.Error("Error saving GitHub org members", "error", err)
 			return err
 		}
 	}
@@ -746,14 +753,17 @@ func (a *Activities) GetOrgUsers(ctx context.Context, payload *core.RepoIOGetOrg
 func (a *Activities) RefreshDefaultBranches(ctx context.Context, payload *core.RepoIORefreshDefaultBranchesPayload) error {
 	logger := activity.GetLogger(ctx)
 
-	prepos := make([]*Repo, 0)
-	if err := db.Filter(&Repo{}, prepos, db.QueryParams{"team_id": payload.TeamID}); err != nil {
+	prepos := make([]Repo, 0)
+	if err := db.Filter(&Repo{}, &prepos, db.QueryParams{"team_id": payload.TeamID}); err != nil {
 		shared.Logger().Error("Error filter repos", "error", err)
+		return err
 	}
+
+	logger.Info("provider repos length", "info", len(prepos))
 
 	client, err := Instance().GetClientForInstallation(prepos[0].InstallationID)
 	if err != nil {
-		logger.Error("GetClientFromInstallation failed", "Error", err)
+		logger.Error("GetClientFromInstallation failed", "error", err)
 		return err
 	}
 
@@ -761,14 +771,14 @@ func (a *Activities) RefreshDefaultBranches(ctx context.Context, payload *core.R
 	for _, prepo := range prepos {
 		repo, _, err := client.Repositories.Get(ctx, strings.Split(prepo.FullName, "/")[0], prepo.Name)
 		if err != nil {
-			logger.Error("RefreshDefaultBranches Activity", "Error", err)
+			logger.Error("RefreshDefaultBranches Activity", "error", err)
 			return err
 		}
 
-		prepo.DefaultBranch = *repo.DefaultBranch
+		prepo.DefaultBranch = repo.GetDefaultBranch()
 
-		if err := db.Save(prepo); err != nil {
-			logger.Error("Error saving ggithub repo", "Error", err)
+		if err := db.Save(&prepo); err != nil {
+			logger.Error("Error saving github repo", "error", err)
 			return err
 		}
 	}
