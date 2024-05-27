@@ -118,6 +118,10 @@ func (s *ServerHandler) GithubGetRepos(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, result)
 }
 
+func (s *ServerHandler) GithubCreateUserOrgs(ctx echo.Context) error {
+	return nil
+}
+
 func (s *ServerHandler) GithubGetInstallations(ctx echo.Context) error {
 	result := make([]Installation, 0)
 	if err := db.Filter(
@@ -129,6 +133,50 @@ func (s *ServerHandler) GithubGetInstallations(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(http.StatusOK, result)
+}
+
+func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
+	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
+
+	if signature == "" {
+		return ctx.JSON(http.StatusUnauthorized, ErrMissingHeaderGithubSignature)
+	}
+
+	// NOTE: We are reading the request body twice. This is not ideal.
+	body, _ := io.ReadAll(ctx.Request().Body)
+	ctx.Request().Body = io.NopCloser(bytes.NewBuffer(body))
+
+	if err := Instance().VerifyWebhookSignature(body, signature); err != nil {
+		return shared.NewAPIError(http.StatusUnauthorized, err)
+	}
+
+	headerEvent := ctx.Request().Header.Get("X-GitHub-Event")
+	if headerEvent == "" {
+		return shared.NewAPIError(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
+	}
+
+	shared.Logger().Debug("GithubWebhook", "headerEvent", headerEvent)
+	// Uncomment for debugging!
+	// var jsonMap map[string]interface{}
+	// json.Unmarshal([]byte(string(body)), &jsonMap)
+	// shared.Logger().Debug("GithubWebhook", "body", jsonMap)
+
+	event := WebhookEvent(headerEvent)
+	handlers := WebhookEventHandlers{
+		WebhookEventInstallation:             handleInstallationEvent,
+		WebhookEventInstallationRepositories: handleInstallationRepositoriesEvent,
+		WebhookEventPush:                     handlePushEvent,
+		// WebhookEventPullRequest:              handlePullRequestEvent,
+		WebhookEventWorkflowRun: handleWorkflowRunEvent,
+	}
+
+	if handle, exists := handlers[event]; exists {
+		return handle(ctx)
+	} else {
+		shared.Logger().Warn("Github Webhook: Unsupported event", "event", event)
+	}
+
+	return shared.NewAPIError(http.StatusBadRequest, ErrInvalidEvent)
 }
 
 // GithubArtifactReady API is called by github action after building and pushing the build artifact
@@ -249,48 +297,4 @@ func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
 
 func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 	return nil
-}
-
-func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
-	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
-
-	if signature == "" {
-		return ctx.JSON(http.StatusUnauthorized, ErrMissingHeaderGithubSignature)
-	}
-
-	// NOTE: We are reading the request body twice. This is not ideal.
-	body, _ := io.ReadAll(ctx.Request().Body)
-	ctx.Request().Body = io.NopCloser(bytes.NewBuffer(body))
-
-	if err := Instance().VerifyWebhookSignature(body, signature); err != nil {
-		return shared.NewAPIError(http.StatusUnauthorized, err)
-	}
-
-	headerEvent := ctx.Request().Header.Get("X-GitHub-Event")
-	if headerEvent == "" {
-		return shared.NewAPIError(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
-	}
-
-	shared.Logger().Debug("GithubWebhook", "headerEvent", headerEvent)
-	// Uncomment for debugging!
-	// var jsonMap map[string]interface{}
-	// json.Unmarshal([]byte(string(body)), &jsonMap)
-	// shared.Logger().Debug("GithubWebhook", "body", jsonMap)
-
-	event := WebhookEvent(headerEvent)
-	handlers := WebhookEventHandlers{
-		WebhookEventInstallation:             handleInstallationEvent,
-		WebhookEventInstallationRepositories: handleInstallationRepositoriesEvent,
-		WebhookEventPush:                     handlePushEvent,
-		// WebhookEventPullRequest:              handlePullRequestEvent,
-		WebhookEventWorkflowRun: handleWorkflowRunEvent,
-	}
-
-	if handle, exists := handlers[event]; exists {
-		return handle(ctx)
-	} else {
-		shared.Logger().Warn("Github Webhook: Unsupported event", "event", event)
-	}
-
-	return shared.NewAPIError(http.StatusBadRequest, ErrInvalidEvent)
 }
