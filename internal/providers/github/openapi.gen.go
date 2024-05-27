@@ -25,6 +25,7 @@ import (
 	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
+	"github.com/oapi-codegen/runtime"
 	"github.com/scylladb/gocqlx/v2/table"
 	"go.breu.io/quantm/internal/shared"
 	externalRef0 "go.breu.io/quantm/internal/shared"
@@ -213,11 +214,11 @@ type CompleteInstallationRequest struct {
 	SetupAction    SetupAction  `json:"setup_action"`
 }
 
-// CreateGithubUserOrgs defines model for CreateGithubUserOrgs.
-type CreateGithubUserOrgs struct {
+// CreateGithubUserOrgsRequest defines model for CreateGithubUserOrgsRequest.
+type CreateGithubUserOrgsRequest struct {
 	GithubOrgIDs []shared.Int64 `json:"github_org_ids"`
-	GithubUserId shared.Int64   `json:"github_user_id"`
-	ID           gocql.UUID     `json:"user_id"`
+	GithubUserID shared.Int64   `json:"github_user_id"`
+	UserID       gocql.UUID     `json:"user_id"`
 }
 
 // GithubActionResultRequest github action result is sent to quantum along with branch name.
@@ -314,8 +315,8 @@ func (githuborgmembers *GithubOrgMembers) GetTable() itable.ITable {
 	return githuborgmembersTable
 }
 
-// GithubOrgUser defines model for GithubOrgUser.
-type GithubOrgUser struct {
+// OrgUser defines model for GithubOrgUser.
+type OrgUser struct {
 	CreatedAt     time.Time    `json:"created_at"`
 	GithubOrgID   shared.Int64 `json:"github_org_id"`
 	GithubOrgName string       `json:"github_org_name"`
@@ -339,7 +340,7 @@ var (
 	githuborguserTable = itable.New(*githuborguserMeta.M)
 )
 
-func (githuborguser *GithubOrgUser) GetTable() itable.ITable {
+func (githuborguser *OrgUser) GetTable() itable.ITable {
 	return githuborguserTable
 }
 
@@ -391,6 +392,12 @@ type WorkflowResponse struct {
 // WorkflowStatus the workflow status.
 type WorkflowStatus string
 
+// GithubListUserOrgsParams defines parameters for GithubListUserOrgs.
+type GithubListUserOrgsParams struct {
+	// UserId User ID
+	UserId string `form:"user_id" json:"user_id"`
+}
+
 // GithubArtifactReadyJSONRequestBody defines body for GithubArtifactReady for application/json ContentType.
 type GithubArtifactReadyJSONRequestBody = ArtifactReadyRequest
 
@@ -402,6 +409,9 @@ type CliGitMergeJSONRequestBody = CliGitMerge
 
 // GithubCompleteInstallationJSONRequestBody defines body for GithubCompleteInstallation for application/json ContentType.
 type GithubCompleteInstallationJSONRequestBody = CompleteInstallationRequest
+
+// GithubCreateUserOrgsJSONRequestBody defines body for GithubCreateUserOrgs for application/json ContentType.
+type GithubCreateUserOrgsJSONRequestBody = CreateGithubUserOrgsRequest
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -502,8 +512,13 @@ type ClientInterface interface {
 	// GithubGetRepos request
 	GithubGetRepos(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GithubCreateUserOrgs request
-	GithubCreateUserOrgs(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	// GithubListUserOrgs request
+	GithubListUserOrgs(ctx context.Context, params *GithubListUserOrgsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GithubCreateUserOrgsWithBody request with any body
+	GithubCreateUserOrgsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	GithubCreateUserOrgs(ctx context.Context, body GithubCreateUserOrgsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GithubWebhook request
 	GithubWebhook(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -629,8 +644,32 @@ func (c *Client) GithubGetRepos(ctx context.Context, reqEditors ...RequestEditor
 	return c.Client.Do(req)
 }
 
-func (c *Client) GithubCreateUserOrgs(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGithubCreateUserOrgsRequest(c.Server)
+func (c *Client) GithubListUserOrgs(ctx context.Context, params *GithubListUserOrgsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubListUserOrgsRequest(c.Server, params)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GithubCreateUserOrgsWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubCreateUserOrgsRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GithubCreateUserOrgs(ctx context.Context, body GithubCreateUserOrgsJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubCreateUserOrgsRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -867,8 +906,8 @@ func NewGithubGetReposRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
-// NewGithubCreateUserOrgsRequest generates requests for GithubCreateUserOrgs
-func NewGithubCreateUserOrgsRequest(server string) (*http.Request, error) {
+// NewGithubListUserOrgsRequest generates requests for GithubListUserOrgs
+func NewGithubListUserOrgsRequest(server string, params *GithubListUserOrgsParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -886,10 +925,68 @@ func NewGithubCreateUserOrgsRequest(server string) (*http.Request, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", queryURL.String(), nil)
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if queryFrag, err := runtime.StyleParamWithLocation("form", true, "user_id", runtime.ParamLocationQuery, params.UserId); err != nil {
+			return nil, err
+		} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+			return nil, err
+		} else {
+			for k, v := range parsed {
+				for _, v2 := range v {
+					queryValues.Add(k, v2)
+				}
+			}
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
 	if err != nil {
 		return nil, err
 	}
+
+	return req, nil
+}
+
+// NewGithubCreateUserOrgsRequest calls the generic GithubCreateUserOrgs builder with application/json body
+func NewGithubCreateUserOrgsRequest(server string, body GithubCreateUserOrgsJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewGithubCreateUserOrgsRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewGithubCreateUserOrgsRequestWithBody generates requests for GithubCreateUserOrgs with any type of body
+func NewGithubCreateUserOrgsRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/providers/github/user-orgs")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -990,8 +1087,13 @@ type ClientWithResponsesInterface interface {
 	// GithubGetReposWithResponse request
 	GithubGetReposWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubGetReposResponse, error)
 
-	// GithubCreateUserOrgsWithResponse request
-	GithubCreateUserOrgsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubCreateUserOrgsResponse, error)
+	// GithubListUserOrgsWithResponse request
+	GithubListUserOrgsWithResponse(ctx context.Context, params *GithubListUserOrgsParams, reqEditors ...RequestEditorFn) (*GithubListUserOrgsResponse, error)
+
+	// GithubCreateUserOrgsWithBodyWithResponse request with any body
+	GithubCreateUserOrgsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubCreateUserOrgsResponse, error)
+
+	GithubCreateUserOrgsWithResponse(ctx context.Context, body GithubCreateUserOrgsJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubCreateUserOrgsResponse, error)
 
 	// GithubWebhookWithResponse request
 	GithubWebhookWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubWebhookResponse, error)
@@ -1142,10 +1244,35 @@ func (r GithubGetReposResponse) StatusCode() int {
 	return 0
 }
 
+type GithubListUserOrgsResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *[]OrgUser
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GithubListUserOrgsResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GithubListUserOrgsResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type GithubCreateUserOrgsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON201      *CreateGithubUserOrgs
+	JSON201      *[]OrgUser
 	JSON400      *externalRef0.BadRequest
 	JSON401      *externalRef0.Unauthorized
 	JSON500      *externalRef0.InternalServerError
@@ -1278,9 +1405,26 @@ func (c *ClientWithResponses) GithubGetReposWithResponse(ctx context.Context, re
 	return ParseGithubGetReposResponse(rsp)
 }
 
-// GithubCreateUserOrgsWithResponse request returning *GithubCreateUserOrgsResponse
-func (c *ClientWithResponses) GithubCreateUserOrgsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubCreateUserOrgsResponse, error) {
-	rsp, err := c.GithubCreateUserOrgs(ctx, reqEditors...)
+// GithubListUserOrgsWithResponse request returning *GithubListUserOrgsResponse
+func (c *ClientWithResponses) GithubListUserOrgsWithResponse(ctx context.Context, params *GithubListUserOrgsParams, reqEditors ...RequestEditorFn) (*GithubListUserOrgsResponse, error) {
+	rsp, err := c.GithubListUserOrgs(ctx, params, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubListUserOrgsResponse(rsp)
+}
+
+// GithubCreateUserOrgsWithBodyWithResponse request with arbitrary body returning *GithubCreateUserOrgsResponse
+func (c *ClientWithResponses) GithubCreateUserOrgsWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubCreateUserOrgsResponse, error) {
+	rsp, err := c.GithubCreateUserOrgsWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGithubCreateUserOrgsResponse(rsp)
+}
+
+func (c *ClientWithResponses) GithubCreateUserOrgsWithResponse(ctx context.Context, body GithubCreateUserOrgsJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubCreateUserOrgsResponse, error) {
+	rsp, err := c.GithubCreateUserOrgs(ctx, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -1543,6 +1687,53 @@ func ParseGithubGetReposResponse(rsp *http.Response) (*GithubGetReposResponse, e
 	return response, nil
 }
 
+// ParseGithubListUserOrgsResponse parses an HTTP response from a GithubListUserOrgsWithResponse call
+func ParseGithubListUserOrgsResponse(rsp *http.Response) (*GithubListUserOrgsResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GithubListUserOrgsResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest []OrgUser
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseGithubCreateUserOrgsResponse parses an HTTP response from a GithubCreateUserOrgsWithResponse call
 func ParseGithubCreateUserOrgsResponse(rsp *http.Response) (*GithubCreateUserOrgsResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1558,7 +1749,7 @@ func ParseGithubCreateUserOrgsResponse(rsp *http.Response) (*GithubCreateUserOrg
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest CreateGithubUserOrgs
+		var dest []OrgUser
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1663,7 +1854,11 @@ type ServerInterface interface {
 	// (GET /providers/github/repos)
 	GithubGetRepos(ctx echo.Context) error
 
-	// associate an orgnanization for the user.
+	// list assoicated organizations
+	// (GET /providers/github/user-orgs)
+	GithubListUserOrgs(ctx echo.Context) error
+
+	// associate github organizations for the newly registered user.
 	// (POST /providers/github/user-orgs)
 	GithubCreateUserOrgs(ctx echo.Context) error
 
@@ -1780,6 +1975,27 @@ func (w *ServerInterfaceWrapper) GithubGetRepos(ctx echo.Context) error {
 	return err
 }
 
+// GithubListUserOrgs converts echo context to params.
+
+func (w *ServerInterfaceWrapper) GithubListUserOrgs(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GithubListUserOrgsParams
+	// ------------- Required query parameter "user_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, true, "user_id", ctx.QueryParams(), &params.UserId)
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter user_id: %s", err))
+	}
+
+	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
+	handler := w.Handler.GithubListUserOrgs
+	err = handler(ctx)
+
+	return err
+}
+
 // GithubCreateUserOrgs converts echo context to params.
 
 func (w *ServerInterfaceWrapper) GithubCreateUserOrgs(ctx echo.Context) error {
@@ -1837,6 +2053,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/providers/github/complete-installation", wrapper.GithubCompleteInstallation)
 	router.GET(baseURL+"/providers/github/installations", wrapper.GithubGetInstallations)
 	router.GET(baseURL+"/providers/github/repos", wrapper.GithubGetRepos)
+	router.GET(baseURL+"/providers/github/user-orgs", wrapper.GithubListUserOrgs)
 	router.POST(baseURL+"/providers/github/user-orgs", wrapper.GithubCreateUserOrgs)
 	router.POST(baseURL+"/providers/github/webhook", wrapper.GithubWebhook)
 

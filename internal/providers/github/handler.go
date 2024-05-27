@@ -118,8 +118,48 @@ func (s *ServerHandler) GithubGetRepos(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, result)
 }
 
+func (s *ServerHandler) GithubListUserOrgs(ctx echo.Context) error {
+	result := make([]OrgUser, 0)
+	if err := db.Filter(&OrgUser{}, &result, db.QueryParams{"user_id": ctx.QueryParam("user_id")}); err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusOK, result)
+}
+
 func (s *ServerHandler) GithubCreateUserOrgs(ctx echo.Context) error {
-	return nil
+	result := make([]OrgUser, 0)
+	request := &CreateGithubUserOrgsRequest{}
+
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	if err := ctx.Validate(request); err != nil {
+		return err
+	}
+
+	for _, id := range request.GithubOrgIDs {
+		name := ""
+		installation := &Installation{}
+
+		err := db.Get(installation, db.QueryParams{"installation_id": id.String()})
+		if err == nil {
+			name = installation.InstallationLogin
+		}
+
+		orguser := &OrgUser{
+			UserID:        request.UserID,
+			GithubOrgID:   id,
+			GithubUserID:  request.GithubUserID,
+			GithubOrgName: name,
+		}
+
+		_ = db.Save(orguser) // TODO - update ORM to do a BulkSave Method.
+		result = append(result, *orguser)
+	}
+
+	return ctx.JSON(http.StatusCreated, result)
 }
 
 func (s *ServerHandler) GithubGetInstallations(ctx echo.Context) error {
