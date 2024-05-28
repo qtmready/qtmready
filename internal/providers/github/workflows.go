@@ -149,14 +149,6 @@ func (w *Workflows) PostInstall(ctx workflow.Context, teamID string) error {
 	}
 	_ctx := workflow.WithActivityOptions(ctx, opts)
 
-	op := &core.RepoIOGetOrgUsersPayload{
-		TeamID: teamID,
-	}
-	if err := workflow.
-		ExecuteActivity(_ctx, activities.GetOrgUsers, op).Get(_ctx, nil); err != nil {
-		logger.Warn("github/org users: database error, retrying ... ")
-	}
-
 	bdp := &core.RepoIORefreshDefaultBranchesPayload{
 		TeamID: teamID,
 	}

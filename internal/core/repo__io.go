@@ -67,7 +67,6 @@ type (
 		// GetAllRelevantActions(ctx context.Context, payload *RepoIOGetAllRelevantActionsPayload) error
 		// GetRepoByProviderID(ctx context.Context, payload *RepoIOGetRepoByProviderIDPayload) (*RepoProviderData, error)
 		// UpdateRepoHasRarlyWarning(ctx context.Context, payload *RepoIOUpdateRepoHasRarlyWarningPayload) error
-		// GetOrgUsers(ctx context.Context, payload *RepoIOGetOrgUsersPayload) error
 		// RefreshDefaultBranches(ctx context.Context, payload *RepoIORefreshDefaultBranchesPayload) error
 	}
 

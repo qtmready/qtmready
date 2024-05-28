@@ -21,7 +21,6 @@ import (
 	"context"
 	"strings"
 
-	gh "github.com/google/go-github/v62/github"
 	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/quantm/internal/core"
@@ -678,74 +677,6 @@ func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *cor
 	}
 
 	shared.Logger().Info("Update Repo Has Rarly Warning successfully")
-
-	return nil
-}
-
-func (a *Activities) GetOrgUsers(ctx context.Context, payload *core.RepoIOGetOrgUsersPayload) error {
-	logger := activity.GetLogger(ctx)
-	prepo := &Repo{}
-
-	// Get the repository information
-	if err := db.Get(prepo, db.QueryParams{"team_id": payload.TeamID}); err != nil {
-		logger.Error("GetOrgUsers: Unable to get the GitHub repo", "error", err)
-		return err
-	}
-
-	// Get the GitHub client for the installation
-	client, err := Instance().GetClientForInstallation(prepo.InstallationID)
-	if err != nil {
-		logger.Error("GetClientFromInstallation failed", "error", err)
-		return err
-	}
-
-	orgopts := &gh.OrganizationsListOptions{
-		ListOptions: gh.ListOptions{
-			Page:    1,
-			PerPage: 1, // Adjust this value as needed
-		},
-	}
-
-	// List all organizations
-	orgs, _, err := client.Organizations.ListAll(ctx, orgopts)
-	if err != nil {
-		logger.Error("List the organizations failed", "error", err)
-		return err
-	}
-
-	logger.Info("organizations count", "count", len(orgs))
-
-	lmopts := &gh.ListMembersOptions{
-		ListOptions: gh.ListOptions{
-			Page:    1,
-			PerPage: 1, // Adjust this value as needed
-		},
-	}
-
-	// List members of the first organization
-	// NOTE - org Name is get only for github teams.
-	// If the username with no team hit this workflow get the activity error nil pointer dereference.
-	members, _, err := client.Organizations.ListMembers(ctx, *orgs[0].Name, lmopts)
-	if err != nil {
-		logger.Error("List the organization members failed", "error", err)
-		return err
-	}
-
-	logger.Info("organization members count", "count", len(members))
-
-	// Save the GitHub org users
-	for _, member := range members {
-		m := GithubOrgMembers{
-			Name:    member.GetName(),
-			Email:   member.GetEmail(),
-			Company: member.GetCompany(),
-		}
-
-		if err := db.Save(&m); err != nil {
-			logger.Error("Error saving GitHub org members", "error", err)
-			return err
-		}
-	}
 
 	return nil
 }
