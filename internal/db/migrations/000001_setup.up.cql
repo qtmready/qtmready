@@ -231,18 +231,3 @@ create index if not exists on github_repos (github_id);
 create index if not exists on github_repos (installation_id);
 create index if not exists on github_repos (name);
 create index if not exists on github_repos (full_name);
-
--- providers/slack
-
-create table if not exists slack (
-  id                                uuid,
-  team_id                           uuid,
-  channel_id                        varchar,
-  channel_name                      varchar,
-  workspace_name                    varchar,
-  workspace_id                      varchar,
-  workspace_bot_token               varchar,
-  created_at                        timestamp,
-  updated_at                        timestamp,
-  primary key                       (id, team_id),
-) with comment = 'slack channel info storage';

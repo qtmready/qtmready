@@ -18,13 +18,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
-	itable "github.com/Guilospanck/igocqlx/table"
-	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime"
-	"github.com/scylladb/gocqlx/v2/table"
 	externalRef0 "go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/shared"
 	externalRef1 "go.breu.io/quantm/internal/shared"
@@ -33,35 +29,6 @@ import (
 const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
-
-// Slack defines model for Slack.
-type Slack struct {
-	ChannelID         string     `cql:"channel_id" json:"channel_id"`
-	ChannelName       string     `cql:"channel_name" json:"channel_name"`
-	CreatedAt         time.Time  `cql:"created_at" json:"created_at"`
-	ID                gocql.UUID `cql:"id" json:"id"`
-	TeamID            gocql.UUID `cql:"team_id" json:"team_id"`
-	UpdatedAt         time.Time  `cql:"updated_at" json:"updated_at"`
-	WorkspaceBotToken string     `cql:"workspace_bot_token" json:"workspace_bot_token"`
-	WorkspaceID       string     `cql:"workspace_id" json:"workspace_id"`
-	WorkspaceName     string     `cql:"workspace_name" json:"workspace_name"`
-}
-
-var (
-	slackMeta = itable.Metadata{
-		M: &table.Metadata{
-			Name:    "slack",
-			Columns: []string{"channel_id", "channel_name", "created_at", "id", "team_id", "updated_at", "workspace_bot_token", "workspace_id", "workspace_name"},
-			PartKey: []string{"team_id"},
-		},
-	}
-
-	slackTable = itable.New(*slackMeta.M)
-)
-
-func (slack *Slack) GetTable() itable.ITable {
-	return slackTable
-}
 
 // SlackOauthParams defines parameters for SlackOauth.
 type SlackOauthParams struct {
