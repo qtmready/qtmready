@@ -95,7 +95,7 @@ type (
 	CompleteInstallationSignal struct {
 		InstallationID shared.Int64 `json:"installation_id"`
 		SetupAction    SetupAction  `json:"setup_action"`
-		TeamID         gocql.UUID   `json:"team_id"`
+		UserID         gocql.UUID   `json:"user_id"`
 	}
 
 	ArtifactReadySignal struct {

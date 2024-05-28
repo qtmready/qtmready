@@ -50,13 +50,13 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 		return err
 	}
 
-	teamID, err := gocql.ParseUUID(ctx.Get("team_id").(string))
+	userID, err := gocql.ParseUUID(ctx.Get("user_id").(string))
 
 	if err != nil {
 		return err
 	}
 
-	payload := &CompleteInstallationSignal{request.InstallationID, request.SetupAction, teamID}
+	payload := &CompleteInstallationSignal{request.InstallationID, request.SetupAction, userID}
 
 	workflows := &Workflows{}
 	opts := shared.Temporal().
@@ -96,7 +96,7 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 			ctx.Request().Context(),
 			opts,
 			workflows.PostInstall,
-			teamID.String(),
+			userID.String(),
 		)
 	if err != nil {
 		return err

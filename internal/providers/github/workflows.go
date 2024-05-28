@@ -24,7 +24,9 @@ import (
 
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -63,6 +65,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 	webhook := &InstallationEvent{}
 	request := &CompleteInstallationSignal{}
 	status := &InstallationWorkflowStatus{WebhookDone: false, RequestDone: false}
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
 	// setting up channels to receive signals
 	webhookChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInstallationEvent.String())
@@ -80,42 +84,66 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 
 	logger.Info("github/installation: all signals received, processing ...")
 
-	// Finalizing the installation
-	installation := &Installation{
-		TeamID:            request.TeamID,
-		InstallationID:    webhook.Installation.ID,
-		InstallationLogin: webhook.Installation.Account.Login,
-		InstallationType:  webhook.Installation.Account.Type,
-		SenderID:          webhook.Sender.ID,
-		SenderLogin:       webhook.Sender.Login,
-		Status:            webhook.Action,
-	}
+	switch webhook.Action {
+	// NOTE - Since a GitHub organization can only have one active installation at a time, when a new installation is created, it's
+	// considered the first app installation for the organization, and we assume no teams have been created yet within the organization.
+	//
+	// TODO - we need to handle the case when an the app uninstallation and reinstallation case.
+	//
+	// - when delete event is received, we need to add a db field to mark the installation as deleted.
+	// - on the subsequent installation, we need to check if the installation is deleted and update the installation status.
+	case "created":
+		user := &auth.User{}
+		team := &auth.Team{}
 
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
-	err := workflow.
-		ExecuteActivity(actx, activities.CreateOrUpdateInstallation, installation).
-		Get(actx, installation)
+		if err := workflow.ExecuteActivity(actx, activities.GetUserByID, request.UserID.String()).Get(ctx, user); err != nil {
+			return err
+		}
 
-	if err != nil {
-		logger.Error("github/installation: error ...", "error", err)
-		return err
-	}
+		if user.TeamID.String() == db.NullUUID {
+			logger.Info("github/installation: no team associated, creating a new team ...")
 
-	// If webhook.Action == "created", save the repository information to the database.
-	if webhook.Action == "created" {
+			team.Name = webhook.Installation.Account.Login
+
+			if err := workflow.ExecuteActivity(actx, activities.CreateTeam, user).Get(ctx, team); err != nil {
+				return nil
+			}
+		} else {
+			logger.Warn("github/installation: team already associated, fetching ...")
+
+			if err := workflow.ExecuteActivity(actx, activities.GetTeamByID, user.TeamID.String()).Get(ctx, team); err != nil {
+				return nil
+			}
+		}
+
+		// Finalizing the installation
+		installation := &Installation{
+			TeamID:            team.ID,
+			InstallationID:    webhook.Installation.ID,
+			InstallationLogin: webhook.Installation.Account.Login,
+			InstallationType:  webhook.Installation.Account.Type,
+			SenderID:          webhook.Sender.ID,
+			SenderLogin:       webhook.Sender.Login,
+			Status:            webhook.Action,
+		}
+
+		logger.Info("github/installation: saving or updating installation ...")
+
+		if err := workflow.ExecuteActivity(actx, activities.CreateOrUpdateInstallation, installation).Get(actx, installation); err != nil {
+			logger.Error("github/installation: error saving installation ...", "error", err)
+		}
+
 		logger.Info("github/installation: saving associated repositories ...")
 
-		// asynchronously save the repos
-		for _, repository := range webhook.Repositories {
+		for _, repo := range webhook.Repositories {
 			logger.Info("github/installation: saving repository ...")
-			logger.Debug("repository", "repository", repository)
+			logger.Debug("repository", "repository", repo)
 
 			repo := &Repo{
-				GithubID:        repository.ID,
+				GithubID:        repo.ID,
 				InstallationID:  installation.InstallationID,
-				Name:            repository.Name,
-				FullName:        repository.FullName,
+				Name:            repo.Name,
+				FullName:        repo.FullName,
 				DefaultBranch:   "main",
 				HasEarlyWarning: false,
 				IsActive:        true,
@@ -123,13 +151,21 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 			}
 
 			future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateGithubRepo, repo)
+
+			// NOTE - ideally, we should use a new selector here, but since there will be no new signals comings in, we know that
+			// selector.Select will only be waiting for the futures to complete.
 			selector.AddFuture(future, onCreateOrUpdateRepoActivityFuture(ctx, repo))
 		}
 
-		// wait for all repositories to be saved.
 		for range webhook.Repositories {
 			selector.Select(ctx)
 		}
+
+		logger.Info("github/installation: associated repositories saved ...")
+	case "deleted", "suspend", "unsuspend":
+		logger.Warn("github/installation: installation removed, unhandled case ...")
+	default:
+		logger.Warn("github/installation: unhandled action during installation ...", slog.String("action", webhook.Action))
 	}
 
 	logger.Info("github/installation: complete")

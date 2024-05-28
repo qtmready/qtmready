@@ -23,6 +23,7 @@ import (
 
 	"go.temporal.io/sdk/activity"
 
+	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
@@ -32,6 +33,26 @@ type (
 	// Activities groups all the activities for the github provider.
 	Activities struct{}
 )
+
+var (
+	authacts *auth.Activities
+)
+
+func (a *Activities) GetUserByID(ctx context.Context, id string) (*auth.User, error) {
+	params := db.QueryParams{"id": id}
+
+	return authacts.GetUser(ctx, params)
+}
+
+func (a *Activities) CreateTeam(ctx context.Context, team *auth.Team) (*auth.Team, error) {
+	return authacts.CreateTeam(ctx, team)
+}
+
+func (a *Activities) GetTeamByID(ctx context.Context, id string) (*auth.Team, error) {
+	params := db.QueryParams{"id": id}
+
+	return authacts.GetTeam(ctx, params)
+}
 
 // CreateOrUpdateInstallation creates or update the Installation.
 func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *Installation) (*Installation, error) {
