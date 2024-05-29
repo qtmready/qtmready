@@ -18,6 +18,8 @@ RUN --mount=type=cache,target=/root/.cache/go-build go build -o ./build/migrate 
 FROM cgr.dev/chainguard/git:latest-glibc as migrate
 
 COPY --from=build-migrate /src/build/migrate /bin/migrate
+
+ENTRYPOINT [ ]
 CMD ["/bin/migrate"]
 
 
@@ -29,7 +31,9 @@ RUN --mount=type=cache,target=/root/.cache/go-build go build -o ./build/mothersh
 
 FROM cgr.dev/chainguard/git:latest-glibc as mothership
 
-COPY --from=build-mothership /src/build/mothership /bin/mothership
+COPY --from=build-mothership /src/build/mothership /bin/
+
+ENTRYPOINT [ ]
 CMD ["/bin/mothership"]
 
 
@@ -42,4 +46,6 @@ LABEL io.quantm.artifacts.component="api"
 FROM cgr.dev/chainguard/git:latest-glibc as api
 
 COPY --from=build-api /src/build/api /bin/api
+
+ENTRYPOINT [ ]
 CMD ["/bin/api"]
