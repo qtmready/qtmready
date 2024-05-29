@@ -15,7 +15,7 @@ LABEL io.quantm.artifacts.app="quantm"
 LABEL io.quantm.artifacts.component="migrate"
 RUN --mount=type=cache,target=/root/.cache/go-build go build -o ./build/migrate ./cmd/jobs/migrate
 
-FROM cgr.dev/chainguard/glibc-dynamic:latest as migrate
+FROM cgr.dev/chainguard/git:latest-glibc as migrate
 
 COPY --from=build-migrate /src/build/migrate /bin/migrate
 CMD ["/bin/migrate"]
@@ -27,7 +27,7 @@ LABEL io.quantm.artifacts.app="quantm"
 LABEL io.quantm.artifacts.component="mothership"
 RUN --mount=type=cache,target=/root/.cache/go-build go build -o ./build/mothership ./cmd/workers/mothership
 
-FROM cgr.dev/chainguard/glibc-dynamic:latest as mothership
+FROM cgr.dev/chainguard/git:latest-glibc as mothership
 
 COPY --from=build-mothership /src/build/mothership /bin/mothership
 CMD ["/bin/mothership"]
@@ -39,7 +39,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build go build -o ./build/api ./cm
 LABEL io.quantm.artifacts.app="quantm"
 LABEL io.quantm.artifacts.component="api"
 
-FROM cgr.dev/chainguard/glibc-dynamic:latest as api
+FROM cgr.dev/chainguard/git:latest-glibc as api
 
 COPY --from=build-api /src/build/api /bin/api
 CMD ["/bin/api"]
