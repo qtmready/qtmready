@@ -40,6 +40,15 @@
       "program": "${workspaceFolder}/cmd/e2e/mutex",
       "args": [],
       "envFile": "${workspaceFolder}/.env.debug"
+    },
+    {
+      "name": "qtm",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/e2e/qtm",
+      "args": [],
+      "envFile": "${workspaceFolder}/.env.debug"
     }
   ]
 }

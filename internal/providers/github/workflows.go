@@ -19,14 +19,14 @@ package github
 
 import (
 	"context"
-	"fmt"
-	"strconv"
-	"strings"
+	"log/slog"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -65,6 +65,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 	webhook := &InstallationEvent{}
 	request := &CompleteInstallationSignal{}
 	status := &InstallationWorkflowStatus{WebhookDone: false, RequestDone: false}
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	actx := workflow.WithActivityOptions(ctx, activityOpts)
 
 	// setting up channels to receive signals
 	webhookChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInstallationEvent.String())
@@ -74,50 +76,97 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 	selector.AddReceive(webhookChannel, onInstallationWebhookSignal(ctx, webhook, status))
 	selector.AddReceive(requestChannel, onRequestSignal(ctx, request, status))
 
+	logger.Info("github/installation: waiting for webhook and complete installation request signals ...")
+
 	// keep listening for signals until we have received both the installation id and the team id
 	for !(status.WebhookDone && status.RequestDone) {
-		logger.Info("waiting for signals ....")
 		selector.Select(ctx)
 	}
 
-	logger.Info("all signals received, processing ...")
+	logger.Info("github/installation: required signals processed ...")
 
-	// Finalizing the installation
-	installation := &Installation{
-		TeamID:            request.TeamID,
-		InstallationID:    webhook.Installation.ID,
-		InstallationLogin: webhook.Installation.Account.Login,
-		InstallationType:  webhook.Installation.Account.Type,
-		SenderID:          webhook.Sender.ID,
-		SenderLogin:       webhook.Sender.Login,
-		Status:            webhook.Action,
-	}
+	switch webhook.Action {
+	// NOTE - Since a GitHub organization can only have one active installation at a time, when a new installation is created, it's
+	// considered the first app installation for the organization, and we assume no teams have been created yet within the organization.
+	//
+	// TODO - we need to handle the case when an the app uninstallation and reinstallation case.
+	//
+	// - when delete event is received, we need to add a db field to mark the installation as deleted.
+	// - on the subsequent installation, we need to check if the installation is deleted and update the installation status.
+	case "created":
+		user := &auth.User{}
+		team := &auth.Team{}
 
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
-	err := workflow.
-		ExecuteActivity(actx, activities.CreateOrUpdateInstallation, installation).
-		Get(actx, installation)
+		if err := workflow.ExecuteActivity(actx, activities.GetUserByID, request.UserID.String()).Get(ctx, user); err != nil {
+			return err
+		}
 
-	if err != nil {
-		logger.Error("error saving installation", "error", err)
-		return err
-	}
+		if user.TeamID.String() == db.NullUUID {
+			logger.Info("github/installation: no team associated, creating a new team ...")
 
-	// If webhook.Action == "created", save the repository information to the database.
-	if webhook.Action == "created" {
-		logger.Info("saving associated repositories ...")
+			team.Name = webhook.Installation.Account.Login
 
-		// asynchronously save the repos
-		for _, repository := range webhook.Repositories {
-			logger.Info("saving repository ...")
-			logger.Debug("repository", "repository", repository)
+			if err := workflow.ExecuteActivity(actx, activities.CreateTeam, team).Get(ctx, team); err != nil {
+				return nil
+			}
+
+			logger.Info("github/installation: team created, assigning to user ...")
+
+			user.TeamID = team.ID
+			if err := workflow.ExecuteActivity(actx, activities.SaveUser, user).Get(ctx, user); err != nil {
+				logger.Info("github/installation: error saving user ...", "error", err)
+			}
+		} else {
+			logger.Warn("github/installation: team already associated, fetching ...")
+
+			if err := workflow.ExecuteActivity(actx, activities.GetTeamByID, user.TeamID.String()).Get(ctx, team); err != nil {
+				return nil
+			}
+		}
+
+		// Finalizing the installation
+		installation := &Installation{
+			TeamID:            team.ID,
+			InstallationID:    webhook.Installation.ID,
+			InstallationLogin: webhook.Installation.Account.Login,
+			InstallationType:  webhook.Installation.Account.Type,
+			SenderID:          webhook.Sender.ID,
+			SenderLogin:       webhook.Sender.Login,
+			Status:            webhook.Action,
+		}
+
+		logger.Info("github/installation: creating or updating installation ...")
+
+		if err := workflow.ExecuteActivity(actx, activities.CreateOrUpdateInstallation, installation).Get(actx, installation); err != nil {
+			logger.Error("github/installation: error saving installation ...", "error", err)
+		}
+
+		logger.Info("github/installation: updating user associations ...")
+
+		membership := &CreateMembershipsPayload{
+			UserID:        user.ID,
+			TeamID:        team.ID,
+			IsAdmin:       true,
+			GithubOrgName: webhook.Installation.Account.Login,
+			GithubOrgID:   webhook.Installation.Account.ID,
+			GithubUserID:  webhook.Sender.ID,
+		}
+
+		if err := workflow.ExecuteActivity(actx, activities.CreateMemberships, membership).Get(actx, nil); err != nil {
+			logger.Error("github/installation: error saving installation ...", "error", err)
+		}
+
+		logger.Info("github/installation: saving installation repos ...")
+
+		for _, repo := range webhook.Repositories {
+			logger.Info("github/installation: saving repository ...")
+			logger.Debug("repository", "repository", repo)
 
 			repo := &Repo{
-				GithubID:        repository.ID,
+				GithubID:        repo.ID,
 				InstallationID:  installation.InstallationID,
-				Name:            repository.Name,
-				FullName:        repository.FullName,
+				Name:            repo.Name,
+				FullName:        repo.FullName,
 				DefaultBranch:   "main",
 				HasEarlyWarning: false,
 				IsActive:        true,
@@ -125,76 +174,151 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 			}
 
 			future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateGithubRepo, repo)
+
+			// NOTE - ideally, we should use a new selector here, but since there will be no new signals comings in, we know that
+			// selector.Select will only be waiting for the futures to complete.
 			selector.AddFuture(future, onCreateOrUpdateRepoActivityFuture(ctx, repo))
 		}
 
-		// wait for all repositories to be saved.
+		logger.Info("github/installation: waiting for repositories to be saved ...")
+
 		for range webhook.Repositories {
 			selector.Select(ctx)
 		}
+
+		logger.Info("github/installation: installation repositories saved ...")
+	case "deleted", "suspend", "unsuspend":
+		logger.Warn("github/installation: installation removed, unhandled case ...")
+	default:
+		logger.Warn("github/installation: unhandled action during installation ...", slog.String("action", webhook.Action))
 	}
 
-	logger.Info("installation complete")
-	logger.Debug("installation", "installation", installation)
+	logger.Info("github/installation: complete")
 
 	return nil
 }
 
-// RefreshDefaultBranch refresh the default branch for all repositories associated with the given teamID.
-func (w *Workflows) RefreshDefaultBranch(ctx workflow.Context, teamID string) error {
+// PostInstall refresh the default branch for all repositories associated with the given teamID and gets orgs users.
+// NOTE - this workflow runs complete for the first time but when reinstall the github app and configure the same repos. it will give the,
+// It will give the access_token error: could not refresh installation id XXXXXXX's token error.
+// TODO - handle when the github app is reinstall and confgure the same repos,
+// and also need to test when configure the same repo or new repos.
+func (w *Workflows) PostInstall(ctx workflow.Context, teamID string) error {
+	logger := workflow.GetLogger(ctx)
+	opts := workflow.ActivityOptions{
+		StartToCloseTimeout: 60 * time.Second,
+	}
+	_ctx := workflow.WithActivityOptions(ctx, opts)
+
+	bdp := &core.RepoIORefreshDefaultBranchesPayload{
+		TeamID: teamID,
+	}
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.RefreshDefaultBranches, bdp).Get(_ctx, nil); err != nil {
+		logger.Warn("github/refresh default branches: database error, retrying ... ")
+	}
+
 	return nil
 }
 
 // OnPushEvent checks if the push event is associated with an open pull request.If so, it will get the idempotent key for
 // the immutable rollout. Depending upon the target branch, it will either queue the rollout or update the existing
 // rollout.
-func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error {
+func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	logger := workflow.GetLogger(ctx)
-	logger.Info("received push event ...")
+	opts := workflow.ActivityOptions{
+		StartToCloseTimeout: 60 * time.Second,
+	}
+	_ctx := workflow.WithActivityOptions(ctx, opts)
+	repos := make([]Repo, 0)
+	corepo := &core.Repo{}
 
-	branchName := payload.Ref
-	if parts := strings.Split(payload.Ref, "/"); len(parts) == 3 {
-		branchName = parts[len(parts)-1]
+	logger.Info(
+		"github/push: preparing ...",
+		slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+		slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+	)
+
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.GetReposForInstallation, event.Installation.ID.String(), event.Repository.ID.String()).
+		Get(_ctx, &repos); err != nil {
+		logger.Warn("github/push: database error, retrying ... ")
 	}
 
-	if strings.Contains(branchName, "-tempcopy-for-target-") {
-		logger.Debug("OnPushEvent", "push on temp branch", branchName)
+	if len(repos) == 0 {
+		logger.Warn(
+			"github/push: unknown repo",
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+		)
+
 		return nil
 	}
 
-	signalPayload := &shared.PushEventSignal{
-		RefBranch:      branchName,
-		RepoID:         payload.Repository.ID,
-		RepoName:       payload.Repository.Name,
-		RepoOwner:      payload.Repository.Owner.Login,
-		DefaultBranch:  payload.Repository.DefaultBranch,
-		InstallationID: payload.Installation.ID,
-		RepoProvider:   "github",
+	// TODO: handle the unique together case during installation.
+	if len(repos) > 1 {
+		logger.Warn(
+			"github/push: multiple repos found",
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+		)
 	}
 
-	cw := &core.Workflows{}
-	opts := shared.Temporal().
-		Queue(shared.CoreQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("repo"),
-			shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
-			shared.WithWorkflowElement("branch"),
-			shared.WithWorkflowElementID(branchName),
-			shared.WithWorkflowProp("type", "branch_controller"),
+	repo := repos[0]
+
+	// TODO: notify the user that there is an unconfigured repo?
+	if !repo.HasEarlyWarning || !repo.IsActive {
+		logger.Warn(
+			"webhook/push: uncofigured repo",
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+			slog.String("github_repo__id", repo.ID.String()),
 		)
 
-	_, err := shared.Temporal().
-		Client().SignalWithStartWorkflow(
-		context.Background(),
-		opts.ID,
-		shared.WorkflowPushEvent.String(),
-		signalPayload,
-		opts,
-		cw.BranchController,
+		return nil
+	}
+
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.GetCoreRepoByCtrlID, repo.ID.String()).
+		Get(_ctx, corepo); err != nil {
+		logger.Warn(
+			"github/push: database error, retrying ... ",
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+			slog.String("github_repo__id", repo.ID.String()),
+			slog.String("core_repo__id", corepo.ID.String()),
+		)
+	}
+
+	logger.Info(
+		"github/push: signal core repo ...",
+		slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+		slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+		slog.String("github_repo__id", repo.ID.String()),
+		slog.String("core_repo__id", corepo.ID.String()),
 	)
-	if err != nil {
-		logger.Error("OnPushEvent: Error signaling workflow", "error", err)
-		return err
+
+	payload := &core.RepoSignalPushPayload{
+		BranchRef:      event.Ref,
+		Before:         event.Before,
+		After:          event.After,
+		RepoName:       event.Repository.Name,
+		RepoOwner:      event.Repository.Owner.Login,
+		CtrlID:         repo.ID.String(),
+		InstallationID: event.Installation.ID,
+		ProviderID:     repo.GithubID.String(),
+	}
+
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, corepo, core.RepoIOSignalPush, payload).
+		Get(_ctx, nil); err != nil {
+		logger.Warn(
+			"github/push: signal error, retrying ...",
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+			slog.String("github_repo__id", repo.ID.String()),
+			slog.String("core_repo__id", corepo.ID.String()),
+		)
 	}
 
 	return nil
@@ -212,107 +336,107 @@ func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, payload *GithubWork
 	return nil
 }
 
-func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent) error {
-	logger := workflow.GetLogger(ctx)
+// func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent) error {
+// 	logger := workflow.GetLogger(ctx)
 
-	logger.Info("received PR label event ...")
+// 	logger.Info("received PR label event ...")
 
-	installationID := payload.Installation.ID
-	repoOwner := payload.Repository.Owner.Login
-	repoName := payload.Repository.Name
-	pullRequestID := payload.Number
-	label := payload.Label.Name
-	branch := payload.PullRequest.Head.Ref
+// 	installationID := payload.Installation.ID
+// 	repoOwner := payload.Repository.Owner.Login
+// 	repoName := payload.Repository.Name
+// 	pullRequestID := payload.Number
+// 	label := payload.Label.Name
+// 	branch := payload.PullRequest.Head.Ref
 
-	switch label {
-	case "quantm ready":
-		logger.Debug("quantm ready label applied")
+// 	switch label {
+// 	case "quantm ready":
+// 		logger.Debug("quantm ready label applied")
 
-		cw := &core.Workflows{}
-		opts := shared.Temporal().
-			Queue(shared.CoreQueue).
-			WorkflowOptions(
-				shared.WithWorkflowBlock("repo"),
-				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
-				shared.WithWorkflowElement("PR"),
-				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
-				shared.WithWorkflowProp("type", "merge_queue"),
-			)
+// 		cw := &core.RepoWorkflows{}
+// 		opts := shared.Temporal().
+// 			Queue(shared.CoreQueue).
+// 			WorkflowOptions(
+// 				shared.WithWorkflowBlock("repo"),
+// 				shared.WithWorkflowBlockID(payload.Repository.ID.String()),
+// 				shared.WithWorkflowElement("PR"),
+// 				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
+// 				shared.WithWorkflowProp("type", "merge_queue"),
+// 			)
 
-		payload2 := &shared.MergeQueueSignal{
-			PullRequestID:  pullRequestID,
-			InstallationID: installationID,
-			RepoOwner:      repoOwner,
-			RepoName:       repoName,
-			Branch:         branch,
-			RepoProvider:   "github",
-		}
+// 		payload2 := &shared.MergeQueueSignal{
+// 			PullRequestID:  pullRequestID,
+// 			InstallationID: installationID,
+// 			RepoOwner:      repoOwner,
+// 			RepoName:       repoName,
+// 			Branch:         branch,
+// 			RepoProvider:   "github",
+// 		}
 
-		if _, err := shared.Temporal().Client().
-			SignalWithStartWorkflow(
-				context.Background(),
-				opts.ID,
-				shared.MergeQueueStarted.String(),
-				payload2,
-				opts,
-				cw.PollMergeQueue,
-			); err != nil {
-			logger.Error("OnLabelEvent: Error signaling workflow", "error", err)
-			return err
-		}
+// 		if _, err := shared.Temporal().Client().
+// 			SignalWithStartWorkflow(
+// 				context.Background(),
+// 				opts.ID,
+// 				shared.MergeQueueStarted.String(),
+// 				payload2,
+// 				opts,
+// 				cw.PollMergeQueue,
+// 			); err != nil {
+// 			logger.Error("OnLabelEvent: Error signaling workflow", "error", err)
+// 			return err
+// 		}
 
-		logger.Info("PR sent to MergeQueue")
+// 		logger.Info("PR sent to MergeQueue")
 
-	case "quantm now":
-		logger.Debug("quantm now label applied")
+// 	case "quantm now":
+// 		logger.Debug("quantm now label applied")
 
-		// check if all workflows are completed!
-		for {
-			allCompleted := true
+// 		// check if all workflows are completed!
+// 		for {
+// 			allCompleted := true
 
-			for _, value := range actionWorkflowStatuses[repoName] {
-				if value != "completed" {
-					// return here since all are not completed
-					allCompleted = false
+// 			for _, value := range actionWorkflowStatuses[repoName] {
+// 				if value != "completed" {
+// 					// return here since all are not completed
+// 					allCompleted = false
 
-					logger.Warn("all actions were not successful")
+// 					logger.Warn("all actions were not successful")
 
-					break
-				}
-			}
+// 					break
+// 				}
+// 			}
 
-			if allCompleted {
-				break
-			}
+// 			if allCompleted {
+// 				break
+// 			}
 
-			_ = workflow.Sleep(ctx, 30*time.Second)
+// 			_ = workflow.Sleep(ctx, 30*time.Second)
 
-			logger.Debug("checking again all actions statuses")
-		}
+// 			logger.Debug("checking again all actions statuses")
+// 		}
 
-		// cw := &core.Workflows{}
-		opts := shared.Temporal().
-			Queue(shared.CoreQueue).
-			WorkflowOptions(
-				shared.WithWorkflowBlock("repo"),
-				shared.WithWorkflowBlockID(strconv.FormatInt(payload.Repository.ID, 10)),
-				shared.WithWorkflowElement("PR"),
-				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
-				shared.WithWorkflowProp("type", "merge_queue"),
-			)
+// 		// cw := &core.Workflows{}
+// 		opts := shared.Temporal().
+// 			Queue(shared.CoreQueue).
+// 			WorkflowOptions(
+// 				shared.WithWorkflowBlock("repo"),
+// 				shared.WithWorkflowBlockID(payload.Repository.ID.String()),
+// 				shared.WithWorkflowElement("PR"),
+// 				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
+// 				shared.WithWorkflowProp("type", "merge_queue"),
+// 			)
 
-		if err := shared.Temporal().Client().
-			SignalWorkflow(context.Background(), opts.ID, "", shared.MergeTriggered.String(), nil); err != nil {
-			logger.Error("OnLabelEvent: Error signaling workflow", "error", err)
-			return err
-		}
+// 		if err := shared.Temporal().Client().
+// 			SignalWorkflow(context.Background(), opts.ID, "", shared.MergeTriggered.String(), nil); err != nil {
+// 			logger.Error("OnLabelEvent: Error signaling workflow", "error", err)
+// 			return err
+// 		}
 
-	default:
-		logger.Debug("undefined label applied!")
-	}
+// 	default:
+// 		logger.Debug("undefined label applied!")
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
 // OnPullRequestEvent workflow is responsible to get or create the idempotency key for the changeset controller workflow.
 // Regardless of the action on PR, the algorithm needs to arrive at the same idempotency key! One possible way is
@@ -376,7 +500,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 			shared.WithWorkflowBlockID(coreRepo.StackID.String()),
 		)
 
-	cw := &core.Workflows{}
+	cw := &core.StackWorkflows{}
 	_, _ = shared.Temporal().Client().SignalWithStartWorkflow(
 		context.Background(),
 		corePRWfID,
@@ -460,22 +584,22 @@ func onInstallationWebhookSignal(
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		logger.Info("received webhook installation event ...", "action", installation.Action)
+		logger.Info("github/installation: webhook received ...", "action", installation.Action)
 		channel.Receive(ctx, installation)
 
 		status.WebhookDone = true
 
 		switch installation.Action {
 		case "deleted", "suspend", "unsuspend":
-			logger.Info("installation removed, skipping complete installation request ...")
+			logger.Info("github/installation: installation removed ....", "action", installation.Action)
 
 			status.RequestDone = true
 		case "request":
-			logger.Info("installation request to organization owner ...")
+			logger.Info("github/installation: installation request ...", "action", installation.Action)
 
 			status.RequestDone = true
 		default:
-			logger.Info("installation created, waiting for complete installation request ...")
+			logger.Info("github/installation: create action ...", "action", installation.Action)
 		}
 	}
 }
@@ -487,7 +611,7 @@ func onRequestSignal(
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		logger.Info("received complete installation request ...")
+		logger.Info("github/installation: received complete installation request ...")
 		channel.Receive(ctx, installation)
 
 		status.RequestDone = true

@@ -23,18 +23,12 @@ import (
 	"go.breu.io/quantm/internal/shared"
 )
 
-// Workflow signal types.
+// Stack Signals.
 const (
-	// mutex workflow signals.
-	WorkflowSignalLockAcquired shared.WorkflowSignal = "lock_acquired"
-	WorkflowSignalRequestLock  shared.WorkflowSignal = "request_lock"
-	WorkflowSignalReleaseLock  shared.WorkflowSignal = "release_lock"
-
-	// PR workflow signals.
-	WorkflowSignalAssetsRetrieved     shared.WorkflowSignal = "assets_retrieved"
-	WorkflowSignalInfraProvisioned    shared.WorkflowSignal = "infra_created"
-	WorkflowSignalDeploymentCompleted shared.WorkflowSignal = "deployment_completed"
-	WorkflowSignalManualOverride      shared.WorkflowSignal = "manual_override"
+	StackSignalAssetsRerieved     shared.WorkflowSignal = "stack__assets_retrieved"
+	StackSignalInfraProvisioned   shared.WorkflowSignal = "stack__infra_provisioned"
+	StackSignalDeploymentComplete shared.WorkflowSignal = "stack__deployment_completed"
+	StackSignalManualOverride     shared.WorkflowSignal = "stack__manual_override"
 )
 
 const (
@@ -43,6 +37,119 @@ const (
 	ProvisioningInfra
 	InfraProvisioned
 	CreatingDeployment
+)
+
+// RepoIO payloads.
+type (
+	RepoIOGetLatestCommitPayload struct {
+		RepoID     string `json:"repo_id"`
+		BranchName string `json:"branch_name"`
+	}
+
+	RepoIODeployChangesetPayload struct {
+		RepoID      string      `json:"repo_id"`
+		ChangesetID *gocql.UUID `json:"changeset_id"`
+	}
+
+	RepoIOTagCommitPayload struct {
+		RepoID     string `json:"repo_id"`
+		CommitSHA  string `json:"commit_sha"`
+		TagName    string `json:"tag_name"`
+		TagMessage string `json:"tag_message"`
+	}
+
+	RepoIOCreateBranchPayload struct {
+		InstallationID shared.Int64 `json:"installation_id"`
+		RepoID         string       `json:"repo_id"`
+		RepoName       string       `json:"repo_name"`
+		RepoOwner      string       `json:"repo_owner"`
+		Commit         string       `json:"target_commit"`
+		BranchName     string       `json:"branch_name"`
+	}
+
+	RepoIODeleteBranchPayload struct {
+		InstallationID shared.Int64 `json:"installation_id"`
+		RepoName       string       `json:"repo_name"`
+		RepoOwner      string       `json:"repo_owner"`
+		BranchName     string       `json:"branch_name"`
+	}
+
+	RepoIOMergeBranchPayload struct {
+		InstallationID shared.Int64 `json:"installation_id"`
+		RepoName       string       `json:"repo_name"`
+		RepoOwner      string       `json:"repo_owner"`
+		BaseBranch     string       `json:"base_branch"`
+		TargetBranch   string       `json:"target_branch"`
+	}
+
+	RepoIORebaseAndMergePayload struct {
+		RepoOwner        string       `json:"repo_owner"`
+		RepoName         string       `json:"repo_name"`
+		TargetBranchName string       `json:"target_branch_name"`
+		InstallationID   shared.Int64 `json:"installation_id"`
+	}
+
+	RepoIODetectChangePayload struct {
+		InstallationID shared.Int64 `json:"installation_id"`
+		RepoName       string       `json:"repo_name"`
+		RepoOwner      string       `json:"repo_owner"`
+		DefaultBranch  string       `json:"default_branch"`
+		TargetBranch   string       `json:"target_branch"`
+	}
+
+	RepoIOTriggerCIActionPayload struct {
+		InstallationID shared.Int64 `json:"installation_id"`
+		RepoOwner      string       `json:"repo_owner"`
+		RepoName       string       `json:"repo_name"`
+		TargetBranch   string       `json:"target_branch"`
+	}
+
+	RepoIOGetRepoTeamIDPayload struct {
+		RepoID string `json:"repo_id"`
+	}
+
+	RepoIOGetAllRelevantActionsPayload struct {
+		InstallationID shared.Int64 `json:"installation_id"`
+		RepoName       string       `json:"repo_name"`
+		RepoOwner      string       `json:"repo_owner"`
+	}
+
+	RepoIOGetRepoByProviderIDPayload struct {
+		ProviderID string `json:"provider_id"`
+	}
+
+	RepoIOUpdateRepoHasRarlyWarningPayload struct {
+		ProviderID string `json:"provider_id"`
+	}
+
+	RepoIORefreshDefaultBranchesPayload struct {
+		TeamID string `json:"team_id"`
+	}
+)
+
+// MessageIO payloads.
+type (
+	MessageIOSendStaleBranchMessagePayload struct {
+		TeamID string        `json:"team_id"`
+		Stale  *LatestCommit `json:"slate"`
+	}
+
+	MessageIOSendNumberOfLinesExceedMessagePayload struct {
+		TeamID        string         `json:"team_id"`
+		RepoName      string         `json:"repo_name"`
+		BranchName    string         `json:"branch_name"`
+		Threshold     int            `json:"threshold"`
+		BranchChnages *BranchChanges `json:"branch_chnages"`
+	}
+
+	MessageIOSendMergeConflictsMessagePayload struct {
+		TeamID string        `json:"team_id"`
+		Merge  *LatestCommit `json:"merge"`
+	}
+
+	MessageIOCompleteOauthResponsePayload struct {
+		Code string `json:"code"`
+	}
 )
 
 type (
@@ -80,6 +187,15 @@ type (
 		Blueprint   Blueprint  // stack blueprint
 		ChangesetID gocql.UUID
 		Infra       JsonInfra
+	}
+
+	GetAssetsPayload struct {
+		StackID       string
+		RepoID        gocql.UUID
+		ChangeSetID   gocql.UUID
+		Image         string
+		ImageRegistry string
+		Digest        string
 	}
 )
 

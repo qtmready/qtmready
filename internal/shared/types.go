@@ -18,6 +18,9 @@
 package shared
 
 import (
+	"encoding/json"
+	"strconv"
+
 	"github.com/go-playground/validator/v10"
 	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/workflow"
@@ -27,6 +30,7 @@ import (
 
 // workflow related shared types and contants.
 type (
+	Int64 int64
 	// WorkflowSignal is a type alias to define the name of the workflow signal.
 	WorkflowSignal string
 
@@ -34,7 +38,7 @@ type (
 	PullRequestSignal struct {
 		RepoID           gocql.UUID
 		SenderWorkflowID string
-		TriggerID        int64
+		TriggerID        Int64
 		Image            string
 		Digest           string
 		ImageRegistry    string //TODO: move registry enum generation to shared
@@ -55,16 +59,16 @@ type (
 	PushEventSignal struct {
 		RefBranch      string
 		RepoProvider   string
-		RepoID         int64
+		RepoID         Int64
 		RepoName       string
 		RepoOwner      string
 		DefaultBranch  string
-		InstallationID int64
+		InstallationID Int64
 	}
 
 	MergeQueueSignal struct {
-		PullRequestID  int64
-		InstallationID int64
+		PullRequestID  Int64
+		InstallationID Int64
 		RepoOwner      string
 		RepoName       string
 		Branch         string
@@ -114,4 +118,46 @@ type (
 
 func (ev *EchoValidator) Validate(i any) error {
 	return ev.Validator.Struct(i)
+}
+
+// String returns the string representation of the Int64 value.
+func (i Int64) String() string {
+	return strconv.FormatInt(int64(i), 10)
+}
+
+// Int64 returns the int64 value of the Int64 .
+func (i Int64) Int64() int64 {
+	return int64(i)
+}
+
+// MarshalJSON implements the json.Marshaler interface.
+func (i Int64) MarshalJSON() ([]byte, error) {
+	return json.Marshal(int64(i))
+}
+
+// UnmarshalJSON implements the json.Unmarshaler .
+func (i *Int64) UnmarshalJSON(data []byte) error {
+	var v int64
+	if err := json.Unmarshal(data, &v); err != nil {
+		return err
+	}
+
+	*i = Int64(v)
+
+	return nil
+}
+
+func (i Int64) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
+	return gocql.Marshal(info, i.Int64())
+}
+
+func (i *Int64) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
+	var v int64
+	if err := gocql.Unmarshal(info, data, &v); err != nil {
+		return err
+	}
+
+	*i = Int64(v)
+
+	return nil
 }

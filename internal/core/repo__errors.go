@@ -22,28 +22,19 @@ import (
 )
 
 type (
-	providerNotFoundError struct {
-		name string
-	}
-
-	resourceNotFoundError struct {
-		name     string
-		provider string
+	RepoIORebaseError struct {
+		SHA           string
+		CommitMessage string
 	}
 )
 
-func (e *providerNotFoundError) Error() string {
-	return fmt.Sprintf("provider %s not found. please register your providers first.", e.name)
+func (e *RepoIORebaseError) Error() string {
+	return fmt.Sprintf("could not apply %s... %s", e.SHA, e.CommitMessage)
 }
 
-func NewProviderNotFoundError(name string) error {
-	return &providerNotFoundError{name}
-}
-
-func NewResourceNotFoundError(name string, provider string) error {
-	return &resourceNotFoundError{name, provider}
-}
-
-func (e *resourceNotFoundError) Error() string {
-	return fmt.Sprintf("resource %s not found. please register your resource with the provider %s first.", e.name, e.provider)
+func NewRepoIORebaseError(sha, msg string) error {
+	return &RepoIORebaseError{
+		SHA:           sha,
+		CommitMessage: msg,
+	}
 }

@@ -18,32 +18,38 @@
 package core
 
 import (
-	"fmt"
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
-	providerNotFoundError struct {
-		name string
+	// NOTE - this base struct need for any type of message. getting from core repo.
+	MessageIOPayload struct {
+		WorkspaceID string `json:"workspace_id"`
+		ChannelID   string `json:"channel_id"`
+		BotToken    string `json:"bot_token"`
+		RepoName    string `json:"repo_name"`
+		BranchName  string `json:"branch_name"`
 	}
 
-	resourceNotFoundError struct {
-		name     string
-		provider string
+	// TODO: need to refine.
+	MessageIOLineExeededPayload struct {
+		MessageIOPayload *MessageIOPayload `json:"message_io_payload"`
+		Threshold        shared.Int64      `json:"threshold"`
+		DetectChanges    *RepoIOChanges    `json:"detect_changes"`
+	}
+
+	// TODO: need to refine.
+	MessageIOMergeConflictPayload struct {
+		MessageIOPayload *MessageIOPayload `json:"message_io_payload"`
+		CommitUrl        string            `json:"commit_url"`
+		RepoUrl          string            `json:"repo_url"`
+		SHA              string            `json:"sha"`
+	}
+
+	// TODO: need to refine.
+	MessageIOStaleBranchPayload struct {
+		MessageIOPayload *MessageIOPayload `json:"message_io_payload"`
+		CommitUrl        string            `json:"commit_url"`
+		RepoUrl          string            `json:"repo_url"`
 	}
 )
-
-func (e *providerNotFoundError) Error() string {
-	return fmt.Sprintf("provider %s not found. please register your providers first.", e.name)
-}
-
-func NewProviderNotFoundError(name string) error {
-	return &providerNotFoundError{name}
-}
-
-func NewResourceNotFoundError(name string, provider string) error {
-	return &resourceNotFoundError{name, provider}
-}
-
-func (e *resourceNotFoundError) Error() string {
-	return fmt.Sprintf("resource %s not found. please register your resource with the provider %s first.", e.name, e.provider)
-}

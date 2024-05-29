@@ -76,7 +76,7 @@ func (q *queue) ChildWorkflowOptions(options ...WorkflowOptionProvider) workflow
 }
 
 func (q *queue) Worker(c client.Client) worker.Worker {
-	options := worker.Options{OnFatalError: func(err error) { panic(err) }}
+	options := worker.Options{OnFatalError: func(err error) { panic(err) }, EnableSessionWorker: true}
 	return worker.New(c, q.Name(), options)
 }
 

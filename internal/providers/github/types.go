@@ -31,6 +31,17 @@ type (
 	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers.
 )
 
+type (
+	CreateMembershipsPayload struct {
+		UserID        gocql.UUID   `json:"user_id"`
+		TeamID        gocql.UUID   `json:"team_id"`
+		IsAdmin       bool         `json:"is_admin"`
+		GithubOrgName string       `json:"github_org_name"`
+		GithubOrgID   shared.Int64 `json:"github_org_id"`
+		GithubUserID  shared.Int64 `json:"github_user_id"`
+	}
+)
+
 // Payloads for internal events & signals.
 type (
 	AppAuthorizationEvent struct {
@@ -73,7 +84,7 @@ type (
 
 	PullRequestEvent struct {
 		Action       string         `json:"action"`
-		Number       int64          `json:"number"`
+		Number       shared.Int64   `json:"number"`
 		PullRequest  PullRequest    `json:"pull_request"`
 		Repository   RepositoryPR   `json:"repository"`
 		Organization *Organization  `json:"organization"`
@@ -93,9 +104,9 @@ type (
 	}
 
 	CompleteInstallationSignal struct {
-		InstallationID int64       `json:"installation_id"`
-		SetupAction    SetupAction `json:"setup_action"`
-		TeamID         gocql.UUID  `json:"team_id"`
+		InstallationID shared.Int64 `json:"installation_id"`
+		SetupAction    SetupAction  `json:"setup_action"`
+		UserID         gocql.UUID   `json:"user_id"`
 	}
 
 	ArtifactReadySignal struct {
@@ -106,7 +117,7 @@ type (
 
 	GithubActionResult struct {
 		Branch         string
-		InstallationID int64
+		InstallationID shared.Int64
 		RepoID         string
 		RepoName       string
 		RepoOwner      string

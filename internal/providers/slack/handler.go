@@ -21,12 +21,11 @@ import (
 	"encoding/base64"
 	"net/http"
 
-	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/slack-go/slack"
 
 	"go.breu.io/quantm/internal/auth"
-	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -50,8 +49,6 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusNotFound, ErrCodeEmpty)
 	}
 
-	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
-
 	response, err := slack.GetOAuthV2Response(&c, ClientID(), ClientSecret(), code, ClientRedirectURL())
 	if err != nil {
 		return shared.NewAPIError(http.StatusBadRequest, err)
@@ -66,18 +63,16 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	slack := &Slack{
-		ChannelID:         response.IncomingWebhook.ChannelID,
-		ChannelName:       response.IncomingWebhook.Channel,
-		WorkspaceName:     response.Team.Name,
-		WorkspaceID:       response.Team.ID,
-		WorkspaceBotToken: base64.StdEncoding.EncodeToString(encryptedToken), // Store the base64-encoded encrypted token
-		TeamID:            teamID,
+	resp := &core.MessageProviderData{
+		Slack: &core.MessageProviderSlackData{
+			ChannelID:     response.IncomingWebhook.ChannelID,
+			ChannelName:   response.IncomingWebhook.Channel,
+			WorkspaceName: response.Team.Name,
+			WorkspaceID:   response.Team.ID,
+			BotToken:      base64.StdEncoding.EncodeToString(encryptedToken), // Store the base64-encoded encrypted token
+		},
 	}
 
-	if err := db.Save(slack); err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, err)
-	}
-
-	return ctx.JSON(http.StatusOK, slack)
+	// return the response to frontend
+	return ctx.JSON(http.StatusOK, resp)
 }

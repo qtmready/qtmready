@@ -25,7 +25,7 @@ import (
 	"strconv"
 
 	"github.com/gocql/gocql"
-	gh "github.com/google/go-github/v53/github"
+	gh "github.com/google/go-github/v62/github"
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/quantm/internal/auth"
@@ -50,13 +50,13 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 		return err
 	}
 
-	teamID, err := gocql.ParseUUID(ctx.Get("team_id").(string))
+	userID, err := gocql.ParseUUID(ctx.Get("user_id").(string))
 
 	if err != nil {
 		return err
 	}
 
-	payload := &CompleteInstallationSignal{request.InstallationID, request.SetupAction, teamID}
+	payload := &CompleteInstallationSignal{request.InstallationID, request.SetupAction, userID}
 
 	workflows := &Workflows{}
 	opts := shared.Temporal().
@@ -83,24 +83,24 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 
 	_ = exe.Get(ctx.Request().Context(), nil)
 
-	opts = shared.Temporal().Queue(shared.ProvidersQueue).WorkflowOptions(
-		shared.WithWorkflowBlock("github"),
-		shared.WithWorkflowBlockID(strconv.Itoa(int(payload.InstallationID))),
-		shared.WithWorkflowElement(WebhookEventInstallation.String()),
-		shared.WithWorkflowElementID("post-install"),
-	)
+	// opts = shared.Temporal().Queue(shared.ProvidersQueue).WorkflowOptions(
+	// 	shared.WithWorkflowBlock("github"),
+	// 	shared.WithWorkflowBlockID(strconv.Itoa(int(payload.InstallationID))),
+	// 	shared.WithWorkflowElement(WebhookEventInstallation.String()),
+	// 	shared.WithWorkflowElementID("post-install"),
+	// )
 
-	exe, err = shared.Temporal().
-		Client().
-		ExecuteWorkflow(
-			ctx.Request().Context(),
-			opts,
-			workflows.RefreshDefaultBranch,
-			teamID.String(),
-		)
-	if err != nil {
-		return err
-	}
+	// exe, err = shared.Temporal().
+	// 	Client().
+	// 	ExecuteWorkflow(
+	// 		ctx.Request().Context(),
+	// 		opts,
+	// 		workflows.PostInstall,
+	// 		userID.String(),
+	// 	)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetID(), Status: WorkflowStatusQueued})
 }
@@ -118,17 +118,114 @@ func (s *ServerHandler) GithubGetRepos(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, result)
 }
 
+func (s *ServerHandler) GithubListUserOrgs(ctx echo.Context) error {
+	result := make([]OrgUser, 0)
+	if err := db.Filter(&OrgUser{}, &result, db.QueryParams{"user_id": ctx.QueryParam("user_id")}); err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusOK, result)
+}
+
+func (s *ServerHandler) GithubCreateUserOrgs(ctx echo.Context) error {
+	result := make([]OrgUser, 0)
+	request := &CreateGithubUserOrgsRequest{}
+
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	if err := ctx.Validate(request); err != nil {
+		return err
+	}
+
+	for _, id := range request.GithubOrgIDs {
+		name := ""
+		installation := &Installation{}
+
+		err := db.Get(installation, db.QueryParams{"installation_id": id.String()})
+		if err == nil {
+			name = installation.InstallationLogin
+		}
+
+		orguser := &OrgUser{
+			UserID:        request.UserID,
+			GithubOrgID:   id,
+			GithubUserID:  request.GithubUserID,
+			GithubOrgName: name,
+		}
+
+		_ = db.Save(orguser) // TODO - update ORM to do a BulkSave Method.
+		result = append(result, *orguser)
+	}
+
+	return ctx.JSON(http.StatusCreated, result)
+}
+
 func (s *ServerHandler) GithubGetInstallations(ctx echo.Context) error {
 	result := make([]Installation, 0)
+	params := make(db.QueryParams)
+
+	installationID := ctx.QueryParam("installation_id")
+	if installationID != "" {
+		params["installation_id"] = installationID
+	} else {
+		params["team_id"] = ctx.Get("team_id").(string)
+	}
+
 	if err := db.Filter(
 		&Installation{},
 		&result,
-		db.QueryParams{"team_id": ctx.Get("team_id").(string)},
+		params,
 	); err != nil {
 		return err
 	}
 
 	return ctx.JSON(http.StatusOK, result)
+}
+
+func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
+	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
+
+	if signature == "" {
+		return ctx.JSON(http.StatusUnauthorized, ErrMissingHeaderGithubSignature)
+	}
+
+	// NOTE: We are reading the request body twice. This is not ideal.
+	body, _ := io.ReadAll(ctx.Request().Body)
+	ctx.Request().Body = io.NopCloser(bytes.NewBuffer(body))
+
+	if err := Instance().VerifyWebhookSignature(body, signature); err != nil {
+		return shared.NewAPIError(http.StatusUnauthorized, err)
+	}
+
+	headerEvent := ctx.Request().Header.Get("X-GitHub-Event")
+	if headerEvent == "" {
+		return shared.NewAPIError(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
+	}
+
+	shared.Logger().Debug("GithubWebhook", "headerEvent", headerEvent)
+	// Uncomment for debugging!
+	// var jsonMap map[string]interface{}
+	// json.Unmarshal([]byte(string(body)), &jsonMap)
+	// shared.Logger().Debug("GithubWebhook", "body", jsonMap)
+
+	event := WebhookEvent(headerEvent)
+	handlers := WebhookEventHandlers{
+		WebhookEventInstallation:             handleInstallationEvent,
+		WebhookEventInstallationRepositories: handleInstallationRepositoriesEvent,
+		WebhookEventPush:                     handlePushEvent,
+		// WebhookEventPullRequest:              handlePullRequestEvent,
+		WebhookEventWorkflowRun: handleWorkflowRunEvent,
+	}
+
+	if handle, exists := handlers[event]; exists {
+		return handle(ctx)
+	} else {
+		shared.Logger().Warn("Github Webhook: Unsupported event", "event", event)
+	}
+
+	return shared.NewAPIError(http.StatusBadRequest, ErrInvalidEvent)
 }
 
 // GithubArtifactReady API is called by github action after building and pushing the build artifact
@@ -178,7 +275,7 @@ func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
 		return err
 	}
 
-	client, err := Instance().GetClientFromInstallation(repo.InstallationID)
+	client, err := Instance().GetClientForInstallation(repo.InstallationID)
 
 	if err != nil {
 		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
@@ -249,48 +346,4 @@ func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
 
 func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
 	return nil
-}
-
-func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
-	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
-
-	if signature == "" {
-		return ctx.JSON(http.StatusUnauthorized, ErrMissingHeaderGithubSignature)
-	}
-
-	// NOTE: We are reading the request body twice. This is not ideal.
-	body, _ := io.ReadAll(ctx.Request().Body)
-	ctx.Request().Body = io.NopCloser(bytes.NewBuffer(body))
-
-	if err := Instance().VerifyWebhookSignature(body, signature); err != nil {
-		return shared.NewAPIError(http.StatusUnauthorized, err)
-	}
-
-	headerEvent := ctx.Request().Header.Get("X-GitHub-Event")
-	if headerEvent == "" {
-		return shared.NewAPIError(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
-	}
-
-	shared.Logger().Debug("GithubWebhook", "headerEvent", headerEvent)
-	// Uncomment for debugging!
-	// var jsonMap map[string]interface{}
-	// json.Unmarshal([]byte(string(body)), &jsonMap)
-	// shared.Logger().Debug("GithubWebhook", "body", jsonMap)
-
-	event := WebhookEvent(headerEvent)
-	handlers := WebhookEventHandlers{
-		WebhookEventInstallation:             handleInstallationEvent,
-		WebhookEventInstallationRepositories: handleInstallationRepositoriesEvent,
-		WebhookEventPush:                     handlePushEvent,
-		WebhookEventPullRequest:              handlePullRequestEvent,
-		WebhookEventWorkflowRun:              handleWorkflowRunEvent,
-	}
-
-	if handle, exists := handlers[event]; exists {
-		return handle(ctx)
-	} else {
-		shared.Logger().Warn("Github Webhook: Unsupported event", "event", event)
-	}
-
-	return shared.NewAPIError(http.StatusBadRequest, ErrInvalidEvent)
 }

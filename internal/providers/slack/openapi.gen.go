@@ -18,49 +18,17 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
-	itable "github.com/Guilospanck/igocqlx/table"
-	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime"
-	"github.com/scylladb/gocqlx/v2/table"
+	externalRef0 "go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/shared"
-	externalRef0 "go.breu.io/quantm/internal/shared"
+	externalRef1 "go.breu.io/quantm/internal/shared"
 )
 
 const (
 	BearerAuthScopes = "BearerAuth.Scopes"
 )
-
-// Slack defines model for Slack.
-type Slack struct {
-	ChannelID         string     `cql:"channel_id" json:"channel_id"`
-	ChannelName       string     `cql:"channel_name" json:"channel_name"`
-	CreatedAt         time.Time  `cql:"created_at" json:"created_at"`
-	ID                gocql.UUID `cql:"id" json:"id"`
-	TeamID            gocql.UUID `cql:"team_id" json:"team_id"`
-	UpdatedAt         time.Time  `cql:"updated_at" json:"updated_at"`
-	WorkspaceBotToken string     `cql:"workspace_bot_token" json:"workspace_bot_token"`
-	WorkspaceID       string     `cql:"workspace_id" json:"workspace_id"`
-	WorkspaceName     string     `cql:"workspace_name" json:"workspace_name"`
-}
-
-var (
-	slackMeta = itable.Metadata{
-		M: &table.Metadata{
-			Name:    "slack",
-			Columns: []string{"channel_id", "channel_name", "created_at", "id", "team_id", "updated_at", "workspace_bot_token", "workspace_id", "workspace_name"},
-			PartKey: []string{"team_id"},
-		},
-	}
-
-	slackTable = itable.New(*slackMeta.M)
-)
-
-func (slack *Slack) GetTable() itable.ITable {
-	return slackTable
-}
 
 // SlackOauthParams defines parameters for SlackOauth.
 type SlackOauthParams struct {
@@ -251,9 +219,9 @@ type ClientWithResponsesInterface interface {
 type SlackOauthResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *Slack
-	JSON400      *externalRef0.BadRequest
-	JSON500      *externalRef0.InternalServerError
+	JSON200      *externalRef0.MessageProviderData
+	JSON400      *externalRef1.BadRequest
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -296,21 +264,21 @@ func ParseSlackOauthResponse(rsp *http.Response) (*SlackOauthResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Slack
+		var dest externalRef0.MessageProviderData
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

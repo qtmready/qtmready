@@ -3,7 +3,7 @@ on:
   pull_request:
     # For the develop branch only.
     branches:
-      - develop
+      - dev
     # Execute the action on closed (merged) PR.
     types: [closed]
   workflow_dispatch:

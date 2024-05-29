@@ -33,6 +33,9 @@ func (u *User) PreUpdate() error { return nil }
 func (a *Account) PreCreate() error { return nil }
 func (a *Account) PreUpdate() error { return nil }
 
+func (t *TeamUser) PreCreate() error { return nil }
+func (t *TeamUser) PreUpdate() error { return nil }
+
 // SetPassword hashes the clear text password using bcrypt.
 //
 // NOTE: This only updates the field. You will have to run the method to persist the change.

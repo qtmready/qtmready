@@ -221,12 +221,14 @@ type (
 
 // Defines values for MessageProvider.
 const (
+	MessageProviderNone  MessageProvider = "none"
 	MessageProviderSlack MessageProvider = "slack"
 )
 
 // MessageProviderMap returns all known values for MessageProvider.
 var (
 	MessageProviderMap = MessageProviderMapType{
+		MessageProviderNone.String():  MessageProviderNone,
 		MessageProviderSlack.String(): MessageProviderSlack,
 	}
 )
@@ -315,6 +317,7 @@ type Blueprint struct {
 	Regions       BluePrintRegions `cql:"regions" json:"regions"`
 	RolloutBudget string           `cql:"rollout_budget" json:"rollout_budget"`
 	StackID       gocql.UUID       `cql:"stack_id" json:"stack_id"`
+	TeamID        gocql.UUID       `cql:"team_id" json:"team_id"`
 	UpdatedAt     time.Time        `cql:"updated_at" json:"updated_at"`
 }
 
@@ -322,8 +325,8 @@ var (
 	blueprintMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "blueprints",
-			Columns: []string{"created_at", "id", "name", "provider_config", "regions", "rollout_budget", "stack_id", "updated_at"},
-			PartKey: []string{},
+			Columns: []string{"created_at", "id", "name", "provider_config", "regions", "rollout_budget", "stack_id", "team_id", "updated_at"},
+			PartKey: []string{"id", "team_id"},
 		},
 	}
 
@@ -390,6 +393,20 @@ type LatestCommit struct {
 // MessageProvider defines model for MessageProvider.
 type MessageProvider string
 
+// MessageProviderData defines model for MessageProviderData.
+type MessageProviderData struct {
+	Slack *MessageProviderSlackData `json:"slack,omitempty"`
+}
+
+// MessageProviderSlackData defines model for MessageProviderSlackData.
+type MessageProviderSlackData struct {
+	BotToken      string `json:"bot_token"`
+	ChannelID     string `json:"channel_id"`
+	ChannelName   string `json:"channel_name"`
+	WorkspaceID   string `json:"workspace_id"`
+	WorkspaceName string `json:"workspace_name"`
+}
+
 // ProviderConfiguration Provider config defines configuration specific to a cloud provider.
 type ProviderConfiguration struct {
 	Aws     string `json:"aws"`
@@ -400,24 +417,33 @@ type ProviderConfiguration struct {
 
 // Repo defines model for Repo.
 type Repo struct {
-	CreatedAt     time.Time    `cql:"created_at" json:"created_at"`
-	DefaultBranch string       `cql:"default_branch" json:"default_branch"`
-	ID            gocql.UUID   `cql:"id" json:"id"`
-	IsMonorepo    bool         `cql:"is_monorepo" json:"is_monorepo"`
-	Name          string       `cql:"name" json:"name"`
-	Provider      RepoProvider `cql:"provider" json:"provider"`
-	ProviderID    string       `cql:"provider_id" json:"provider_id"`
-	StackID       gocql.UUID   `cql:"stack_id" json:"stack_id"`
-	TeamID        gocql.UUID   `cql:"team_id" json:"team_id"`
-	UpdatedAt     time.Time    `cql:"updated_at" json:"updated_at"`
+	CreatedAt time.Time `cql:"created_at" json:"created_at"`
+
+	// CtrlId references the id field of the repos tables against the provider. For us, this means, that it will be the id field for
+	//   - github_repos
+	//   - gitlab_repos
+	// etc.
+	CtrlID              gocql.UUID          `cql:"ctrl_id" json:"ctrl_id"`
+	DefaultBranch       string              `cql:"default_branch" json:"default_branch"`
+	ID                  gocql.UUID          `cql:"id" json:"id"`
+	IsMonorepo          bool                `cql:"is_monorepo" json:"is_monorepo"`
+	MessageProvider     MessageProvider     `cql:"message_provider" json:"message_provider"`
+	MessageProviderData MessageProviderData `cql:"message_provider_data" json:"message_provider_data"`
+	Name                string              `cql:"name" json:"name"`
+	Provider            RepoProvider        `cql:"provider" json:"provider"`
+	ProviderID          string              `cql:"provider_id" json:"provider_id"`
+	StackID             gocql.UUID          `cql:"stack_id" json:"stack_id"`
+	TeamID              gocql.UUID          `cql:"team_id" json:"team_id"`
+	Threshold           shared.Int64        `cql:"threshold" json:"threshold"`
+	UpdatedAt           time.Time           `cql:"updated_at" json:"updated_at"`
 }
 
 var (
 	repoMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "repos",
-			Columns: []string{"created_at", "default_branch", "id", "is_monorepo", "name", "provider", "provider_id", "stack_id", "team_id", "updated_at"},
-			PartKey: []string{"team_id"},
+			Columns: []string{"created_at", "ctrl_id", "default_branch", "id", "is_monorepo", "message_provider", "message_provider_data", "name", "provider", "provider_id", "stack_id", "team_id", "threshold", "updated_at"},
+			PartKey: []string{"id", "team_id"},
 		},
 	}
 
@@ -430,12 +456,12 @@ func (repo *Repo) GetTable() itable.ITable {
 
 // RepoCreateRequest defines model for RepoCreateRequest.
 type RepoCreateRequest struct {
-	DefaultBranch string       `json:"default_branch"`
-	IsMonorepo    bool         `json:"is_monorepo"`
-	Name          string       `json:"name"`
-	Provider      RepoProvider `json:"provider"`
-	ProviderID    string       `json:"provider_id"`
-	StackID       gocql.UUID   `json:"stack_id"`
+	CtrlID              gocql.UUID          `json:"ctrl_id"`
+	IsMonorepo          bool                `json:"is_monorepo"`
+	MessageProvider     MessageProvider     `json:"message_provider"`
+	MessageProviderData MessageProviderData `json:"message_provider_data"`
+	Provider            RepoProvider        `json:"provider"`
+	Threshold           shared.Int64        `json:"threshold"`
 }
 
 // RepoListResponse defines model for RepoListResponse.
@@ -443,6 +469,12 @@ type RepoListResponse = []Repo
 
 // RepoProvider defines model for RepoProvider.
 type RepoProvider string
+
+// RepoProviderData defines model for RepoProviderData.
+type RepoProviderData struct {
+	DefaultBranch string `json:"default_branch"`
+	Name          string `json:"name"`
+}
 
 // Resource Resource defines the cloud provider resources for the app e.g. s3, sqs, etc.
 type Resource struct {
@@ -459,6 +491,7 @@ type Resource struct {
 	// Provider aws, gcp, azure
 	Provider  CloudProvider `cql:"provider" json:"provider"`
 	StackID   gocql.UUID    `cql:"stack_id" json:"stack_id"`
+	TeamID    gocql.UUID    `cql:"team_id" json:"team_id"`
 	UpdatedAt time.Time     `cql:"updated_at" json:"updated_at"`
 }
 
@@ -466,8 +499,8 @@ var (
 	resourceMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "resources",
-			Columns: []string{"config", "created_at", "driver", "id", "is_immutable", "name", "provider", "stack_id", "updated_at"},
-			PartKey: []string{},
+			Columns: []string{"config", "created_at", "driver", "id", "is_immutable", "name", "provider", "stack_id", "team_id", "updated_at"},
+			PartKey: []string{"id", "team_id"},
 		},
 	}
 
@@ -509,7 +542,7 @@ var (
 		M: &table.Metadata{
 			Name:    "stacks",
 			Columns: []string{"config", "created_at", "id", "name", "slug", "team_id", "updated_at"},
-			PartKey: []string{"team_id"},
+			PartKey: []string{"id", "team_id"},
 		},
 	}
 
@@ -549,6 +582,7 @@ type Workload struct {
 	RepoPath   string     `cql:"repo_path" json:"repo_path"`
 	ResourceID gocql.UUID `cql:"resource_id" json:"resource_id"`
 	StackID    gocql.UUID `cql:"stack_id" json:"stack_id"`
+	TeamID     gocql.UUID `cql:"team_id" json:"team_id"`
 	UpdatedAt  time.Time  `cql:"updated_at" json:"updated_at"`
 }
 
@@ -556,8 +590,8 @@ var (
 	workloadMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "workloads",
-			Columns: []string{"builder", "container", "created_at", "id", "kind", "name", "repo_id", "repo_path", "resource_id", "stack_id", "updated_at"},
-			PartKey: []string{},
+			Columns: []string{"builder", "container", "created_at", "id", "kind", "name", "repo_id", "repo_path", "resource_id", "stack_id", "team_id", "updated_at"},
+			PartKey: []string{"id", "team_id"},
 		},
 	}
 

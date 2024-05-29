@@ -172,6 +172,14 @@ func (marker *ChangeSetRepoMarkers) UnmarshalCQL(info gocql.TypeInfo, data []byt
 	return json.Unmarshal(data, marker)
 }
 
+func (mp MessageProviderData) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
+	return json.Marshal(mp)
+}
+
+func (mp *MessageProviderData) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
+	return json.Unmarshal(data, mp)
+}
+
 func (rs RolloutState) String() string {
 	return string(rs)
 }

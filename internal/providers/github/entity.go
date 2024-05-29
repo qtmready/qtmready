@@ -21,3 +21,5 @@ func (g *Repo) PreCreate() error         { return nil }
 func (g *Repo) PreUpdate() error         { return nil }
 func (g *Installation) PreCreate() error { return nil }
 func (g *Installation) PreUpdate() error { return nil }
+func (g *OrgUser) PreCreate() error      { return nil }
+func (g *OrgUser) PreUpdate() error      { return nil }

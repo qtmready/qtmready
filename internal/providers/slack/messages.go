@@ -32,40 +32,38 @@ const (
 	footer = "Powered by quantm"
 )
 
-func formatLineThresholdExceededAttachment(repoName, branchName string, threshold int, branchChanges *core.BranchChanges) slack.Attachment {
+func formatLineThresholdExceededAttachment(payload *core.MessageIOLineExeededPayload) slack.Attachment {
 	return slack.Attachment{
 		Color: "warning",
 		Pretext: "The number of lines in this pull request exceeds the allowed threshold. " +
 			"Please review and adjust accordingly.", // TODO: need to finalize
-		Title:     "PR Lines Exceed",
-		TitleLink: branchChanges.CompareUrl,
 		Fields: []slack.AttachmentField{
-			createRepositoryField(repoName, branchChanges.RepoUrl),
-			createBranchField(branchName, branchChanges.CompareUrl),
+			createRepositoryField(payload.MessageIOPayload.RepoName, payload.DetectChanges.RepoUrl, true),
+			createBranchField(payload.MessageIOPayload.BranchName, payload.DetectChanges.CompareUrl, true),
 			{
 				Title: "*Threshold*",
-				Value: fmt.Sprintf("%d", threshold),
+				Value: fmt.Sprintf("%d", payload.Threshold),
 				Short: true,
 			},
 			{
 				Title: "*Total Lines Count*",
-				Value: fmt.Sprintf("%d", branchChanges.Changes),
+				Value: fmt.Sprintf("%d", payload.DetectChanges.Delta),
 				Short: true,
 			},
 			{
 				Title: "*Lines Added*",
-				Value: fmt.Sprintf("%d", branchChanges.Additions),
+				Value: fmt.Sprintf("%d", payload.DetectChanges.Added),
 				Short: true,
 			},
 			{
 				Title: "*Lines Deleted*",
-				Value: fmt.Sprintf("%d", branchChanges.Deletions),
+				Value: fmt.Sprintf("%d", payload.DetectChanges.Removed),
 				Short: true,
 			},
 			{
 				Title: "*Details*",
-				Value: fmt.Sprintf("*Number of Files Changed:* %d\n*Files Changed:*\n%s",
-					branchChanges.FileCount, formatFilesList(branchChanges.Files)),
+				Value: fmt.Sprintf("*Number of Files Changed:* %d\n\n*Files Changed:*\n%s",
+					len(payload.DetectChanges.Modified), formatFilesList(payload.DetectChanges.Modified)),
 				Short: false,
 			},
 		},
@@ -75,15 +73,19 @@ func formatLineThresholdExceededAttachment(repoName, branchName string, threshol
 	}
 }
 
-func formatMergeConflictAttachment(merge *core.LatestCommit) slack.Attachment {
+func formatMergeConflictAttachment(payload *core.MessageIOMergeConflictPayload) slack.Attachment {
 	return slack.Attachment{
-		Color:     "warning",
-		Pretext:   "Merge conflict detected. Please resolve the conflict.", // TODO: need to finalize
-		Title:     "Merge Conflict",
-		TitleLink: merge.CommitUrl,
+		Color: "warning",
+		Pretext: fmt.Sprintf("A recent commit on defualt branch has caused the merge conflict on <%s|%s> branch.",
+			payload.CommitUrl, payload.MessageIOPayload.BranchName),
 		Fields: []slack.AttachmentField{
-			createRepositoryField(merge.RepoName, merge.RepoUrl),
-			createBranchField(merge.Branch, merge.CommitUrl),
+			{
+				Title: "*Commit SHA*",
+				Value: fmt.Sprintf("<%s|%s>", payload.CommitUrl, payload.SHA[:7]),
+				Short: true,
+			},
+			createRepositoryField(payload.MessageIOPayload.RepoName, payload.RepoUrl, true),
+			createBranchField(payload.MessageIOPayload.BranchName, payload.CommitUrl, true),
 		},
 		MarkdownIn: []string{"fields"},
 		Footer:     footer,
@@ -91,15 +93,15 @@ func formatMergeConflictAttachment(merge *core.LatestCommit) slack.Attachment {
 	}
 }
 
-func formatStaleBranchAttachment(staleBranch *core.LatestCommit) slack.Attachment {
+func formatStaleBranchAttachment(payload *core.MessageIOStaleBranchPayload) slack.Attachment {
 	return slack.Attachment{
 		Color:     "warning",
 		Pretext:   "Stale branch is detected. Please review and take necessary action.", // TODO: need to finalize
 		Title:     "Stale Branch",
-		TitleLink: staleBranch.CommitUrl,
+		TitleLink: payload.CommitUrl,
 		Fields: []slack.AttachmentField{
-			createRepositoryField(staleBranch.RepoName, staleBranch.RepoUrl),
-			createBranchField(staleBranch.Branch, staleBranch.CommitUrl),
+			createRepositoryField(payload.MessageIOPayload.RepoName, payload.RepoUrl, true),
+			createBranchField(payload.MessageIOPayload.BranchName, payload.CommitUrl, true),
 		},
 		MarkdownIn: []string{"fields"},
 		Footer:     footer,
@@ -107,19 +109,19 @@ func formatStaleBranchAttachment(staleBranch *core.LatestCommit) slack.Attachmen
 	}
 }
 
-func createRepositoryField(repoName, repoURL string) slack.AttachmentField {
+func createRepositoryField(repoName, repoURL string, short bool) slack.AttachmentField {
 	return slack.AttachmentField{
 		Title: "*Repository*",
 		Value: fmt.Sprintf("<%s|%s>", repoURL, repoName),
-		Short: true,
+		Short: short,
 	}
 }
 
-func createBranchField(branchName, compareUrl string) slack.AttachmentField {
+func createBranchField(branchName, compareUrl string, short bool) slack.AttachmentField {
 	return slack.AttachmentField{
 		Title: "*Branch*",
 		Value: fmt.Sprintf("<%s|%s>", compareUrl, branchName),
-		Short: true,
+		Short: short,
 	}
 }
 

@@ -31,15 +31,15 @@ const (
 )
 
 const (
-	WorkflowSignalPrepare        shared.WorkflowSignal = "mutex_prepare"
-	WorkflowSignalAcquire        shared.WorkflowSignal = "mutex_acquire"
-	WorkflowSignalLocked         shared.WorkflowSignal = "mutex_locked"
-	WorkflowSignalRelease        shared.WorkflowSignal = "mutex_release"
-	WorkflowSignalReleased       shared.WorkflowSignal = "mutex_released"
-	WorkflowSignalCleanup        shared.WorkflowSignal = "mutex_cleanup"
-	WorkflowSignalCleanupDone    shared.WorkflowSignal = "mutex_cleanup_done"
-	WorkflowSignalCleanupDoneAck shared.WorkflowSignal = "mutex_cleanup_done_ack"
-	WorkflowSignalShutDown       shared.WorkflowSignal = "mutex_shutdown"
+	WorkflowSignalPrepare        shared.WorkflowSignal = "mutex__prepare"
+	WorkflowSignalAcquire        shared.WorkflowSignal = "mutex__acquire"
+	WorkflowSignalLocked         shared.WorkflowSignal = "mutex__locked"
+	WorkflowSignalRelease        shared.WorkflowSignal = "mutex__release"
+	WorkflowSignalReleased       shared.WorkflowSignal = "mutex__released"
+	WorkflowSignalCleanup        shared.WorkflowSignal = "mutex__cleanup"
+	WorkflowSignalCleanupDone    shared.WorkflowSignal = "mutex__cleanup_done"
+	WorkflowSignalCleanupDoneAck shared.WorkflowSignal = "mutex__cleanup_done_ack"
+	WorkflowSignalShutDown       shared.WorkflowSignal = "mutex__shutdown"
 )
 
 type (

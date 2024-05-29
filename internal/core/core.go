@@ -39,52 +39,39 @@ type (
 	// NOTE: This is not an ideal design, because it only registers providers for the providers. It does not register
 	// workflows. We may need to revisit this design in the future.
 	Core interface {
-		RegisterRepoProvider(RepoProvider, RepoProviderActivities)
-		RegisterCloudProvider(CloudProvider, CloudProviderActivities)
+		RegisterRepoProvider(RepoProvider, RepoIO)
+		ResgisterMessageProvider(MessageProvider, MessageIO)
+		RegisterCloudProvider(CloudProvider, CloudIO)
 		RegisterCloudResource(provider CloudProvider, driver Driver, resource ResourceConstructor)
-		ResgisterMessageProvider(MessageProvider, MessageProviderActivities)
 
-		RepoProvider(RepoProvider) RepoProviderActivities
-		CloudProvider(CloudProvider) CloudProviderActivities
+		RepoIO(RepoProvider) RepoIO
+		CloudProvider(CloudProvider) CloudIO
 		ResourceConstructor(CloudProvider, Driver) ResourceConstructor
-		MessageProvider(MessageProvider) MessageProviderActivities
+		MessageIO(MessageProvider) MessageIO
 	}
 
 	Option func(Core)
 
-	RepoProviderActivities interface {
-		GetLatestCommit(ctx context.Context, repoID, branchName string) (*LatestCommit, error)
-		DeployChangeset(ctx context.Context, repoID string, changesetID *gocql.UUID) error
-		TagCommit(ctx context.Context, repoID, commitSHA, tagName, tagMessage string) error
-		CreateBranch(ctx context.Context, installationID int64, repoID, repoName, repoOwner, targetCommit, newBranchName string) error
-		DeleteBranch(ctx context.Context, installationID int64, repoName, repoOwner, branchName string) error
-		MergeBranch(ctx context.Context, installationID int64, repoName, repoOwner, baseBranch, targetBranch string) error
-		ChangesInBranch(ctx context.Context, installationID int64, repoName, repoOwner, defaultBranch, targetBranch string,
-		) (*BranchChanges, error)
-		GetAllBranches(ctx context.Context, installationID int64, repoName, repoOwner string) ([]string, error)
-		TriggerCIAction(ctx context.Context, installationID int64, repoOwner, repoName, targetBranch string) error
-		GetRepoTeamID(ctx context.Context, repoID string) (string, error)
-		RebaseAndMerge(ctx context.Context, repoOwner, repoName, targetBranchName string, installationID int64) (string, error)
-		GetAllRelevantActions(ctx context.Context, installationID int64, repoName string, repoOwner string) error
-	}
-
-	CloudProviderActivities interface {
+	// CloudIO is the interface that defines the operations that can be performed on a cloud provider.
+	CloudIO interface {
 		FillMe()
 	}
 
-	MessageProviderActivities interface {
-		SendStaleBranchMessage(ctx context.Context, teamID string, stale *LatestCommit) error
-		SendNumberOfLinesExceedMessage(ctx context.Context, teamID, repoName, branchName string, threshold int,
-			branchChnages *BranchChanges) error
-		SendMergeConflictsMessage(ctx context.Context, teamID string, merge *LatestCommit) error
+	// MessageIO is the interface that defines the operations that can be performed on a message provider.
+	MessageIO interface {
+		SendStaleBranchMessage(ctx context.Context, payload *MessageIOStaleBranchPayload) error
+		SendNumberOfLinesExceedMessage(ctx context.Context, payload *MessageIOLineExeededPayload) error
+		SendMergeConflictsMessage(ctx context.Context, payload *MessageIOMergeConflictPayload) error
 	}
 
+	// Providers is a struct that holds the different providers that are registered with the core.
 	Providers struct {
-		repos   map[RepoProvider]RepoProviderActivities
-		cloud   map[CloudProvider]CloudProviderActivities
-		message map[MessageProvider]MessageProviderActivities
+		repos   map[RepoProvider]RepoIO
+		cloud   map[CloudProvider]CloudIO
+		message map[MessageProvider]MessageIO
 	}
 
+	// CloudResource is the interface that defines the operations that can be performed on a cloud resource.
 	CloudResource interface {
 		Provision(ctx workflow.Context) (workflow.Future, error)
 		DeProvision() error
@@ -93,6 +80,7 @@ type (
 		Marshal() ([]byte, error)
 	}
 
+	// ResourceConstructor is the interface that defines the operations that can be performed on a cloud resource constructor.
 	ResourceConstructor interface {
 		Create(name string, region string, config string, providerConfig string) (CloudResource, error)
 		CreateFromJson(data []byte) CloudResource
@@ -131,15 +119,15 @@ func (c *core) RegisterCloudResource(provider CloudProvider, driver Driver, reso
 	c.resources[provider][driver] = resource
 }
 
-func (c *core) RegisterRepoProvider(provider RepoProvider, activities RepoProviderActivities) {
+func (c *core) RegisterRepoProvider(provider RepoProvider, activities RepoIO) {
 	c.providers.repos[provider] = activities
 }
 
-func (c *core) RegisterCloudProvider(provider CloudProvider, activities CloudProviderActivities) {
+func (c *core) RegisterCloudProvider(provider CloudProvider, activities CloudIO) {
 	c.providers.cloud[provider] = activities
 }
 
-func (c *core) RepoProvider(name RepoProvider) RepoProviderActivities {
+func (c *core) RepoIO(name RepoProvider) RepoIO {
 	if p, ok := c.providers.repos[name]; ok {
 		return p
 	}
@@ -160,7 +148,7 @@ func (c *core) ResourceConstructor(provider CloudProvider, driver Driver) Resour
 	panic(NewResourceNotFoundError(driver.String(), provider.String()))
 }
 
-func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
+func (c *core) CloudProvider(name CloudProvider) CloudIO {
 	if p, ok := c.providers.cloud[name]; ok {
 		return p
 	}
@@ -168,11 +156,11 @@ func (c *core) CloudProvider(name CloudProvider) CloudProviderActivities {
 	panic(NewProviderNotFoundError(name.String()))
 }
 
-func (c *core) ResgisterMessageProvider(provider MessageProvider, activities MessageProviderActivities) {
+func (c *core) ResgisterMessageProvider(provider MessageProvider, activities MessageIO) {
 	c.providers.message[provider] = activities
 }
 
-func (c *core) MessageProvider(name MessageProvider) MessageProviderActivities {
+func (c *core) MessageIO(name MessageProvider) MessageIO {
 	if p, ok := c.providers.message[name]; ok {
 		return p
 	}
@@ -181,26 +169,26 @@ func (c *core) MessageProvider(name MessageProvider) MessageProviderActivities {
 }
 
 // WithMessageProvider registers a repo provider with the core.
-func WithMessageProvider(name MessageProvider, provider MessageProviderActivities) Option {
+func WithMessageProvider(provider MessageProvider, io MessageIO) Option {
 	return func(c Core) {
-		shared.Logger().Info("core: registering message provider", "name", name.String())
-		c.ResgisterMessageProvider(name, provider)
+		shared.Logger().Info("core: registering message provider", "name", provider.String())
+		c.ResgisterMessageProvider(provider, io)
 	}
 }
 
 // WithRepoProvider registers a repo provider with the core.
-func WithRepoProvider(name RepoProvider, provider RepoProviderActivities) Option {
+func WithRepoProvider(provider RepoProvider, io RepoIO) Option {
 	return func(c Core) {
-		shared.Logger().Info("core: registering repo provider", "name", name.String())
-		c.RegisterRepoProvider(name, provider)
+		shared.Logger().Info("core: registering repo provider", "name", provider.String())
+		c.RegisterRepoProvider(provider, io)
 	}
 }
 
 // WithCloudProvider registers a cloud provider with the core.
-func WithCloudProvider(name CloudProvider, provider CloudProviderActivities) Option {
+func WithCloudProvider(provider CloudProvider, io CloudIO) Option {
 	return func(c Core) {
-		shared.Logger().Info("core: registering cloud provider", "name", name.String())
-		c.RegisterCloudProvider(name, provider)
+		shared.Logger().Info("core: registering cloud provider", "name", provider.String())
+		c.RegisterCloudProvider(provider, io)
 	}
 }
 
@@ -220,9 +208,9 @@ func Instance(opts ...Option) Core {
 		once.Do(func() {
 			instance = &core{
 				providers: Providers{
-					repos:   make(map[RepoProvider]RepoProviderActivities),
-					cloud:   make(map[CloudProvider]CloudProviderActivities),
-					message: make(map[MessageProvider]MessageProviderActivities),
+					repos:   make(map[RepoProvider]RepoIO),
+					cloud:   make(map[CloudProvider]CloudIO),
+					message: make(map[MessageProvider]MessageIO),
 				},
 
 				resources: make(map[CloudProvider]map[Driver]ResourceConstructor),

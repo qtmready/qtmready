@@ -20,45 +20,26 @@ package slack
 import (
 	"encoding/base64"
 	"log/slog"
-
-	"github.com/slack-go/slack"
-
-	"go.breu.io/quantm/internal/db"
 )
 
-func GetSlackClientAndChannelID(teamID string) (*slack.Client, string, error) {
-	// Get the slack info from the database
-	s := &Slack{}
-	params := db.QueryParams{"team_id": teamID}
-
-	if err := db.Get(s, params); err != nil {
-		slog.Error("Failed to get the slack record", slog.Any("e", err))
-		return nil, "", err
-	}
-
+// DecodeAndDecryptToken decodes a base64-encoded encrypted token and decrypts it using a generated key.
+func decodeAndDecryptToken(botToken, workspaceID string) (string, error) {
 	// Decode the base64-encoded encrypted token.
-	decode, err := base64.StdEncoding.DecodeString(s.WorkspaceBotToken)
+	decoded, err := base64.StdEncoding.DecodeString(botToken)
 	if err != nil {
 		slog.Error("Failed to decode the token", slog.Any("e", err))
-		return nil, "", err
+		return "", err
 	}
 
 	// Generate the same key used for encryption.
-	key := generateKey(s.WorkspaceID)
+	key := generateKey(workspaceID)
 
 	// Decrypt the token.
-	decryptedToken, err := decrypt(decode, key)
+	decryptedToken, err := decrypt(decoded, key)
 	if err != nil {
 		slog.Error("Failed to decrypt the token", slog.Any("e", err))
-		return nil, "", err
+		return "", err
 	}
 
-	// Create a Slack client using the decrypted access token.
-	client, err := instance.GetSlackClient(string(decryptedToken))
-	if err != nil {
-		slog.Error("Failed to get the slack client", slog.Any("e", err))
-		return nil, "", err
-	}
-
-	return client, s.ChannelID, nil
+	return string(decryptedToken), nil
 }

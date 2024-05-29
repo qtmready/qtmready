@@ -176,7 +176,7 @@ func (s *ServerHandler) CreateStack(ctx echo.Context) error {
 		reason for going with infinite workflow instead of starting with signal is to follow the
 		temporal guideline which state that workflow ids should not be resued
 	*/
-	w := &Workflows{}
+	w := &StackWorkflows{}
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
 		WorkflowOptions(
@@ -225,22 +225,38 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 	}
 
 	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
+	data, err := Instance().
+		RepoIO(request.Provider).
+		GetRepoData(ctx.Request().Context(), request.CtrlID.String())
+
+	if err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
 
 	repo := &Repo{
-		Name:          request.Name,
-		StackID:       request.StackID,
-		ProviderID:    request.ProviderID,
-		DefaultBranch: request.DefaultBranch,
-		IsMonorepo:    request.IsMonorepo,
-		Provider:      request.Provider,
-		TeamID:        teamID,
+		Name:                data.Name,
+		DefaultBranch:       data.DefaultBranch,
+		IsMonorepo:          request.IsMonorepo,
+		Provider:            request.Provider,
+		ProviderID:          data.ProviderID,
+		CtrlID:              request.CtrlID,
+		Threshold:           request.Threshold,
+		TeamID:              teamID,
+		MessageProvider:     request.MessageProvider,
+		MessageProviderData: request.MessageProviderData,
 	}
 
 	if err := db.Save(repo); err != nil {
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
-	return ctx.JSON(http.StatusCreated, repo)
+	if err := Instance().
+		RepoIO(request.Provider).
+		SetEarlyWarning(ctx.Request().Context(), request.CtrlID.String(), true); err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	return ctx.NoContent(http.StatusNoContent)
 }
 
 func (s *ServerHandler) ListRepos(ctx echo.Context) error {
