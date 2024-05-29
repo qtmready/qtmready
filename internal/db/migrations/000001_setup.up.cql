@@ -30,6 +30,21 @@ create table if not exists users
 create index if not exists on users (team_id);
 create index if not exists on users (email);
 
+create table if not exists team_users (
+  id                    uuid,
+  team_id               uuid,
+  user_id               uuid,
+  role                  varchar,
+  is_admin              boolean,
+  is_active             boolean,
+  created_at            timestamp,
+  updated_at            timestamp,
+  primary key           (id),
+) with comment = 'team user association';
+
+create index if not exists on team_users (team_id);
+create index if not exists on team_users (user_id);
+
 create table if not exists guards
 (
   id                        uuid,

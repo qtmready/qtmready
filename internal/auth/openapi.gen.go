@@ -209,6 +209,9 @@ type TeamList struct {
 type TeamUser struct {
 	CreatedAt time.Time  `cql:"created_at" json:"created_at"`
 	ID        gocql.UUID `cql:"id" json:"id"`
+	IsActive  bool       `cql:"is_active" json:"is_active"`
+	IsAdmin   bool       `cql:"is_admin" json:"is_admin"`
+	Role      string     `cql:"role" json:"role"`
 	TeamID    gocql.UUID `cql:"team_id" json:"team_id"`
 	UpdatedAt time.Time  `cql:"updated_at" json:"updated_at"`
 	UserID    gocql.UUID `cql:"user_id" json:"user_id"`
@@ -218,8 +221,8 @@ var (
 	teamuserMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "team_users",
-			Columns: []string{"created_at", "id", "team_id", "updated_at", "user_id"},
-			PartKey: []string{},
+			Columns: []string{"created_at", "id", "is_active", "is_admin", "role", "team_id", "updated_at", "user_id"},
+			PartKey: []string{"id"},
 		},
 	}
 

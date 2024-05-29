@@ -76,13 +76,14 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 	selector.AddReceive(webhookChannel, onInstallationWebhookSignal(ctx, webhook, status))
 	selector.AddReceive(requestChannel, onRequestSignal(ctx, request, status))
 
+	logger.Info("github/installation: waiting for webhook and complete installation request signals ...")
+
 	// keep listening for signals until we have received both the installation id and the team id
 	for !(status.WebhookDone && status.RequestDone) {
-		logger.Info("github/installation: waiting for signals ....")
 		selector.Select(ctx)
 	}
 
-	logger.Info("github/installation: all signals received, processing ...")
+	logger.Info("github/installation: required signals processed ...")
 
 	switch webhook.Action {
 	// NOTE - Since a GitHub organization can only have one active installation at a time, when a new installation is created, it's
@@ -105,8 +106,15 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 
 			team.Name = webhook.Installation.Account.Login
 
-			if err := workflow.ExecuteActivity(actx, activities.CreateTeam, user).Get(ctx, team); err != nil {
+			if err := workflow.ExecuteActivity(actx, activities.CreateTeam, team).Get(ctx, team); err != nil {
 				return nil
+			}
+
+			logger.Info("github/installation: team created, assigning to user ...")
+
+			user.TeamID = team.ID
+			if err := workflow.ExecuteActivity(actx, activities.SaveUser, user).Get(ctx, user); err != nil {
+				logger.Info("github/installation: error saving user ...", "error", err)
 			}
 		} else {
 			logger.Warn("github/installation: team already associated, fetching ...")
@@ -127,13 +135,28 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 			Status:            webhook.Action,
 		}
 
-		logger.Info("github/installation: saving or updating installation ...")
+		logger.Info("github/installation: creating or updating installation ...")
 
 		if err := workflow.ExecuteActivity(actx, activities.CreateOrUpdateInstallation, installation).Get(actx, installation); err != nil {
 			logger.Error("github/installation: error saving installation ...", "error", err)
 		}
 
-		logger.Info("github/installation: saving associated repositories ...")
+		logger.Info("github/installation: updating user associations ...")
+
+		membership := &CreateMembershipsPayload{
+			UserID:        user.ID,
+			TeamID:        team.ID,
+			IsAdmin:       true,
+			GithubOrgName: webhook.Installation.Account.Login,
+			GithubOrgID:   webhook.Installation.Account.ID,
+			GithubUserID:  webhook.Sender.ID,
+		}
+
+		if err := workflow.ExecuteActivity(actx, activities.CreateMemberships, membership).Get(actx, nil); err != nil {
+			logger.Error("github/installation: error saving installation ...", "error", err)
+		}
+
+		logger.Info("github/installation: saving installation repos ...")
 
 		for _, repo := range webhook.Repositories {
 			logger.Info("github/installation: saving repository ...")
@@ -157,11 +180,13 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 			selector.AddFuture(future, onCreateOrUpdateRepoActivityFuture(ctx, repo))
 		}
 
+		logger.Info("github/installation: waiting for repositories to be saved ...")
+
 		for range webhook.Repositories {
 			selector.Select(ctx)
 		}
 
-		logger.Info("github/installation: associated repositories saved ...")
+		logger.Info("github/installation: installation repositories saved ...")
 	case "deleted", "suspend", "unsuspend":
 		logger.Warn("github/installation: installation removed, unhandled case ...")
 	default:
@@ -278,7 +303,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 		Before:         event.Before,
 		After:          event.After,
 		RepoName:       event.Repository.Name,
-		RepoOwner:      event.Repository.Owner.Name,
+		RepoOwner:      event.Repository.Owner.Login,
 		CtrlID:         repo.ID.String(),
 		InstallationID: event.Installation.ID,
 		ProviderID:     repo.GithubID.String(),
@@ -559,22 +584,22 @@ func onInstallationWebhookSignal(
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		logger.Info("received webhook installation event ...", "action", installation.Action)
+		logger.Info("github/installation: webhook received ...", "action", installation.Action)
 		channel.Receive(ctx, installation)
 
 		status.WebhookDone = true
 
 		switch installation.Action {
 		case "deleted", "suspend", "unsuspend":
-			logger.Info("installation removed, skipping complete installation request ...")
+			logger.Info("github/installation: installation removed ....", "action", installation.Action)
 
 			status.RequestDone = true
 		case "request":
-			logger.Info("installation request to organization owner ...")
+			logger.Info("github/installation: installation request ...", "action", installation.Action)
 
 			status.RequestDone = true
 		default:
-			logger.Info("installation created, waiting for complete installation request ...")
+			logger.Info("github/installation: create action ...", "action", installation.Action)
 		}
 	}
 }
@@ -586,7 +611,7 @@ func onRequestSignal(
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		logger.Info("received complete installation request ...")
+		logger.Info("github/installation: received complete installation request ...")
 		channel.Receive(ctx, installation)
 
 		status.RequestDone = true

@@ -83,24 +83,24 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 
 	_ = exe.Get(ctx.Request().Context(), nil)
 
-	opts = shared.Temporal().Queue(shared.ProvidersQueue).WorkflowOptions(
-		shared.WithWorkflowBlock("github"),
-		shared.WithWorkflowBlockID(strconv.Itoa(int(payload.InstallationID))),
-		shared.WithWorkflowElement(WebhookEventInstallation.String()),
-		shared.WithWorkflowElementID("post-install"),
-	)
+	// opts = shared.Temporal().Queue(shared.ProvidersQueue).WorkflowOptions(
+	// 	shared.WithWorkflowBlock("github"),
+	// 	shared.WithWorkflowBlockID(strconv.Itoa(int(payload.InstallationID))),
+	// 	shared.WithWorkflowElement(WebhookEventInstallation.String()),
+	// 	shared.WithWorkflowElementID("post-install"),
+	// )
 
-	exe, err = shared.Temporal().
-		Client().
-		ExecuteWorkflow(
-			ctx.Request().Context(),
-			opts,
-			workflows.PostInstall,
-			userID.String(),
-		)
-	if err != nil {
-		return err
-	}
+	// exe, err = shared.Temporal().
+	// 	Client().
+	// 	ExecuteWorkflow(
+	// 		ctx.Request().Context(),
+	// 		opts,
+	// 		workflows.PostInstall,
+	// 		userID.String(),
+	// 	)
+	// if err != nil {
+	// 	return err
+	// }
 
 	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetID(), Status: WorkflowStatusQueued})
 }
@@ -164,10 +164,19 @@ func (s *ServerHandler) GithubCreateUserOrgs(ctx echo.Context) error {
 
 func (s *ServerHandler) GithubGetInstallations(ctx echo.Context) error {
 	result := make([]Installation, 0)
+	params := make(db.QueryParams)
+
+	installationID := ctx.QueryParam("installation_id")
+	if installationID != "" {
+		params["installation_id"] = installationID
+	} else {
+		params["team_id"] = ctx.Get("team_id").(string)
+	}
+
 	if err := db.Filter(
 		&Installation{},
 		&result,
-		db.QueryParams{"team_id": ctx.Get("team_id").(string)},
+		params,
 	); err != nil {
 		return err
 	}

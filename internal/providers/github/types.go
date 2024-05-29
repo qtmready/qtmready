@@ -31,6 +31,17 @@ type (
 	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers.
 )
 
+type (
+	CreateMembershipsPayload struct {
+		UserID        gocql.UUID   `json:"user_id"`
+		TeamID        gocql.UUID   `json:"team_id"`
+		IsAdmin       bool         `json:"is_admin"`
+		GithubOrgName string       `json:"github_org_name"`
+		GithubOrgID   shared.Int64 `json:"github_org_id"`
+		GithubUserID  shared.Int64 `json:"github_user_id"`
+	}
+)
+
 // Payloads for internal events & signals.
 type (
 	AppAuthorizationEvent struct {

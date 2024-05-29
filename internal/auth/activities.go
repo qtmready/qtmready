@@ -27,6 +27,16 @@ func (a *Activities) GetUser(ctx context.Context, params db.QueryParams) (*User,
 	return user, nil
 }
 
+// SaveUser saves the provided user to the database.
+// It returns the saved user or an error if the save operation failed.
+func (a *Activities) SaveUser(ctx context.Context, user *User) (*User, error) {
+	if err := db.Save(user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
 // CreateTeam creates a new team in the database.
 //
 // The function takes a context.Context and a pointer to a Team struct as input.
@@ -52,4 +62,24 @@ func (a *Activities) GetTeam(ctx context.Context, params db.QueryParams) (*Team,
 	}
 
 	return team, nil
+}
+
+// CreateOrUpdateTeamUser creates or updates a team user in the database.
+// It takes a TeamUser payload and returns the updated TeamUser.
+// If the TeamUser already exists, it updates the IsAdmin, IsActive, and Role fields.
+// If the TeamUser does not exist, it creates a new one.
+// The function returns the updated or created TeamUser, and any error that occurred.
+func (a *Activities) CreateOrUpdateTeamUser(ctx context.Context, payload *TeamUser) (*TeamUser, error) {
+	temp := &TeamUser{}
+
+	if err := db.Get(temp, db.QueryParams{"team_id": payload.TeamID.String(), "user_id": payload.UserID.String()}); err == nil {
+		payload.ID = temp.ID
+		payload.CreatedAt = temp.CreatedAt
+	}
+
+	if err := db.Save(payload); err != nil {
+		return nil, err
+	}
+
+	return payload, nil
 }

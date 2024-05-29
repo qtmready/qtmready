@@ -366,6 +366,12 @@ type WorkflowResponse struct {
 // WorkflowStatus the workflow status.
 type WorkflowStatus string
 
+// GithubGetInstallationsParams defines parameters for GithubGetInstallations.
+type GithubGetInstallationsParams struct {
+	// InstallationId InstallationID
+	InstallationId *shared.Int64 `form:"installation_id,omitempty" json:"installation_id,omitempty"`
+}
+
 // GithubListUserOrgsParams defines parameters for GithubListUserOrgs.
 type GithubListUserOrgsParams struct {
 	// UserId User ID
@@ -481,7 +487,7 @@ type ClientInterface interface {
 	GithubCompleteInstallation(ctx context.Context, body GithubCompleteInstallationJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GithubGetInstallations request
-	GithubGetInstallations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GithubGetInstallations(ctx context.Context, params *GithubGetInstallationsParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GithubGetRepos request
 	GithubGetRepos(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -594,8 +600,8 @@ func (c *Client) GithubCompleteInstallation(ctx context.Context, body GithubComp
 	return c.Client.Do(req)
 }
 
-func (c *Client) GithubGetInstallations(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGithubGetInstallationsRequest(c.Server)
+func (c *Client) GithubGetInstallations(ctx context.Context, params *GithubGetInstallationsParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGithubGetInstallationsRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -827,7 +833,7 @@ func NewGithubCompleteInstallationRequestWithBody(server string, contentType str
 }
 
 // NewGithubGetInstallationsRequest generates requests for GithubGetInstallations
-func NewGithubGetInstallationsRequest(server string) (*http.Request, error) {
+func NewGithubGetInstallationsRequest(server string, params *GithubGetInstallationsParams) (*http.Request, error) {
 	var err error
 
 	serverURL, err := url.Parse(server)
@@ -843,6 +849,28 @@ func NewGithubGetInstallationsRequest(server string) (*http.Request, error) {
 	queryURL, err := serverURL.Parse(operationPath)
 	if err != nil {
 		return nil, err
+	}
+
+	if params != nil {
+		queryValues := queryURL.Query()
+
+		if params.InstallationId != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "installation_id", runtime.ParamLocationQuery, *params.InstallationId); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
+		queryURL.RawQuery = queryValues.Encode()
 	}
 
 	req, err := http.NewRequest("GET", queryURL.String(), nil)
@@ -1056,7 +1084,7 @@ type ClientWithResponsesInterface interface {
 	GithubCompleteInstallationWithResponse(ctx context.Context, body GithubCompleteInstallationJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error)
 
 	// GithubGetInstallationsWithResponse request
-	GithubGetInstallationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubGetInstallationsResponse, error)
+	GithubGetInstallationsWithResponse(ctx context.Context, params *GithubGetInstallationsParams, reqEditors ...RequestEditorFn) (*GithubGetInstallationsResponse, error)
 
 	// GithubGetReposWithResponse request
 	GithubGetReposWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubGetReposResponse, error)
@@ -1362,8 +1390,8 @@ func (c *ClientWithResponses) GithubCompleteInstallationWithResponse(ctx context
 }
 
 // GithubGetInstallationsWithResponse request returning *GithubGetInstallationsResponse
-func (c *ClientWithResponses) GithubGetInstallationsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubGetInstallationsResponse, error) {
-	rsp, err := c.GithubGetInstallations(ctx, reqEditors...)
+func (c *ClientWithResponses) GithubGetInstallationsWithResponse(ctx context.Context, params *GithubGetInstallationsParams, reqEditors ...RequestEditorFn) (*GithubGetInstallationsResponse, error) {
+	rsp, err := c.GithubGetInstallations(ctx, params, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -1923,6 +1951,15 @@ func (w *ServerInterfaceWrapper) GithubGetInstallations(ctx echo.Context) error 
 	ctx.Set(BearerAuthScopes, []string{})
 
 	ctx.Set(APIKeyAuthScopes, []string{})
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GithubGetInstallationsParams
+	// ------------- Optional query parameter "installation_id" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "installation_id", ctx.QueryParams(), &params.InstallationId)
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter installation_id: %s", err))
+	}
 
 	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
 	handler := w.Handler.GithubGetInstallations
