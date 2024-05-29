@@ -168,7 +168,14 @@ func (s *ServerHandler) GithubGetInstallations(ctx echo.Context) error {
 	installationID := ctx.QueryParam("installation_id")
 	if installationID != "" {
 		params["installation_id"] = installationID
-	} else {
+	}
+
+	installationLogin := ctx.QueryParam("installation_login")
+	if installationLogin != "" {
+		params["installation_login"] = installationLogin
+	}
+
+	if ctx.Get("team_id").(string) != "" {
 		params["team_id"] = ctx.Get("team_id").(string)
 	}
 

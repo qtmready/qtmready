@@ -142,6 +142,13 @@ type CreateTeamRequest struct {
 	Name string `json:"name"`
 }
 
+// CreateUserRequest defines model for CreateUserRequest.
+type CreateUserRequest struct {
+	Email  string      `json:"email"`
+	Name   string      `json:"name"`
+	TeamID *gocql.UUID `json:"team_id,omitempty"`
+}
+
 // LinkAccountRequest defines model for LinkAccountRequest.
 type LinkAccountRequest struct {
 	ExpiresAt         time.Time `json:"expires_at"`
@@ -269,12 +276,6 @@ func (user *User) GetTable() itable.ITable {
 	return userTable
 }
 
-// UserRequest defines model for UserRequest.
-type UserRequest struct {
-	Email string `json:"email"`
-	Name  string `json:"name"`
-}
-
 // ListUsersParams defines parameters for ListUsers.
 type ListUsersParams struct {
 	// ProviderAccountId Provider account ID
@@ -309,7 +310,7 @@ type CreateTeamJSONRequestBody = CreateTeamRequest
 type AddUserToTeamJSONRequestBody = AddUserToTeamRequest
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
-type CreateUserJSONRequestBody = UserRequest
+type CreateUserJSONRequestBody = CreateUserRequest
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error

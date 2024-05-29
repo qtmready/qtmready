@@ -368,7 +368,10 @@ type WorkflowStatus string
 
 // GithubGetInstallationsParams defines parameters for GithubGetInstallations.
 type GithubGetInstallationsParams struct {
-	// InstallationId InstallationID
+	// InstallationLogin github team name
+	InstallationLogin *string `form:"installation_login,omitempty" json:"installation_login,omitempty"`
+
+	// InstallationId installation ID of the github app.
 	InstallationId *shared.Int64 `form:"installation_id,omitempty" json:"installation_id,omitempty"`
 }
 
@@ -853,6 +856,22 @@ func NewGithubGetInstallationsRequest(server string, params *GithubGetInstallati
 
 	if params != nil {
 		queryValues := queryURL.Query()
+
+		if params.InstallationLogin != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "installation_login", runtime.ParamLocationQuery, *params.InstallationLogin); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
 
 		if params.InstallationId != nil {
 
@@ -1954,6 +1973,13 @@ func (w *ServerInterfaceWrapper) GithubGetInstallations(ctx echo.Context) error 
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GithubGetInstallationsParams
+	// ------------- Optional query parameter "installation_login" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "installation_login", ctx.QueryParams(), &params.InstallationLogin)
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter installation_login: %s", err))
+	}
+
 	// ------------- Optional query parameter "installation_id" -------------
 
 	err = runtime.BindQueryParameter("form", true, false, "installation_id", ctx.QueryParams(), &params.InstallationId)

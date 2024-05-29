@@ -227,7 +227,7 @@ func (s *ServerHandler) AddUserToTeam(ctx echo.Context) error {
 }
 
 func (s *ServerHandler) CreateUser(ctx echo.Context) error {
-	request := &UserRequest{}
+	request := &CreateUserRequest{}
 
 	// Translating request to json
 	if err := ctx.Bind(request); err != nil {
@@ -248,6 +248,10 @@ func (s *ServerHandler) CreateUser(ctx echo.Context) error {
 		Password:   "", // Default value
 		IsActive:   true,
 		IsVerified: true,
+	}
+
+	if request.TeamID != nil {
+		user.TeamID = *request.TeamID
 	}
 
 	// Check if names slice has at least 2 elements, if so, assign the second element to LastName
