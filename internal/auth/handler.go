@@ -52,12 +52,12 @@ func NewServerHandler(security echo.MiddlewareFunc) *ServerHandler {
 }
 
 // SecureHandler wraps the handler with the security middleware.
-func (s *SecurityHandler) SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error {
+func (s *SecurityHandler) SecureHandler(ctx echo.Context, handler echo.HandlerFunc) error {
 	err := s.Middleware(handler)(ctx)
 	return err
 }
 
-// Register registers a new user.
+// endpoint: /auth/register
 func (s *ServerHandler) Register(ctx echo.Context) error {
 	request := &RegisterationRequest{}
 
@@ -100,7 +100,7 @@ func (s *ServerHandler) Register(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &RegisterationResponse{Team: team, User: user})
 }
 
-// Login returns JWT tokens if the email & password are correct.
+// endpoint: /auth/login
 func (s *ServerHandler) Login(ctx echo.Context) error {
 	request := &LoginRequest{}
 
@@ -129,31 +129,7 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 	return shared.NewAPIError(http.StatusUnauthorized, ErrInvalidCredentials)
 }
 
-// CreateTeamAPIKey creates an API key for the Team.
-func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
-	request := &CreateAPIKeyRequest{}
-
-	if err := ctx.Bind(request); err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, err)
-	}
-
-	if err := ctx.Validate(request); err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, err)
-	}
-
-	id, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
-	guard := &Guard{}
-	key := guard.NewForTeam(id)
-
-	if err := guard.Save(); err != nil {
-		shared.Logger().Error("error saving guard", "error", err)
-		return shared.NewAPIError(http.StatusBadRequest, err)
-	}
-
-	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: &key})
-}
-
-// CreateUserAPIKey creates an API Key for the User.
+// endpoint: auth/api-keys/user
 func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 	request := &CreateAPIKeyRequest{}
 
@@ -177,20 +153,37 @@ func (s *ServerHandler) CreateUserAPIKey(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: &key})
 }
 
-// ValidateAPIKey validates the X-API-KEY header and return a boolean. This is mainly required for otel collector.
+// endpoint: /auth/api-keys/team
+func (s *ServerHandler) CreateTeamAPIKey(ctx echo.Context) error {
+	request := &CreateAPIKeyRequest{}
+
+	if err := ctx.Bind(request); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	if err := ctx.Validate(request); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	id, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
+	guard := &Guard{}
+	key := guard.NewForTeam(id)
+
+	if err := guard.Save(); err != nil {
+		shared.Logger().Error("error saving guard", "error", err)
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	return ctx.JSON(http.StatusCreated, &CreateAPIKeyResponse{Key: &key})
+}
+
+// endpoint: /auth/api-keys/validate
 func (s *ServerHandler) ValidateAPIKey(ctx echo.Context) error {
 	valid := "valid" // FIXME: this is not correct.
 	return ctx.JSON(http.StatusOK, &APIKeyValidationResponse{Message: &valid})
 }
 
-func (s *ServerHandler) ListTeams(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
-}
-
-func (s *ServerHandler) GetTeam(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
-}
-
+// endpoint: /auth/teams
 func (s *ServerHandler) CreateTeam(ctx echo.Context) error {
 	request := &CreateTeamRequest{}
 
@@ -222,10 +215,26 @@ func (s *ServerHandler) CreateTeam(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, team)
 }
 
-func (s *ServerHandler) AddUserToTeam(ctx echo.Context) error {
+// endpoint: /auth/teams
+func (s *ServerHandler) ListTeams(ctx echo.Context) error {
 	return ctx.JSON(http.StatusNotImplemented, nil)
 }
 
+// endpoint: /auth/teams/:id
+func (s *ServerHandler) GetTeam(ctx echo.Context, id gocql.UUID) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+func (s *ServerHandler) SetActiveTeam(ctx echo.Context, id gocql.UUID) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+// endpoint: /auth/teams/:id/users
+func (s *ServerHandler) AddUserToTeam(ctx echo.Context, id gocql.UUID) error {
+	return ctx.JSON(http.StatusNotImplemented, nil)
+}
+
+// endpoint: /auth/users
 func (s *ServerHandler) CreateUser(ctx echo.Context) error {
 	request := &CreateUserRequest{}
 
@@ -276,8 +285,8 @@ func (s *ServerHandler) CreateUser(ctx echo.Context) error {
 //   - Get a user if an email is given in query params
 //   - Get a user if social account id is given in query params
 //
-// TODO: make sure that this is not a security hole.
-func (s *ServerHandler) ListUsers(ctx echo.Context) error {
+// endpoint: /auth/users
+func (s *ServerHandler) ListUsers(ctx echo.Context, params ListUsersParams) error {
 	provider := ctx.QueryParam("provider")
 	provider_account_id := ctx.QueryParam("provider_account_id")
 	email := ctx.QueryParam("email")
@@ -306,7 +315,8 @@ func (s *ServerHandler) ListUsers(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, users)
 }
 
-func (s *ServerHandler) GetUser(ctx echo.Context) error {
+// endpoint: /auth/users/:id
+func (s *ServerHandler) GetUser(ctx echo.Context, id string) error {
 	user := &User{}
 	param := db.QueryParams{"id": ctx.Param("id")}
 
@@ -317,10 +327,13 @@ func (s *ServerHandler) GetUser(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, user)
 }
 
+// endpoint: /auth/users/:id
 func (s *ServerHandler) UpdateUser(ctx echo.Context) error {
 	return ctx.JSON(http.StatusNotImplemented, nil)
 }
 
+// endpoint: /auth/accounts/link
+// TODO: should be /auth/users/:id/link-account.
 func (s *ServerHandler) LinkAccount(ctx echo.Context) error {
 	request := &LinkAccountRequest{}
 	if err := ctx.Bind(request); err != nil {

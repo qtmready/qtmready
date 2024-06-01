@@ -41,7 +41,7 @@ func NewServerHandler(middleware echo.MiddlewareFunc) *ServerHandler {
 }
 
 // this for runs one time for one time.
-func (e *ServerHandler) SlackOauth(ctx echo.Context) error {
+func (e *ServerHandler) SlackOauth(ctx echo.Context, params SlackOauthParams) error {
 	var c HTTPClient
 
 	code := ctx.QueryParam("code")

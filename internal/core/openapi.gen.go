@@ -2558,7 +2558,7 @@ type ServerInterface interface {
 
 	// Get blueprint
 	// (GET /core/blueprints/{stack_id})
-	GetBlueprint(ctx echo.Context) error
+	GetBlueprint(ctx echo.Context, stackId string) error
 
 	// List Repos
 	// (GET /core/repos)
@@ -2570,7 +2570,7 @@ type ServerInterface interface {
 
 	// Get repo
 	// (GET /core/repos/{id})
-	GetRepo(ctx echo.Context) error
+	GetRepo(ctx echo.Context, id string) error
 
 	// Create resource
 	// (POST /core/resources)
@@ -2578,7 +2578,7 @@ type ServerInterface interface {
 
 	// Get resource
 	// (GET /core/resources/{stack_id})
-	GetResource(ctx echo.Context) error
+	GetResource(ctx echo.Context, stackId string) error
 
 	// List stacks
 	// (GET /core/stacks)
@@ -2590,7 +2590,7 @@ type ServerInterface interface {
 
 	// Get stack
 	// (GET /core/stacks/{slug})
-	GetStack(ctx echo.Context) error
+	GetStack(ctx echo.Context, slug string) error
 
 	// Create workload
 	// (POST /core/workloads)
@@ -2598,10 +2598,10 @@ type ServerInterface interface {
 
 	// Get workload
 	// (GET /core/workloads/)
-	GetWorkload(ctx echo.Context) error
+	GetWorkload(ctx echo.Context, params GetWorkloadParams) error
 
 	// SecurityHandler returns the underlying Security Wrapper
-	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
+	SecureHandler(ctx echo.Context, handler echo.HandlerFunc) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -2618,10 +2618,11 @@ func (w *ServerInterfaceWrapper) CreateBlueprint(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.CreateBlueprint
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.CreateBlueprint(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2642,10 +2643,11 @@ func (w *ServerInterfaceWrapper) GetBlueprint(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GetBlueprint
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GetBlueprint(ctx, stackId)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2659,10 +2661,11 @@ func (w *ServerInterfaceWrapper) ListRepos(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.ListRepos
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.ListRepos(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2676,10 +2679,11 @@ func (w *ServerInterfaceWrapper) CreateRepo(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.CreateRepo
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.CreateRepo(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2700,10 +2704,11 @@ func (w *ServerInterfaceWrapper) GetRepo(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GetRepo
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GetRepo(ctx, id)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2717,10 +2722,11 @@ func (w *ServerInterfaceWrapper) CreateResource(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.CreateResource
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.CreateResource(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2741,10 +2747,11 @@ func (w *ServerInterfaceWrapper) GetResource(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GetResource
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GetResource(ctx, stackId)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2758,10 +2765,11 @@ func (w *ServerInterfaceWrapper) ListStacks(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.ListStacks
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.ListStacks(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2775,10 +2783,11 @@ func (w *ServerInterfaceWrapper) CreateStack(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.CreateStack
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.CreateStack(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2799,10 +2808,11 @@ func (w *ServerInterfaceWrapper) GetStack(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GetStack
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GetStack(ctx, slug)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2816,10 +2826,11 @@ func (w *ServerInterfaceWrapper) CreateWorkload(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.CreateWorkload
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.CreateWorkload(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2849,10 +2860,11 @@ func (w *ServerInterfaceWrapper) GetWorkload(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter stack_id: %s", err))
 	}
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GetWorkload
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GetWorkload(ctx, params)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }

@@ -1869,7 +1869,7 @@ type ServerInterface interface {
 
 	// Get GitHub installations
 	// (GET /providers/github/installations)
-	GithubGetInstallations(ctx echo.Context) error
+	GithubGetInstallations(ctx echo.Context, params GithubGetInstallationsParams) error
 
 	// Get GitHub repositories
 	// (GET /providers/github/repos)
@@ -1877,7 +1877,7 @@ type ServerInterface interface {
 
 	// list assoicated organizations
 	// (GET /providers/github/user-orgs)
-	GithubListUserOrgs(ctx echo.Context) error
+	GithubListUserOrgs(ctx echo.Context, params GithubListUserOrgsParams) error
 
 	// associate github organizations for the newly registered user.
 	// (POST /providers/github/user-orgs)
@@ -1888,7 +1888,7 @@ type ServerInterface interface {
 	GithubWebhook(ctx echo.Context) error
 
 	// SecurityHandler returns the underlying Security Wrapper
-	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
+	SecureHandler(ctx echo.Context, handler echo.HandlerFunc) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -1903,10 +1903,11 @@ func (w *ServerInterfaceWrapper) GithubArtifactReady(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubArtifactReady
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GithubArtifactReady(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -1920,10 +1921,11 @@ func (w *ServerInterfaceWrapper) GithubActionResult(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubActionResult
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GithubActionResult(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -1937,10 +1939,11 @@ func (w *ServerInterfaceWrapper) CliGitMerge(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.CliGitMerge
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.CliGitMerge(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -1954,10 +1957,11 @@ func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) er
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubCompleteInstallation
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GithubCompleteInstallation(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -1987,10 +1991,11 @@ func (w *ServerInterfaceWrapper) GithubGetInstallations(ctx echo.Context) error 
 		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter installation_id: %s", err))
 	}
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubGetInstallations
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GithubGetInstallations(ctx, params)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2004,10 +2009,11 @@ func (w *ServerInterfaceWrapper) GithubGetRepos(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubGetRepos
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GithubGetRepos(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2026,9 +2032,8 @@ func (w *ServerInterfaceWrapper) GithubListUserOrgs(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter user_id: %s", err))
 	}
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubListUserOrgs
-	err = handler(ctx)
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GithubListUserOrgs(ctx, params)
 
 	return err
 }
@@ -2038,9 +2043,8 @@ func (w *ServerInterfaceWrapper) GithubListUserOrgs(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GithubCreateUserOrgs(ctx echo.Context) error {
 	var err error
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubCreateUserOrgs
-	err = handler(ctx)
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GithubCreateUserOrgs(ctx)
 
 	return err
 }
@@ -2050,9 +2054,8 @@ func (w *ServerInterfaceWrapper) GithubCreateUserOrgs(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GithubWebhook(ctx echo.Context) error {
 	var err error
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubWebhook
-	err = handler(ctx)
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GithubWebhook(ctx)
 
 	return err
 }
