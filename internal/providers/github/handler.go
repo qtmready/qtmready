@@ -117,7 +117,7 @@ func (s *ServerHandler) GithubGetRepos(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, result)
 }
 
-func (s *ServerHandler) GithubListUserOrgs(ctx echo.Context) error {
+func (s *ServerHandler) GithubListUserOrgs(ctx echo.Context, params GithubListUserOrgsParams) error {
 	result := make([]OrgUser, 0)
 	if err := db.Filter(&OrgUser{}, &result, db.QueryParams{"user_id": ctx.QueryParam("user_id")}); err != nil {
 		return err
@@ -161,28 +161,26 @@ func (s *ServerHandler) GithubCreateUserOrgs(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, result)
 }
 
-func (s *ServerHandler) GithubGetInstallations(ctx echo.Context) error {
+func (s *ServerHandler) GithubGetInstallations(ctx echo.Context, params GithubGetInstallationsParams) error {
 	result := make([]Installation, 0)
-	params := make(db.QueryParams)
+	qparams := make(db.QueryParams)
 
-	installationID := ctx.QueryParam("installation_id")
-	if installationID != "" {
-		params["installation_id"] = installationID
+	if params.InstallationId != nil {
+		qparams["installation_id"] = params.InstallationId.String()
 	}
 
-	installationLogin := ctx.QueryParam("installation_login")
-	if installationLogin != "" {
-		params["installation_login"] = installationLogin
+	if params.InstallationLogin != nil {
+		qparams["installation_login"] = *params.InstallationLogin
 	}
 
-	if ctx.Get("team_id").(string) != "" {
-		params["team_id"] = ctx.Get("team_id").(string)
+	if params.InstallationId == nil && params.InstallationLogin == nil {
+		qparams["team_id"] = ctx.Get("team_id").(string)
 	}
 
 	if err := db.Filter(
 		&Installation{},
 		&result,
-		params,
+		qparams,
 	); err != nil {
 		return err
 	}

@@ -3,14 +3,14 @@
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 {{range .}}{{.SummaryAsComment }}
-  // ({{.Method}} {{.Path}})
-  {{.OperationId}}(ctx echo.Context) error
-    {{range .SecurityDefinitions}}
+// ({{.Method}} {{.Path}})
+{{.OperationId}}(ctx echo.Context{{genParamArgs .PathParams}}{{if .RequiresParamObject}}, params {{.OperationId}}Params{{end}}) error
+  {{range .SecurityDefinitions}}
       {{$secure = true}}
-    {{end}}
+  {{end}}
 {{end}}
 {{- if $secure }}
 // SecurityHandler returns the underlying Security Wrapper
-SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
+SecureHandler(ctx echo.Context, handler echo.HandlerFunc) error
 {{end}}
 }

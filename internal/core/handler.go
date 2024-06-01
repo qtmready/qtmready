@@ -63,9 +63,9 @@ func (s *ServerHandler) CreateBlueprint(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, blueprint)
 }
 
-func (s *ServerHandler) GetBlueprint(ctx echo.Context) error {
+func (s *ServerHandler) GetBlueprint(ctx echo.Context, stackID string) error {
 	blueprint := &Blueprint{}
-	params := db.QueryParams{"stack_id": ctx.Param("stack_id")}
+	params := db.QueryParams{"stack_id": stackID}
 
 	if err := db.Get(blueprint, params); err != nil {
 		return shared.NewAPIError(http.StatusNotFound, err)
@@ -97,7 +97,7 @@ func (s *ServerHandler) CreateWorkload(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, workload)
 }
 
-func (s *ServerHandler) GetWorkload(ctx echo.Context) error {
+func (s *ServerHandler) GetWorkload(ctx echo.Context, params GetWorkloadParams) error {
 	stackid := ctx.QueryParam("stack_id")
 	repoid := ctx.QueryParam("repo_id")
 
@@ -147,9 +147,9 @@ func (s *ServerHandler) CreateResource(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, resource)
 }
 
-func (s *ServerHandler) GetResource(ctx echo.Context) error {
+func (s *ServerHandler) GetResource(ctx echo.Context, id string) error {
 	resources := make([]Resource, 0)
-	params := db.QueryParams{"stack_id": ctx.Param("stack_id")}
+	params := db.QueryParams{"stack_id": id}
 
 	if err := db.Filter(&Resource{}, &resources, params); err != nil {
 		return shared.NewAPIError(http.StatusInternalServerError, err)
@@ -207,7 +207,7 @@ func (s *ServerHandler) ListStacks(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, stacks)
 }
 
-func (s *ServerHandler) GetStack(ctx echo.Context) error {
+func (s *ServerHandler) GetStack(ctx echo.Context, id string) error {
 	stack := &Stack{}
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
 
@@ -270,9 +270,9 @@ func (s *ServerHandler) ListRepos(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, repos)
 }
 
-func (s *ServerHandler) GetRepo(ctx echo.Context) error {
+func (s *ServerHandler) GetRepo(ctx echo.Context, id string) error {
 	repo := &Repo{}
-	params := db.QueryParams{"id": ctx.Param("id")}
+	params := db.QueryParams{"id": id}
 
 	if err := db.Get(repo, params); err != nil {
 		return shared.NewAPIError(http.StatusInternalServerError, err)
