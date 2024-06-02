@@ -287,27 +287,17 @@ func (s *ServerHandler) CreateUser(ctx echo.Context) error {
 //
 // endpoint: /auth/users
 func (s *ServerHandler) ListUsers(ctx echo.Context, params ListUsersParams) error {
-	provider := ctx.QueryParam("provider")
-	provider_account_id := ctx.QueryParam("provider_account_id")
-	email := ctx.QueryParam("email")
-
 	users := make([]User, 0)
 
-	if email != "" {
-		if err := db.Filter(&User{}, &users, db.QueryParams{"email": "'" + email + "'"}); err != nil {
+	if params.Email != nil {
+		if err := db.Filter(&User{}, users, db.QueryParams{"email": *params.Email}); err != nil {
 			return shared.NewAPIError(http.StatusBadRequest, err)
 		}
 	}
 
-	if provider != "" && provider_account_id != "" {
-		account := &Account{}
-		params := db.QueryParams{"provider": quote(provider), "provider_account_id": quote(provider_account_id)}
-
-		if err := db.Get(account, params); err != nil {
-			return shared.NewAPIError(http.StatusNotFound, err)
-		}
-
-		if err := db.Filter(&User{}, &users, db.QueryParams{"id": account.UserID.String()}); err != nil {
+	if params.ProviderAccountId != nil && params.Provider != nil {
+		filter := db.QueryParams{"provider": quote(*params.Provider), "provider_account_id": quote(*params.ProviderAccountId)}
+		if err := db.Filter(&Account{}, users, filter); err != nil {
 			return shared.NewAPIError(http.StatusBadRequest, err)
 		}
 	}
