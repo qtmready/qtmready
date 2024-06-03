@@ -42,6 +42,69 @@ func NewServerHandler(security echo.MiddlewareFunc) *ServerHandler {
 	}
 }
 
+func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
+	request := &RepoCreateRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
+	data, err := Instance().
+		RepoIO(request.Provider).
+		GetRepoData(ctx.Request().Context(), request.CtrlID.String())
+
+	if err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	repo := &Repo{
+		Name:                data.Name,
+		DefaultBranch:       data.DefaultBranch,
+		IsMonorepo:          request.IsMonorepo,
+		Provider:            request.Provider,
+		ProviderID:          data.ProviderID,
+		CtrlID:              request.CtrlID,
+		Threshold:           request.Threshold,
+		TeamID:              teamID,
+		MessageProvider:     request.MessageProvider,
+		MessageProviderData: request.MessageProviderData,
+	}
+
+	if err := db.Save(repo); err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	if err := Instance().
+		RepoIO(request.Provider).
+		SetEarlyWarning(ctx.Request().Context(), request.CtrlID.String(), true); err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	return ctx.NoContent(http.StatusNoContent)
+}
+
+func (s *ServerHandler) ListRepos(ctx echo.Context) error {
+	repos := make([]Repo, 0)
+	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
+
+	if err := db.Filter(&Repo{}, &repos, params); err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	return ctx.JSON(http.StatusOK, repos)
+}
+
+func (s *ServerHandler) GetRepo(ctx echo.Context, id string) error {
+	repo := &Repo{}
+	params := db.QueryParams{"id": id}
+
+	if err := db.Get(repo, params); err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	return ctx.JSON(http.StatusOK, repo)
+}
+
 func (s *ServerHandler) CreateBlueprint(ctx echo.Context) error {
 	request := &BlueprintCreateRequest{}
 	if err := ctx.Bind(request); err != nil {
@@ -213,67 +276,4 @@ func (s *ServerHandler) GetStack(ctx echo.Context, id string) error {
 	}
 
 	return ctx.JSON(http.StatusOK, stack)
-}
-
-func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
-	request := &RepoCreateRequest{}
-	if err := ctx.Bind(request); err != nil {
-		return err
-	}
-
-	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
-	data, err := Instance().
-		RepoIO(request.Provider).
-		GetRepoData(ctx.Request().Context(), request.CtrlID.String())
-
-	if err != nil {
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
-
-	repo := &Repo{
-		Name:                data.Name,
-		DefaultBranch:       data.DefaultBranch,
-		IsMonorepo:          request.IsMonorepo,
-		Provider:            request.Provider,
-		ProviderID:          data.ProviderID,
-		CtrlID:              request.CtrlID,
-		Threshold:           request.Threshold,
-		TeamID:              teamID,
-		MessageProvider:     request.MessageProvider,
-		MessageProviderData: request.MessageProviderData,
-	}
-
-	if err := db.Save(repo); err != nil {
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
-
-	if err := Instance().
-		RepoIO(request.Provider).
-		SetEarlyWarning(ctx.Request().Context(), request.CtrlID.String(), true); err != nil {
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
-
-	return ctx.NoContent(http.StatusNoContent)
-}
-
-func (s *ServerHandler) ListRepos(ctx echo.Context) error {
-	repos := make([]Repo, 0)
-	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
-
-	if err := db.Filter(&Repo{}, &repos, params); err != nil {
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
-
-	return ctx.JSON(http.StatusOK, repos)
-}
-
-func (s *ServerHandler) GetRepo(ctx echo.Context, id string) error {
-	repo := &Repo{}
-	params := db.QueryParams{"id": id}
-
-	if err := db.Get(repo, params); err != nil {
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
-
-	return ctx.JSON(http.StatusOK, repo)
 }
