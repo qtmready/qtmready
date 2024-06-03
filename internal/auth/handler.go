@@ -226,7 +226,21 @@ func (s *ServerHandler) GetTeam(ctx echo.Context, id gocql.UUID) error {
 }
 
 func (s *ServerHandler) SetActiveTeam(ctx echo.Context, id gocql.UUID) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
+	user_id := ctx.Get("user_id").(string)
+
+	user := &User{}
+	if err := db.Get(user, db.QueryParams{"id": user_id}); err != nil {
+		slog.Error("error getting user", "error", err)
+		return shared.NewAPIError(http.StatusNotFound, err)
+	}
+
+	user.TeamID = id // team id
+	if err := db.Save(user); err != nil {
+		slog.Error("error saving user", "error", err)
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	return ctx.JSON(http.StatusOK, nil)
 }
 
 // endpoint: /auth/teams/:id/users
