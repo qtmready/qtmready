@@ -617,15 +617,6 @@ type WorkloadCreateRequest struct {
 // WorkloadListResponse defines model for WorkloadListResponse.
 type WorkloadListResponse = []Workload
 
-// GetWorkloadParams defines parameters for GetWorkload.
-type GetWorkloadParams struct {
-	// RepoId Repo ID
-	RepoId *string `form:"repo_id,omitempty" json:"repo_id,omitempty"`
-
-	// StackId Stack ID
-	StackId *string `form:"stack_id,omitempty" json:"stack_id,omitempty"`
-}
-
 // CreateBlueprintJSONRequestBody defines body for CreateBlueprint for application/json ContentType.
 type CreateBlueprintJSONRequestBody = BlueprintCreateRequest
 
@@ -719,9 +710,6 @@ type ClientInterface interface {
 
 	CreateBlueprint(ctx context.Context, body CreateBlueprintJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetBlueprint request
-	GetBlueprint(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// ListRepos request
 	ListRepos(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -738,9 +726,6 @@ type ClientInterface interface {
 
 	CreateResource(ctx context.Context, body CreateResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetResource request
-	GetResource(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// ListStacks request
 	ListStacks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -750,15 +735,21 @@ type ClientInterface interface {
 	CreateStack(ctx context.Context, body CreateStackJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetStack request
-	GetStack(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetStack(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetBlueprint request
+	GetBlueprint(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetWorkload request
+	GetWorkload(ctx context.Context, id string, repoId string, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// GetResource request
+	GetResource(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// CreateWorkloadWithBody request with any body
 	CreateWorkloadWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateWorkload(ctx context.Context, body CreateWorkloadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GetWorkload request
-	GetWorkload(ctx context.Context, params *GetWorkloadParams, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) CreateBlueprintWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -775,18 +766,6 @@ func (c *Client) CreateBlueprintWithBody(ctx context.Context, contentType string
 
 func (c *Client) CreateBlueprint(ctx context.Context, body CreateBlueprintJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateBlueprintRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetBlueprint(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetBlueprintRequest(c.Server, stackId)
 	if err != nil {
 		return nil, err
 	}
@@ -869,18 +848,6 @@ func (c *Client) CreateResource(ctx context.Context, body CreateResourceJSONRequ
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetResource(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetResourceRequest(c.Server, stackId)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) ListStacks(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewListStacksRequest(c.Server)
 	if err != nil {
@@ -917,8 +884,44 @@ func (c *Client) CreateStack(ctx context.Context, body CreateStackJSONRequestBod
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetStack(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetStackRequest(c.Server, slug)
+func (c *Client) GetStack(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetStackRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetBlueprint(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetBlueprintRequest(c.Server, id)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetWorkload(ctx context.Context, id string, repoId string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetWorkloadRequest(c.Server, id, repoId)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) GetResource(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetResourceRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -943,18 +946,6 @@ func (c *Client) CreateWorkloadWithBody(ctx context.Context, contentType string,
 
 func (c *Client) CreateWorkload(ctx context.Context, body CreateWorkloadJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateWorkloadRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GetWorkload(ctx context.Context, params *GetWorkloadParams, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetWorkloadRequest(c.Server, params)
 	if err != nil {
 		return nil, err
 	}
@@ -1001,40 +992,6 @@ func NewCreateBlueprintRequestWithBody(server string, contentType string, body i
 	}
 
 	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGetBlueprintRequest generates requests for GetBlueprint
-func NewGetBlueprintRequest(server string, stackId string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "stack_id", runtime.ParamLocationPath, stackId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/core/blueprints/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
 
 	return req, nil
 }
@@ -1180,40 +1137,6 @@ func NewCreateResourceRequestWithBody(server string, contentType string, body io
 	return req, nil
 }
 
-// NewGetResourceRequest generates requests for GetResource
-func NewGetResourceRequest(server string, stackId string) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "stack_id", runtime.ParamLocationPath, stackId)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/core/resources/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewListStacksRequest generates requests for ListStacks
 func NewListStacksRequest(server string) (*http.Request, error) {
 	var err error
@@ -1282,12 +1205,12 @@ func NewCreateStackRequestWithBody(server string, contentType string, body io.Re
 }
 
 // NewGetStackRequest generates requests for GetStack
-func NewGetStackRequest(server string, slug string) (*http.Request, error) {
+func NewGetStackRequest(server string, id string) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "slug", runtime.ParamLocationPath, slug)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1298,6 +1221,115 @@ func NewGetStackRequest(server string, slug string) (*http.Request, error) {
 	}
 
 	operationPath := fmt.Sprintf("/core/stacks/%s", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetBlueprintRequest generates requests for GetBlueprint
+func NewGetBlueprintRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/stacks/%s/blueprints", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetWorkloadRequest generates requests for GetWorkload
+func NewGetWorkloadRequest(server string, id string, repoId string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
+	if err != nil {
+		return nil, err
+	}
+
+	var pathParam1 string
+
+	pathParam1, err = runtime.StyleParamWithLocation("simple", false, "repo_id", runtime.ParamLocationPath, repoId)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/stacks/%s/repos/%s/workloads", pathParam0, pathParam1)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
+// NewGetResourceRequest generates requests for GetResource
+func NewGetResourceRequest(server string, id string) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/core/stacks/%s/resources", pathParam0)
 	if operationPath[0] == '/' {
 		operationPath = "." + operationPath
 	}
@@ -1355,71 +1387,6 @@ func NewCreateWorkloadRequestWithBody(server string, contentType string, body io
 	return req, nil
 }
 
-// NewGetWorkloadRequest generates requests for GetWorkload
-func NewGetWorkloadRequest(server string, params *GetWorkloadParams) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/core/workloads/")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	if params != nil {
-		queryValues := queryURL.Query()
-
-		if params.RepoId != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "repo_id", runtime.ParamLocationQuery, *params.RepoId); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		if params.StackId != nil {
-
-			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "stack_id", runtime.ParamLocationQuery, *params.StackId); err != nil {
-				return nil, err
-			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
-				return nil, err
-			} else {
-				for k, v := range parsed {
-					for _, v2 := range v {
-						queryValues.Add(k, v2)
-					}
-				}
-			}
-
-		}
-
-		queryURL.RawQuery = queryValues.Encode()
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -1468,9 +1435,6 @@ type ClientWithResponsesInterface interface {
 
 	CreateBlueprintWithResponse(ctx context.Context, body CreateBlueprintJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateBlueprintResponse, error)
 
-	// GetBlueprintWithResponse request
-	GetBlueprintWithResponse(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*GetBlueprintResponse, error)
-
 	// ListReposWithResponse request
 	ListReposWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListReposResponse, error)
 
@@ -1487,9 +1451,6 @@ type ClientWithResponsesInterface interface {
 
 	CreateResourceWithResponse(ctx context.Context, body CreateResourceJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateResourceResponse, error)
 
-	// GetResourceWithResponse request
-	GetResourceWithResponse(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*GetResourceResponse, error)
-
 	// ListStacksWithResponse request
 	ListStacksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListStacksResponse, error)
 
@@ -1499,15 +1460,21 @@ type ClientWithResponsesInterface interface {
 	CreateStackWithResponse(ctx context.Context, body CreateStackJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateStackResponse, error)
 
 	// GetStackWithResponse request
-	GetStackWithResponse(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*GetStackResponse, error)
+	GetStackWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetStackResponse, error)
+
+	// GetBlueprintWithResponse request
+	GetBlueprintWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetBlueprintResponse, error)
+
+	// GetWorkloadWithResponse request
+	GetWorkloadWithResponse(ctx context.Context, id string, repoId string, reqEditors ...RequestEditorFn) (*GetWorkloadResponse, error)
+
+	// GetResourceWithResponse request
+	GetResourceWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetResourceResponse, error)
 
 	// CreateWorkloadWithBodyWithResponse request with any body
 	CreateWorkloadWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateWorkloadResponse, error)
 
 	CreateWorkloadWithResponse(ctx context.Context, body CreateWorkloadJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateWorkloadResponse, error)
-
-	// GetWorkloadWithResponse request
-	GetWorkloadWithResponse(ctx context.Context, params *GetWorkloadParams, reqEditors ...RequestEditorFn) (*GetWorkloadResponse, error)
 }
 
 type CreateBlueprintResponse struct {
@@ -1528,32 +1495,6 @@ func (r CreateBlueprintResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateBlueprintResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetBlueprintResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *Blueprint
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r GetBlueprintResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetBlueprintResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1661,32 +1602,6 @@ func (r CreateResourceResponse) StatusCode() int {
 	return 0
 }
 
-type GetResourceResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *ResourceListResponse
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r GetResourceResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetResourceResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type ListStacksResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1763,17 +1678,18 @@ func (r GetStackResponse) StatusCode() int {
 	return 0
 }
 
-type CreateWorkloadResponse struct {
+type GetBlueprintResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON201      *Workload
+	JSON200      *Blueprint
 	JSON400      *externalRef0.BadRequest
 	JSON401      *externalRef0.Unauthorized
+	JSON404      *externalRef0.NotFound
 	JSON500      *externalRef0.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
-func (r CreateWorkloadResponse) Status() string {
+func (r GetBlueprintResponse) Status() string {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.Status
 	}
@@ -1781,7 +1697,7 @@ func (r CreateWorkloadResponse) Status() string {
 }
 
 // StatusCode returns HTTPResponse.StatusCode
-func (r CreateWorkloadResponse) StatusCode() int {
+func (r GetBlueprintResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1815,6 +1731,57 @@ func (r GetWorkloadResponse) StatusCode() int {
 	return 0
 }
 
+type GetResourceResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *ResourceListResponse
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON404      *externalRef0.NotFound
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r GetResourceResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r GetResourceResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateWorkloadResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *Workload
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateWorkloadResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateWorkloadResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 // CreateBlueprintWithBodyWithResponse request with arbitrary body returning *CreateBlueprintResponse
 func (c *ClientWithResponses) CreateBlueprintWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateBlueprintResponse, error) {
 	rsp, err := c.CreateBlueprintWithBody(ctx, contentType, body, reqEditors...)
@@ -1830,15 +1797,6 @@ func (c *ClientWithResponses) CreateBlueprintWithResponse(ctx context.Context, b
 		return nil, err
 	}
 	return ParseCreateBlueprintResponse(rsp)
-}
-
-// GetBlueprintWithResponse request returning *GetBlueprintResponse
-func (c *ClientWithResponses) GetBlueprintWithResponse(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*GetBlueprintResponse, error) {
-	rsp, err := c.GetBlueprint(ctx, stackId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetBlueprintResponse(rsp)
 }
 
 // ListReposWithResponse request returning *ListReposResponse
@@ -1893,15 +1851,6 @@ func (c *ClientWithResponses) CreateResourceWithResponse(ctx context.Context, bo
 	return ParseCreateResourceResponse(rsp)
 }
 
-// GetResourceWithResponse request returning *GetResourceResponse
-func (c *ClientWithResponses) GetResourceWithResponse(ctx context.Context, stackId string, reqEditors ...RequestEditorFn) (*GetResourceResponse, error) {
-	rsp, err := c.GetResource(ctx, stackId, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetResourceResponse(rsp)
-}
-
 // ListStacksWithResponse request returning *ListStacksResponse
 func (c *ClientWithResponses) ListStacksWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListStacksResponse, error) {
 	rsp, err := c.ListStacks(ctx, reqEditors...)
@@ -1929,12 +1878,39 @@ func (c *ClientWithResponses) CreateStackWithResponse(ctx context.Context, body 
 }
 
 // GetStackWithResponse request returning *GetStackResponse
-func (c *ClientWithResponses) GetStackWithResponse(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*GetStackResponse, error) {
-	rsp, err := c.GetStack(ctx, slug, reqEditors...)
+func (c *ClientWithResponses) GetStackWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetStackResponse, error) {
+	rsp, err := c.GetStack(ctx, id, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseGetStackResponse(rsp)
+}
+
+// GetBlueprintWithResponse request returning *GetBlueprintResponse
+func (c *ClientWithResponses) GetBlueprintWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetBlueprintResponse, error) {
+	rsp, err := c.GetBlueprint(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetBlueprintResponse(rsp)
+}
+
+// GetWorkloadWithResponse request returning *GetWorkloadResponse
+func (c *ClientWithResponses) GetWorkloadWithResponse(ctx context.Context, id string, repoId string, reqEditors ...RequestEditorFn) (*GetWorkloadResponse, error) {
+	rsp, err := c.GetWorkload(ctx, id, repoId, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetWorkloadResponse(rsp)
+}
+
+// GetResourceWithResponse request returning *GetResourceResponse
+func (c *ClientWithResponses) GetResourceWithResponse(ctx context.Context, id string, reqEditors ...RequestEditorFn) (*GetResourceResponse, error) {
+	rsp, err := c.GetResource(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseGetResourceResponse(rsp)
 }
 
 // CreateWorkloadWithBodyWithResponse request with arbitrary body returning *CreateWorkloadResponse
@@ -1952,15 +1928,6 @@ func (c *ClientWithResponses) CreateWorkloadWithResponse(ctx context.Context, bo
 		return nil, err
 	}
 	return ParseCreateWorkloadResponse(rsp)
-}
-
-// GetWorkloadWithResponse request returning *GetWorkloadResponse
-func (c *ClientWithResponses) GetWorkloadWithResponse(ctx context.Context, params *GetWorkloadParams, reqEditors ...RequestEditorFn) (*GetWorkloadResponse, error) {
-	rsp, err := c.GetWorkload(ctx, params, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetWorkloadResponse(rsp)
 }
 
 // ParseCreateBlueprintResponse parses an HTTP response from a CreateBlueprintWithResponse call
@@ -1990,60 +1957,6 @@ func ParseCreateBlueprintResponse(rsp *http.Response) (*CreateBlueprintResponse,
 			return nil, err
 		}
 		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGetBlueprintResponse parses an HTTP response from a GetBlueprintWithResponse call
-func ParseGetBlueprintResponse(rsp *http.Response) (*GetBlueprintResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetBlueprintResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Blueprint
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest externalRef0.InternalServerError
@@ -2252,60 +2165,6 @@ func ParseCreateResourceResponse(rsp *http.Response) (*CreateResourceResponse, e
 	return response, nil
 }
 
-// ParseGetResourceResponse parses an HTTP response from a GetResourceWithResponse call
-func ParseGetResourceResponse(rsp *http.Response) (*GetResourceResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetResourceResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest ResourceListResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseListStacksResponse parses an HTTP response from a ListStacksWithResponse call
 func ParseListStacksResponse(rsp *http.Response) (*ListStacksResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2454,26 +2313,26 @@ func ParseGetStackResponse(rsp *http.Response) (*GetStackResponse, error) {
 	return response, nil
 }
 
-// ParseCreateWorkloadResponse parses an HTTP response from a CreateWorkloadWithResponse call
-func ParseCreateWorkloadResponse(rsp *http.Response) (*CreateWorkloadResponse, error) {
+// ParseGetBlueprintResponse parses an HTTP response from a GetBlueprintWithResponse call
+func ParseGetBlueprintResponse(rsp *http.Response) (*GetBlueprintResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
 	defer func() { _ = rsp.Body.Close() }()
 	if err != nil {
 		return nil, err
 	}
 
-	response := &CreateWorkloadResponse{
+	response := &GetBlueprintResponse{
 		Body:         bodyBytes,
 		HTTPResponse: rsp,
 	}
 
 	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest Workload
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest Blueprint
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
-		response.JSON201 = &dest
+		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest externalRef0.BadRequest
@@ -2488,6 +2347,13 @@ func ParseCreateWorkloadResponse(rsp *http.Response) (*CreateWorkloadResponse, e
 			return nil, err
 		}
 		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest externalRef0.NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
 		var dest externalRef0.InternalServerError
@@ -2550,15 +2416,112 @@ func ParseGetWorkloadResponse(rsp *http.Response) (*GetWorkloadResponse, error) 
 	return response, nil
 }
 
+// ParseGetResourceResponse parses an HTTP response from a GetResourceWithResponse call
+func ParseGetResourceResponse(rsp *http.Response) (*GetResourceResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &GetResourceResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest ResourceListResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest externalRef0.NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateWorkloadResponse parses an HTTP response from a CreateWorkloadWithResponse call
+func ParseCreateWorkloadResponse(rsp *http.Response) (*CreateWorkloadResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateWorkloadResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest Workload
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Create blueprint
 	// (POST /core/blueprints)
 	CreateBlueprint(ctx echo.Context) error
-
-	// Get blueprint
-	// (GET /core/blueprints/{stack_id})
-	GetBlueprint(ctx echo.Context, stackId string) error
 
 	// List Repos
 	// (GET /core/repos)
@@ -2576,10 +2539,6 @@ type ServerInterface interface {
 	// (POST /core/resources)
 	CreateResource(ctx echo.Context) error
 
-	// Get resource
-	// (GET /core/resources/{stack_id})
-	GetResource(ctx echo.Context, stackId string) error
-
 	// List stacks
 	// (GET /core/stacks)
 	ListStacks(ctx echo.Context) error
@@ -2589,16 +2548,24 @@ type ServerInterface interface {
 	CreateStack(ctx echo.Context) error
 
 	// Get stack
-	// (GET /core/stacks/{slug})
-	GetStack(ctx echo.Context, slug string) error
+	// (GET /core/stacks/{id})
+	GetStack(ctx echo.Context, id string) error
+
+	// Get blueprint
+	// (GET /core/stacks/{id}/blueprints)
+	GetBlueprint(ctx echo.Context, id string) error
+
+	// Get workload
+	// (GET /core/stacks/{id}/repos/{repo_id}/workloads)
+	GetWorkload(ctx echo.Context, id string, repoId string) error
+
+	// Get resource
+	// (GET /core/stacks/{id}/resources)
+	GetResource(ctx echo.Context, id string) error
 
 	// Create workload
 	// (POST /core/workloads)
 	CreateWorkload(ctx echo.Context) error
-
-	// Get workload
-	// (GET /core/workloads/)
-	GetWorkload(ctx echo.Context, params GetWorkloadParams) error
 
 	// SecurityHandler returns the underlying Security Wrapper
 	SecureHandler(ctx echo.Context, handler echo.HandlerFunc) error
@@ -2620,31 +2587,6 @@ func (w *ServerInterfaceWrapper) CreateBlueprint(ctx echo.Context) error {
 
 	handler := func(ctx echo.Context) error {
 		return w.Handler.CreateBlueprint(ctx)
-	}
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.SecureHandler(ctx, handler)
-
-	return err
-}
-
-// GetBlueprint converts echo context to params.
-
-func (w *ServerInterfaceWrapper) GetBlueprint(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "stack_id" -------------
-	var stackId string
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "stack_id", runtime.ParamLocationPath, ctx.Param("stack_id"), &stackId)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter stack_id: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	ctx.Set(APIKeyAuthScopes, []string{})
-
-	handler := func(ctx echo.Context) error {
-		return w.Handler.GetBlueprint(ctx, stackId)
 	}
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.SecureHandler(ctx, handler)
@@ -2731,31 +2673,6 @@ func (w *ServerInterfaceWrapper) CreateResource(ctx echo.Context) error {
 	return err
 }
 
-// GetResource converts echo context to params.
-
-func (w *ServerInterfaceWrapper) GetResource(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "stack_id" -------------
-	var stackId string
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "stack_id", runtime.ParamLocationPath, ctx.Param("stack_id"), &stackId)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter stack_id: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	ctx.Set(APIKeyAuthScopes, []string{})
-
-	handler := func(ctx echo.Context) error {
-		return w.Handler.GetResource(ctx, stackId)
-	}
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.SecureHandler(ctx, handler)
-
-	return err
-}
-
 // ListStacks converts echo context to params.
 
 func (w *ServerInterfaceWrapper) ListStacks(ctx echo.Context) error {
@@ -2796,12 +2713,12 @@ func (w *ServerInterfaceWrapper) CreateStack(ctx echo.Context) error {
 
 func (w *ServerInterfaceWrapper) GetStack(ctx echo.Context) error {
 	var err error
-	// ------------- Path parameter "slug" -------------
-	var slug string
+	// ------------- Path parameter "id" -------------
+	var id string
 
-	err = runtime.BindStyledParameterWithLocation("simple", false, "slug", runtime.ParamLocationPath, ctx.Param("slug"), &slug)
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
 	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter slug: %s", err))
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter id: %s", err))
 	}
 
 	ctx.Set(BearerAuthScopes, []string{})
@@ -2809,7 +2726,90 @@ func (w *ServerInterfaceWrapper) GetStack(ctx echo.Context) error {
 	ctx.Set(APIKeyAuthScopes, []string{})
 
 	handler := func(ctx echo.Context) error {
-		return w.Handler.GetStack(ctx, slug)
+		return w.Handler.GetStack(ctx, id)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
+
+	return err
+}
+
+// GetBlueprint converts echo context to params.
+
+func (w *ServerInterfaceWrapper) GetBlueprint(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter id: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(APIKeyAuthScopes, []string{})
+
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GetBlueprint(ctx, id)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
+
+	return err
+}
+
+// GetWorkload converts echo context to params.
+
+func (w *ServerInterfaceWrapper) GetWorkload(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter id: %s", err))
+	}
+
+	// ------------- Path parameter "repo_id" -------------
+	var repoId string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "repo_id", runtime.ParamLocationPath, ctx.Param("repo_id"), &repoId)
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter repo_id: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(APIKeyAuthScopes, []string{})
+
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GetWorkload(ctx, id, repoId)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
+
+	return err
+}
+
+// GetResource converts echo context to params.
+
+func (w *ServerInterfaceWrapper) GetResource(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter id: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	ctx.Set(APIKeyAuthScopes, []string{})
+
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GetResource(ctx, id)
 	}
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.SecureHandler(ctx, handler)
@@ -2828,40 +2828,6 @@ func (w *ServerInterfaceWrapper) CreateWorkload(ctx echo.Context) error {
 
 	handler := func(ctx echo.Context) error {
 		return w.Handler.CreateWorkload(ctx)
-	}
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.SecureHandler(ctx, handler)
-
-	return err
-}
-
-// GetWorkload converts echo context to params.
-
-func (w *ServerInterfaceWrapper) GetWorkload(ctx echo.Context) error {
-	var err error
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	ctx.Set(APIKeyAuthScopes, []string{})
-
-	// Parameter object where we will unmarshal all parameters from the context
-	var params GetWorkloadParams
-	// ------------- Optional query parameter "repo_id" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "repo_id", ctx.QueryParams(), &params.RepoId)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter repo_id: %s", err))
-	}
-
-	// ------------- Optional query parameter "stack_id" -------------
-
-	err = runtime.BindQueryParameter("form", true, false, "stack_id", ctx.QueryParams(), &params.StackId)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter stack_id: %s", err))
-	}
-
-	handler := func(ctx echo.Context) error {
-		return w.Handler.GetWorkload(ctx, params)
 	}
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.SecureHandler(ctx, handler)
@@ -2897,16 +2863,16 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	}
 
 	router.POST(baseURL+"/core/blueprints", wrapper.CreateBlueprint)
-	router.GET(baseURL+"/core/blueprints/:stack_id", wrapper.GetBlueprint)
 	router.GET(baseURL+"/core/repos", wrapper.ListRepos)
 	router.POST(baseURL+"/core/repos", wrapper.CreateRepo)
 	router.GET(baseURL+"/core/repos/:id", wrapper.GetRepo)
 	router.POST(baseURL+"/core/resources", wrapper.CreateResource)
-	router.GET(baseURL+"/core/resources/:stack_id", wrapper.GetResource)
 	router.GET(baseURL+"/core/stacks", wrapper.ListStacks)
 	router.POST(baseURL+"/core/stacks", wrapper.CreateStack)
-	router.GET(baseURL+"/core/stacks/:slug", wrapper.GetStack)
+	router.GET(baseURL+"/core/stacks/:id", wrapper.GetStack)
+	router.GET(baseURL+"/core/stacks/:id/blueprints", wrapper.GetBlueprint)
+	router.GET(baseURL+"/core/stacks/:id/repos/:repo_id/workloads", wrapper.GetWorkload)
+	router.GET(baseURL+"/core/stacks/:id/resources", wrapper.GetResource)
 	router.POST(baseURL+"/core/workloads", wrapper.CreateWorkload)
-	router.GET(baseURL+"/core/workloads/", wrapper.GetWorkload)
 
 }

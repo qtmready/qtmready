@@ -97,10 +97,7 @@ func (s *ServerHandler) CreateWorkload(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, workload)
 }
 
-func (s *ServerHandler) GetWorkload(ctx echo.Context, params GetWorkloadParams) error {
-	stackid := ctx.QueryParam("stack_id")
-	repoid := ctx.QueryParam("repo_id")
-
+func (s *ServerHandler) GetWorkload(ctx echo.Context, stackid, repoid string) error {
 	if repoid != "" {
 		workload := &Workload{}
 		params := db.QueryParams{"repo_id": repoid}
