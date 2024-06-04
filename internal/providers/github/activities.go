@@ -238,7 +238,7 @@ func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *cor
 // SyncReposFromGithub syncs repos from github.
 // TODO: We will get rate limiting errors here because of when we scale.
 // TODO: if the repo has has_early_warning, we will need to update core repo too.
-func (a Activities) SyncReposFromGithub(ctx context.Context, payload *SyncReposFromGithubPayload) error {
+func (a *Activities) SyncReposFromGithub(ctx context.Context, payload *SyncReposFromGithubPayload) error {
 	repos := make([]Repo, 0)
 	params := db.QueryParams{"installation_id": payload.InstallationID.String(), "team_id": payload.TeamID.String()}
 

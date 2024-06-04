@@ -186,7 +186,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 		logger.Warn("github/installation: unhandled action during installation ...", slog.String("action", webhook.Action))
 	}
 
-	logger.Info("github/installation: complete")
+	logger.Info("github/installation: complete", slog.Any("installation", installation))
 
 	return installation, nil
 }
@@ -200,12 +200,26 @@ func (w *Workflows) PostInstall(ctx workflow.Context, payload *Installation) err
 	logger := workflow.GetLogger(ctx)
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	_ctx := workflow.WithActivityOptions(ctx, opts)
-	installation := &Installation{}
 
-	logger.Info("github/installation/post: starting ...", slog.String("installation_id", payload.InstallationID.String()))
+	logger.Info(
+		"github/installation/post: starting ...",
+		slog.String("installation_id", payload.InstallationID.String()),
+		slog.String("installation_login", payload.InstallationLogin),
+	)
 
-	rsync := &SyncReposFromGithubPayload{installation.InstallationID, installation.InstallationLogin, installation.TeamID}
-	_ = workflow.ExecuteActivity(_ctx, activities.SyncReposFromGithub, rsync).Get(_ctx, nil)
+	// TODO: move this inside a workflow.Go statement
+	logger.Info("github/installation/post: syncing repos ...", "installation_id", payload.InstallationID.String())
+
+	sync := &SyncReposFromGithubPayload{
+		InstallationID: payload.InstallationID,
+		Owner:          payload.InstallationLogin,
+		TeamID:         payload.TeamID,
+	}
+	if err := workflow.ExecuteActivity(_ctx, activities.SyncReposFromGithub, sync).Get(_ctx, nil); err != nil {
+		logger.Error("github/installation/post: error syncing repos ...", "error", err)
+	}
+
+	// TODO: sync users
 
 	return nil
 }
