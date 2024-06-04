@@ -19,7 +19,6 @@ package github
 
 import (
 	"context"
-	"strings"
 
 	"go.temporal.io/sdk/activity"
 
@@ -106,7 +105,7 @@ func (a *Activities) CreateMemberships(ctx context.Context, payload *CreateMembe
 
 // CreateOrUpdateInstallation creates or update the Installation.
 func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *Installation) (*Installation, error) {
-	installation, err := a.GetInstallation(ctx, payload.InstallationID)
+	installation, err := a.GetInstallation(ctx, payload.InstallationID, payload.InstallationLogin)
 
 	// if we get the installation, the error will be nil
 	if err == nil {
@@ -122,6 +121,18 @@ func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *In
 	return installation, nil
 }
 
+// GetInstallation gets Installation against given installation_id & github login.
+func (a *Activities) GetInstallation(ctx context.Context, id shared.Int64, login string) (*Installation, error) {
+	installation := &Installation{}
+	params := db.QueryParams{"installation_id": id.String(), "installation_login": login}
+
+	if err := db.Get(installation, params); err != nil {
+		return installation, err
+	}
+
+	return installation, nil
+}
+
 // CreateOrUpdateGithubRepo creates a single row for Repo.
 func (a *Activities) CreateOrUpdateGithubRepo(ctx context.Context, payload *Repo) error {
 	log := activity.GetLogger(ctx)
@@ -130,6 +141,11 @@ func (a *Activities) CreateOrUpdateGithubRepo(ctx context.Context, payload *Repo
 	// if we get the repo, the error will be nil
 	if err == nil {
 		log.Info("repository found, updating ...")
+
+		payload.ID = repo.ID
+		payload.CreatedAt = repo.CreatedAt
+
+		repo = payload
 	} else {
 		log.Info("repository not found, creating ...")
 		log.Debug("payload", "payload", payload)
@@ -162,17 +178,6 @@ func (a *Activities) GetGithubRepo(ctx context.Context, payload *Repo) (*Repo, e
 	return repo, nil
 }
 
-// GetInstallation gets Installation against given installation_id.
-func (a *Activities) GetInstallation(ctx context.Context, id shared.Int64) (*Installation, error) {
-	installation := &Installation{}
-
-	if err := db.Get(installation, db.QueryParams{"installation_id": id.String()}); err != nil {
-		return installation, err
-	}
-
-	return installation, nil
-}
-
 // GetCoreRepo gets entity.Repo against given Repo.
 func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*core.Repo, error) {
 	r := &core.Repo{}
@@ -188,21 +193,6 @@ func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*core.Repo, e
 	}
 
 	return r, nil
-}
-
-// GetCoreRepo gets entity.Stack against given core Repo.
-func (a *Activities) GetStack(ctx context.Context, repo *core.Repo) (*core.Stack, error) {
-	s := &core.Stack{}
-
-	params := db.QueryParams{
-		"id": repo.StackID.String(),
-	}
-
-	if err := db.Get(s, params); err != nil {
-		return s, err
-	}
-
-	return s, nil
 }
 
 func (a *Activities) GetRepoByProviderID(
@@ -229,7 +219,6 @@ func (a *Activities) GetRepoByProviderID(
 func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *core.RepoIOUpdateRepoHasRarlyWarningPayload) error {
 	repo := &Repo{}
 
-	// NOTE: these activities are used in api not in temporal workflow use shared.Logger()
 	if err := db.Get(repo, db.QueryParams{"id": payload.ProviderID}); err != nil {
 		shared.Logger().Error("UpdateRepoHasRarlWarning failed", "Error", err)
 		return err
@@ -246,43 +235,76 @@ func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *cor
 	return nil
 }
 
-func (a *Activities) RefreshDefaultBranches(ctx context.Context, payload *core.RepoIORefreshDefaultBranchesPayload) error {
-	logger := activity.GetLogger(ctx)
-
+// SyncReposFromGithub syncs repos from github.
+// TODO: We will get rate limiting errors here because of when we scale.
+// TODO: if the repo has has_early_warning, we will need to update core repo too.
+func (a Activities) SyncReposFromGithub(ctx context.Context, payload *SyncReposFromGithubPayload) error {
 	repos := make([]Repo, 0)
-	if err := db.Filter(&Repo{}, &repos, db.QueryParams{"team_id": payload.TeamID}); err != nil {
-		shared.Logger().Error("Error filter repos", "error", err)
+	params := db.QueryParams{"installation_id": payload.InstallationID.String(), "team_id": payload.TeamID.String()}
+
+	if err := db.Filter(&Repo{}, &repos, params); err != nil {
 		return err
 	}
 
-	logger.Info("provider repos length", "info", len(repos))
-
-	client, err := Instance().GetClientForInstallation(repos[0].InstallationID)
-	if err != nil {
-		logger.Error("GetClientFromInstallation failed", "error", err)
+	if client, err := Instance().GetClientForInstallationID(payload.InstallationID); err != nil {
 		return err
-	}
+	} else {
+		for idx := range repos {
+			repo := repos[idx]
 
-	// Save the github org users
-	for idx := range repos {
-		repo := repos[idx]
+			result, _, err := client.Repositories.Get(ctx, payload.Owner, repo.Name) // TODO: We use use ListReposByOrg here!
+			if err != nil {
+				return err
+			}
 
-		result, _, err := client.Repositories.Get(ctx, strings.Split(repo.FullName, "/")[0], repo.Name)
-		if err != nil {
-			logger.Error("RefreshDefaultBranches Activity", "error", err)
-			return err
-		}
+			repo.DefaultBranch = result.GetDefaultBranch()
 
-		repo.DefaultBranch = result.GetDefaultBranch()
-
-		if err := db.Save(&repo); err != nil {
-			logger.Error("Error saving github repo", "error", err)
-			return err
+			if err := db.Save(&repo); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
+
+// func (a *Activities) RefreshDefaultBranches(ctx context.Context, payload *core.RepoIORefreshDefaultBranchesPayload) error {
+// 	logger := activity.GetLogger(ctx)
+
+// 	repos := make([]Repo, 0)
+// 	if err := db.Filter(&Repo{}, &repos, db.QueryParams{"team_id": payload.TeamID}); err != nil {
+// 		shared.Logger().Error("Error filter repos", "error", err)
+// 		return err
+// 	}
+
+// 	logger.Info("provider repos length", "info", len(repos))
+
+// 	client, err := Instance().GetClientForInstallationID(repos[0].InstallationID)
+// 	if err != nil {
+// 		logger.Error("GetClientFromInstallation failed", "error", err)
+// 		return err
+// 	}
+
+// 	// Save the github org users
+// 	for idx := range repos {
+// 		repo := repos[idx]
+
+// 		result, _, err := client.Repositories.Get(ctx, strings.Split(repo.FullName, "/")[0], repo.Name)
+// 		if err != nil {
+// 			logger.Error("RefreshDefaultBranches Activity", "error", err)
+// 			return err
+// 		}
+
+// 		repo.DefaultBranch = result.GetDefaultBranch()
+
+// 		if err := db.Save(&repo); err != nil {
+// 			logger.Error("Error saving github repo", "error", err)
+// 			return err
+// 		}
+// 	}
+
+// 	return nil
+// }
 
 // GetRepoForInstallation filters repositories by installation ID and GitHub ID.
 // A repo on GitHub can be associated with multiple installations. This function is used to get the repo for a specific installation.
@@ -326,6 +348,21 @@ func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *core.Repo, si
 		SignalWithStartWorkflow(context.Background(), opts.ID, signal.String(), payload, opts, rw.RepoCtrl, repo)
 
 	return err
+}
+
+// GetCoreRepo gets entity.Stack against given core Repo.
+func (a *Activities) GetStack(ctx context.Context, repo *core.Repo) (*core.Stack, error) {
+	s := &core.Stack{}
+
+	params := db.QueryParams{
+		"id": repo.StackID.String(),
+	}
+
+	if err := db.Get(s, params); err != nil {
+		return s, err
+	}
+
+	return s, nil
 }
 
 // // GetLatestCommit gets latest commit for default branch of the provided repo.

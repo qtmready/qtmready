@@ -58,15 +58,16 @@ type (
 // for the system. See the README.md for a detailed explanation on how this workflow works.
 //
 // NOTE: This workflow is only meant to be started with SignalWithStartWorkflow.
-func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
+func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, error) {
 	// prelude
 	logger := workflow.GetLogger(ctx)
 	selector := workflow.NewSelector(ctx)
+	installation := &Installation{}
 	webhook := &InstallationEvent{}
 	request := &CompleteInstallationSignal{}
 	status := &InstallationWorkflowStatus{WebhookDone: false, RequestDone: false}
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
+	_ctx := workflow.WithActivityOptions(ctx, activityOpts)
 
 	// setting up channels to receive signals
 	webhookChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInstallationEvent.String())
@@ -97,8 +98,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 		user := &auth.User{}
 		team := &auth.Team{}
 
-		if err := workflow.ExecuteActivity(actx, activities.GetUserByID, request.UserID.String()).Get(ctx, user); err != nil {
-			return err
+		if err := workflow.ExecuteActivity(_ctx, activities.GetUserByID, request.UserID.String()).Get(ctx, user); err != nil {
+			return nil, err
 		}
 
 		if user.TeamID.String() == db.NullUUID {
@@ -106,38 +107,30 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 
 			team.Name = webhook.Installation.Account.Login
 
-			if err := workflow.ExecuteActivity(actx, activities.CreateTeam, team).Get(ctx, team); err != nil {
-				return nil
-			}
+			_ = workflow.ExecuteActivity(_ctx, activities.CreateTeam, team).Get(ctx, team)
 
 			logger.Info("github/installation: team created, assigning to user ...")
 
 			user.TeamID = team.ID
-			if err := workflow.ExecuteActivity(actx, activities.SaveUser, user).Get(ctx, user); err != nil {
-				logger.Info("github/installation: error saving user ...", "error", err)
-			}
+			_ = workflow.ExecuteActivity(_ctx, activities.SaveUser, user).Get(ctx, user)
 		} else {
 			logger.Warn("github/installation: team already associated, fetching ...")
 
-			if err := workflow.ExecuteActivity(actx, activities.GetTeamByID, user.TeamID.String()).Get(ctx, team); err != nil {
-				return nil
-			}
+			_ = workflow.ExecuteActivity(_ctx, activities.GetTeamByID, user.TeamID.String()).Get(ctx, team)
 		}
 
 		// Finalizing the installation
-		installation := &Installation{
-			TeamID:            team.ID,
-			InstallationID:    webhook.Installation.ID,
-			InstallationLogin: webhook.Installation.Account.Login,
-			InstallationType:  webhook.Installation.Account.Type,
-			SenderID:          webhook.Sender.ID,
-			SenderLogin:       webhook.Sender.Login,
-			Status:            webhook.Action,
-		}
+		installation.TeamID = team.ID
+		installation.InstallationID = webhook.Installation.ID
+		installation.InstallationLogin = webhook.Installation.Account.Login
+		installation.InstallationType = webhook.Installation.Account.Type
+		installation.SenderID = webhook.Sender.ID
+		installation.SenderLogin = webhook.Sender.Login
+		installation.Status = webhook.Action
 
 		logger.Info("github/installation: creating or updating installation ...")
 
-		if err := workflow.ExecuteActivity(actx, activities.CreateOrUpdateInstallation, installation).Get(actx, installation); err != nil {
+		if err := workflow.ExecuteActivity(_ctx, activities.CreateOrUpdateInstallation, installation).Get(_ctx, installation); err != nil {
 			logger.Error("github/installation: error saving installation ...", "error", err)
 		}
 
@@ -152,7 +145,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 			GithubUserID:  webhook.Sender.ID,
 		}
 
-		if err := workflow.ExecuteActivity(actx, activities.CreateMemberships, membership).Get(actx, nil); err != nil {
+		if err := workflow.ExecuteActivity(_ctx, activities.CreateMemberships, membership).Get(_ctx, nil); err != nil {
 			logger.Error("github/installation: error saving installation ...", "error", err)
 		}
 
@@ -173,7 +166,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 				TeamID:          installation.TeamID,
 			}
 
-			future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateGithubRepo, repo)
+			future := workflow.ExecuteActivity(_ctx, activities.CreateOrUpdateGithubRepo, repo)
 
 			// NOTE - ideally, we should use a new selector here, but since there will be no new signals comings in, we know that
 			// selector.Select will only be waiting for the futures to complete.
@@ -195,7 +188,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 
 	logger.Info("github/installation: complete")
 
-	return nil
+	return installation, nil
 }
 
 // PostInstall refresh the default branch for all repositories associated with the given teamID and gets orgs users.
@@ -203,20 +196,16 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) error {
 // It will give the access_token error: could not refresh installation id XXXXXXX's token error.
 // TODO - handle when the github app is reinstall and confgure the same repos,
 // and also need to test when configure the same repo or new repos.
-func (w *Workflows) PostInstall(ctx workflow.Context, teamID string) error {
+func (w *Workflows) PostInstall(ctx workflow.Context, payload *Installation) error {
 	logger := workflow.GetLogger(ctx)
-	opts := workflow.ActivityOptions{
-		StartToCloseTimeout: 60 * time.Second,
-	}
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	_ctx := workflow.WithActivityOptions(ctx, opts)
+	installation := &Installation{}
 
-	bdp := &core.RepoIORefreshDefaultBranchesPayload{
-		TeamID: teamID,
-	}
-	if err := workflow.
-		ExecuteActivity(_ctx, activities.RefreshDefaultBranches, bdp).Get(_ctx, nil); err != nil {
-		logger.Warn("github/refresh default branches: database error, retrying ... ")
-	}
+	logger.Info("github/installation/post: starting ...", slog.String("installation_id", payload.InstallationID.String()))
+
+	rsync := &SyncReposFromGithubPayload{installation.InstallationID, installation.InstallationLogin, installation.TeamID}
+	_ = workflow.ExecuteActivity(_ctx, activities.SyncReposFromGithub, rsync).Get(_ctx, nil)
 
 	return nil
 }
@@ -226,9 +215,7 @@ func (w *Workflows) PostInstall(ctx workflow.Context, teamID string) error {
 // rollout.
 func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	logger := workflow.GetLogger(ctx)
-	opts := workflow.ActivityOptions{
-		StartToCloseTimeout: 60 * time.Second,
-	}
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	_ctx := workflow.WithActivityOptions(ctx, opts)
 	repos := make([]Repo, 0)
 	corepo := &core.Repo{}
@@ -336,117 +323,6 @@ func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, payload *GithubWork
 	return nil
 }
 
-// func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent) error {
-// 	logger := workflow.GetLogger(ctx)
-
-// 	logger.Info("received PR label event ...")
-
-// 	installationID := payload.Installation.ID
-// 	repoOwner := payload.Repository.Owner.Login
-// 	repoName := payload.Repository.Name
-// 	pullRequestID := payload.Number
-// 	label := payload.Label.Name
-// 	branch := payload.PullRequest.Head.Ref
-
-// 	switch label {
-// 	case "quantm ready":
-// 		logger.Debug("quantm ready label applied")
-
-// 		cw := &core.RepoWorkflows{}
-// 		opts := shared.Temporal().
-// 			Queue(shared.CoreQueue).
-// 			WorkflowOptions(
-// 				shared.WithWorkflowBlock("repo"),
-// 				shared.WithWorkflowBlockID(payload.Repository.ID.String()),
-// 				shared.WithWorkflowElement("PR"),
-// 				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
-// 				shared.WithWorkflowProp("type", "merge_queue"),
-// 			)
-
-// 		payload2 := &shared.MergeQueueSignal{
-// 			PullRequestID:  pullRequestID,
-// 			InstallationID: installationID,
-// 			RepoOwner:      repoOwner,
-// 			RepoName:       repoName,
-// 			Branch:         branch,
-// 			RepoProvider:   "github",
-// 		}
-
-// 		if _, err := shared.Temporal().Client().
-// 			SignalWithStartWorkflow(
-// 				context.Background(),
-// 				opts.ID,
-// 				shared.MergeQueueStarted.String(),
-// 				payload2,
-// 				opts,
-// 				cw.PollMergeQueue,
-// 			); err != nil {
-// 			logger.Error("OnLabelEvent: Error signaling workflow", "error", err)
-// 			return err
-// 		}
-
-// 		logger.Info("PR sent to MergeQueue")
-
-// 	case "quantm now":
-// 		logger.Debug("quantm now label applied")
-
-// 		// check if all workflows are completed!
-// 		for {
-// 			allCompleted := true
-
-// 			for _, value := range actionWorkflowStatuses[repoName] {
-// 				if value != "completed" {
-// 					// return here since all are not completed
-// 					allCompleted = false
-
-// 					logger.Warn("all actions were not successful")
-
-// 					break
-// 				}
-// 			}
-
-// 			if allCompleted {
-// 				break
-// 			}
-
-// 			_ = workflow.Sleep(ctx, 30*time.Second)
-
-// 			logger.Debug("checking again all actions statuses")
-// 		}
-
-// 		// cw := &core.Workflows{}
-// 		opts := shared.Temporal().
-// 			Queue(shared.CoreQueue).
-// 			WorkflowOptions(
-// 				shared.WithWorkflowBlock("repo"),
-// 				shared.WithWorkflowBlockID(payload.Repository.ID.String()),
-// 				shared.WithWorkflowElement("PR"),
-// 				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
-// 				shared.WithWorkflowProp("type", "merge_queue"),
-// 			)
-
-// 		if err := shared.Temporal().Client().
-// 			SignalWorkflow(context.Background(), opts.ID, "", shared.MergeTriggered.String(), nil); err != nil {
-// 			logger.Error("OnLabelEvent: Error signaling workflow", "error", err)
-// 			return err
-// 		}
-
-// 	default:
-// 		logger.Debug("undefined label applied!")
-// 	}
-
-// 	return nil
-// }
-
-// OnPullRequestEvent workflow is responsible to get or create the idempotency key for the changeset controller workflow.
-// Regardless of the action on PR, the algorithm needs to arrive at the same idempotency key! One possible way is
-// to calculate the checksum  of different components. The trick would be to handle "synchronize" event as this relates
-// to a new commit on the PR.
-//
-//   - One possible way to handle "synchronize" would be to only listen to label events on the PR.
-//   - The other possible way to create an idempotency key would be to take the state, create a version set and then tag
-//     the git commit with the version set. We can also take a look at aviator.co to see how they are creating version-sets.
-//
 // After the creation of the idempotency key, we pass the idempotency key as a signal to the Aperture Workflow.
 func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullRequestEvent) error {
 	logger := workflow.GetLogger(ctx)
@@ -618,6 +494,117 @@ func onRequestSignal(
 	}
 }
 
+// func (w *Workflows) OnLabelEvent(ctx workflow.Context, payload *PullRequestEvent) error {
+// 	logger := workflow.GetLogger(ctx)
+
+// 	logger.Info("received PR label event ...")
+
+// 	installationID := payload.Installation.ID
+// 	repoOwner := payload.Repository.Owner.Login
+// 	repoName := payload.Repository.Name
+// 	pullRequestID := payload.Number
+// 	label := payload.Label.Name
+// 	branch := payload.PullRequest.Head.Ref
+
+// 	switch label {
+// 	case "quantm ready":
+// 		logger.Debug("quantm ready label applied")
+
+// 		cw := &core.RepoWorkflows{}
+// 		opts := shared.Temporal().
+// 			Queue(shared.CoreQueue).
+// 			WorkflowOptions(
+// 				shared.WithWorkflowBlock("repo"),
+// 				shared.WithWorkflowBlockID(payload.Repository.ID.String()),
+// 				shared.WithWorkflowElement("PR"),
+// 				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
+// 				shared.WithWorkflowProp("type", "merge_queue"),
+// 			)
+
+// 		payload2 := &shared.MergeQueueSignal{
+// 			PullRequestID:  pullRequestID,
+// 			InstallationID: installationID,
+// 			RepoOwner:      repoOwner,
+// 			RepoName:       repoName,
+// 			Branch:         branch,
+// 			RepoProvider:   "github",
+// 		}
+
+// 		if _, err := shared.Temporal().Client().
+// 			SignalWithStartWorkflow(
+// 				context.Background(),
+// 				opts.ID,
+// 				shared.MergeQueueStarted.String(),
+// 				payload2,
+// 				opts,
+// 				cw.PollMergeQueue,
+// 			); err != nil {
+// 			logger.Error("OnLabelEvent: Error signaling workflow", "error", err)
+// 			return err
+// 		}
+
+// 		logger.Info("PR sent to MergeQueue")
+
+// 	case "quantm now":
+// 		logger.Debug("quantm now label applied")
+
+// 		// check if all workflows are completed!
+// 		for {
+// 			allCompleted := true
+
+// 			for _, value := range actionWorkflowStatuses[repoName] {
+// 				if value != "completed" {
+// 					// return here since all are not completed
+// 					allCompleted = false
+
+// 					logger.Warn("all actions were not successful")
+
+// 					break
+// 				}
+// 			}
+
+// 			if allCompleted {
+// 				break
+// 			}
+
+// 			_ = workflow.Sleep(ctx, 30*time.Second)
+
+// 			logger.Debug("checking again all actions statuses")
+// 		}
+
+// 		// cw := &core.Workflows{}
+// 		opts := shared.Temporal().
+// 			Queue(shared.CoreQueue).
+// 			WorkflowOptions(
+// 				shared.WithWorkflowBlock("repo"),
+// 				shared.WithWorkflowBlockID(payload.Repository.ID.String()),
+// 				shared.WithWorkflowElement("PR"),
+// 				shared.WithWorkflowElementID(fmt.Sprint(pullRequestID)),
+// 				shared.WithWorkflowProp("type", "merge_queue"),
+// 			)
+
+// 		if err := shared.Temporal().Client().
+// 			SignalWorkflow(context.Background(), opts.ID, "", shared.MergeTriggered.String(), nil); err != nil {
+// 			logger.Error("OnLabelEvent: Error signaling workflow", "error", err)
+// 			return err
+// 		}
+
+// 	default:
+// 		logger.Debug("undefined label applied!")
+// 	}
+
+// 	return nil
+// }
+
+// OnPullRequestEvent workflow is responsible to get or create the idempotency key for the changeset controller workflow.
+// Regardless of the action on PR, the algorithm needs to arrive at the same idempotency key! One possible way is
+// to calculate the checksum  of different components. The trick would be to handle "synchronize" event as this relates
+// to a new commit on the PR.
+//
+//   - One possible way to handle "synchronize" would be to only listen to label events on the PR.
+//   - The other possible way to create an idempotency key would be to take the state, create a version set and then tag
+//     the git commit with the version set. We can also take a look at aviator.co to see how they are creating version-sets.
+//
 // // onPRSignal handles incoming signals on open PR.
 // func onPRSignal(ctx workflow.Context, pr *PullRequestEvent, status *PullRequestWorkflowStatus) shared.ChannelHandler {
 // 	logger := workflow.GetLogger(ctx)

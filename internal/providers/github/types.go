@@ -40,6 +40,17 @@ type (
 		GithubOrgID   shared.Int64 `json:"github_org_id"`
 		GithubUserID  shared.Int64 `json:"github_user_id"`
 	}
+
+	PostInstallPayload struct {
+		InstallationID    shared.Int64 `json:"installation_id"`
+		InstallationLogin string       `json:"installation_login"`
+	}
+
+	SyncReposFromGithubPayload struct {
+		InstallationID shared.Int64 `json:"installation_id"`
+		Owner          string       `json:"owner"`
+		TeamID         gocql.UUID   `json:"team_id"`
+	}
 )
 
 // Payloads for internal events & signals.

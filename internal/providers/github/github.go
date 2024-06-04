@@ -43,7 +43,7 @@ type (
 		WebhookSecret      string `env:"GITHUB_WEBHOOK_SECRET"`
 		PrivateKey         string `env:"GITHUB_PRIVATE_KEY"`
 		PrivateKeyIsBase64 bool   `env:"GITHUB_PRIVATE_KEY_IS_BASE64" env-default:"false"` // If true, the private key is base64 encoded
-		Activities         *Activities
+
 	}
 
 	ConfigOption func(*Config)
@@ -92,12 +92,6 @@ func WithPrivateKey(key string) ConfigOption {
 	}
 }
 
-func WithActivities(activities *Activities) ConfigOption {
-	return func(config *Config) {
-		config.Activities = activities
-	}
-}
-
 func WithConfigFromEnv() ConfigOption {
 	return func(config *Config) {
 		if err := cleanenv.ReadEnv(config); err != nil {
@@ -120,7 +114,6 @@ func Instance() *Config {
 		once.Do(func() {
 			instance = NewGithub(
 				WithConfigFromEnv(),
-				WithActivities(&Activities{}),
 			)
 		})
 	}
@@ -151,11 +144,7 @@ func LockInstance(ctx workflow.Context, repoID string) (mutex.Mutex, error) {
 	return lock, nil
 }
 
-func (config *Config) GetActivities() *Activities {
-	return config.Activities
-}
-
-func (config *Config) GetClientForInstallation(installationID shared.Int64) (*gh.Client, error) {
+func (config *Config) GetClientForInstallationID(installationID shared.Int64) (*gh.Client, error) {
 	transport, err := ghinstallation.New(http.DefaultTransport, config.AppID, installationID.Int64(), []byte(config.PrivateKey))
 	if err != nil {
 		return nil, err

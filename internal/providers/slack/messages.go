@@ -29,7 +29,7 @@ import (
 )
 
 const (
-	footer = "Powered by quantm"
+	footer = "Powered by quantm.io"
 )
 
 func formatLineThresholdExceededAttachment(payload *core.MessageIOLineExeededPayload) slack.Attachment {

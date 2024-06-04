@@ -50,13 +50,9 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 		return err
 	}
 
-	userID, err := gocql.ParseUUID(ctx.Get("user_id").(string))
-
-	if err != nil {
-		return err
-	}
-
+	userID, _ := gocql.ParseUUID(ctx.Get("user_id").(string))
 	payload := &CompleteInstallationSignal{request.InstallationID, request.SetupAction, userID}
+	installation := &Installation{}
 
 	workflows := &Workflows{}
 	opts := shared.Temporal().
@@ -81,26 +77,19 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 		return err
 	}
 
-	_ = exe.Get(ctx.Request().Context(), nil)
+	_ = exe.Get(ctx.Request().Context(), installation)
 
-	// opts = shared.Temporal().Queue(shared.ProvidersQueue).WorkflowOptions(
-	// 	shared.WithWorkflowBlock("github"),
-	// 	shared.WithWorkflowBlockID(strconv.Itoa(int(payload.InstallationID))),
-	// 	shared.WithWorkflowElement(WebhookEventInstallation.String()),
-	// 	shared.WithWorkflowElementID("post-install"),
-	// )
-
-	// exe, err = shared.Temporal().
-	// 	Client().
-	// 	ExecuteWorkflow(
-	// 		ctx.Request().Context(),
-	// 		opts,
-	// 		workflows.PostInstall,
-	// 		userID.String(),
-	// 	)
-	// if err != nil {
-	// 	return err
-	// }
+	exe, err = shared.Temporal().
+		Client().
+		ExecuteWorkflow(
+			ctx.Request().Context(),
+			opts,
+			workflows.PostInstall,
+			installation,
+		)
+	if err != nil {
+		return err
+	}
 
 	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetID(), Status: WorkflowStatusQueued})
 }
@@ -275,7 +264,7 @@ func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
 		return err
 	}
 
-	client, err := Instance().GetClientForInstallation(repo.InstallationID)
+	client, err := Instance().GetClientForInstallationID(repo.InstallationID)
 
 	if err != nil {
 		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)

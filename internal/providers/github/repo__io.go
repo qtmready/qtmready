@@ -52,7 +52,7 @@ func (r *RepoIO) GetAllBranches(ctx context.Context, payload *core.RepoIOInfoPay
 	branches := make([]string, 0)
 	page := 1
 
-	client, err := Instance().GetClientForInstallation(payload.InstallationID)
+	client, err := Instance().GetClientForInstallationID(payload.InstallationID)
 	if err != nil {
 		return branches, err
 	}
@@ -85,7 +85,7 @@ func (r *RepoIO) GetAllBranches(ctx context.Context, payload *core.RepoIOInfoPay
 
 // DetectChanges detects changes in a repository.
 func (r *RepoIO) DetectChanges(ctx context.Context, payload *core.RepoIODetectChangesPayload) (*core.RepoIOChanges, error) {
-	client, err := Instance().GetClientForInstallation(payload.InstallationID)
+	client, err := Instance().GetClientForInstallationID(payload.InstallationID)
 	if err != nil {
 		return nil, err
 	}
