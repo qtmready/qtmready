@@ -261,23 +261,24 @@ func (githubeventsstate *GithubEventsState) GetTable() itable.ITable {
 
 // Installation defines model for GithubInstallation.
 type Installation struct {
-	CreatedAt         time.Time    `json:"created_at"`
-	ID                gocql.UUID   `json:"id"`
-	InstallationID    shared.Int64 `json:"installation_id" validate:"required,db_unique"`
-	InstallationLogin string       `json:"installation_login"`
-	InstallationType  string       `json:"installation_type"`
-	SenderID          shared.Int64 `json:"sender_id"`
-	SenderLogin       string       `json:"sender_login"`
-	Status            string       `json:"status"`
-	TeamID            gocql.UUID   `json:"team_id"`
-	UpdatedAt         time.Time    `json:"updated_at"`
+	CreatedAt           time.Time    `json:"created_at"`
+	ID                  gocql.UUID   `json:"id"`
+	InstallationID      shared.Int64 `json:"installation_id" validate:"required,db_unique"`
+	InstallationLogin   string       `json:"installation_login"`
+	InstallationLoginID shared.Int64 `json:"installation_login_id"`
+	InstallationType    string       `json:"installation_type"`
+	SenderID            shared.Int64 `json:"sender_id"`
+	SenderLogin         string       `json:"sender_login"`
+	Status              string       `json:"status"`
+	TeamID              gocql.UUID   `json:"team_id"`
+	UpdatedAt           time.Time    `json:"updated_at"`
 }
 
 var (
 	githubinstallationMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "github_installations",
-			Columns: []string{"created_at", "id", "installation_id", "installation_login", "installation_type", "sender_id", "sender_login", "status", "team_id", "updated_at"},
+			Columns: []string{"created_at", "id", "installation_id", "installation_login", "installation_login_id", "installation_type", "sender_id", "sender_login", "status", "team_id", "updated_at"},
 			PartKey: []string{"id", "team_id"},
 		},
 	}

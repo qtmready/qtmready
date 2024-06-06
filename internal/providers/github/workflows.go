@@ -122,7 +122,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 		// Finalizing the installation
 		installation.TeamID = team.ID
 		installation.InstallationID = webhook.Installation.ID
-		installation.InstallationLogin = webhook.Installation.Account.Login
+		installation.InstallationLogin = webhook.Installation.Account.Login // Github Organization name
+		installation.InstallationLoginID = webhook.Installation.Account.ID  // Github organization ID
 		installation.InstallationType = webhook.Installation.Account.Type
 		installation.SenderID = webhook.Sender.ID
 		installation.SenderLogin = webhook.Sender.Login
@@ -220,6 +221,14 @@ func (w *Workflows) PostInstall(ctx workflow.Context, payload *Installation) err
 	}
 
 	// TODO: sync users
+	orgsync := &SyncOrgUsersFromGithubPayload{
+		InstallationID: payload.InstallationID,
+		GithubOrgName:  payload.InstallationLogin,
+		GithubOrgID:    payload.InstallationLoginID,
+	}
+	if err := workflow.ExecuteActivity(_ctx, activities.SyncOrgUsersFromGithub, orgsync).Get(_ctx, nil); err != nil {
+		logger.Error("github/installation/post: error syncing users ...", "error", err)
+	}
 
 	return nil
 }

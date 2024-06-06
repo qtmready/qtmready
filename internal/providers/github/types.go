@@ -51,6 +51,12 @@ type (
 		Owner          string       `json:"owner"`
 		TeamID         gocql.UUID   `json:"team_id"`
 	}
+
+	SyncOrgUsersFromGithubPayload struct {
+		InstallationID shared.Int64 `json:"installation_id"`
+		GithubOrgName  string       `json:"github_org_name"`
+		GithubOrgID    shared.Int64 `json:"github_org_id"`
+	}
 )
 
 // Payloads for internal events & signals.

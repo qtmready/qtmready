@@ -20,6 +20,7 @@ package github
 import (
 	"context"
 
+	gh "github.com/google/go-github/v62/github"
 	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/quantm/internal/auth"
@@ -260,6 +261,36 @@ func (a *Activities) SyncReposFromGithub(ctx context.Context, payload *SyncRepos
 			repo.DefaultBranch = result.GetDefaultBranch()
 
 			if err := db.Save(&repo); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// SyncOrgUsersFromGithub syncs orgainzation users from github.
+func (a *Activities) SyncOrgUsersFromGithub(ctx context.Context, payload *SyncOrgUsersFromGithubPayload) error {
+	if client, err := Instance().GetClientForInstallationID(payload.InstallationID); err != nil {
+		return err
+	} else {
+		lmopts := &gh.ListMembersOptions{
+			ListOptions: gh.ListOptions{},
+		}
+
+		members, _, err := client.Organizations.ListMembers(ctx, payload.GithubOrgName, lmopts)
+		if err != nil {
+			return err
+		}
+
+		for _, member := range members {
+			orgusr := OrgUser{
+				GithubOrgName: payload.GithubOrgName,
+				GithubOrgID:   payload.GithubOrgID,
+				GithubUserID:  shared.Int64(*member.ID),
+			}
+
+			if err := db.Save(&orgusr); err != nil {
 				return err
 			}
 		}
