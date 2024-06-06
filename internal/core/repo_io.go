@@ -21,6 +21,8 @@ import (
 	"context"
 	"time"
 
+	"go.temporal.io/sdk/workflow"
+
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/shared"
 )
@@ -126,3 +128,39 @@ type (
 		InProgress bool   `json:"in_progress"`
 	}
 )
+
+// Workflow States.
+type (
+	RepoWorkflowStateBranchCtrl struct {
+		CreatedAt             time.Time `json:"created_at"`
+		LatestCommitTimestamp time.Time `json:"latest_commit_timestamp"`
+		LatestCommitSHA       string    `json:"latest_commit_sha"`
+		PullRequest           string    `json:"pull-request"`
+	}
+)
+
+// CheckStale checks if the Branch is stale.
+func (state *RepoWorkflowStateBranchCtrl) CheckStale(ctx context.Context) bool {
+	return false
+}
+
+func (state *RepoWorkflowStateBranchCtrl) SetLatestCommit(commit *RepoIOCommit) {
+	state.LatestCommitSHA = commit.SHA
+	state.LatestCommitTimestamp = commit.Timestamp
+}
+
+func (state *RepoWorkflowStateBranchCtrl) HasPR(ctx context.Context) bool {
+	if state.PullRequest == "" {
+		return false
+	}
+
+	return true
+}
+
+func (state *RepoWorkflowStateBranchCtrl) Now(ctx workflow.Context) time.Time {
+	var now time.Time
+
+	_ = workflow.SideEffect(ctx, func(_ctx workflow.Context) any { return time.Now() }).Get(&now)
+
+	return now
+}
