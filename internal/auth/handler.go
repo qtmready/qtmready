@@ -310,8 +310,14 @@ func (s *ServerHandler) ListUsers(ctx echo.Context, params ListUsersParams) erro
 	}
 
 	if params.ProviderAccountId != nil && params.Provider != nil {
+		account := &Account{}
 		filter := db.QueryParams{"provider": quote(*params.Provider), "provider_account_id": quote(*params.ProviderAccountId)}
-		if err := db.Filter(&Account{}, users, filter); err != nil {
+
+		if err := db.Get(account, filter); err != nil {
+			return shared.NewAPIError(http.StatusNotFound, err)
+		}
+
+		if err := db.Filter(&User{}, &users, db.QueryParams{"id": account.UserID.String()}); err != nil {
 			return shared.NewAPIError(http.StatusBadRequest, err)
 		}
 	}
