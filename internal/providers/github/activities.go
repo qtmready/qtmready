@@ -270,6 +270,8 @@ func (a *Activities) SyncReposFromGithub(ctx context.Context, payload *SyncRepos
 }
 
 // SyncOrgUsersFromGithub syncs orgainzation users from github.
+// NOTE - working only for public org members
+// TODO - ifor private org mambers.
 func (a *Activities) SyncOrgUsersFromGithub(ctx context.Context, payload *SyncOrgUsersFromGithubPayload) error {
 	if client, err := Instance().GetClientForInstallationID(payload.InstallationID); err != nil {
 		return err
@@ -284,13 +286,22 @@ func (a *Activities) SyncOrgUsersFromGithub(ctx context.Context, payload *SyncOr
 		}
 
 		for _, member := range members {
-			orgusr := OrgUser{
-				GithubOrgName: payload.GithubOrgName,
-				GithubOrgID:   payload.GithubOrgID,
-				GithubUserID:  shared.Int64(*member.ID),
+			orgusr := &OrgUser{}
+			filter := db.QueryParams{
+				"github_org_id":  payload.GithubOrgID.String(),
+				"github_user_id": shared.Int64(*member.ID).String(),
 			}
 
-			if err := db.Save(&orgusr); err != nil {
+			// TODO - need to refine
+			if err := db.Get(orgusr, filter); err != nil {
+				shared.Logger().Debug("member => err", "debug", err)
+			}
+
+			orgusr.GithubOrgName = payload.GithubOrgName
+			orgusr.GithubOrgID = payload.GithubOrgID
+			orgusr.GithubUserID = shared.Int64(*member.ID)
+
+			if err := db.Save(orgusr); err != nil {
 				return err
 			}
 		}
