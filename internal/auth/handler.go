@@ -304,7 +304,7 @@ func (s *ServerHandler) ListUsers(ctx echo.Context, params ListUsersParams) erro
 	users := make([]User, 0)
 
 	if params.Email != nil {
-		if err := db.Filter(&User{}, users, db.QueryParams{"email": *params.Email}); err != nil {
+		if err := db.Filter(&User{}, &users, db.QueryParams{"email": "'" + *params.Email + "'"}); err != nil {
 			return shared.NewAPIError(http.StatusBadRequest, err)
 		}
 	}
