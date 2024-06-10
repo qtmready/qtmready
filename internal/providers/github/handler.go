@@ -228,6 +228,66 @@ func (s *ServerHandler) GithubCreateUserOrgs(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, result)
 }
 
+// TODO - need to refine the handler.
+func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
+	request := &CreateTeamUserRequest{}
+
+	if err := ctx.Bind(request); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	if err := ctx.Validate(request); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	shared.Logger().Debug("request", "debug", request)
+
+	installation := &Installation{}
+	if err := db.Get(installation, db.QueryParams{"installation_login_id": request.GithubOrgID.String()}); err != nil {
+		return shared.NewAPIError(http.StatusNotFound, err)
+	}
+
+	// associtaed user with team
+	user := &auth.User{}
+	if err := db.Get(user, db.QueryParams{"id": request.UserID.String()}); err != nil {
+		return shared.NewAPIError(http.StatusNotFound, err)
+	}
+
+	user.TeamID = installation.TeamID
+
+	if err := db.Save(user); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	// create teamuser
+	teamuser := &auth.TeamUser{
+		TeamID:   installation.TeamID,
+		UserID:   request.UserID,
+		IsActive: true,
+		IsAdmin:  false,
+	}
+	if err := db.Save(teamuser); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	orguser := &OrgUser{}
+	filter := db.QueryParams{"github_org_id": request.GithubOrgID.String(), "github_user_id": request.GithubUserID.String()}
+
+	if err := db.Get(orguser, filter); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	shared.Logger().Debug("orguser", "debug", orguser)
+
+	orguser.UserID = request.UserID
+	if err := db.Save(orguser); err != nil {
+		shared.Logger().Error("error", "debug", err)
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	return ctx.JSON(http.StatusCreated, user)
+}
+
 // GithubArtifactReady API is called by github action after building and pushing the build artifact
 // After receiving pull request webhook, Quantum waits for the artifact ready event to start deployment.
 func (s *ServerHandler) GithubArtifactReady(ctx echo.Context) error {

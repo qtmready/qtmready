@@ -27,8 +27,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime"
 	"github.com/scylladb/gocqlx/v2/table"
+	externalRef0 "go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/shared"
-	externalRef0 "go.breu.io/quantm/internal/shared"
+	externalRef1 "go.breu.io/quantm/internal/shared"
 )
 
 const (
@@ -221,6 +222,13 @@ type CreateGithubUserOrgsRequest struct {
 	UserID       gocql.UUID     `json:"user_id"`
 }
 
+// CreateTeamUserRequest defines model for CreateTeamUserRequest.
+type CreateTeamUserRequest struct {
+	GithubOrgID  shared.Int64 `json:"github_org_id"`
+	GithubUserID shared.Int64 `json:"github_user_id"`
+	UserID       gocql.UUID   `json:"user_id"`
+}
+
 // GithubActionResultRequest github action result is sent to quantum along with branch name.
 type GithubActionResultRequest struct {
 	Branch    string `json:"branch"`
@@ -397,6 +405,9 @@ type GithubCompleteInstallationJSONRequestBody = CompleteInstallationRequest
 // GithubCreateUserOrgsJSONRequestBody defines body for GithubCreateUserOrgs for application/json ContentType.
 type GithubCreateUserOrgsJSONRequestBody = CreateGithubUserOrgsRequest
 
+// CreateTeamUserJSONRequestBody defines body for CreateTeamUser for application/json ContentType.
+type CreateTeamUserJSONRequestBody = CreateTeamUserRequest
+
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
 
@@ -506,6 +517,11 @@ type ClientInterface interface {
 
 	// GithubWebhook request
 	GithubWebhook(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateTeamUserWithBody request with any body
+	CreateTeamUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateTeamUser(ctx context.Context, body CreateTeamUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GithubArtifactReadyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -666,6 +682,30 @@ func (c *Client) GithubCreateUserOrgs(ctx context.Context, body GithubCreateUser
 
 func (c *Client) GithubWebhook(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGithubWebhookRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateTeamUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTeamUserRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateTeamUser(ctx context.Context, body CreateTeamUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTeamUserRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1040,6 +1080,46 @@ func NewGithubWebhookRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewCreateTeamUserRequest calls the generic CreateTeamUser builder with application/json body
+func NewCreateTeamUserRequest(server string, body CreateTeamUserJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateTeamUserRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateTeamUserRequestWithBody generates requests for CreateTeamUser with any type of body
+func NewCreateTeamUserRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/providers/teams/team-user")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -1119,15 +1199,20 @@ type ClientWithResponsesInterface interface {
 
 	// GithubWebhookWithResponse request
 	GithubWebhookWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubWebhookResponse, error)
+
+	// CreateTeamUserWithBodyWithResponse request with any body
+	CreateTeamUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTeamUserResponse, error)
+
+	CreateTeamUserWithResponse(ctx context.Context, body CreateTeamUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTeamUserResponse, error)
 }
 
 type GithubArtifactReadyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]WorkflowResponse
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
+	JSON400      *externalRef1.BadRequest
+	JSON401      *externalRef1.Unauthorized
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1149,7 +1234,7 @@ func (r GithubArtifactReadyResponse) StatusCode() int {
 type GithubActionResultResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON500      *externalRef0.InternalServerError
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1171,7 +1256,7 @@ func (r GithubActionResultResponse) StatusCode() int {
 type CliGitMergeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON500      *externalRef0.InternalServerError
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1194,10 +1279,10 @@ type GithubCompleteInstallationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON201      *WorkflowResponse
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
-	JSON500      *externalRef0.InternalServerError
+	JSON400      *externalRef1.BadRequest
+	JSON401      *externalRef1.Unauthorized
+	JSON404      *externalRef1.NotFound
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1220,9 +1305,9 @@ type GithubGetInstallationsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]Installation
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
+	JSON400      *externalRef1.BadRequest
+	JSON401      *externalRef1.Unauthorized
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1245,9 +1330,9 @@ type GithubGetReposResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]Repo
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
+	JSON400      *externalRef1.BadRequest
+	JSON401      *externalRef1.Unauthorized
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1270,9 +1355,9 @@ type GithubListUserOrgsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON201      *[]OrgUser
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
+	JSON400      *externalRef1.BadRequest
+	JSON401      *externalRef1.Unauthorized
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1295,9 +1380,9 @@ type GithubCreateUserOrgsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON201      *[]OrgUser
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
+	JSON400      *externalRef1.BadRequest
+	JSON401      *externalRef1.Unauthorized
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1321,8 +1406,8 @@ type GithubWebhookResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *WorkflowResponse
 	JSON201      *WorkflowResponse
-	JSON400      *externalRef0.BadRequest
-	JSON500      *externalRef0.InternalServerError
+	JSON400      *externalRef1.BadRequest
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1335,6 +1420,31 @@ func (r GithubWebhookResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GithubWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateTeamUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *externalRef0.User
+	JSON400      *externalRef1.BadRequest
+	JSON401      *externalRef1.Unauthorized
+	JSON500      *externalRef1.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateTeamUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateTeamUserResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1462,6 +1572,23 @@ func (c *ClientWithResponses) GithubWebhookWithResponse(ctx context.Context, req
 	return ParseGithubWebhookResponse(rsp)
 }
 
+// CreateTeamUserWithBodyWithResponse request with arbitrary body returning *CreateTeamUserResponse
+func (c *ClientWithResponses) CreateTeamUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTeamUserResponse, error) {
+	rsp, err := c.CreateTeamUserWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTeamUserResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateTeamUserWithResponse(ctx context.Context, body CreateTeamUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTeamUserResponse, error) {
+	rsp, err := c.CreateTeamUser(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTeamUserResponse(rsp)
+}
+
 // ParseGithubArtifactReadyResponse parses an HTTP response from a GithubArtifactReadyWithResponse call
 func ParseGithubArtifactReadyResponse(rsp *http.Response) (*GithubArtifactReadyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1484,21 +1611,21 @@ func ParseGithubArtifactReadyResponse(rsp *http.Response) (*GithubArtifactReadyR
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
+		var dest externalRef1.Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1524,7 +1651,7 @@ func ParseGithubActionResultResponse(rsp *http.Response) (*GithubActionResultRes
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1550,7 +1677,7 @@ func ParseCliGitMergeResponse(rsp *http.Response) (*CliGitMergeResponse, error) 
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1583,28 +1710,28 @@ func ParseGithubCompleteInstallationResponse(rsp *http.Response) (*GithubComplet
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
+		var dest externalRef1.Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
+		var dest externalRef1.NotFound
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1637,21 +1764,21 @@ func ParseGithubGetInstallationsResponse(rsp *http.Response) (*GithubGetInstalla
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
+		var dest externalRef1.Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1684,21 +1811,21 @@ func ParseGithubGetReposResponse(rsp *http.Response) (*GithubGetReposResponse, e
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
+		var dest externalRef1.Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1731,21 +1858,21 @@ func ParseGithubListUserOrgsResponse(rsp *http.Response) (*GithubListUserOrgsRes
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
+		var dest externalRef1.Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1778,21 +1905,21 @@ func ParseGithubCreateUserOrgsResponse(rsp *http.Response) (*GithubCreateUserOrg
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
+		var dest externalRef1.Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1832,14 +1959,61 @@ func ParseGithubWebhookResponse(rsp *http.Response) (*GithubWebhookResponse, err
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateTeamUserResponse parses an HTTP response from a CreateTeamUserWithResponse call
+func ParseCreateTeamUserResponse(rsp *http.Response) (*CreateTeamUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateTeamUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest externalRef0.User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef1.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef1.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1887,6 +2061,10 @@ type ServerInterface interface {
 	// Webhook reciever for github
 	// (POST /providers/github/webhook)
 	GithubWebhook(ctx echo.Context) error
+
+	// associate team and team users for the newly registered user.
+	// (POST /providers/teams/team-user)
+	CreateTeamUser(ctx echo.Context) error
 
 	// SecurityHandler returns the underlying Security Wrapper
 	SecureHandler(ctx echo.Context, handler echo.HandlerFunc) error
@@ -2061,6 +2239,17 @@ func (w *ServerInterfaceWrapper) GithubWebhook(ctx echo.Context) error {
 	return err
 }
 
+// CreateTeamUser converts echo context to params.
+
+func (w *ServerInterfaceWrapper) CreateTeamUser(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateTeamUser(ctx)
+
+	return err
+}
+
 // EchoRouter is an interface that wraps the methods of echo.Echo & echo.Group to provide a common interface
 // for registering routes.
 type EchoRouter interface {
@@ -2097,5 +2286,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/providers/github/user-orgs", wrapper.GithubListUserOrgs)
 	router.POST(baseURL+"/providers/github/user-orgs", wrapper.GithubCreateUserOrgs)
 	router.POST(baseURL+"/providers/github/webhook", wrapper.GithubWebhook)
+	router.POST(baseURL+"/providers/teams/team-user", wrapper.CreateTeamUser)
 
 }

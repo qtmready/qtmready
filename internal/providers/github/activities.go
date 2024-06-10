@@ -74,8 +74,8 @@ func (a *Activities) GetTeamByID(ctx context.Context, id string) (*auth.Team, er
 func (a *Activities) CreateMemberships(ctx context.Context, payload *CreateMembershipsPayload) error {
 	orgusr := &OrgUser{}
 	teamuser := &auth.TeamUser{
-		TeamID:   payload.UserID,
-		UserID:   payload.TeamID,
+		TeamID:   payload.TeamID,
+		UserID:   payload.UserID,
 		IsActive: true,
 		IsAdmin:  payload.IsAdmin,
 	}
