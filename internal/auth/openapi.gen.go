@@ -142,6 +142,13 @@ type CreateTeamRequest struct {
 	Name string `json:"name"`
 }
 
+// CreateUserRequest defines model for CreateUserRequest.
+type CreateUserRequest struct {
+	Email  string      `json:"email"`
+	Name   string      `json:"name"`
+	TeamID *gocql.UUID `json:"team_id,omitempty"`
+}
+
 // LinkAccountRequest defines model for LinkAccountRequest.
 type LinkAccountRequest struct {
 	ExpiresAt         time.Time `json:"expires_at"`
@@ -269,12 +276,6 @@ func (user *User) GetTable() itable.ITable {
 	return userTable
 }
 
-// UserRequest defines model for UserRequest.
-type UserRequest struct {
-	Email string `json:"email"`
-	Name  string `json:"name"`
-}
-
 // ListUsersParams defines parameters for ListUsers.
 type ListUsersParams struct {
 	// ProviderAccountId Provider account ID
@@ -309,7 +310,7 @@ type CreateTeamJSONRequestBody = CreateTeamRequest
 type AddUserToTeamJSONRequestBody = AddUserToTeamRequest
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
-type CreateUserJSONRequestBody = UserRequest
+type CreateUserJSONRequestBody = CreateUserRequest
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -421,12 +422,15 @@ type ClientInterface interface {
 	CreateTeam(ctx context.Context, body CreateTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// GetTeam request
-	GetTeam(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error)
+	GetTeam(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// SetActiveTeam request
+	SetActiveTeam(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// AddUserToTeamWithBody request with any body
-	AddUserToTeamWithBody(ctx context.Context, slug string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AddUserToTeamWithBody(ctx context.Context, id gocql.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	AddUserToTeam(ctx context.Context, slug string, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+	AddUserToTeam(ctx context.Context, id gocql.UUID, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListUsers request
 	ListUsers(ctx context.Context, params *ListUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -608,8 +612,8 @@ func (c *Client) CreateTeam(ctx context.Context, body CreateTeamJSONRequestBody,
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetTeam(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetTeamRequest(c.Server, slug)
+func (c *Client) GetTeam(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewGetTeamRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -620,8 +624,8 @@ func (c *Client) GetTeam(ctx context.Context, slug string, reqEditors ...Request
 	return c.Client.Do(req)
 }
 
-func (c *Client) AddUserToTeamWithBody(ctx context.Context, slug string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddUserToTeamRequestWithBody(c.Server, slug, contentType, body)
+func (c *Client) SetActiveTeam(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewSetActiveTeamRequest(c.Server, id)
 	if err != nil {
 		return nil, err
 	}
@@ -632,8 +636,20 @@ func (c *Client) AddUserToTeamWithBody(ctx context.Context, slug string, content
 	return c.Client.Do(req)
 }
 
-func (c *Client) AddUserToTeam(ctx context.Context, slug string, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddUserToTeamRequest(c.Server, slug, body)
+func (c *Client) AddUserToTeamWithBody(ctx context.Context, id gocql.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddUserToTeamRequestWithBody(c.Server, id, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) AddUserToTeam(ctx context.Context, id gocql.UUID, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewAddUserToTeamRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -987,12 +1003,12 @@ func NewCreateTeamRequestWithBody(server string, contentType string, body io.Rea
 }
 
 // NewGetTeamRequest generates requests for GetTeam
-func NewGetTeamRequest(server string, slug string) (*http.Request, error) {
+func NewGetTeamRequest(server string, id gocql.UUID) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "slug", runtime.ParamLocationPath, slug)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1020,24 +1036,58 @@ func NewGetTeamRequest(server string, slug string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewSetActiveTeamRequest generates requests for SetActiveTeam
+func NewSetActiveTeamRequest(server string, id gocql.UUID) (*http.Request, error) {
+	var err error
+
+	var pathParam0 string
+
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
+	if err != nil {
+		return nil, err
+	}
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/auth/teams/%s/set-active", pathParam0)
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("GET", queryURL.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return req, nil
+}
+
 // NewAddUserToTeamRequest calls the generic AddUserToTeam builder with application/json body
-func NewAddUserToTeamRequest(server string, slug string, body AddUserToTeamJSONRequestBody) (*http.Request, error) {
+func NewAddUserToTeamRequest(server string, id gocql.UUID, body AddUserToTeamJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
 	buf, err := json.Marshal(body)
 	if err != nil {
 		return nil, err
 	}
 	bodyReader = bytes.NewReader(buf)
-	return NewAddUserToTeamRequestWithBody(server, slug, "application/json", bodyReader)
+	return NewAddUserToTeamRequestWithBody(server, id, "application/json", bodyReader)
 }
 
 // NewAddUserToTeamRequestWithBody generates requests for AddUserToTeam with any type of body
-func NewAddUserToTeamRequestWithBody(server string, slug string, contentType string, body io.Reader) (*http.Request, error) {
+func NewAddUserToTeamRequestWithBody(server string, id gocql.UUID, contentType string, body io.Reader) (*http.Request, error) {
 	var err error
 
 	var pathParam0 string
 
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "slug", runtime.ParamLocationPath, slug)
+	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
 	if err != nil {
 		return nil, err
 	}
@@ -1302,12 +1352,15 @@ type ClientWithResponsesInterface interface {
 	CreateTeamWithResponse(ctx context.Context, body CreateTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTeamResponse, error)
 
 	// GetTeamWithResponse request
-	GetTeamWithResponse(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*GetTeamResponse, error)
+	GetTeamWithResponse(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*GetTeamResponse, error)
+
+	// SetActiveTeamWithResponse request
+	SetActiveTeamWithResponse(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*SetActiveTeamResponse, error)
 
 	// AddUserToTeamWithBodyWithResponse request with any body
-	AddUserToTeamWithBodyWithResponse(ctx context.Context, slug string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error)
+	AddUserToTeamWithBodyWithResponse(ctx context.Context, id gocql.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error)
 
-	AddUserToTeamWithResponse(ctx context.Context, slug string, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error)
+	AddUserToTeamWithResponse(ctx context.Context, id gocql.UUID, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error)
 
 	// ListUsersWithResponse request
 	ListUsersWithResponse(ctx context.Context, params *ListUsersParams, reqEditors ...RequestEditorFn) (*ListUsersResponse, error)
@@ -1546,6 +1599,32 @@ func (r GetTeamResponse) StatusCode() int {
 	return 0
 }
 
+type SetActiveTeamResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *User
+	JSON400      *externalRef0.BadRequest
+	JSON401      *externalRef0.Unauthorized
+	JSON404      *externalRef0.NotFound
+	JSON500      *externalRef0.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r SetActiveTeamResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r SetActiveTeamResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
 type AddUserToTeamResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1770,25 +1849,34 @@ func (c *ClientWithResponses) CreateTeamWithResponse(ctx context.Context, body C
 }
 
 // GetTeamWithResponse request returning *GetTeamResponse
-func (c *ClientWithResponses) GetTeamWithResponse(ctx context.Context, slug string, reqEditors ...RequestEditorFn) (*GetTeamResponse, error) {
-	rsp, err := c.GetTeam(ctx, slug, reqEditors...)
+func (c *ClientWithResponses) GetTeamWithResponse(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*GetTeamResponse, error) {
+	rsp, err := c.GetTeam(ctx, id, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseGetTeamResponse(rsp)
 }
 
+// SetActiveTeamWithResponse request returning *SetActiveTeamResponse
+func (c *ClientWithResponses) SetActiveTeamWithResponse(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*SetActiveTeamResponse, error) {
+	rsp, err := c.SetActiveTeam(ctx, id, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseSetActiveTeamResponse(rsp)
+}
+
 // AddUserToTeamWithBodyWithResponse request with arbitrary body returning *AddUserToTeamResponse
-func (c *ClientWithResponses) AddUserToTeamWithBodyWithResponse(ctx context.Context, slug string, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error) {
-	rsp, err := c.AddUserToTeamWithBody(ctx, slug, contentType, body, reqEditors...)
+func (c *ClientWithResponses) AddUserToTeamWithBodyWithResponse(ctx context.Context, id gocql.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error) {
+	rsp, err := c.AddUserToTeamWithBody(ctx, id, contentType, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
 	return ParseAddUserToTeamResponse(rsp)
 }
 
-func (c *ClientWithResponses) AddUserToTeamWithResponse(ctx context.Context, slug string, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error) {
-	rsp, err := c.AddUserToTeam(ctx, slug, body, reqEditors...)
+func (c *ClientWithResponses) AddUserToTeamWithResponse(ctx context.Context, id gocql.UUID, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error) {
+	rsp, err := c.AddUserToTeam(ctx, id, body, reqEditors...)
 	if err != nil {
 		return nil, err
 	}
@@ -2253,6 +2341,60 @@ func ParseGetTeamResponse(rsp *http.Response) (*GetTeamResponse, error) {
 	return response, nil
 }
 
+// ParseSetActiveTeamResponse parses an HTTP response from a SetActiveTeamWithResponse call
+func ParseSetActiveTeamResponse(rsp *http.Response) (*SetActiveTeamResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &SetActiveTeamResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef0.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef0.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
+		var dest externalRef0.NotFound
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON404 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef0.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParseAddUserToTeamResponse parses an HTTP response from a AddUserToTeamWithResponse call
 func ParseAddUserToTeamResponse(rsp *http.Response) (*AddUserToTeamResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2497,16 +2639,20 @@ type ServerInterface interface {
 	CreateTeam(ctx echo.Context) error
 
 	// Get a team
-	// (GET /auth/teams/{slug})
-	GetTeam(ctx echo.Context) error
+	// (GET /auth/teams/{id})
+	GetTeam(ctx echo.Context, id gocql.UUID) error
+
+	// set the active team for user (b/c user has multiple teams)
+	// (GET /auth/teams/{id}/set-active)
+	SetActiveTeam(ctx echo.Context, id gocql.UUID) error
 
 	// Add a user to a team
-	// (POST /auth/teams/{slug}/users)
-	AddUserToTeam(ctx echo.Context) error
+	// (POST /auth/teams/{id}/users)
+	AddUserToTeam(ctx echo.Context, id gocql.UUID) error
 
 	// get users
 	// (GET /auth/users)
-	ListUsers(ctx echo.Context) error
+	ListUsers(ctx echo.Context, params ListUsersParams) error
 
 	// create user authjs
 	// (POST /auth/users)
@@ -2514,10 +2660,10 @@ type ServerInterface interface {
 
 	// get user by id
 	// (GET /auth/users/{id})
-	GetUser(ctx echo.Context) error
+	GetUser(ctx echo.Context, id string) error
 
 	// SecurityHandler returns the underlying Security Wrapper
-	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
+	SecureHandler(ctx echo.Context, handler echo.HandlerFunc) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -2530,9 +2676,8 @@ type ServerInterfaceWrapper struct {
 func (w *ServerInterfaceWrapper) LinkAccount(ctx echo.Context) error {
 	var err error
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.LinkAccount
-	err = handler(ctx)
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.LinkAccount(ctx)
 
 	return err
 }
@@ -2544,10 +2689,11 @@ func (w *ServerInterfaceWrapper) CreateTeamAPIKey(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.CreateTeamAPIKey
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.CreateTeamAPIKey(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2559,10 +2705,11 @@ func (w *ServerInterfaceWrapper) CreateUserAPIKey(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.CreateUserAPIKey
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.CreateUserAPIKey(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2574,10 +2721,11 @@ func (w *ServerInterfaceWrapper) ValidateAPIKey(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.ValidateAPIKey
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.ValidateAPIKey(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2587,9 +2735,8 @@ func (w *ServerInterfaceWrapper) ValidateAPIKey(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) Login(ctx echo.Context) error {
 	var err error
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.Login
-	err = handler(ctx)
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.Login(ctx)
 
 	return err
 }
@@ -2599,9 +2746,8 @@ func (w *ServerInterfaceWrapper) Login(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) Register(ctx echo.Context) error {
 	var err error
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.Register
-	err = handler(ctx)
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.Register(ctx)
 
 	return err
 }
@@ -2613,10 +2759,11 @@ func (w *ServerInterfaceWrapper) ListTeams(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.ListTeams
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.ListTeams(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2628,10 +2775,11 @@ func (w *ServerInterfaceWrapper) CreateTeam(ctx echo.Context) error {
 
 	ctx.Set(BearerAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.CreateTeam
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.CreateTeam(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2640,20 +2788,44 @@ func (w *ServerInterfaceWrapper) CreateTeam(ctx echo.Context) error {
 
 func (w *ServerInterfaceWrapper) GetTeam(ctx echo.Context) error {
 	var err error
-	// ------------- Path parameter "slug" -------------
-	var slug string
+	// ------------- Path parameter "id" -------------
+	var id gocql.UUID
 
-	err = runtime.BindStyledParameterWithLocation("simple", false, "slug", runtime.ParamLocationPath, ctx.Param("slug"), &slug)
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
 	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter slug: %s", err))
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter id: %s", err))
 	}
 
 	ctx.Set(BearerAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GetTeam
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GetTeam(ctx, id)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
+
+	return err
+}
+
+// SetActiveTeam converts echo context to params.
+
+func (w *ServerInterfaceWrapper) SetActiveTeam(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "id" -------------
+	var id gocql.UUID
+
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter id: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	handler := func(ctx echo.Context) error {
+		return w.Handler.SetActiveTeam(ctx, id)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2662,20 +2834,16 @@ func (w *ServerInterfaceWrapper) GetTeam(ctx echo.Context) error {
 
 func (w *ServerInterfaceWrapper) AddUserToTeam(ctx echo.Context) error {
 	var err error
-	// ------------- Path parameter "slug" -------------
-	var slug string
+	// ------------- Path parameter "id" -------------
+	var id gocql.UUID
 
-	err = runtime.BindStyledParameterWithLocation("simple", false, "slug", runtime.ParamLocationPath, ctx.Param("slug"), &slug)
+	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
 	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter slug: %s", err))
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter id: %s", err))
 	}
 
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.AddUserToTeam
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.AddUserToTeam(ctx, id)
 
 	return err
 }
@@ -2708,9 +2876,8 @@ func (w *ServerInterfaceWrapper) ListUsers(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter email: %s", err))
 	}
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.ListUsers
-	err = handler(ctx)
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ListUsers(ctx, params)
 
 	return err
 }
@@ -2720,9 +2887,8 @@ func (w *ServerInterfaceWrapper) ListUsers(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) CreateUser(ctx echo.Context) error {
 	var err error
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.CreateUser
-	err = handler(ctx)
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateUser(ctx)
 
 	return err
 }
@@ -2739,9 +2905,8 @@ func (w *ServerInterfaceWrapper) GetUser(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter id: %s", err))
 	}
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GetUser
-	err = handler(ctx)
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetUser(ctx, id)
 
 	return err
 }
@@ -2781,8 +2946,9 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/auth/register", wrapper.Register)
 	router.GET(baseURL+"/auth/teams", wrapper.ListTeams)
 	router.POST(baseURL+"/auth/teams", wrapper.CreateTeam)
-	router.GET(baseURL+"/auth/teams/:slug", wrapper.GetTeam)
-	router.POST(baseURL+"/auth/teams/:slug/users", wrapper.AddUserToTeam)
+	router.GET(baseURL+"/auth/teams/:id", wrapper.GetTeam)
+	router.GET(baseURL+"/auth/teams/:id/set-active", wrapper.SetActiveTeam)
+	router.POST(baseURL+"/auth/teams/:id/users", wrapper.AddUserToTeam)
 	router.GET(baseURL+"/auth/users", wrapper.ListUsers)
 	router.POST(baseURL+"/auth/users", wrapper.CreateUser)
 	router.GET(baseURL+"/auth/users/:id", wrapper.GetUser)

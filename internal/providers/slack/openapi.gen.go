@@ -293,10 +293,10 @@ func ParseSlackOauthResponse(rsp *http.Response) (*SlackOauthResponse, error) {
 type ServerInterface interface {
 	// Slack Oauth and save the info
 	// (GET /v1/slack)
-	SlackOauth(ctx echo.Context) error
+	SlackOauth(ctx echo.Context, params SlackOauthParams) error
 
 	// SecurityHandler returns the underlying Security Wrapper
-	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
+	SecureHandler(ctx echo.Context, handler echo.HandlerFunc) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -320,10 +320,11 @@ func (w *ServerInterfaceWrapper) SlackOauth(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter code: %s", err))
 	}
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.SlackOauth
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.SlackOauth(ctx, params)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }

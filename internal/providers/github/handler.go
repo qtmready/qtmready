@@ -44,6 +44,50 @@ func NewServerHandler(middleware echo.MiddlewareFunc) *ServerHandler {
 	}
 }
 
+func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
+	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
+
+	if signature == "" {
+		return ctx.JSON(http.StatusUnauthorized, ErrMissingHeaderGithubSignature)
+	}
+
+	// NOTE: We are reading the request body twice. This is not ideal.
+	body, _ := io.ReadAll(ctx.Request().Body)
+	ctx.Request().Body = io.NopCloser(bytes.NewBuffer(body))
+
+	if err := Instance().VerifyWebhookSignature(body, signature); err != nil {
+		return shared.NewAPIError(http.StatusUnauthorized, err)
+	}
+
+	headerEvent := ctx.Request().Header.Get("X-GitHub-Event")
+	if headerEvent == "" {
+		return shared.NewAPIError(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
+	}
+
+	shared.Logger().Debug("GithubWebhook", "headerEvent", headerEvent)
+	// Uncomment for debugging!
+	// var jsonMap map[string]interface{}
+	// json.Unmarshal([]byte(string(body)), &jsonMap)
+	// shared.Logger().Debug("GithubWebhook", "body", jsonMap)
+
+	event := WebhookEvent(headerEvent)
+	handlers := WebhookEventHandlers{
+		WebhookEventInstallation:             handleInstallationEvent,
+		WebhookEventInstallationRepositories: handleInstallationRepositoriesEvent,
+		WebhookEventPush:                     handlePushEvent,
+		// WebhookEventPullRequest:              handlePullRequestEvent,
+		WebhookEventWorkflowRun: handleWorkflowRunEvent,
+	}
+
+	if handle, exists := handlers[event]; exists {
+		return handle(ctx)
+	} else {
+		shared.Logger().Warn("Github Webhook: Unsupported event", "event", event)
+	}
+
+	return shared.NewAPIError(http.StatusBadRequest, ErrInvalidEvent)
+}
+
 func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 	request := &CompleteInstallationRequest{}
 	if err := ctx.Bind(request); err != nil {
@@ -104,6 +148,29 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetID(), Status: WorkflowStatusQueued})
 }
 
+func (s *ServerHandler) GithubGetInstallations(ctx echo.Context, params GithubGetInstallationsParams) error {
+	result := make([]Installation, 0)
+	filter := make(db.QueryParams)
+
+	if params.InstallationId != nil {
+		filter["installation_id"] = params.InstallationId.String()
+	}
+
+	if params.InstallationLogin != nil {
+		filter["installation_login"] = *params.InstallationLogin
+	}
+
+	if params.InstallationId == nil && params.InstallationLogin == nil {
+		filter["team_id"] = ctx.Get("team_id").(string)
+	}
+
+	if err := db.Filter(&Installation{}, &result, filter); err != nil {
+		return err
+	}
+
+	return ctx.JSON(http.StatusOK, result)
+}
+
 func (s *ServerHandler) GithubGetRepos(ctx echo.Context) error {
 	result := make([]Repo, 0)
 	if err := db.Filter(
@@ -117,9 +184,9 @@ func (s *ServerHandler) GithubGetRepos(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, result)
 }
 
-func (s *ServerHandler) GithubListUserOrgs(ctx echo.Context) error {
+func (s *ServerHandler) GithubListUserOrgs(ctx echo.Context, params GithubListUserOrgsParams) error {
 	result := make([]OrgUser, 0)
-	if err := db.Filter(&OrgUser{}, &result, db.QueryParams{"user_id": ctx.QueryParam("user_id")}); err != nil {
+	if err := db.Filter(&OrgUser{}, &result, db.QueryParams{"user_id": params.UserId}); err != nil {
 		return err
 	}
 
@@ -161,70 +228,64 @@ func (s *ServerHandler) GithubCreateUserOrgs(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, result)
 }
 
-func (s *ServerHandler) GithubGetInstallations(ctx echo.Context) error {
-	result := make([]Installation, 0)
-	params := make(db.QueryParams)
+// TODO - need to refine the handler.
+func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
+	request := &CreateTeamUserRequest{}
 
-	installationID := ctx.QueryParam("installation_id")
-	if installationID != "" {
-		params["installation_id"] = installationID
-	} else {
-		params["team_id"] = ctx.Get("team_id").(string)
+	if err := ctx.Bind(request); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	if err := db.Filter(
-		&Installation{},
-		&result,
-		params,
-	); err != nil {
-		return err
+	if err := ctx.Validate(request); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	return ctx.JSON(http.StatusOK, result)
-}
+	shared.Logger().Debug("request", "debug", request)
 
-func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
-	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
-
-	if signature == "" {
-		return ctx.JSON(http.StatusUnauthorized, ErrMissingHeaderGithubSignature)
+	installation := &Installation{}
+	if err := db.Get(installation, db.QueryParams{"installation_login_id": request.GithubOrgID.String()}); err != nil {
+		return shared.NewAPIError(http.StatusNotFound, err)
 	}
 
-	// NOTE: We are reading the request body twice. This is not ideal.
-	body, _ := io.ReadAll(ctx.Request().Body)
-	ctx.Request().Body = io.NopCloser(bytes.NewBuffer(body))
-
-	if err := Instance().VerifyWebhookSignature(body, signature); err != nil {
-		return shared.NewAPIError(http.StatusUnauthorized, err)
+	// associtaed user with team
+	user := &auth.User{}
+	if err := db.Get(user, db.QueryParams{"id": request.UserID.String()}); err != nil {
+		return shared.NewAPIError(http.StatusNotFound, err)
 	}
 
-	headerEvent := ctx.Request().Header.Get("X-GitHub-Event")
-	if headerEvent == "" {
-		return shared.NewAPIError(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
+	user.TeamID = installation.TeamID
+
+	if err := db.Save(user); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	shared.Logger().Debug("GithubWebhook", "headerEvent", headerEvent)
-	// Uncomment for debugging!
-	// var jsonMap map[string]interface{}
-	// json.Unmarshal([]byte(string(body)), &jsonMap)
-	// shared.Logger().Debug("GithubWebhook", "body", jsonMap)
-
-	event := WebhookEvent(headerEvent)
-	handlers := WebhookEventHandlers{
-		WebhookEventInstallation:             handleInstallationEvent,
-		WebhookEventInstallationRepositories: handleInstallationRepositoriesEvent,
-		WebhookEventPush:                     handlePushEvent,
-		// WebhookEventPullRequest:              handlePullRequestEvent,
-		WebhookEventWorkflowRun: handleWorkflowRunEvent,
+	// create teamuser
+	teamuser := &auth.TeamUser{
+		TeamID:   installation.TeamID,
+		UserID:   request.UserID,
+		IsActive: true,
+		IsAdmin:  false,
+	}
+	if err := db.Save(teamuser); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	if handle, exists := handlers[event]; exists {
-		return handle(ctx)
-	} else {
-		shared.Logger().Warn("Github Webhook: Unsupported event", "event", event)
+	orguser := &OrgUser{}
+	filter := db.QueryParams{"github_org_id": request.GithubOrgID.String(), "github_user_id": request.GithubUserID.String()}
+
+	if err := db.Get(orguser, filter); err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	return shared.NewAPIError(http.StatusBadRequest, ErrInvalidEvent)
+	shared.Logger().Debug("orguser", "debug", orguser)
+
+	orguser.UserID = request.UserID
+	if err := db.Save(orguser); err != nil {
+		shared.Logger().Error("error", "debug", err)
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
+
+	return ctx.JSON(http.StatusCreated, user)
 }
 
 // GithubArtifactReady API is called by github action after building and pushing the build artifact

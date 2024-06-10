@@ -27,8 +27,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime"
 	"github.com/scylladb/gocqlx/v2/table"
+	externalRef0 "go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/shared"
-	externalRef0 "go.breu.io/quantm/internal/shared"
+	externalRef1 "go.breu.io/quantm/internal/shared"
 )
 
 const (
@@ -221,6 +222,13 @@ type CreateGithubUserOrgsRequest struct {
 	UserID       gocql.UUID     `json:"user_id"`
 }
 
+// CreateTeamUserRequest defines model for CreateTeamUserRequest.
+type CreateTeamUserRequest struct {
+	GithubOrgID  shared.Int64 `json:"github_org_id"`
+	GithubUserID shared.Int64 `json:"github_user_id"`
+	UserID       gocql.UUID   `json:"user_id"`
+}
+
 // GithubActionResultRequest github action result is sent to quantum along with branch name.
 type GithubActionResultRequest struct {
 	Branch    string `json:"branch"`
@@ -261,23 +269,24 @@ func (githubeventsstate *GithubEventsState) GetTable() itable.ITable {
 
 // Installation defines model for GithubInstallation.
 type Installation struct {
-	CreatedAt         time.Time    `json:"created_at"`
-	ID                gocql.UUID   `json:"id"`
-	InstallationID    shared.Int64 `json:"installation_id" validate:"required,db_unique"`
-	InstallationLogin string       `json:"installation_login"`
-	InstallationType  string       `json:"installation_type"`
-	SenderID          shared.Int64 `json:"sender_id"`
-	SenderLogin       string       `json:"sender_login"`
-	Status            string       `json:"status"`
-	TeamID            gocql.UUID   `json:"team_id"`
-	UpdatedAt         time.Time    `json:"updated_at"`
+	CreatedAt           time.Time    `json:"created_at"`
+	ID                  gocql.UUID   `json:"id"`
+	InstallationID      shared.Int64 `json:"installation_id" validate:"required,db_unique"`
+	InstallationLogin   string       `json:"installation_login"`
+	InstallationLoginID shared.Int64 `json:"installation_login_id"`
+	InstallationType    string       `json:"installation_type"`
+	SenderID            shared.Int64 `json:"sender_id"`
+	SenderLogin         string       `json:"sender_login"`
+	Status              string       `json:"status"`
+	TeamID              gocql.UUID   `json:"team_id"`
+	UpdatedAt           time.Time    `json:"updated_at"`
 }
 
 var (
 	githubinstallationMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "github_installations",
-			Columns: []string{"created_at", "id", "installation_id", "installation_login", "installation_type", "sender_id", "sender_login", "status", "team_id", "updated_at"},
+			Columns: []string{"created_at", "id", "installation_id", "installation_login", "installation_login_id", "installation_type", "sender_id", "sender_login", "status", "team_id", "updated_at"},
 			PartKey: []string{"id", "team_id"},
 		},
 	}
@@ -368,7 +377,10 @@ type WorkflowStatus string
 
 // GithubGetInstallationsParams defines parameters for GithubGetInstallations.
 type GithubGetInstallationsParams struct {
-	// InstallationId InstallationID
+	// InstallationLogin github team name
+	InstallationLogin *string `form:"installation_login,omitempty" json:"installation_login,omitempty"`
+
+	// InstallationId installation ID of the github app.
 	InstallationId *shared.Int64 `form:"installation_id,omitempty" json:"installation_id,omitempty"`
 }
 
@@ -392,6 +404,9 @@ type GithubCompleteInstallationJSONRequestBody = CompleteInstallationRequest
 
 // GithubCreateUserOrgsJSONRequestBody defines body for GithubCreateUserOrgs for application/json ContentType.
 type GithubCreateUserOrgsJSONRequestBody = CreateGithubUserOrgsRequest
+
+// CreateTeamUserJSONRequestBody defines body for CreateTeamUser for application/json ContentType.
+type CreateTeamUserJSONRequestBody = CreateTeamUserRequest
 
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
@@ -502,6 +517,11 @@ type ClientInterface interface {
 
 	// GithubWebhook request
 	GithubWebhook(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// CreateTeamUserWithBody request with any body
+	CreateTeamUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	CreateTeamUser(ctx context.Context, body CreateTeamUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 }
 
 func (c *Client) GithubArtifactReadyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -662,6 +682,30 @@ func (c *Client) GithubCreateUserOrgs(ctx context.Context, body GithubCreateUser
 
 func (c *Client) GithubWebhook(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewGithubWebhookRequest(c.Server)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateTeamUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTeamUserRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) CreateTeamUser(ctx context.Context, body CreateTeamUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewCreateTeamUserRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -854,6 +898,22 @@ func NewGithubGetInstallationsRequest(server string, params *GithubGetInstallati
 	if params != nil {
 		queryValues := queryURL.Query()
 
+		if params.InstallationLogin != nil {
+
+			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "installation_login", runtime.ParamLocationQuery, *params.InstallationLogin); err != nil {
+				return nil, err
+			} else if parsed, err := url.ParseQuery(queryFrag); err != nil {
+				return nil, err
+			} else {
+				for k, v := range parsed {
+					for _, v2 := range v {
+						queryValues.Add(k, v2)
+					}
+				}
+			}
+
+		}
+
 		if params.InstallationId != nil {
 
 			if queryFrag, err := runtime.StyleParamWithLocation("form", true, "installation_id", runtime.ParamLocationQuery, *params.InstallationId); err != nil {
@@ -1020,6 +1080,46 @@ func NewGithubWebhookRequest(server string) (*http.Request, error) {
 	return req, nil
 }
 
+// NewCreateTeamUserRequest calls the generic CreateTeamUser builder with application/json body
+func NewCreateTeamUserRequest(server string, body CreateTeamUserJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewCreateTeamUserRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewCreateTeamUserRequestWithBody generates requests for CreateTeamUser with any type of body
+func NewCreateTeamUserRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/providers/teams/team-user")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 func (c *Client) applyEditors(ctx context.Context, req *http.Request, additionalEditors []RequestEditorFn) error {
 	for _, r := range c.RequestEditors {
 		if err := r(ctx, req); err != nil {
@@ -1099,15 +1199,20 @@ type ClientWithResponsesInterface interface {
 
 	// GithubWebhookWithResponse request
 	GithubWebhookWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*GithubWebhookResponse, error)
+
+	// CreateTeamUserWithBodyWithResponse request with any body
+	CreateTeamUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTeamUserResponse, error)
+
+	CreateTeamUserWithResponse(ctx context.Context, body CreateTeamUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTeamUserResponse, error)
 }
 
 type GithubArtifactReadyResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]WorkflowResponse
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
+	JSON400      *externalRef1.BadRequest
+	JSON401      *externalRef1.Unauthorized
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1129,7 +1234,7 @@ func (r GithubArtifactReadyResponse) StatusCode() int {
 type GithubActionResultResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON500      *externalRef0.InternalServerError
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1151,7 +1256,7 @@ func (r GithubActionResultResponse) StatusCode() int {
 type CliGitMergeResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON500      *externalRef0.InternalServerError
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1174,10 +1279,10 @@ type GithubCompleteInstallationResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON201      *WorkflowResponse
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
-	JSON500      *externalRef0.InternalServerError
+	JSON400      *externalRef1.BadRequest
+	JSON401      *externalRef1.Unauthorized
+	JSON404      *externalRef1.NotFound
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1200,9 +1305,9 @@ type GithubGetInstallationsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]Installation
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
+	JSON400      *externalRef1.BadRequest
+	JSON401      *externalRef1.Unauthorized
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1225,9 +1330,9 @@ type GithubGetReposResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON200      *[]Repo
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
+	JSON400      *externalRef1.BadRequest
+	JSON401      *externalRef1.Unauthorized
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1250,9 +1355,9 @@ type GithubListUserOrgsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON201      *[]OrgUser
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
+	JSON400      *externalRef1.BadRequest
+	JSON401      *externalRef1.Unauthorized
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1275,9 +1380,9 @@ type GithubCreateUserOrgsResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
 	JSON201      *[]OrgUser
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
+	JSON400      *externalRef1.BadRequest
+	JSON401      *externalRef1.Unauthorized
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1301,8 +1406,8 @@ type GithubWebhookResponse struct {
 	HTTPResponse *http.Response
 	JSON200      *WorkflowResponse
 	JSON201      *WorkflowResponse
-	JSON400      *externalRef0.BadRequest
-	JSON500      *externalRef0.InternalServerError
+	JSON400      *externalRef1.BadRequest
+	JSON500      *externalRef1.InternalServerError
 }
 
 // Status returns HTTPResponse.Status
@@ -1315,6 +1420,31 @@ func (r GithubWebhookResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r GithubWebhookResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type CreateTeamUserResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON201      *externalRef0.User
+	JSON400      *externalRef1.BadRequest
+	JSON401      *externalRef1.Unauthorized
+	JSON500      *externalRef1.InternalServerError
+}
+
+// Status returns HTTPResponse.Status
+func (r CreateTeamUserResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r CreateTeamUserResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1442,6 +1572,23 @@ func (c *ClientWithResponses) GithubWebhookWithResponse(ctx context.Context, req
 	return ParseGithubWebhookResponse(rsp)
 }
 
+// CreateTeamUserWithBodyWithResponse request with arbitrary body returning *CreateTeamUserResponse
+func (c *ClientWithResponses) CreateTeamUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTeamUserResponse, error) {
+	rsp, err := c.CreateTeamUserWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTeamUserResponse(rsp)
+}
+
+func (c *ClientWithResponses) CreateTeamUserWithResponse(ctx context.Context, body CreateTeamUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTeamUserResponse, error) {
+	rsp, err := c.CreateTeamUser(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParseCreateTeamUserResponse(rsp)
+}
+
 // ParseGithubArtifactReadyResponse parses an HTTP response from a GithubArtifactReadyWithResponse call
 func ParseGithubArtifactReadyResponse(rsp *http.Response) (*GithubArtifactReadyResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -1464,21 +1611,21 @@ func ParseGithubArtifactReadyResponse(rsp *http.Response) (*GithubArtifactReadyR
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
+		var dest externalRef1.Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1504,7 +1651,7 @@ func ParseGithubActionResultResponse(rsp *http.Response) (*GithubActionResultRes
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1530,7 +1677,7 @@ func ParseCliGitMergeResponse(rsp *http.Response) (*CliGitMergeResponse, error) 
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1563,28 +1710,28 @@ func ParseGithubCompleteInstallationResponse(rsp *http.Response) (*GithubComplet
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
+		var dest externalRef1.Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
+		var dest externalRef1.NotFound
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON404 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1617,21 +1764,21 @@ func ParseGithubGetInstallationsResponse(rsp *http.Response) (*GithubGetInstalla
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
+		var dest externalRef1.Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1664,21 +1811,21 @@ func ParseGithubGetReposResponse(rsp *http.Response) (*GithubGetReposResponse, e
 		response.JSON200 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
+		var dest externalRef1.Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1711,21 +1858,21 @@ func ParseGithubListUserOrgsResponse(rsp *http.Response) (*GithubListUserOrgsRes
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
+		var dest externalRef1.Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1758,21 +1905,21 @@ func ParseGithubCreateUserOrgsResponse(rsp *http.Response) (*GithubCreateUserOrg
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
+		var dest externalRef1.Unauthorized
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON401 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1812,14 +1959,61 @@ func ParseGithubWebhookResponse(rsp *http.Response) (*GithubWebhookResponse, err
 		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
+		var dest externalRef1.BadRequest
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON400 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
+		var dest externalRef1.InternalServerError
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
+// ParseCreateTeamUserResponse parses an HTTP response from a CreateTeamUserWithResponse call
+func ParseCreateTeamUserResponse(rsp *http.Response) (*CreateTeamUserResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &CreateTeamUserResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
+		var dest externalRef0.User
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON201 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
+		var dest externalRef1.BadRequest
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON400 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
+		var dest externalRef1.Unauthorized
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON401 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest externalRef1.InternalServerError
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
@@ -1850,7 +2044,7 @@ type ServerInterface interface {
 
 	// Get GitHub installations
 	// (GET /providers/github/installations)
-	GithubGetInstallations(ctx echo.Context) error
+	GithubGetInstallations(ctx echo.Context, params GithubGetInstallationsParams) error
 
 	// Get GitHub repositories
 	// (GET /providers/github/repos)
@@ -1858,7 +2052,7 @@ type ServerInterface interface {
 
 	// list assoicated organizations
 	// (GET /providers/github/user-orgs)
-	GithubListUserOrgs(ctx echo.Context) error
+	GithubListUserOrgs(ctx echo.Context, params GithubListUserOrgsParams) error
 
 	// associate github organizations for the newly registered user.
 	// (POST /providers/github/user-orgs)
@@ -1868,8 +2062,12 @@ type ServerInterface interface {
 	// (POST /providers/github/webhook)
 	GithubWebhook(ctx echo.Context) error
 
+	// associate team and team users for the newly registered user.
+	// (POST /providers/teams/team-user)
+	CreateTeamUser(ctx echo.Context) error
+
 	// SecurityHandler returns the underlying Security Wrapper
-	SecureHandler(handler echo.HandlerFunc, ctx echo.Context) error
+	SecureHandler(ctx echo.Context, handler echo.HandlerFunc) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -1884,10 +2082,11 @@ func (w *ServerInterfaceWrapper) GithubArtifactReady(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubArtifactReady
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GithubArtifactReady(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -1901,10 +2100,11 @@ func (w *ServerInterfaceWrapper) GithubActionResult(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubActionResult
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GithubActionResult(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -1918,10 +2118,11 @@ func (w *ServerInterfaceWrapper) CliGitMerge(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.CliGitMerge
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.CliGitMerge(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -1935,10 +2136,11 @@ func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) er
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubCompleteInstallation
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GithubCompleteInstallation(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -1954,6 +2156,13 @@ func (w *ServerInterfaceWrapper) GithubGetInstallations(ctx echo.Context) error 
 
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GithubGetInstallationsParams
+	// ------------- Optional query parameter "installation_login" -------------
+
+	err = runtime.BindQueryParameter("form", true, false, "installation_login", ctx.QueryParams(), &params.InstallationLogin)
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter installation_login: %s", err))
+	}
+
 	// ------------- Optional query parameter "installation_id" -------------
 
 	err = runtime.BindQueryParameter("form", true, false, "installation_id", ctx.QueryParams(), &params.InstallationId)
@@ -1961,10 +2170,11 @@ func (w *ServerInterfaceWrapper) GithubGetInstallations(ctx echo.Context) error 
 		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter installation_id: %s", err))
 	}
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubGetInstallations
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GithubGetInstallations(ctx, params)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -1978,10 +2188,11 @@ func (w *ServerInterfaceWrapper) GithubGetRepos(ctx echo.Context) error {
 
 	ctx.Set(APIKeyAuthScopes, []string{})
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubGetRepos
-	secure := w.Handler.SecureHandler
-	err = secure(handler, ctx)
+	handler := func(ctx echo.Context) error {
+		return w.Handler.GithubGetRepos(ctx)
+	}
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SecureHandler(ctx, handler)
 
 	return err
 }
@@ -2000,9 +2211,8 @@ func (w *ServerInterfaceWrapper) GithubListUserOrgs(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter user_id: %s", err))
 	}
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubListUserOrgs
-	err = handler(ctx)
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GithubListUserOrgs(ctx, params)
 
 	return err
 }
@@ -2012,9 +2222,8 @@ func (w *ServerInterfaceWrapper) GithubListUserOrgs(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GithubCreateUserOrgs(ctx echo.Context) error {
 	var err error
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubCreateUserOrgs
-	err = handler(ctx)
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GithubCreateUserOrgs(ctx)
 
 	return err
 }
@@ -2024,9 +2233,19 @@ func (w *ServerInterfaceWrapper) GithubCreateUserOrgs(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GithubWebhook(ctx echo.Context) error {
 	var err error
 
-	// Get the handler, get the secure handler if needed and then invoke with unmarshalled params.
-	handler := w.Handler.GithubWebhook
-	err = handler(ctx)
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GithubWebhook(ctx)
+
+	return err
+}
+
+// CreateTeamUser converts echo context to params.
+
+func (w *ServerInterfaceWrapper) CreateTeamUser(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateTeamUser(ctx)
 
 	return err
 }
@@ -2067,5 +2286,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/providers/github/user-orgs", wrapper.GithubListUserOrgs)
 	router.POST(baseURL+"/providers/github/user-orgs", wrapper.GithubCreateUserOrgs)
 	router.POST(baseURL+"/providers/github/webhook", wrapper.GithubWebhook)
+	router.POST(baseURL+"/providers/teams/team-user", wrapper.CreateTeamUser)
 
 }

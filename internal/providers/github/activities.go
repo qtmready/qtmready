@@ -20,6 +20,7 @@ package github
 import (
 	"context"
 
+	gh "github.com/google/go-github/v62/github"
 	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/quantm/internal/auth"
@@ -73,8 +74,8 @@ func (a *Activities) GetTeamByID(ctx context.Context, id string) (*auth.Team, er
 func (a *Activities) CreateMemberships(ctx context.Context, payload *CreateMembershipsPayload) error {
 	orgusr := &OrgUser{}
 	teamuser := &auth.TeamUser{
-		TeamID:   payload.UserID,
-		UserID:   payload.TeamID,
+		TeamID:   payload.TeamID,
+		UserID:   payload.UserID,
 		IsActive: true,
 		IsAdmin:  payload.IsAdmin,
 	}
@@ -260,6 +261,47 @@ func (a *Activities) SyncReposFromGithub(ctx context.Context, payload *SyncRepos
 			repo.DefaultBranch = result.GetDefaultBranch()
 
 			if err := db.Save(&repo); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// SyncOrgUsersFromGithub syncs orgainzation users from github.
+// NOTE - working only for public org members
+// TODO - ifor private org mambers.
+func (a *Activities) SyncOrgUsersFromGithub(ctx context.Context, payload *SyncOrgUsersFromGithubPayload) error {
+	if client, err := Instance().GetClientForInstallationID(payload.InstallationID); err != nil {
+		return err
+	} else {
+		lmopts := &gh.ListMembersOptions{
+			ListOptions: gh.ListOptions{},
+		}
+
+		members, _, err := client.Organizations.ListMembers(ctx, payload.GithubOrgName, lmopts)
+		if err != nil {
+			return err
+		}
+
+		for _, member := range members {
+			orgusr := &OrgUser{}
+			filter := db.QueryParams{
+				"github_org_id":  payload.GithubOrgID.String(),
+				"github_user_id": shared.Int64(*member.ID).String(),
+			}
+
+			// TODO - need to refine
+			if err := db.Get(orgusr, filter); err != nil {
+				shared.Logger().Debug("member => err", "debug", err)
+			}
+
+			orgusr.GithubOrgName = payload.GithubOrgName
+			orgusr.GithubOrgID = payload.GithubOrgID
+			orgusr.GithubUserID = shared.Int64(*member.ID)
+
+			if err := db.Save(orgusr); err != nil {
 				return err
 			}
 		}

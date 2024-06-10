@@ -42,6 +42,69 @@ func NewServerHandler(security echo.MiddlewareFunc) *ServerHandler {
 	}
 }
 
+func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
+	request := &RepoCreateRequest{}
+	if err := ctx.Bind(request); err != nil {
+		return err
+	}
+
+	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
+	data, err := Instance().
+		RepoIO(request.Provider).
+		GetRepoData(ctx.Request().Context(), request.CtrlID.String())
+
+	if err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	repo := &Repo{
+		Name:                data.Name,
+		DefaultBranch:       data.DefaultBranch,
+		IsMonorepo:          request.IsMonorepo,
+		Provider:            request.Provider,
+		ProviderID:          data.ProviderID,
+		CtrlID:              request.CtrlID,
+		Threshold:           request.Threshold,
+		TeamID:              teamID,
+		MessageProvider:     request.MessageProvider,
+		MessageProviderData: request.MessageProviderData,
+	}
+
+	if err := db.Save(repo); err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	if err := Instance().
+		RepoIO(request.Provider).
+		SetEarlyWarning(ctx.Request().Context(), request.CtrlID.String(), true); err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	return ctx.NoContent(http.StatusNoContent)
+}
+
+func (s *ServerHandler) ListRepos(ctx echo.Context) error {
+	repos := make([]Repo, 0)
+	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
+
+	if err := db.Filter(&Repo{}, &repos, params); err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	return ctx.JSON(http.StatusOK, repos)
+}
+
+func (s *ServerHandler) GetRepo(ctx echo.Context, id string) error {
+	repo := &Repo{}
+	params := db.QueryParams{"id": id}
+
+	if err := db.Get(repo, params); err != nil {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	return ctx.JSON(http.StatusOK, repo)
+}
+
 func (s *ServerHandler) CreateBlueprint(ctx echo.Context) error {
 	request := &BlueprintCreateRequest{}
 	if err := ctx.Bind(request); err != nil {
@@ -63,9 +126,9 @@ func (s *ServerHandler) CreateBlueprint(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, blueprint)
 }
 
-func (s *ServerHandler) GetBlueprint(ctx echo.Context) error {
+func (s *ServerHandler) GetBlueprint(ctx echo.Context, stackID string) error {
 	blueprint := &Blueprint{}
-	params := db.QueryParams{"stack_id": ctx.Param("stack_id")}
+	params := db.QueryParams{"stack_id": stackID}
 
 	if err := db.Get(blueprint, params); err != nil {
 		return shared.NewAPIError(http.StatusNotFound, err)
@@ -97,10 +160,7 @@ func (s *ServerHandler) CreateWorkload(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, workload)
 }
 
-func (s *ServerHandler) GetWorkload(ctx echo.Context) error {
-	stackid := ctx.QueryParam("stack_id")
-	repoid := ctx.QueryParam("repo_id")
-
+func (s *ServerHandler) GetWorkload(ctx echo.Context, stackid, repoid string) error {
 	if repoid != "" {
 		workload := &Workload{}
 		params := db.QueryParams{"repo_id": repoid}
@@ -147,9 +207,9 @@ func (s *ServerHandler) CreateResource(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, resource)
 }
 
-func (s *ServerHandler) GetResource(ctx echo.Context) error {
+func (s *ServerHandler) GetResource(ctx echo.Context, id string) error {
 	resources := make([]Resource, 0)
-	params := db.QueryParams{"stack_id": ctx.Param("stack_id")}
+	params := db.QueryParams{"stack_id": id}
 
 	if err := db.Filter(&Resource{}, &resources, params); err != nil {
 		return shared.NewAPIError(http.StatusInternalServerError, err)
@@ -207,7 +267,7 @@ func (s *ServerHandler) ListStacks(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, stacks)
 }
 
-func (s *ServerHandler) GetStack(ctx echo.Context) error {
+func (s *ServerHandler) GetStack(ctx echo.Context, id string) error {
 	stack := &Stack{}
 	params := db.QueryParams{"slug": "'" + ctx.Param("slug") + "'", "team_id": ctx.Get("team_id").(string)}
 
@@ -216,67 +276,4 @@ func (s *ServerHandler) GetStack(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(http.StatusOK, stack)
-}
-
-func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
-	request := &RepoCreateRequest{}
-	if err := ctx.Bind(request); err != nil {
-		return err
-	}
-
-	teamID, _ := gocql.ParseUUID(ctx.Get("team_id").(string))
-	data, err := Instance().
-		RepoIO(request.Provider).
-		GetRepoData(ctx.Request().Context(), request.CtrlID.String())
-
-	if err != nil {
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
-
-	repo := &Repo{
-		Name:                data.Name,
-		DefaultBranch:       data.DefaultBranch,
-		IsMonorepo:          request.IsMonorepo,
-		Provider:            request.Provider,
-		ProviderID:          data.ProviderID,
-		CtrlID:              request.CtrlID,
-		Threshold:           request.Threshold,
-		TeamID:              teamID,
-		MessageProvider:     request.MessageProvider,
-		MessageProviderData: request.MessageProviderData,
-	}
-
-	if err := db.Save(repo); err != nil {
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
-
-	if err := Instance().
-		RepoIO(request.Provider).
-		SetEarlyWarning(ctx.Request().Context(), request.CtrlID.String(), true); err != nil {
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
-
-	return ctx.NoContent(http.StatusNoContent)
-}
-
-func (s *ServerHandler) ListRepos(ctx echo.Context) error {
-	repos := make([]Repo, 0)
-	params := db.QueryParams{"team_id": ctx.Get("team_id").(string)}
-
-	if err := db.Filter(&Repo{}, &repos, params); err != nil {
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
-
-	return ctx.JSON(http.StatusOK, repos)
-}
-
-func (s *ServerHandler) GetRepo(ctx echo.Context) error {
-	repo := &Repo{}
-	params := db.QueryParams{"id": ctx.Param("id")}
-
-	if err := db.Get(repo, params); err != nil {
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
-
-	return ctx.JSON(http.StatusOK, repo)
 }
