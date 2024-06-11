@@ -38,49 +38,9 @@ const (
 )
 
 var (
-	ErrInvalidOCIImageRegistry = errors.New("invalid OCIImageRegistry value")
-	ErrInvalidSetupAction      = errors.New("invalid SetupAction value")
-	ErrInvalidWorkflowStatus   = errors.New("invalid WorkflowStatus value")
+	ErrInvalidSetupAction    = errors.New("invalid SetupAction value")
+	ErrInvalidWorkflowStatus = errors.New("invalid WorkflowStatus value")
 )
-
-type (
-	OCIImageRegistryMapType map[string]OCIImageRegistry // OCIImageRegistryMapType is a quick lookup map for OCIImageRegistry.
-)
-
-// Defines values for OCIImageRegistry.
-const (
-	OCIImageRegistryGCPArtifactRegistry  OCIImageRegistry = "GCPArtifactRegistry"
-	OCIImageRegistryGCPContainerRegistry OCIImageRegistry = "GCPContainerRegistry"
-)
-
-// OCIImageRegistryMap returns all known values for OCIImageRegistry.
-var (
-	OCIImageRegistryMap = OCIImageRegistryMapType{
-		OCIImageRegistryGCPArtifactRegistry.String():  OCIImageRegistryGCPArtifactRegistry,
-		OCIImageRegistryGCPContainerRegistry.String(): OCIImageRegistryGCPContainerRegistry,
-	}
-)
-
-/*
- * Helper methods for OCIImageRegistry for easy marshalling and unmarshalling.
- */
-func (v OCIImageRegistry) String() string               { return string(v) }
-func (v OCIImageRegistry) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
-func (v *OCIImageRegistry) UnmarshalJSON(data []byte) error {
-	var s string
-	if err := json.Unmarshal(data, &s); err != nil {
-		return err
-	}
-
-	val, ok := OCIImageRegistryMap[s]
-	if !ok {
-		return ErrInvalidOCIImageRegistry
-	}
-
-	*v = val
-
-	return nil
-}
 
 type (
 	SetupActionMapType map[string]SetupAction // SetupActionMapType is a quick lookup map for SetupAction.
@@ -176,39 +136,6 @@ func (v *WorkflowStatus) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// ArtifactReadyRequest defines model for ArtifactReadyRequest.
-type ArtifactReadyRequest struct {
-	Digest         string           `json:"digest"`
-	Image          string           `json:"image"`
-	InstallationID string           `json:"installation_id"`
-	PullRequestID  string           `json:"pull_request_id"`
-	Registry       OCIImageRegistry `json:"registry"`
-	RepoID         string           `json:"repo_id"`
-}
-
-var (
-	artifactreadyrequestMeta = itable.Metadata{
-		M: &table.Metadata{
-			Name:    "github_artifact",
-			Columns: []string{"digest", "image", "installation_id", "pull_request_id", "registry", "repo_id"},
-			PartKey: []string{},
-		},
-	}
-
-	artifactreadyrequestTable = itable.New(*artifactreadyrequestMeta.M)
-)
-
-func (artifactreadyrequest *ArtifactReadyRequest) GetTable() itable.ITable {
-	return artifactreadyrequestTable
-}
-
-// CliGitMerge branch name and repo info is sent to quantm via quantum-cli.
-type CliGitMerge struct {
-	Branch    string `json:"branch"`
-	RepoName  string `json:"repo_name"`
-	RepoOwner string `json:"repo_owner"`
-}
-
 // CompleteInstallationRequest complete the installation given the installation_id & setup_action.
 type CompleteInstallationRequest struct {
 	InstallationID shared.Int64 `json:"installation_id"`
@@ -227,44 +154,6 @@ type CreateTeamUserRequest struct {
 	GithubOrgID  shared.Int64 `json:"github_org_id"`
 	GithubUserID shared.Int64 `json:"github_user_id"`
 	UserID       gocql.UUID   `json:"user_id"`
-}
-
-// GithubActionResultRequest github action result is sent to quantum along with branch name.
-type GithubActionResultRequest struct {
-	Branch    string `json:"branch"`
-	RepoID    string `json:"repo_id"`
-	RepoName  string `json:"repo_name"`
-	RepoOwner string `json:"repo_owner"`
-	Result    string `json:"result"`
-}
-
-// GithubEventsState defines model for GithubEventsState.
-type GithubEventsState struct {
-	CreatedAt           time.Time    `json:"created_at"`
-	EventType           string       `json:"event_type"`
-	EventsData          string       `json:"events_data"`
-	GithubWorkflowID    shared.Int64 `json:"github_workflow_id"`
-	GithubWorkflowRunID shared.Int64 `json:"github_workflow_run_id"`
-	ID                  gocql.UUID   `json:"id"`
-	RepoName            string       `json:"repo_name"`
-	Status              string       `json:"status"`
-	UpdatedAt           time.Time    `json:"updated_at"`
-}
-
-var (
-	githubeventsstateMeta = itable.Metadata{
-		M: &table.Metadata{
-			Name:    "github_events_state",
-			Columns: []string{"created_at", "event_type", "events_data", "github_workflow_id", "github_workflow_run_id", "id", "repo_name", "status", "updated_at"},
-			PartKey: []string{},
-		},
-	}
-
-	githubeventsstateTable = itable.New(*githubeventsstateMeta.M)
-)
-
-func (githubeventsstate *GithubEventsState) GetTable() itable.ITable {
-	return githubeventsstateTable
 }
 
 // Installation defines model for GithubInstallation.
@@ -358,9 +247,6 @@ func (githubrepo *Repo) GetTable() itable.ITable {
 	return githubrepoTable
 }
 
-// OCIImageRegistry defines model for OCIImageRegistry.
-type OCIImageRegistry string
-
 // SetupAction defines model for SetupAction.
 type SetupAction string
 
@@ -389,15 +275,6 @@ type GithubListUserOrgsParams struct {
 	// UserId User ID
 	UserId string `form:"user_id" json:"user_id"`
 }
-
-// GithubArtifactReadyJSONRequestBody defines body for GithubArtifactReady for application/json ContentType.
-type GithubArtifactReadyJSONRequestBody = ArtifactReadyRequest
-
-// GithubActionResultJSONRequestBody defines body for GithubActionResult for application/json ContentType.
-type GithubActionResultJSONRequestBody = GithubActionResultRequest
-
-// CliGitMergeJSONRequestBody defines body for CliGitMerge for application/json ContentType.
-type CliGitMergeJSONRequestBody = CliGitMerge
 
 // GithubCompleteInstallationJSONRequestBody defines body for GithubCompleteInstallation for application/json ContentType.
 type GithubCompleteInstallationJSONRequestBody = CompleteInstallationRequest
@@ -481,21 +358,6 @@ func WithRequestEditorFn(fn RequestEditorFn) ClientOption {
 
 // The interface specification for the client above.
 type ClientInterface interface {
-	// GithubArtifactReadyWithBody request with any body
-	GithubArtifactReadyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	GithubArtifactReady(ctx context.Context, body GithubArtifactReadyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// GithubActionResultWithBody request with any body
-	GithubActionResultWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	GithubActionResult(ctx context.Context, body GithubActionResultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// CliGitMergeWithBody request with any body
-	CliGitMergeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	CliGitMerge(ctx context.Context, body CliGitMergeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// GithubCompleteInstallationWithBody request with any body
 	GithubCompleteInstallationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
@@ -522,78 +384,6 @@ type ClientInterface interface {
 	CreateTeamUserWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateTeamUser(ctx context.Context, body CreateTeamUserJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
-}
-
-func (c *Client) GithubArtifactReadyWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGithubArtifactReadyRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GithubArtifactReady(ctx context.Context, body GithubArtifactReadyJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGithubArtifactReadyRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GithubActionResultWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGithubActionResultRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) GithubActionResult(ctx context.Context, body GithubActionResultJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGithubActionResultRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) CliGitMergeWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCliGitMergeRequestWithBody(c.Server, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) CliGitMerge(ctx context.Context, body CliGitMergeJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewCliGitMergeRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
 }
 
 func (c *Client) GithubCompleteInstallationWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
@@ -714,126 +504,6 @@ func (c *Client) CreateTeamUser(ctx context.Context, body CreateTeamUserJSONRequ
 		return nil, err
 	}
 	return c.Client.Do(req)
-}
-
-// NewGithubArtifactReadyRequest calls the generic GithubArtifactReady builder with application/json body
-func NewGithubArtifactReadyRequest(server string, body GithubArtifactReadyJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewGithubArtifactReadyRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewGithubArtifactReadyRequestWithBody generates requests for GithubArtifactReady with any type of body
-func NewGithubArtifactReadyRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/providers/github/artifact-ready")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewGithubActionResultRequest calls the generic GithubActionResult builder with application/json body
-func NewGithubActionResultRequest(server string, body GithubActionResultJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewGithubActionResultRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewGithubActionResultRequestWithBody generates requests for GithubActionResult with any type of body
-func NewGithubActionResultRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/providers/github/cicd-result")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
-}
-
-// NewCliGitMergeRequest calls the generic CliGitMerge builder with application/json body
-func NewCliGitMergeRequest(server string, body CliGitMergeJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewCliGitMergeRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewCliGitMergeRequestWithBody generates requests for CliGitMerge with any type of body
-func NewCliGitMergeRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/providers/github/cli-git-merge")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-
-	return req, nil
 }
 
 // NewGithubCompleteInstallationRequest calls the generic GithubCompleteInstallation builder with application/json body
@@ -1163,21 +833,6 @@ func WithBaseURL(baseURL string) ClientOption {
 
 // ClientWithResponsesInterface is the interface specification for the client with responses above.
 type ClientWithResponsesInterface interface {
-	// GithubArtifactReadyWithBodyWithResponse request with any body
-	GithubArtifactReadyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error)
-
-	GithubArtifactReadyWithResponse(ctx context.Context, body GithubArtifactReadyJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error)
-
-	// GithubActionResultWithBodyWithResponse request with any body
-	GithubActionResultWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubActionResultResponse, error)
-
-	GithubActionResultWithResponse(ctx context.Context, body GithubActionResultJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubActionResultResponse, error)
-
-	// CliGitMergeWithBodyWithResponse request with any body
-	CliGitMergeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CliGitMergeResponse, error)
-
-	CliGitMergeWithResponse(ctx context.Context, body CliGitMergeJSONRequestBody, reqEditors ...RequestEditorFn) (*CliGitMergeResponse, error)
-
 	// GithubCompleteInstallationWithBodyWithResponse request with any body
 	GithubCompleteInstallationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error)
 
@@ -1204,75 +859,6 @@ type ClientWithResponsesInterface interface {
 	CreateTeamUserWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTeamUserResponse, error)
 
 	CreateTeamUserWithResponse(ctx context.Context, body CreateTeamUserJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTeamUserResponse, error)
-}
-
-type GithubArtifactReadyResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *[]WorkflowResponse
-	JSON400      *externalRef1.BadRequest
-	JSON401      *externalRef1.Unauthorized
-	JSON500      *externalRef1.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r GithubArtifactReadyResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GithubArtifactReadyResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GithubActionResultResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON500      *externalRef1.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r GithubActionResultResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GithubActionResultResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type CliGitMergeResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON500      *externalRef1.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r CliGitMergeResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r CliGitMergeResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
 }
 
 type GithubCompleteInstallationResponse struct {
@@ -1451,57 +1037,6 @@ func (r CreateTeamUserResponse) StatusCode() int {
 	return 0
 }
 
-// GithubArtifactReadyWithBodyWithResponse request with arbitrary body returning *GithubArtifactReadyResponse
-func (c *ClientWithResponses) GithubArtifactReadyWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error) {
-	rsp, err := c.GithubArtifactReadyWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGithubArtifactReadyResponse(rsp)
-}
-
-func (c *ClientWithResponses) GithubArtifactReadyWithResponse(ctx context.Context, body GithubArtifactReadyJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubArtifactReadyResponse, error) {
-	rsp, err := c.GithubArtifactReady(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGithubArtifactReadyResponse(rsp)
-}
-
-// GithubActionResultWithBodyWithResponse request with arbitrary body returning *GithubActionResultResponse
-func (c *ClientWithResponses) GithubActionResultWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubActionResultResponse, error) {
-	rsp, err := c.GithubActionResultWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGithubActionResultResponse(rsp)
-}
-
-func (c *ClientWithResponses) GithubActionResultWithResponse(ctx context.Context, body GithubActionResultJSONRequestBody, reqEditors ...RequestEditorFn) (*GithubActionResultResponse, error) {
-	rsp, err := c.GithubActionResult(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGithubActionResultResponse(rsp)
-}
-
-// CliGitMergeWithBodyWithResponse request with arbitrary body returning *CliGitMergeResponse
-func (c *ClientWithResponses) CliGitMergeWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CliGitMergeResponse, error) {
-	rsp, err := c.CliGitMergeWithBody(ctx, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCliGitMergeResponse(rsp)
-}
-
-func (c *ClientWithResponses) CliGitMergeWithResponse(ctx context.Context, body CliGitMergeJSONRequestBody, reqEditors ...RequestEditorFn) (*CliGitMergeResponse, error) {
-	rsp, err := c.CliGitMerge(ctx, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseCliGitMergeResponse(rsp)
-}
-
 // GithubCompleteInstallationWithBodyWithResponse request with arbitrary body returning *GithubCompleteInstallationResponse
 func (c *ClientWithResponses) GithubCompleteInstallationWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*GithubCompleteInstallationResponse, error) {
 	rsp, err := c.GithubCompleteInstallationWithBody(ctx, contentType, body, reqEditors...)
@@ -1587,105 +1122,6 @@ func (c *ClientWithResponses) CreateTeamUserWithResponse(ctx context.Context, bo
 		return nil, err
 	}
 	return ParseCreateTeamUserResponse(rsp)
-}
-
-// ParseGithubArtifactReadyResponse parses an HTTP response from a GithubArtifactReadyWithResponse call
-func ParseGithubArtifactReadyResponse(rsp *http.Response) (*GithubArtifactReadyResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GithubArtifactReadyResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []WorkflowResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef1.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef1.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseGithubActionResultResponse parses an HTTP response from a GithubActionResultWithResponse call
-func ParseGithubActionResultResponse(rsp *http.Response) (*GithubActionResultResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GithubActionResultResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseCliGitMergeResponse parses an HTTP response from a CliGitMergeWithResponse call
-func ParseCliGitMergeResponse(rsp *http.Response) (*CliGitMergeResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &CliGitMergeResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef1.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
 }
 
 // ParseGithubCompleteInstallationResponse parses an HTTP response from a GithubCompleteInstallationWithResponse call
@@ -2026,18 +1462,6 @@ func ParseCreateTeamUserResponse(rsp *http.Response) (*CreateTeamUserResponse, e
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// GitHub release artifact ready
-	// (POST /providers/github/artifact-ready)
-	GithubArtifactReady(ctx echo.Context) error
-
-	// Receive result from github action CICD
-	// (POST /providers/github/cicd-result)
-	GithubActionResult(ctx echo.Context) error
-
-	// Receive git merge command from quantm cli
-	// (POST /providers/github/cli-git-merge)
-	CliGitMerge(ctx echo.Context) error
-
 	// Complete GitHub App installation
 	// (POST /providers/github/complete-installation)
 	GithubCompleteInstallation(ctx echo.Context) error
@@ -2073,58 +1497,6 @@ type ServerInterface interface {
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
-}
-
-// GithubArtifactReady converts echo context to params.
-
-func (w *ServerInterfaceWrapper) GithubArtifactReady(ctx echo.Context) error {
-	var err error
-
-	ctx.Set(APIKeyAuthScopes, []string{})
-
-	handler := func(ctx echo.Context) error {
-		return w.Handler.GithubArtifactReady(ctx)
-	}
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.SecureHandler(ctx, handler)
-
-	return err
-}
-
-// GithubActionResult converts echo context to params.
-
-func (w *ServerInterfaceWrapper) GithubActionResult(ctx echo.Context) error {
-	var err error
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	ctx.Set(APIKeyAuthScopes, []string{})
-
-	handler := func(ctx echo.Context) error {
-		return w.Handler.GithubActionResult(ctx)
-	}
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.SecureHandler(ctx, handler)
-
-	return err
-}
-
-// CliGitMerge converts echo context to params.
-
-func (w *ServerInterfaceWrapper) CliGitMerge(ctx echo.Context) error {
-	var err error
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	ctx.Set(APIKeyAuthScopes, []string{})
-
-	handler := func(ctx echo.Context) error {
-		return w.Handler.CliGitMerge(ctx)
-	}
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.SecureHandler(ctx, handler)
-
-	return err
 }
 
 // GithubCompleteInstallation converts echo context to params.
@@ -2277,9 +1649,6 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
-	router.POST(baseURL+"/providers/github/artifact-ready", wrapper.GithubArtifactReady)
-	router.POST(baseURL+"/providers/github/cicd-result", wrapper.GithubActionResult)
-	router.POST(baseURL+"/providers/github/cli-git-merge", wrapper.CliGitMerge)
 	router.POST(baseURL+"/providers/github/complete-installation", wrapper.GithubCompleteInstallation)
 	router.GET(baseURL+"/providers/github/installations", wrapper.GithubGetInstallations)
 	router.GET(baseURL+"/providers/github/repos", wrapper.GithubGetRepos)
