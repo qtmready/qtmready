@@ -31,14 +31,6 @@ const (
 	StackSignalManualOverride     shared.WorkflowSignal = "stack__manual_override"
 )
 
-const (
-	GettingAssets State = iota
-	GotAssets
-	ProvisioningInfra
-	InfraProvisioned
-	CreatingDeployment
-)
-
 // RepoIO payloads.
 type (
 	RepoIOGetLatestCommitPayload struct {
@@ -147,67 +139,3 @@ type (
 		Code string `json:"code"`
 	}
 )
-
-type (
-	Infra               map[gocql.UUID]CloudResource // Map of resource Name and provider
-	JsonInfra           map[gocql.UUID][]byte
-	SlicedResult[T any] struct {
-		Data []T `json:"data"`
-	}
-
-	ResourceConfig struct{}
-
-	ChildWorkflows struct {
-		GetAssets      string
-		ProvisionInfra string
-		Deploy         string
-	}
-
-	State int64
-
-	Deployment struct {
-		state     State
-		workflows ChildWorkflows
-		OldInfra  JsonInfra
-		NewInfra  JsonInfra
-	}
-
-	Deployments     map[gocql.UUID]*Deployment // deployments against a changesetID.
-	ChangesetAssets map[gocql.UUID]*Assets     // assets against a changesetID.
-
-	// Assets contains all the assets fetched from DB against a stack.
-	Assets struct {
-		Repos       []Repo     // stack repos
-		Resources   []Resource // stack cloud resources
-		Workloads   []Workload // stack workloads
-		Blueprint   Blueprint  // stack blueprint
-		ChangesetID gocql.UUID
-		Infra       JsonInfra
-	}
-
-	GetAssetsPayload struct {
-		StackID       string
-		RepoID        gocql.UUID
-		ChangeSetID   gocql.UUID
-		Image         string
-		ImageRegistry string
-		Digest        string
-	}
-)
-
-func NewAssets() *Assets {
-	return &Assets{
-		Repos:     make([]Repo, 0),
-		Resources: make([]Resource, 0),
-		Workloads: make([]Workload, 0),
-		Infra:     make(JsonInfra),
-	}
-}
-
-func NewDeployment() *Deployment {
-	d := new(Deployment)
-	d.NewInfra = make(JsonInfra)
-	d.OldInfra = make(JsonInfra)
-	// d.rwpair = make(map[string][]Workload)
-	return d
-}

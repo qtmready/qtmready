@@ -207,11 +207,6 @@ func (team *Team) GetTable() itable.ITable {
 	return teamTable
 }
 
-// TeamList defines model for TeamList.
-type TeamList struct {
-	Teams *[]Team `json:"teams,omitempty"`
-}
-
 // TeamUser defines model for TeamUser.
 type TeamUser struct {
 	CreatedAt time.Time  `cql:"created_at" json:"created_at"`
@@ -305,9 +300,6 @@ type RegisterJSONRequestBody = RegisterationRequest
 
 // CreateTeamJSONRequestBody defines body for CreateTeam for application/json ContentType.
 type CreateTeamJSONRequestBody = CreateTeamRequest
-
-// AddUserToTeamJSONRequestBody defines body for AddUserToTeam for application/json ContentType.
-type AddUserToTeamJSONRequestBody = AddUserToTeamRequest
 
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody = CreateUserRequest
@@ -413,24 +405,13 @@ type ClientInterface interface {
 
 	Register(ctx context.Context, body RegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// ListTeams request
-	ListTeams(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// CreateTeamWithBody request with any body
 	CreateTeamWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	CreateTeam(ctx context.Context, body CreateTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
-	// GetTeam request
-	GetTeam(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
-
 	// SetActiveTeam request
 	SetActiveTeam(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	// AddUserToTeamWithBody request with any body
-	AddUserToTeamWithBody(ctx context.Context, id gocql.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
-
-	AddUserToTeam(ctx context.Context, id gocql.UUID, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// ListUsers request
 	ListUsers(ctx context.Context, params *ListUsersParams, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -576,18 +557,6 @@ func (c *Client) Register(ctx context.Context, body RegisterJSONRequestBody, req
 	return c.Client.Do(req)
 }
 
-func (c *Client) ListTeams(ctx context.Context, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewListTeamsRequest(c.Server)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) CreateTeamWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewCreateTeamRequestWithBody(c.Server, contentType, body)
 	if err != nil {
@@ -612,44 +581,8 @@ func (c *Client) CreateTeam(ctx context.Context, body CreateTeamJSONRequestBody,
 	return c.Client.Do(req)
 }
 
-func (c *Client) GetTeam(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewGetTeamRequest(c.Server, id)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
 func (c *Client) SetActiveTeam(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewSetActiveTeamRequest(c.Server, id)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) AddUserToTeamWithBody(ctx context.Context, id gocql.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddUserToTeamRequestWithBody(c.Server, id, contentType, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
-		return nil, err
-	}
-	return c.Client.Do(req)
-}
-
-func (c *Client) AddUserToTeam(ctx context.Context, id gocql.UUID, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
-	req, err := NewAddUserToTeamRequest(c.Server, id, body)
 	if err != nil {
 		return nil, err
 	}
@@ -935,33 +868,6 @@ func NewRegisterRequestWithBody(server string, contentType string, body io.Reade
 	return req, nil
 }
 
-// NewListTeamsRequest generates requests for ListTeams
-func NewListTeamsRequest(server string) (*http.Request, error) {
-	var err error
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/teams")
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewCreateTeamRequest calls the generic CreateTeam builder with application/json body
 func NewCreateTeamRequest(server string, body CreateTeamJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -1002,40 +908,6 @@ func NewCreateTeamRequestWithBody(server string, contentType string, body io.Rea
 	return req, nil
 }
 
-// NewGetTeamRequest generates requests for GetTeam
-func NewGetTeamRequest(server string, id gocql.UUID) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/teams/%s", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("GET", queryURL.String(), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return req, nil
-}
-
 // NewSetActiveTeamRequest generates requests for SetActiveTeam
 func NewSetActiveTeamRequest(server string, id gocql.UUID) (*http.Request, error) {
 	var err error
@@ -1066,53 +938,6 @@ func NewSetActiveTeamRequest(server string, id gocql.UUID) (*http.Request, error
 	if err != nil {
 		return nil, err
 	}
-
-	return req, nil
-}
-
-// NewAddUserToTeamRequest calls the generic AddUserToTeam builder with application/json body
-func NewAddUserToTeamRequest(server string, id gocql.UUID, body AddUserToTeamJSONRequestBody) (*http.Request, error) {
-	var bodyReader io.Reader
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-	return NewAddUserToTeamRequestWithBody(server, id, "application/json", bodyReader)
-}
-
-// NewAddUserToTeamRequestWithBody generates requests for AddUserToTeam with any type of body
-func NewAddUserToTeamRequestWithBody(server string, id gocql.UUID, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	var pathParam0 string
-
-	pathParam0, err = runtime.StyleParamWithLocation("simple", false, "id", runtime.ParamLocationPath, id)
-	if err != nil {
-		return nil, err
-	}
-
-	serverURL, err := url.Parse(server)
-	if err != nil {
-		return nil, err
-	}
-
-	operationPath := fmt.Sprintf("/auth/teams/%s/users", pathParam0)
-	if operationPath[0] == '/' {
-		operationPath = "." + operationPath
-	}
-
-	queryURL, err := serverURL.Parse(operationPath)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", queryURL.String(), body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
 
 	return req, nil
 }
@@ -1343,24 +1168,13 @@ type ClientWithResponsesInterface interface {
 
 	RegisterWithResponse(ctx context.Context, body RegisterJSONRequestBody, reqEditors ...RequestEditorFn) (*RegisterResponse, error)
 
-	// ListTeamsWithResponse request
-	ListTeamsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTeamsResponse, error)
-
 	// CreateTeamWithBodyWithResponse request with any body
 	CreateTeamWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTeamResponse, error)
 
 	CreateTeamWithResponse(ctx context.Context, body CreateTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*CreateTeamResponse, error)
 
-	// GetTeamWithResponse request
-	GetTeamWithResponse(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*GetTeamResponse, error)
-
 	// SetActiveTeamWithResponse request
 	SetActiveTeamWithResponse(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*SetActiveTeamResponse, error)
-
-	// AddUserToTeamWithBodyWithResponse request with any body
-	AddUserToTeamWithBodyWithResponse(ctx context.Context, id gocql.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error)
-
-	AddUserToTeamWithResponse(ctx context.Context, id gocql.UUID, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error)
 
 	// ListUsersWithResponse request
 	ListUsersWithResponse(ctx context.Context, params *ListUsersParams, reqEditors ...RequestEditorFn) (*ListUsersResponse, error)
@@ -1523,31 +1337,6 @@ func (r RegisterResponse) StatusCode() int {
 	return 0
 }
 
-type ListTeamsResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *TeamList
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r ListTeamsResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r ListTeamsResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
 type CreateTeamResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
@@ -1567,32 +1356,6 @@ func (r CreateTeamResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r CreateTeamResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type GetTeamResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON200      *Team
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r GetTeamResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r GetTeamResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1619,32 +1382,6 @@ func (r SetActiveTeamResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r SetActiveTeamResponse) StatusCode() int {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.StatusCode
-	}
-	return 0
-}
-
-type AddUserToTeamResponse struct {
-	Body         []byte
-	HTTPResponse *http.Response
-	JSON201      *TeamUser
-	JSON400      *externalRef0.BadRequest
-	JSON401      *externalRef0.Unauthorized
-	JSON404      *externalRef0.NotFound
-	JSON500      *externalRef0.InternalServerError
-}
-
-// Status returns HTTPResponse.Status
-func (r AddUserToTeamResponse) Status() string {
-	if r.HTTPResponse != nil {
-		return r.HTTPResponse.Status
-	}
-	return http.StatusText(0)
-}
-
-// StatusCode returns HTTPResponse.StatusCode
-func (r AddUserToTeamResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -1822,15 +1559,6 @@ func (c *ClientWithResponses) RegisterWithResponse(ctx context.Context, body Reg
 	return ParseRegisterResponse(rsp)
 }
 
-// ListTeamsWithResponse request returning *ListTeamsResponse
-func (c *ClientWithResponses) ListTeamsWithResponse(ctx context.Context, reqEditors ...RequestEditorFn) (*ListTeamsResponse, error) {
-	rsp, err := c.ListTeams(ctx, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseListTeamsResponse(rsp)
-}
-
 // CreateTeamWithBodyWithResponse request with arbitrary body returning *CreateTeamResponse
 func (c *ClientWithResponses) CreateTeamWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*CreateTeamResponse, error) {
 	rsp, err := c.CreateTeamWithBody(ctx, contentType, body, reqEditors...)
@@ -1848,15 +1576,6 @@ func (c *ClientWithResponses) CreateTeamWithResponse(ctx context.Context, body C
 	return ParseCreateTeamResponse(rsp)
 }
 
-// GetTeamWithResponse request returning *GetTeamResponse
-func (c *ClientWithResponses) GetTeamWithResponse(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*GetTeamResponse, error) {
-	rsp, err := c.GetTeam(ctx, id, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseGetTeamResponse(rsp)
-}
-
 // SetActiveTeamWithResponse request returning *SetActiveTeamResponse
 func (c *ClientWithResponses) SetActiveTeamWithResponse(ctx context.Context, id gocql.UUID, reqEditors ...RequestEditorFn) (*SetActiveTeamResponse, error) {
 	rsp, err := c.SetActiveTeam(ctx, id, reqEditors...)
@@ -1864,23 +1583,6 @@ func (c *ClientWithResponses) SetActiveTeamWithResponse(ctx context.Context, id 
 		return nil, err
 	}
 	return ParseSetActiveTeamResponse(rsp)
-}
-
-// AddUserToTeamWithBodyWithResponse request with arbitrary body returning *AddUserToTeamResponse
-func (c *ClientWithResponses) AddUserToTeamWithBodyWithResponse(ctx context.Context, id gocql.UUID, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error) {
-	rsp, err := c.AddUserToTeamWithBody(ctx, id, contentType, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseAddUserToTeamResponse(rsp)
-}
-
-func (c *ClientWithResponses) AddUserToTeamWithResponse(ctx context.Context, id gocql.UUID, body AddUserToTeamJSONRequestBody, reqEditors ...RequestEditorFn) (*AddUserToTeamResponse, error) {
-	rsp, err := c.AddUserToTeam(ctx, id, body, reqEditors...)
-	if err != nil {
-		return nil, err
-	}
-	return ParseAddUserToTeamResponse(rsp)
 }
 
 // ListUsersWithResponse request returning *ListUsersResponse
@@ -2193,53 +1895,6 @@ func ParseRegisterResponse(rsp *http.Response) (*RegisterResponse, error) {
 	return response, nil
 }
 
-// ParseListTeamsResponse parses an HTTP response from a ListTeamsWithResponse call
-func ParseListTeamsResponse(rsp *http.Response) (*ListTeamsResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &ListTeamsResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest TeamList
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseCreateTeamResponse parses an HTTP response from a CreateTeamWithResponse call
 func ParseCreateTeamResponse(rsp *http.Response) (*CreateTeamResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2287,60 +1942,6 @@ func ParseCreateTeamResponse(rsp *http.Response) (*CreateTeamResponse, error) {
 	return response, nil
 }
 
-// ParseGetTeamResponse parses an HTTP response from a GetTeamWithResponse call
-func ParseGetTeamResponse(rsp *http.Response) (*GetTeamResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &GetTeamResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest Team
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
 // ParseSetActiveTeamResponse parses an HTTP response from a SetActiveTeamWithResponse call
 func ParseSetActiveTeamResponse(rsp *http.Response) (*SetActiveTeamResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2361,60 +1962,6 @@ func ParseSetActiveTeamResponse(rsp *http.Response) (*SetActiveTeamResponse, err
 			return nil, err
 		}
 		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
-		var dest externalRef0.BadRequest
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON400 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 401:
-		var dest externalRef0.Unauthorized
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON401 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 404:
-		var dest externalRef0.NotFound
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
-		var dest externalRef0.InternalServerError
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON500 = &dest
-
-	}
-
-	return response, nil
-}
-
-// ParseAddUserToTeamResponse parses an HTTP response from a AddUserToTeamWithResponse call
-func ParseAddUserToTeamResponse(rsp *http.Response) (*AddUserToTeamResponse, error) {
-	bodyBytes, err := io.ReadAll(rsp.Body)
-	defer func() { _ = rsp.Body.Close() }()
-	if err != nil {
-		return nil, err
-	}
-
-	response := &AddUserToTeamResponse{
-		Body:         bodyBytes,
-		HTTPResponse: rsp,
-	}
-
-	switch {
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 201:
-		var dest TeamUser
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON201 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest externalRef0.BadRequest
@@ -2630,25 +2177,13 @@ type ServerInterface interface {
 	// (POST /auth/register)
 	Register(ctx echo.Context) error
 
-	// List all teams the user is a member of
-	// (GET /auth/teams)
-	ListTeams(ctx echo.Context) error
-
 	// Create a new team
 	// (POST /auth/teams)
 	CreateTeam(ctx echo.Context) error
 
-	// Get a team
-	// (GET /auth/teams/{id})
-	GetTeam(ctx echo.Context, id gocql.UUID) error
-
 	// set the active team for user (b/c user has multiple teams)
 	// (GET /auth/teams/{id}/set-active)
 	SetActiveTeam(ctx echo.Context, id gocql.UUID) error
-
-	// Add a user to a team
-	// (POST /auth/teams/{id}/users)
-	AddUserToTeam(ctx echo.Context, id gocql.UUID) error
 
 	// get users
 	// (GET /auth/users)
@@ -2752,22 +2287,6 @@ func (w *ServerInterfaceWrapper) Register(ctx echo.Context) error {
 	return err
 }
 
-// ListTeams converts echo context to params.
-
-func (w *ServerInterfaceWrapper) ListTeams(ctx echo.Context) error {
-	var err error
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	handler := func(ctx echo.Context) error {
-		return w.Handler.ListTeams(ctx)
-	}
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.SecureHandler(ctx, handler)
-
-	return err
-}
-
 // CreateTeam converts echo context to params.
 
 func (w *ServerInterfaceWrapper) CreateTeam(ctx echo.Context) error {
@@ -2777,29 +2296,6 @@ func (w *ServerInterfaceWrapper) CreateTeam(ctx echo.Context) error {
 
 	handler := func(ctx echo.Context) error {
 		return w.Handler.CreateTeam(ctx)
-	}
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.SecureHandler(ctx, handler)
-
-	return err
-}
-
-// GetTeam converts echo context to params.
-
-func (w *ServerInterfaceWrapper) GetTeam(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "id" -------------
-	var id gocql.UUID
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter id: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	handler := func(ctx echo.Context) error {
-		return w.Handler.GetTeam(ctx, id)
 	}
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.SecureHandler(ctx, handler)
@@ -2826,24 +2322,6 @@ func (w *ServerInterfaceWrapper) SetActiveTeam(ctx echo.Context) error {
 	}
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.SecureHandler(ctx, handler)
-
-	return err
-}
-
-// AddUserToTeam converts echo context to params.
-
-func (w *ServerInterfaceWrapper) AddUserToTeam(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "id" -------------
-	var id gocql.UUID
-
-	err = runtime.BindStyledParameterWithLocation("simple", false, "id", runtime.ParamLocationPath, ctx.Param("id"), &id)
-	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter id: %s", err))
-	}
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.AddUserToTeam(ctx, id)
 
 	return err
 }
@@ -2944,11 +2422,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/auth/api-keys/validate", wrapper.ValidateAPIKey)
 	router.POST(baseURL+"/auth/login", wrapper.Login)
 	router.POST(baseURL+"/auth/register", wrapper.Register)
-	router.GET(baseURL+"/auth/teams", wrapper.ListTeams)
 	router.POST(baseURL+"/auth/teams", wrapper.CreateTeam)
-	router.GET(baseURL+"/auth/teams/:id", wrapper.GetTeam)
 	router.GET(baseURL+"/auth/teams/:id/set-active", wrapper.SetActiveTeam)
-	router.POST(baseURL+"/auth/teams/:id/users", wrapper.AddUserToTeam)
 	router.GET(baseURL+"/auth/users", wrapper.ListUsers)
 	router.POST(baseURL+"/auth/users", wrapper.CreateUser)
 	router.GET(baseURL+"/auth/users/:id", wrapper.GetUser)
