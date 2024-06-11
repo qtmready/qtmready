@@ -3,13 +3,13 @@ on:
   pull_request:
     # For the develop branch only.
     branches:
-      - dev
+      - main
     # Execute the action on closed (merged) PR.
     types: [closed]
   workflow_dispatch:
   push:
     branches:
-      - dev
+      - main
 
 env:
   GCP_PROJECT: quantm-live
