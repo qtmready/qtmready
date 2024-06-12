@@ -215,16 +215,6 @@ func (s *ServerHandler) CreateTeam(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, team)
 }
 
-// endpoint: /auth/teams
-func (s *ServerHandler) ListTeams(ctx echo.Context) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
-}
-
-// endpoint: /auth/teams/:id
-func (s *ServerHandler) GetTeam(ctx echo.Context, id gocql.UUID) error {
-	return ctx.JSON(http.StatusNotImplemented, nil)
-}
-
 func (s *ServerHandler) SetActiveTeam(ctx echo.Context, id gocql.UUID) error {
 	user_id := ctx.Get("user_id").(string)
 

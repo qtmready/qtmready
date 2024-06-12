@@ -52,22 +52,6 @@ type (
 		// NOTE - Since the url contains oauth token, it is best not to call this as activity.
 		// LINK - https://github.com/orgs/community/discussions/24575#discussioncomment-3244524
 		TokenizedCloneURL(ctx context.Context, payload *RepoIOInfoPayload) (string, error)
-
-		// GetLatestCommit(ctx context.Context, payload *RepoIOGetLatestCommitPayload) (*LatestCommit, error)
-		// DeployChangeset(ctx context.Context, payload *RepoIODeployChangesetPayload) error
-		// TagCommit(ctx context.Context, payload *RepoIOTagCommitPayload) error
-		// CreateBranch(ctx context.Context, payload *RepoIOCreateBranchPayload) error
-		// DeleteBranch(ctx context.Context, payload *RepoIODeleteBranchPayload) error
-		// MergeBranch(ctx context.Context, payload *RepoIOMergeBranchPayload) error
-		// RebaseAndMerge(ctx context.Context, payload *RepoIORebaseAndMergePayload) (string, error)
-		// DetectChange(ctx context.Context, payload *RepoIODetectChangePayload) (*BranchChanges, error)
-		// GetAllBranches(ctx context.Context, payload *RepoIOGetAllBranchesPayload) ([]string, error)
-		// TriggerCIAction(ctx context.Context, payload *RepoIOTriggerCIActionPayload) error
-		// GetRepoTeamID(ctx context.Context, payload *RepoIOGetRepoTeamIDPayload) (string, error)
-		// GetAllRelevantActions(ctx context.Context, payload *RepoIOGetAllRelevantActionsPayload) error
-		// GetRepoByProviderID(ctx context.Context, payload *RepoIOGetRepoByProviderIDPayload) (*RepoProviderData, error)
-		// UpdateRepoHasRarlyWarning(ctx context.Context, payload *RepoIOUpdateRepoHasRarlyWarningPayload) error
-		// RefreshDefaultBranches(ctx context.Context, payload *RepoIORefreshDefaultBranchesPayload) error
 	}
 
 	RepoSignalPushPayload struct {

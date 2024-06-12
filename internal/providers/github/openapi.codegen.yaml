@@ -2,7 +2,6 @@ package: github
 generate:
   models: true
   echo-server: true
-  client: true
 import-mapping:
   "../../shared/v1/schema.yaml": go.breu.io/quantm/internal/shared
   "../../auth/v1/schema.yaml": go.breu.io/quantm/internal/auth

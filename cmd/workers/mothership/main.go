@@ -25,7 +25,6 @@ import (
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/core/mutex"
 	"go.breu.io/quantm/internal/db"
-	"go.breu.io/quantm/internal/providers/gcp/cloudrun"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
@@ -44,12 +43,10 @@ func main() {
 
 	core.Instance(
 		core.WithRepoProvider(core.RepoProviderGithub, &github.RepoIO{}),
-		core.WithCloudResource(core.CloudProviderGCP, core.DriverCloudrun, &cloudrun.Constructor{}),
 		core.WithMessageProvider(core.MessageProviderSlack, &slack.Activities{}),
 	)
 
 	githubwfs := &github.Workflows{}
-	stackwfs := &core.StackWorkflows{}
 	repowfs := &core.RepoWorkflows{}
 
 	// provider workflows
@@ -58,7 +55,6 @@ func main() {
 	providerWrkr.RegisterWorkflow(githubwfs.PostInstall)
 	providerWrkr.RegisterWorkflow(githubwfs.OnPushEvent)
 	providerWrkr.RegisterWorkflow(githubwfs.OnPullRequestEvent)
-	// providerWrkr.RegisterWorkflow(githubwfs.OnLabelEvent)
 	providerWrkr.RegisterWorkflow(githubwfs.OnWorkflowRunEvent)
 
 	// provider activities
@@ -69,26 +65,14 @@ func main() {
 	coreWrkr.RegisterWorkflow(mutex.Workflow)
 	providerWrkr.RegisterWorkflow(mutex.Workflow)
 
-	// stack workflows
-	coreWrkr.RegisterWorkflow(stackwfs.StackController)
-	coreWrkr.RegisterWorkflow(stackwfs.Deploy)
-	coreWrkr.RegisterWorkflow(stackwfs.GetAssets)
-	coreWrkr.RegisterWorkflow(stackwfs.ProvisionInfra)
-	coreWrkr.RegisterWorkflow(stackwfs.DeProvisionInfra)
-
 	// repo workflows
-	// coreWrkr.RegisterWorkflow(repowfs.BranchController)
-	// coreWrkr.RegisterWorkflow(repowfs.StaleBranchDetection)
-	// coreWrkr.RegisterWorkflow(repowfs.PollMergeQueue)
 	coreWrkr.RegisterWorkflow(repowfs.RepoCtrl)
 	coreWrkr.RegisterWorkflow(repowfs.DefaultBranchCtrl)
 	coreWrkr.RegisterWorkflow(repowfs.BranchCtrl)
 
 	// core activities
-	coreWrkr.RegisterActivity(&core.StackActivities{})
 	coreWrkr.RegisterActivity(&core.RepoActivities{})
 	// RepoIO & CloudIO
-	coreWrkr.RegisterActivity(&cloudrun.Activities{})
 	coreWrkr.RegisterActivity(&github.RepoIO{})
 	coreWrkr.RegisterActivity(&slack.Activities{})
 

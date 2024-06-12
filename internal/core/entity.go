@@ -25,12 +25,7 @@ import (
 	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/table"
-
-	"go.breu.io/quantm/internal/db"
 )
-
-func (stack *Stack) PreCreate() error { stack.Slug = db.CreateSlug(stack.Name); return nil }
-func (stack *Stack) PreUpdate() error { return nil }
 
 func (repo *Repo) PreCreate() error { return nil }
 func (repo *Repo) PreUpdate() error { return nil }
@@ -99,15 +94,6 @@ type (
 	}
 )
 
-func (workload *Workload) PreCreate() error { return nil }
-func (workload *Workload) PreUpdate() error { return nil }
-
-func (resource *Resource) PreCreate() error { return nil }
-func (resource *Resource) PreUpdate() error { return nil }
-
-func (blueprint *Blueprint) PreCreate() error { return nil }
-func (blueprint *Blueprint) PreUpdate() error { return nil }
-
 func (changeset *ChangeSet) GetTable() itable.ITable { return changesetTable }
 func (changeset *ChangeSet) PreCreate() error        { return nil }
 func (changeset *ChangeSet) PreUpdate() error        { return nil }
@@ -147,22 +133,6 @@ var (
 		RolloutStateRejected.String():   RolloutStateRejected,
 	}
 )
-
-func (config StackConfig) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
-	return json.Marshal(config)
-}
-
-func (config *StackConfig) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
-	return json.Unmarshal(data, config)
-}
-
-func (regions BluePrintRegions) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
-	return json.Marshal(regions)
-}
-
-func (regions *BluePrintRegions) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
-	return json.Unmarshal(data, regions)
-}
 
 func (marker ChangeSetRepoMarkers) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
 	return json.Marshal(marker)

@@ -19,13 +19,11 @@ package github
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/gocql/gocql"
-	gh "github.com/google/go-github/v62/github"
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/quantm/internal/auth"
@@ -286,124 +284,4 @@ func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(http.StatusCreated, user)
-}
-
-// GithubArtifactReady API is called by github action after building and pushing the build artifact
-// After receiving pull request webhook, Quantum waits for the artifact ready event to start deployment.
-func (s *ServerHandler) GithubArtifactReady(ctx echo.Context) error {
-	request := &ArtifactReadyRequest{}
-	if err := ctx.Bind(request); err != nil {
-		return err
-	}
-
-	workflowID := shared.Temporal().
-		Queue(shared.ProvidersQueue).
-		WorkflowID(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(request.InstallationID),
-			shared.WithWorkflowElement("repo"),
-			shared.WithWorkflowElementID(request.RepoID),
-			shared.WithWorkflowMod(WebhookEventPullRequest.String()),
-			shared.WithWorkflowModID(request.PullRequestID),
-		)
-
-	payload := &ArtifactReadySignal{Image: request.Image, Digest: request.Digest, Registry: request.Registry.String()}
-
-	err := shared.Temporal().Client().SignalWorkflow(ctx.Request().Context(), workflowID, "", WorkflowSignalArtifactReady.String(), payload)
-	if err != nil {
-		return err
-	}
-
-	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: workflowID, Status: WorkflowStatusSignaled})
-}
-
-func (s *ServerHandler) CliGitMerge(ctx echo.Context) error {
-	shared.Logger().Info("CliGitMerge method triggered.")
-
-	request := &CliGitMerge{}
-	if err := ctx.Bind(request); err != nil {
-		return err
-	}
-
-	shared.Logger().Info("CliGitMerge", "request", request)
-
-	name := fmt.Sprintf("'%s/%s'", request.RepoOwner, request.RepoName)
-	repo := &Repo{}
-
-	if err := db.Get(repo, db.QueryParams{"full_name": name}); err != nil {
-		shared.Logger().Error("Getting Repo data from database failed", "Error", err)
-		return err
-	}
-
-	client, err := Instance().GetClientForInstallationID(repo.InstallationID)
-
-	if err != nil {
-		shared.Logger().Error("GetClientFromInstallation failed", "Error", err)
-		return err
-	}
-
-	// Get repository information to find the default branch
-	repository, _, err := client.Repositories.Get(ctx.Request().Context(), request.RepoOwner, request.RepoName)
-	if err != nil {
-		shared.Logger().Error("client.Repositories.Get", "Error", err)
-	}
-
-	baseBranch := repository.GetDefaultBranch()
-	PROptions := &gh.PullRequestListOptions{
-		Base: baseBranch,
-	}
-
-	PRs, _, err := client.PullRequests.List(ctx.Request().Context(), request.RepoOwner, request.RepoName, PROptions)
-	if err != nil {
-		shared.Logger().Error("client.PullRequests.List failed", "Error", err)
-		return err
-	}
-
-	PullRequestID := -1
-
-	for i := 0; i < len(PRs); i++ {
-		if *PRs[i].Head.Ref == request.Branch {
-			PullRequestID = (*PRs[i].Number)
-			break
-		}
-	}
-
-	// Create PR for this branch and then label it
-	if PullRequestID == -1 {
-		// Specify the title and body for the pull request
-		prTitle := "Pull Request created by Quantum"
-		prBody := "Description of your pull request goes here."
-
-		// Create a new pull request
-		newPR := &gh.NewPullRequest{
-			Title: &prTitle,
-			Body:  &prBody,
-			Head:  &request.Branch,
-			Base:  &baseBranch,
-		}
-
-		pr, _, err := client.PullRequests.Create(ctx.Request().Context(), request.RepoOwner, request.RepoName, newPR)
-		if err != nil {
-			shared.Logger().Error("CliGitMerge", "Error creating pull request", err)
-		}
-
-		PullRequestID = *pr.Number
-
-		shared.Logger().Info("CliGitMerge", "Pull request created", pr.GetNumber())
-	}
-
-	// Label the PR
-	_, _, err = client.Issues.AddLabelsToIssue(ctx.Request().Context(), request.RepoOwner, request.RepoName, PullRequestID,
-		[]string{"quantm ready"})
-	if err != nil {
-		shared.Logger().Error("CliGitMerge", "Error adding label to PR", err)
-	}
-
-	ret := fmt.Sprintf("PR %d is labeled", PullRequestID)
-
-	return ctx.JSON(http.StatusOK, ret)
-}
-
-func (s *ServerHandler) GithubActionResult(ctx echo.Context) error {
-	return nil
 }
