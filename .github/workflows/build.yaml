@@ -10,6 +10,7 @@ on:
   push:
     branches:
       - main
+      - fix-build-info-2
 
 env:
   GCP_PROJECT: quantm-live
@@ -26,24 +27,17 @@ jobs:
       id-token: "write"
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: Build
 
-      - name: Set variables
+      - name: Set Variables for Steps
         id: vars
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      - name: Set up QEMU (for cross-compilation support)
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Go Build Cache for Docker
-        uses: actions/cache@v4
-        with:
-          path: go-build-cache
-          key: ${{ runner.os }}-go-build-cache-${{ hashFiles('**/go.sum') }}
 
       - name: Authenticate with GCP
         id: auth
@@ -67,10 +61,24 @@ jobs:
           cluster_name: ${{ env.GKE_CLUSTER }}
           location: ${{ env.GKE_CLUSTER_ZONE }}
 
-      - name: Inject go-build-cache into Docker
-        uses: reproducible-containers/buildkit-cache-dance@v2.1.2
+      - name: Go Cache for Docker
+        id: go-cache
+        uses: actions/cache@v4
         with:
-          cache-source: go-build-cache
+          path: |
+            go-mod-cache
+            go-build-cache
+          key: ${{ runner.os }}-go-cache-${{ hashFiles('**/go.sum') }}
+
+      - name: Inject go-cache into Docker
+        uses: reproducible-containers/buildkit-cache-dance@v3.1.0
+        with:
+          cache-map: |
+            {
+              go-mod-cache: /root/go/pkg/mod
+              go-build-cache: /root/.cache/go-build
+            }
+          skip-extraction: ${{ steps.go-cache.outputs.cache-hit }}
 
       - name: Build & Push Docker Image - API
         id: build-api
@@ -111,27 +119,24 @@ jobs:
             ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:latest
             ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:${{ steps.vars.outputs.short_sha }}
 
-      - name: Get Quantm Deployments in GKE
-        id: get-gke-deployments
-        run: |
-          kubectl get -n quantm deploy
+      # - name: Get Quantm Deployments in GKE
+      #   id: get-gke-deployments
+      #   run: |
+      #     kubectl get -n quantm deploy
 
-      - name: Deploy mothership docker image to the GKE cluster
-        id: deploy-mothership
-        run: |
-          kubectl patch -n quantm deployment mothership -p \
-          '{"spec":{"template":{"spec":{"containers":[{"name":"mothership","image":"us-docker.pkg.dev/quantm-live/default-live-v1/mothership:${{ steps.vars.outputs.short_sha }}"}]}}}}'
+      # - name: Deploy mothership docker image to the GKE cluster
+      #   id: deploy-mothership
+      #   run: |
+      #     kubectl patch -n quantm deployment mothership -p \
+      #     '{"spec":{"template":{"spec":{"containers":[{"name":"mothership","image":"us-docker.pkg.dev/quantm-live/default-live-v1/mothership:${{ steps.vars.outputs.short_sha }}"}]}}}}'
 
-      - name: Deploy API to Cloud Run
-        id: deploy-api
-        uses: google-github-actions/deploy-cloudrun@v2
-        with:
-          service: ${{ env.GCR_SERVICE }}
-          image: ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
+      # - name: Deploy API to Cloud Run
+      #   id: deploy-api
+      #   uses: google-github-actions/deploy-cloudrun@v2
+      #   with:
+      #     service: ${{ env.GCR_SERVICE }}
+      #     image: ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
 
-      - name: Healthcheck for API
-        id: healthcheck-api
-        run: curl ${{ steps.deploy-api.outputs.url }}
-
-      - name: docker ls
-        run: docker image ls
+      # - name: Healthcheck for API
+      #   id: healthcheck-api
+      #   run: curl ${{ steps.deploy-api.outputs.url }}

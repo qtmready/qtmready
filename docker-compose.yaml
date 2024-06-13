@@ -19,7 +19,7 @@ services:
   # common
   database:
     container_name: database
-    image: scylladb/scylla:5.4
+    image: scylladb/scylla:6.0
     ports:
       - "9042:9042"
     volumes:
@@ -30,7 +30,7 @@ services:
 
   database-init:
     container_name: ctrlplane-db-init
-    image: scylladb/scylla-cqlsh:v6.0.9
+    image: scylladb/scylla-cqlsh:v6.0.20
     depends_on:
       - database
     volumes:
