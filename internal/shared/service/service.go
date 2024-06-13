@@ -142,8 +142,6 @@ func WithVersionFromBuildInfo() ServiceOption {
 				version   string
 			)
 
-			fmt.Println(info)
-
 			for _, setting := range info.Settings {
 				if setting.Key == "vcs.revision" {
 					revision = setting.Value
