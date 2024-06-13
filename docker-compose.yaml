@@ -147,7 +147,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - api-go-pkg-mod:/go/pkg/mod
+      - api-go-pkg-mod:/root/go/pkg/mod
       - api-build-cache:/root/.cache/go-build
     networks:
       - ctrlplane
