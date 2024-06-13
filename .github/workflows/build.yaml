@@ -10,7 +10,6 @@ on:
   push:
     branches:
       - main
-      - fix-build-info-2
 
 env:
   GCP_PROJECT: quantm-live
@@ -122,24 +121,24 @@ jobs:
             ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:latest
             ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:${{ steps.vars.outputs.short_sha }}
 
-      # - name: Get Quantm Deployments in GKE
-      #   id: get-gke-deployments
-      #   run: |
-      #     kubectl get -n quantm deploy
+      - name: Get Quantm Deployments in GKE
+        id: get-gke-deployments
+        run: |
+          kubectl get -n quantm deploy
 
-      # - name: Deploy mothership docker image to the GKE cluster
-      #   id: deploy-mothership
-      #   run: |
-      #     kubectl patch -n quantm deployment mothership -p \
-      #     '{"spec":{"template":{"spec":{"containers":[{"name":"mothership","image":"us-docker.pkg.dev/quantm-live/default-live-v1/mothership:${{ steps.vars.outputs.short_sha }}"}]}}}}'
+      - name: Deploy mothership docker image to the GKE cluster
+        id: deploy-mothership
+        run: |
+          kubectl patch -n quantm deployment mothership -p \
+          '{"spec":{"template":{"spec":{"containers":[{"name":"mothership","image":"us-docker.pkg.dev/quantm-live/default-live-v1/mothership:${{ steps.vars.outputs.short_sha }}"}]}}}}'
 
-      # - name: Deploy API to Cloud Run
-      #   id: deploy-api
-      #   uses: google-github-actions/deploy-cloudrun@v2
-      #   with:
-      #     service: ${{ env.GCR_SERVICE }}
-      #     image: ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
+      - name: Deploy API to Cloud Run
+        id: deploy-api
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ env.GCR_SERVICE }}
+          image: ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
 
-      # - name: Healthcheck for API
-      #   id: healthcheck-api
-      #   run: curl ${{ steps.deploy-api.outputs.url }}
+      - name: Healthcheck for API
+        id: healthcheck-api
+        run: curl ${{ steps.deploy-api.outputs.url }}
