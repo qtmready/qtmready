@@ -39,6 +39,9 @@ jobs:
         id: vars
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
+      - name: Set Something
+        run: echo "Hello world"
+
       - name: Authenticate with GCP
         id: auth
         uses: "google-github-actions/auth@v2"
