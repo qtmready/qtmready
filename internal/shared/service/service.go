@@ -157,7 +157,7 @@ func WithVersionFromBuildInfo() ServiceOption {
 			}
 
 			if len(revision) > 0 && len(modified) > 0 && timestamp.Unix() > 0 {
-				version = timestamp.Format("2006.01.02") + "." + revision[:8]
+				version = timestamp.Format("2006.01.02") + "." + revision[:7]
 			} else {
 				version = "debug"
 			}

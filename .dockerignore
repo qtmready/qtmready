@@ -1,13 +1,4 @@
-.github/*
-.vscode/*
+.cassandraWorkbench/*
 bin/*
-deploy/*
 tmp/*
-docs/*
-
-*.yaml
-*.yml
-*.md
-*.toml
-.editorconfig
-LICENSE
+build/*
