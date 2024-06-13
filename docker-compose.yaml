@@ -116,7 +116,7 @@ services:
     container_name: ctrlplane-api
     image: cosmtrek/air:v1.50.0
     environment:
-      SERVICE_NAME: mothership::api
+      SERVICE_NAME: migrate
       DEBUG: true
     env_file:
       - ./.env
@@ -128,6 +128,27 @@ services:
       - api-go-pkg-mod:/go/pkg/mod
       - api-build-cache:/root/.cache/go-build
     working_dir: /api
+    networks:
+      - ctrlplane
+
+  prod-api:
+    container_name: prod-api
+    profiles:
+      - prod
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    environment:
+      TEMPORAL_HOST: temporal
+      CASSANDRA_HOSTS: database
+    env_file:
+      - ./.env
+    ports:
+      - "8000:8000"
+    volumes:
+      - api-go-pkg-mod:/go/pkg/mod
+      - api-build-cache:/root/.cache/go-build
     networks:
       - ctrlplane
 

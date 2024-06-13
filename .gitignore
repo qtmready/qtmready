@@ -217,7 +217,8 @@ $RECYCLE.BIN/
 
 # Project specific
 __debug_*
-/tmp
+tmp/
+build/
 .air.toml
 .coverage
 .cassandraWorkbench/

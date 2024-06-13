@@ -1,4 +1,6 @@
+.cassandraWorkbench/*
 .github/*
+.idea/*
 .vscode/*
 bin/*
 deploy/*
@@ -10,4 +12,5 @@ docs/*
 *.md
 *.toml
 .editorconfig
+.coverage
 LICENSE
