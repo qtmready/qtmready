@@ -14,13 +14,11 @@ func main() {
 	defer db.DB().Session.Close()
 
 	team, _ := db.NewUUID()
-	stack, _ := db.NewUUID()
 	provider, _ := db.NewUUID()
 
 	repo := &core.Repo{
 		DefaultBranch:       "main",
 		TeamID:              team,
-		StackID:             stack,
 		Name:                "orm",
 		IsMonorepo:          false,
 		MessageProvider:     "github",
