@@ -220,5 +220,4 @@ __debug_*
 tmp/
 build/
 .air.toml
-.coverage
 .cassandraWorkbench/
