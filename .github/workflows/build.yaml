@@ -71,8 +71,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            go-mod-cache
-            go-build-cache
+            /root/go/pkg/mod
+            /root/.cache/go-build
           key: ${{ runner.os }}-go-cache-${{ hashFiles('**/go.sum') }}
 
       - name: Inject go-cache into Docker

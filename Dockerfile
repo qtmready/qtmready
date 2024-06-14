@@ -8,6 +8,7 @@ FROM base as src
 
 WORKDIR /src
 COPY . .
+RUN git status
 
 
 # migrate
