@@ -27,6 +27,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
       - uses: docker/metadata-action@v5
@@ -37,9 +39,6 @@ jobs:
       - name: Set Variables for Steps
         id: vars
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-
-      - name: Set Something
-        run: echo "Hello world"
 
       - name: Authenticate with GCP
         id: auth

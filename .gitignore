@@ -221,3 +221,8 @@ tmp/
 build/
 .air.toml
 .cassandraWorkbench/
+
+# Github Actions
+gha-creds-*
+gha-kubeconfig-*
+scratch/
