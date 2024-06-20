@@ -150,11 +150,7 @@ func (state *RepoWorkflowStateBranchCtrl) SetLatestCommit(commit *RepoIOCommit) 
 }
 
 func (state *RepoWorkflowStateBranchCtrl) HasPR(ctx context.Context) bool {
-	if state.PullRequest == "" {
-		return false
-	}
-
-	return true
+	return state.PullRequest != ""
 }
 
 func (state *RepoWorkflowStateBranchCtrl) Now(ctx workflow.Context) time.Time {
