@@ -238,8 +238,6 @@ func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	shared.Logger().Debug("request", "debug", request)
-
 	installation := &Installation{}
 	if err := db.Get(installation, db.QueryParams{"installation_login_id": request.GithubOrgID.String()}); err != nil {
 		return shared.NewAPIError(http.StatusNotFound, err)
@@ -248,13 +246,15 @@ func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 	// associtaed user with team
 	user := &auth.User{}
 	if err := db.Get(user, db.QueryParams{"id": request.UserID.String()}); err != nil {
+		shared.Logger().Error("get user", "debug", err.Error())
 		return shared.NewAPIError(http.StatusNotFound, err)
 	}
 
 	user.TeamID = installation.TeamID
 
 	if err := db.Save(user); err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, err)
+		shared.Logger().Error("save user", "debug", err.Error())
+		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
 	// create teamuser
@@ -265,22 +265,22 @@ func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 		IsAdmin:  false,
 	}
 	if err := db.Save(teamuser); err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, err)
+		shared.Logger().Error("create team user", "debug", err.Error())
+		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
 	orguser := &OrgUser{}
 	filter := db.QueryParams{"github_org_id": request.GithubOrgID.String(), "github_user_id": request.GithubUserID.String()}
 
 	if err := db.Get(orguser, filter); err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, err)
+		shared.Logger().Error("get org user", "error", err.Error())
+		return shared.NewAPIError(http.StatusNotFound, err)
 	}
-
-	shared.Logger().Debug("orguser", "debug", orguser)
 
 	orguser.UserID = request.UserID
 	if err := db.Save(orguser); err != nil {
-		shared.Logger().Error("error", "debug", err)
-		return shared.NewAPIError(http.StatusBadRequest, err)
+		shared.Logger().Error("update org user", "error", err.Error())
+		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
 	return ctx.JSON(http.StatusCreated, user)
