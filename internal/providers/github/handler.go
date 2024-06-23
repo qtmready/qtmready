@@ -151,11 +151,11 @@ func (s *ServerHandler) GithubGetInstallations(ctx echo.Context, params GithubGe
 	filter := make(db.QueryParams)
 
 	if params.InstallationId != nil {
-		filter["installation_id"] = params.InstallationId.String()
+		filter["installation_id"] = shared.Quote(params.InstallationId.String())
 	}
 
 	if params.InstallationLogin != nil {
-		filter["installation_login"] = *params.InstallationLogin
+		filter["installation_login"] = shared.Quote(*params.InstallationLogin)
 	}
 
 	if params.InstallationId == nil && params.InstallationLogin == nil {
@@ -227,6 +227,7 @@ func (s *ServerHandler) GithubCreateUserOrgs(ctx echo.Context) error {
 }
 
 // TODO - need to refine the handler.
+// TODO - remove user updation part.
 func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 	request := &CreateTeamUserRequest{}
 

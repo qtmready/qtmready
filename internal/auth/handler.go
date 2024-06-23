@@ -301,7 +301,7 @@ func (s *ServerHandler) ListUsers(ctx echo.Context, params ListUsersParams) erro
 
 	if params.ProviderAccountId != nil && params.Provider != nil {
 		account := &Account{}
-		filter := db.QueryParams{"provider": quote(*params.Provider), "provider_account_id": quote(*params.ProviderAccountId)}
+		filter := db.QueryParams{"provider": shared.Quote(*params.Provider), "provider_account_id": shared.Quote(*params.ProviderAccountId)}
 
 		if err := db.Get(account, filter); err != nil {
 			return shared.NewAPIError(http.StatusNotFound, err)

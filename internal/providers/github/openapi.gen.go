@@ -340,10 +340,6 @@ func (w *ServerInterfaceWrapper) GithubCompleteInstallation(ctx echo.Context) er
 func (w *ServerInterfaceWrapper) GithubGetInstallations(ctx echo.Context) error {
 	var err error
 
-	ctx.Set(BearerAuthScopes, []string{})
-
-	ctx.Set(APIKeyAuthScopes, []string{})
-
 	// Parameter object where we will unmarshal all parameters from the context
 	var params GithubGetInstallationsParams
 	// ------------- Optional query parameter "installation_login" -------------
@@ -360,11 +356,8 @@ func (w *ServerInterfaceWrapper) GithubGetInstallations(ctx echo.Context) error 
 		return shared.NewAPIError(http.StatusBadRequest, fmt.Errorf("Invalid format for parameter installation_id: %s", err))
 	}
 
-	handler := func(ctx echo.Context) error {
-		return w.Handler.GithubGetInstallations(ctx, params)
-	}
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.SecureHandler(ctx, handler)
+	err = w.Handler.GithubGetInstallations(ctx, params)
 
 	return err
 }
