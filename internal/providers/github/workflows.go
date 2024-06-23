@@ -219,6 +219,8 @@ func (w *Workflows) PostInstall(ctx workflow.Context, payload *Installation) err
 		logger.Error("github/installation/post: error syncing repos ...", "error", err)
 	}
 
+	logger.Info("github/installation/post: syncing github org users ...", "installation_id", payload.InstallationID.String())
+
 	// TODO: sync users
 	orgsync := &SyncOrgUsersFromGithubPayload{
 		InstallationID: payload.InstallationID,
@@ -226,7 +228,7 @@ func (w *Workflows) PostInstall(ctx workflow.Context, payload *Installation) err
 		GithubOrgID:    payload.InstallationLoginID,
 	}
 	if err := workflow.ExecuteActivity(_ctx, activities.SyncOrgUsersFromGithub, orgsync).Get(_ctx, nil); err != nil {
-		logger.Error("github/installation/post: error syncing users ...", "error", err)
+		logger.Error("github/installation/post: error syncing org users ...", "error", err)
 	}
 
 	return nil
