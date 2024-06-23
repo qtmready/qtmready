@@ -151,7 +151,7 @@ func (s *ServerHandler) GithubGetInstallations(ctx echo.Context, params GithubGe
 	filter := make(db.QueryParams)
 
 	if params.InstallationId != nil {
-		filter["installation_id"] = shared.Quote(params.InstallationId.String())
+		filter["installation_id"] = params.InstallationId.String()
 	}
 
 	if params.InstallationLogin != nil {
