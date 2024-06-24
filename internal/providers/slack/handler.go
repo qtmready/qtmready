@@ -54,6 +54,33 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context, params SlackOauthParams) er
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
+	// TODO - in-progress -> save data to user table with extra columns or create a new table associated with users table
+	// authorized user not configure bot with channel
+	if response.AuthedUser.AccessToken != "" {
+		client, _ := instance.GetSlackClient(response.AuthedUser.AccessToken)
+
+		shared.Logger().Debug("SlackOauth/response", "debug", response)
+
+		identity, err := client.GetUserIdentity()
+		if err != nil {
+			shared.Logger().Error("SlackOauth/identity", "error", err.Error())
+		}
+
+		shared.Logger().Debug("SlackOauth/identity", "debug", identity)
+
+		// Generate a key for AES-256.
+		key := generateKey(response.Team.ID)
+
+		// Encrypt the access token.
+		encryptedToken, err := encrypt([]byte(response.AuthedUser.AccessToken), key)
+		if err != nil {
+			return shared.NewAPIError(http.StatusBadRequest, err)
+		}
+
+		// TODO: save with user info and return
+		shared.Logger().Debug("SlackOauth/encryptedToken", "debug", base64.StdEncoding.EncodeToString(encryptedToken))
+	}
+
 	// Generate a key for AES-256.
 	key := generateKey(response.Team.ID)
 
