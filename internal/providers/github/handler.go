@@ -260,10 +260,11 @@ func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 
 	// create teamuser
 	teamuser := &auth.TeamUser{
-		TeamID:   installation.TeamID,
-		UserID:   request.UserID,
-		IsActive: true,
-		IsAdmin:  false,
+		TeamID:                  installation.TeamID,
+		UserID:                  request.UserID,
+		IsActive:                true,
+		IsAdmin:                 false,
+		IsMessageProviderLinked: false,
 	}
 	if err := db.Save(teamuser); err != nil {
 		shared.Logger().Error("create team user", "debug", err.Error())
