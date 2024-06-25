@@ -271,6 +271,22 @@ func (user *User) GetTable() itable.ITable {
 	return userTable
 }
 
+// UserWithRole defines model for UserWithRole.
+type UserWithRole struct {
+	CreatedAt  time.Time  `json:"created_at"`
+	Email      string     `json:"email" validate:"email,required,db_unique"`
+	FirstName  string     `json:"first_name"`
+	ID         gocql.UUID `json:"id"`
+	IsActive   bool       `json:"is_active"`
+	IsAdmin    bool       `json:"is_admin"`
+	IsVerified bool       `json:"is_verified"`
+	LastName   string     `json:"last_name"`
+	Password   string     `json:"-"`
+	Role       string     `json:"role"`
+	TeamID     gocql.UUID `json:"team_id"`
+	UpdatedAt  time.Time  `json:"updated_at"`
+}
+
 // ListUsersParams defines parameters for ListUsers.
 type ListUsersParams struct {
 	// ProviderAccountId Provider account ID
@@ -1391,7 +1407,7 @@ func (r SetActiveTeamResponse) StatusCode() int {
 type ListUsersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]User
+	JSON200      *[]UserWithRole
 	JSON400      *externalRef0.BadRequest
 	JSON401      *externalRef0.Unauthorized
 	JSON404      *externalRef0.NotFound
@@ -2011,7 +2027,7 @@ func ParseListUsersResponse(rsp *http.Response) (*ListUsersResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []User
+		var dest []UserWithRole
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
