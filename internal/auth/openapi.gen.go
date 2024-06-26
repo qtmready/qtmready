@@ -211,6 +211,7 @@ type MessageProvider string
 
 // MessageProviderSlackUserInfo defines model for MessageProviderSlackUserInfo.
 type MessageProviderSlackUserInfo struct {
+	BotToken       string `json:"bot_token"`
 	ProviderTeamID string `json:"provider_team_id"`
 	ProviderUserID string `json:"provider_user_id"`
 	UserToken      string `json:"user_token"`
