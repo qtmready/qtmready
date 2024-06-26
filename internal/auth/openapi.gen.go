@@ -331,18 +331,19 @@ func (user *User) GetTable() itable.ITable {
 
 // UserWithRole defines model for UserWithRole.
 type UserWithRole struct {
-	CreatedAt  time.Time  `json:"created_at"`
-	Email      string     `json:"email" validate:"email,required,db_unique"`
-	FirstName  string     `json:"first_name"`
-	ID         gocql.UUID `json:"id"`
-	IsActive   bool       `json:"is_active"`
-	IsAdmin    bool       `json:"is_admin"`
-	IsVerified bool       `json:"is_verified"`
-	LastName   string     `json:"last_name"`
-	Password   string     `json:"-"`
-	Role       string     `json:"role"`
-	TeamID     gocql.UUID `json:"team_id"`
-	UpdatedAt  time.Time  `json:"updated_at"`
+	CreatedAt               time.Time  `json:"created_at"`
+	Email                   string     `json:"email" validate:"email,required,db_unique"`
+	FirstName               string     `json:"first_name"`
+	ID                      gocql.UUID `json:"id"`
+	IsActive                bool       `json:"is_active"`
+	IsAdmin                 bool       `json:"is_admin"`
+	IsMessageProviderLinked bool       `json:"is_message_provider_linked"`
+	IsVerified              bool       `json:"is_verified"`
+	LastName                string     `json:"last_name"`
+	Password                string     `json:"-"`
+	Role                    string     `json:"role"`
+	TeamID                  gocql.UUID `json:"team_id"`
+	UpdatedAt               time.Time  `json:"updated_at"`
 }
 
 // ListUsersParams defines parameters for ListUsers.

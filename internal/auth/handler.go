@@ -321,18 +321,19 @@ func (s *ServerHandler) ListUsers(ctx echo.Context, params ListUsersParams) erro
 		}
 
 		extended := UserWithRole{
-			CreatedAt:  user.CreatedAt,
-			Email:      user.Email,
-			FirstName:  user.FirstName,
-			ID:         user.ID,
-			IsActive:   user.IsActive,
-			IsVerified: user.IsVerified,
-			LastName:   user.LastName,
-			Password:   user.Password,
-			TeamID:     user.TeamID,
-			UpdatedAt:  user.UpdatedAt,
-			IsAdmin:    teamuser.IsAdmin,
-			Role:       teamuser.Role,
+			CreatedAt:               user.CreatedAt,
+			Email:                   user.Email,
+			FirstName:               user.FirstName,
+			ID:                      user.ID,
+			IsActive:                user.IsActive,
+			IsVerified:              user.IsVerified,
+			LastName:                user.LastName,
+			Password:                user.Password,
+			TeamID:                  user.TeamID,
+			UpdatedAt:               user.UpdatedAt,
+			IsAdmin:                 teamuser.IsAdmin,
+			Role:                    teamuser.Role,
+			IsMessageProviderLinked: teamuser.IsMessageProviderLinked,
 		}
 
 		usersext = append(usersext, extended)
