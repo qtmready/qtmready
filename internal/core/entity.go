@@ -147,6 +147,11 @@ func (mp MessageProviderData) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
 }
 
 func (mp *MessageProviderData) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
+	if len(data) == 0 {
+		*mp = MessageProviderData{}
+		return nil
+	}
+
 	return json.Unmarshal(data, mp)
 }
 

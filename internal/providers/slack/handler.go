@@ -42,7 +42,6 @@ func NewServerHandler(middleware echo.MiddlewareFunc) *ServerHandler {
 	}
 }
 
-// this for runs one time for one time.
 func (e *ServerHandler) SlackOauth(ctx echo.Context, params SlackOauthParams) error {
 	var c HTTPClient
 
@@ -56,71 +55,79 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context, params SlackOauthParams) er
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	// TODO - in-progress -> save data to user table with extra columns or create a new table associated with users table
-
-	// authorized user not configure bot with channel
 	if response.AuthedUser.AccessToken != "" {
-		userID, _ := gocql.ParseUUID(ctx.Get("user_id").(string))
-
-		teamuser := &auth.TeamUser{}
-		query := db.QueryParams{"user_id": userID.String()}
-
-		shared.Logger().Debug("SlackOauth/db query", "query", query)
-
-		if err := db.Get(teamuser, db.QueryParams{"user_id": userID.String()}); err != nil {
-			shared.Logger().Error("SlackOauth/get teamuser err", "error", err.Error())
-			return shared.NewAPIError(http.StatusNotFound, err)
-		}
-
-		shared.Logger().Debug("SlackOauth/teamuser", "teamuser", teamuser)
-
-		client, _ := instance.GetSlackClient(response.AuthedUser.AccessToken)
-
-		identity, err := client.GetUserIdentity()
-		if err != nil {
-			shared.Logger().Error("SlackOauth/identity", "error", err.Error())
-		}
-
-		// Generate a key for AES-256.
-		key := generateKey(response.Team.ID)
-
-		// Encrypt the access token.
-		encryptedToken, err := encrypt([]byte(response.AuthedUser.AccessToken), key)
+		// linked message provider user (slack) to quantm user
+		_, err := _user(ctx, response)
 		if err != nil {
 			return shared.NewAPIError(http.StatusBadRequest, err)
 		}
 
-		// TODO: connect user flag may be updated here
-		userinfo := auth.MessageProviderUserInfo{
-			Slack: &auth.MessageProviderSlackUserInfo{
-				UserToken:      base64.StdEncoding.EncodeToString(encryptedToken),
-				ProviderUserID: identity.User.ID,
-				ProviderTeamID: identity.Team.ID,
-			},
-		}
+		return ctx.JSON(http.StatusOK, nil)
+	}
 
-		teamuser.IsMessageProviderLinked = true
-		teamuser.MessageProvider = auth.MessageProviderSlack
-		teamuser.MessageProviderUserInfo = userinfo
+	// connect slack bot user with channel info
+	resp, err := _bot(response)
+	if err != nil {
+		return shared.NewAPIError(http.StatusBadRequest, err)
+	}
 
-		shared.Logger().Debug("SlackOauth/userinfo", "debug", userinfo)
+	return ctx.JSON(http.StatusOK, resp)
+}
 
-		// TODO: save with user info and return
-		if err := db.Save(teamuser); err != nil {
-			shared.Logger().Error("SlackOauth/save err", "error", err.Error())
-			return shared.NewAPIError(http.StatusBadRequest, err)
-		}
+func _user(ctx echo.Context, response *slack.OAuthV2Response) (*auth.MessageProviderUserInfo, error) {
+	userID, _ := gocql.ParseUUID(ctx.Get("user_id").(string))
 
-		return ctx.JSON(http.StatusOK, userinfo)
+	teamuser := &auth.TeamUser{}
+	query := db.QueryParams{"user_id": userID.String()}
+
+	if err := db.Get(teamuser, query); err != nil {
+		return nil, err
+	}
+
+	client, _ := instance.GetSlackClient(response.AuthedUser.AccessToken)
+
+	identity, err := client.GetUserIdentity()
+	if err != nil {
+		shared.Logger().Error("SlackOauth/identity", "error", err.Error())
+		return nil, err
 	}
 
 	// Generate a key for AES-256.
 	key := generateKey(response.Team.ID)
 
 	// Encrypt the access token.
+	encryptedToken, err := encrypt([]byte(response.AuthedUser.AccessToken), key)
+	if err != nil {
+		return nil, err
+	}
+
+	userinfo := auth.MessageProviderUserInfo{
+		Slack: &auth.MessageProviderSlackUserInfo{
+			UserToken:      base64.StdEncoding.EncodeToString(encryptedToken),
+			ProviderUserID: identity.User.ID,
+			ProviderTeamID: identity.Team.ID,
+		},
+	}
+
+	teamuser.IsMessageProviderLinked = true
+	teamuser.MessageProvider = auth.MessageProviderSlack
+	teamuser.MessageProviderUserInfo = userinfo
+
+	if err := db.Save(teamuser); err != nil {
+		return nil, err
+	}
+
+	return &userinfo, nil
+}
+
+func _bot(response *slack.OAuthV2Response) (*core.MessageProviderData, error) {
+	// Generate a key for AES-256.
+	key := generateKey(response.Team.ID)
+
+	// Encrypt the access token.
 	encryptedToken, err := encrypt([]byte(response.AccessToken), key)
 	if err != nil {
-		return shared.NewAPIError(http.StatusBadRequest, err)
+		return nil, err
 	}
 
 	resp := &core.MessageProviderData{
@@ -133,6 +140,5 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context, params SlackOauthParams) er
 		},
 	}
 
-	// return the response to frontend
-	return ctx.JSON(http.StatusOK, resp)
+	return resp, nil
 }
