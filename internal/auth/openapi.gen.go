@@ -276,13 +276,14 @@ type TeamUser struct {
 	TeamID                  gocql.UUID              `cql:"team_id" json:"team_id"`
 	UpdatedAt               time.Time               `cql:"updated_at" json:"updated_at"`
 	UserID                  gocql.UUID              `cql:"user_id" json:"user_id"`
+	UserLoginId             shared.Int64            `cql:"user_login_id" json:"user_login_id"`
 }
 
 var (
 	teamuserMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "team_users",
-			Columns: []string{"created_at", "id", "is_active", "is_admin", "is_message_provider_linked", "message_provider", "message_provider_user_info", "role", "team_id", "updated_at", "user_id"},
+			Columns: []string{"created_at", "id", "is_active", "is_admin", "is_message_provider_linked", "message_provider", "message_provider_user_info", "role", "team_id", "updated_at", "user_id", "user_login_id"},
 			PartKey: []string{"id"},
 		},
 	}

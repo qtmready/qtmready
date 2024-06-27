@@ -68,6 +68,15 @@ func (a *Activities) GetTeamByID(ctx context.Context, id string) (*auth.Team, er
 	return authacts.GetTeam(ctx, params)
 }
 
+func (a *Activities) GetTeamUserByLoginID(ctx context.Context, loginID string) (*auth.TeamUser, error) {
+	teamuser, err := authacts.GetTeamUser(ctx, loginID)
+	if err != nil {
+		return nil, err
+	}
+
+	return teamuser, nil
+}
+
 // CreateMemberships creates a new team membership for the given user and team.
 // If the user is already a member of the team, the membership is updated to reflect the provided admin status.
 // If the user is not already a member of the organization associated with the team, a new organization membership is created.
@@ -79,6 +88,7 @@ func (a *Activities) CreateMemberships(ctx context.Context, payload *CreateMembe
 		IsActive:                true,
 		IsMessageProviderLinked: false,
 		IsAdmin:                 payload.IsAdmin,
+		UserLoginId:             payload.GithubUserID,
 	}
 
 	if _, err := authacts.CreateOrUpdateTeamUser(ctx, teamuser); err != nil {

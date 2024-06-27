@@ -258,19 +258,6 @@ func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
-	// create teamuser
-	teamuser := &auth.TeamUser{
-		TeamID:                  installation.TeamID,
-		UserID:                  request.UserID,
-		IsActive:                true,
-		IsAdmin:                 false,
-		IsMessageProviderLinked: false,
-	}
-	if err := db.Save(teamuser); err != nil {
-		shared.Logger().Error("create team user", "debug", err.Error())
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
-
 	orguser := &OrgUser{}
 	filter := db.QueryParams{"github_org_id": request.GithubOrgID.String(), "github_user_id": request.GithubUserID.String()}
 
@@ -282,6 +269,20 @@ func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 	orguser.UserID = request.UserID
 	if err := db.Save(orguser); err != nil {
 		shared.Logger().Error("update org user", "error", err.Error())
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	// create teamuser
+	teamuser := &auth.TeamUser{
+		TeamID:                  installation.TeamID,
+		UserID:                  request.UserID,
+		IsActive:                true,
+		IsAdmin:                 false,
+		IsMessageProviderLinked: false,
+		UserLoginId:             orguser.GithubUserID,
+	}
+	if err := db.Save(teamuser); err != nil {
+		shared.Logger().Error("create team user", "debug", err.Error())
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 

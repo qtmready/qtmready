@@ -21,6 +21,7 @@ import (
 	"context"
 	"time"
 
+	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -64,6 +65,7 @@ type (
 		InstallationID shared.Int64   `json:"installation_id"`
 		ProviderID     string         `json:"provider_id"`
 		Commits        []RepoIOCommit `json:"commits"`
+		User           *auth.TeamUser `json:"user"` // TODO: need to find more optimze way
 	}
 
 	RepoSignalPullRequestLabelPayload struct{}
