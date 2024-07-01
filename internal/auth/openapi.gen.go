@@ -39,6 +39,7 @@ const (
 
 var (
 	ErrInvalidAccountTypeEnum = errors.New("invalid AccountTypeEnum value")
+	ErrInvalidMessageProvider = errors.New("invalid MessageProvider value")
 )
 
 type (
@@ -77,6 +78,45 @@ func (v *AccountTypeEnum) UnmarshalJSON(data []byte) error {
 	val, ok := AccountTypeEnumMap[s]
 	if !ok {
 		return ErrInvalidAccountTypeEnum
+	}
+
+	*v = val
+
+	return nil
+}
+
+type (
+	MessageProviderMapType map[string]MessageProvider // MessageProviderMapType is a quick lookup map for MessageProvider.
+)
+
+// Defines values for MessageProvider.
+const (
+	MessageProviderNone  MessageProvider = "none"
+	MessageProviderSlack MessageProvider = "slack"
+)
+
+// MessageProviderMap returns all known values for MessageProvider.
+var (
+	MessageProviderMap = MessageProviderMapType{
+		MessageProviderNone.String():  MessageProviderNone,
+		MessageProviderSlack.String(): MessageProviderSlack,
+	}
+)
+
+/*
+ * Helper methods for MessageProvider for easy marshalling and unmarshalling.
+ */
+func (v MessageProvider) String() string               { return string(v) }
+func (v MessageProvider) MarshalJSON() ([]byte, error) { return json.Marshal(v.String()) }
+func (v *MessageProvider) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+
+	val, ok := MessageProviderMap[s]
+	if !ok {
+		return ErrInvalidMessageProvider
 	}
 
 	*v = val
@@ -166,6 +206,22 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+// MessageProvider defines model for MessageProvider.
+type MessageProvider string
+
+// MessageProviderSlackUserInfo defines model for MessageProviderSlackUserInfo.
+type MessageProviderSlackUserInfo struct {
+	BotToken       string `json:"bot_token"`
+	ProviderTeamID string `json:"provider_team_id"`
+	ProviderUserID string `json:"provider_user_id"`
+	UserToken      string `json:"user_token"`
+}
+
+// MessageProviderUserInfo defines model for MessageProviderUserInfo.
+type MessageProviderUserInfo struct {
+	Slack *MessageProviderSlackUserInfo `json:"slack,omitempty"`
+}
+
 // RegisterationRequest defines model for RegisterationRequest.
 type RegisterationRequest struct {
 	ConfirmPassword string `json:"confirm_password"`
@@ -209,21 +265,25 @@ func (team *Team) GetTable() itable.ITable {
 
 // TeamUser defines model for TeamUser.
 type TeamUser struct {
-	CreatedAt time.Time  `cql:"created_at" json:"created_at"`
-	ID        gocql.UUID `cql:"id" json:"id"`
-	IsActive  bool       `cql:"is_active" json:"is_active"`
-	IsAdmin   bool       `cql:"is_admin" json:"is_admin"`
-	Role      string     `cql:"role" json:"role"`
-	TeamID    gocql.UUID `cql:"team_id" json:"team_id"`
-	UpdatedAt time.Time  `cql:"updated_at" json:"updated_at"`
-	UserID    gocql.UUID `cql:"user_id" json:"user_id"`
+	CreatedAt               time.Time               `cql:"created_at" json:"created_at"`
+	ID                      gocql.UUID              `cql:"id" json:"id"`
+	IsActive                bool                    `cql:"is_active" json:"is_active"`
+	IsAdmin                 bool                    `cql:"is_admin" json:"is_admin"`
+	IsMessageProviderLinked bool                    `cql:"is_message_provider_linked" json:"is_message_provider_linked"`
+	MessageProvider         MessageProvider         `cql:"message_provider" json:"message_provider"`
+	MessageProviderUserInfo MessageProviderUserInfo `cql:"message_provider_user_info" json:"message_provider_user_info"`
+	Role                    string                  `cql:"role" json:"role"`
+	TeamID                  gocql.UUID              `cql:"team_id" json:"team_id"`
+	UpdatedAt               time.Time               `cql:"updated_at" json:"updated_at"`
+	UserID                  gocql.UUID              `cql:"user_id" json:"user_id"`
+	UserLoginId             shared.Int64            `cql:"user_login_id" json:"user_login_id"`
 }
 
 var (
 	teamuserMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "team_users",
-			Columns: []string{"created_at", "id", "is_active", "is_admin", "role", "team_id", "updated_at", "user_id"},
+			Columns: []string{"created_at", "id", "is_active", "is_admin", "is_message_provider_linked", "message_provider", "message_provider_user_info", "role", "team_id", "updated_at", "user_id", "user_login_id"},
 			PartKey: []string{"id"},
 		},
 	}
@@ -269,6 +329,23 @@ var (
 
 func (user *User) GetTable() itable.ITable {
 	return userTable
+}
+
+// UserWithRole defines model for UserWithRole.
+type UserWithRole struct {
+	CreatedAt               time.Time  `json:"created_at"`
+	Email                   string     `json:"email" validate:"email,required,db_unique"`
+	FirstName               string     `json:"first_name"`
+	ID                      gocql.UUID `json:"id"`
+	IsActive                bool       `json:"is_active"`
+	IsAdmin                 bool       `json:"is_admin"`
+	IsMessageProviderLinked bool       `json:"is_message_provider_linked"`
+	IsVerified              bool       `json:"is_verified"`
+	LastName                string     `json:"last_name"`
+	Password                string     `json:"-"`
+	Role                    string     `json:"role"`
+	TeamID                  gocql.UUID `json:"team_id"`
+	UpdatedAt               time.Time  `json:"updated_at"`
 }
 
 // ListUsersParams defines parameters for ListUsers.
@@ -1391,7 +1468,7 @@ func (r SetActiveTeamResponse) StatusCode() int {
 type ListUsersResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *[]User
+	JSON200      *[]UserWithRole
 	JSON400      *externalRef0.BadRequest
 	JSON401      *externalRef0.Unauthorized
 	JSON404      *externalRef0.NotFound
@@ -2011,7 +2088,7 @@ func ParseListUsersResponse(rsp *http.Response) (*ListUsersResponse, error) {
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest []User
+		var dest []UserWithRole
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}

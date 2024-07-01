@@ -292,6 +292,7 @@ func (s *ServerHandler) CreateUser(ctx echo.Context) error {
 // endpoint: /auth/users
 func (s *ServerHandler) ListUsers(ctx echo.Context, params ListUsersParams) error {
 	users := make([]User, 0)
+	usersext := make([]UserWithRole, 0)
 
 	if params.Email != nil {
 		if err := db.Filter(&User{}, &users, db.QueryParams{"email": "'" + *params.Email + "'"}); err != nil {
@@ -312,7 +313,33 @@ func (s *ServerHandler) ListUsers(ctx echo.Context, params ListUsersParams) erro
 		}
 	}
 
-	return ctx.JSON(http.StatusOK, users)
+	for _, user := range users {
+		teamuser := &TeamUser{}
+
+		if err := db.Get(teamuser, db.QueryParams{"user_id": user.ID.String()}); err != nil {
+			return shared.NewAPIError(http.StatusNotFound, err)
+		}
+
+		extended := UserWithRole{
+			CreatedAt:               user.CreatedAt,
+			Email:                   user.Email,
+			FirstName:               user.FirstName,
+			ID:                      user.ID,
+			IsActive:                user.IsActive,
+			IsVerified:              user.IsVerified,
+			LastName:                user.LastName,
+			Password:                user.Password,
+			TeamID:                  user.TeamID,
+			UpdatedAt:               user.UpdatedAt,
+			IsAdmin:                 teamuser.IsAdmin,
+			Role:                    teamuser.Role,
+			IsMessageProviderLinked: teamuser.IsMessageProviderLinked,
+		}
+
+		usersext = append(usersext, extended)
+	}
+
+	return ctx.JSON(http.StatusOK, usersext)
 }
 
 // endpoint: /auth/users/:id

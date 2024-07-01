@@ -18,6 +18,8 @@
 package auth
 
 import (
+	"encoding/json"
+
 	"github.com/gocql/gocql"
 	"golang.org/x/crypto/bcrypt"
 
@@ -67,4 +69,17 @@ func (u *User) SendVerificationEmail() error {
 // SendEmail is the main function responsible for sending emails to users.
 func (u *User) SendEmail() error {
 	return nil
+}
+
+func (mp MessageProviderUserInfo) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
+	return json.Marshal(mp)
+}
+
+func (mp *MessageProviderUserInfo) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
+	if len(data) == 0 {
+		*mp = MessageProviderUserInfo{}
+		return nil
+	}
+
+	return json.Unmarshal(data, mp)
 }

@@ -213,6 +213,27 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, msg).Get(ctx, changes)
 
 			if changes.Delta > repo.Threshold {
+				if payload.User.IsMessageProviderLinked {
+					// TODO: get the team_user and check is slack is linked or not
+					msg := &MessageIOLineExeededPayload{
+						MessageIOPayload: &MessageIOPayload{
+							WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
+							ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
+							BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
+							RepoName:    repo.Name,
+							BranchName:  branch,
+						},
+						Threshold:     repo.Threshold,
+						DetectChanges: changes,
+					}
+
+					logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
+
+					_ = workflow.
+						ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
+						Get(ctx, nil)
+				}
+
 				msg := &MessageIOLineExeededPayload{
 					MessageIOPayload: &MessageIOPayload{
 						WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
@@ -228,7 +249,8 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 				logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
 
 				_ = workflow.
-					ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).Get(ctx, nil)
+					ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
+					Get(ctx, nil)
 
 				return
 			}
@@ -290,6 +312,29 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 				if apperr.Type() == "RepoIORebaseError" && !rebase.InProgress {
 					logger.Info("merge conflict detected ...", "sha", rebase.SHA, "commit_message", rebase.Message, "path", data.Path)
 
+					if payload.User.IsMessageProviderLinked {
+						// TODO: get the team_user and check is slack is linked or not
+						msg := &MessageIOMergeConflictPayload{
+							MessageIOPayload: &MessageIOPayload{
+								WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
+								ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
+								BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
+								RepoName:    repo.Name,
+								BranchName:  branch,
+							},
+							CommitUrl: fmt.Sprintf("https://github.com/%s/%s/commits/%s",
+								payload.RepoOwner, payload.RepoName, payload.After),
+							RepoUrl: fmt.Sprintf("https://github.com/%s/%s", payload.RepoOwner, payload.RepoName),
+							SHA:     payload.After,
+						}
+
+						logger.Info("merge conflict detected, sending message ...", "sha", payload.After, payload.RepoName)
+
+						_ = workflow.
+							ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg).
+							Get(ctx, nil)
+					}
+
 					msg := &MessageIOMergeConflictPayload{
 						MessageIOPayload: &MessageIOPayload{
 							WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
@@ -304,6 +349,8 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 					}
 
 					logger.Info("merge conflict detected, sending message ...", "sha", payload.After, payload.RepoName)
+
+					// TODO: get the team_user and check is slack is linked or not
 
 					_ = workflow.ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg)
 					_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)

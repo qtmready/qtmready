@@ -243,6 +243,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	_ctx := workflow.WithActivityOptions(ctx, opts)
 	repos := make([]Repo, 0)
 	corepo := &core.Repo{}
+	temp := &auth.TeamUser{}
 
 	logger.Info(
 		"github/push: preparing ...",
@@ -301,6 +302,16 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 		)
 	}
 
+	// TODO - get the team user with message provider (slack info) to send message to user in private
+	// event has the sender which has the unique ID and using this ID get the team_user info which has the message provider user info
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.GetTeamUserByLoginID, event.Sender.ID.String()).Get(_ctx, temp); err != nil {
+		logger.Warn(
+			"github/push: database error, retrying ... ",
+			slog.Int64("github_user__sender_id", event.Sender.ID.Int64()),
+		)
+	}
+
 	logger.Info(
 		"github/push: signal core repo ...",
 		slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
@@ -318,6 +329,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 		CtrlID:         repo.ID.String(),
 		InstallationID: event.Installation.ID,
 		ProviderID:     repo.GithubID.String(),
+		User:           temp,
 	}
 
 	if err := workflow.

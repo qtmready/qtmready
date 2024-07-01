@@ -226,8 +226,6 @@ func (s *ServerHandler) GithubCreateUserOrgs(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, result)
 }
 
-// TODO - need to refine the handler.
-// TODO - remove user updation part.
 func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 	request := &CreateTeamUserRequest{}
 
@@ -239,11 +237,6 @@ func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	installation := &Installation{}
-	if err := db.Get(installation, db.QueryParams{"installation_login_id": request.GithubOrgID.String()}); err != nil {
-		return shared.NewAPIError(http.StatusNotFound, err)
-	}
-
 	// associtaed user with team
 	user := &auth.User{}
 	if err := db.Get(user, db.QueryParams{"id": request.UserID.String()}); err != nil {
@@ -251,22 +244,10 @@ func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusNotFound, err)
 	}
 
-	user.TeamID = installation.TeamID
+	user.TeamID = request.TeamID
 
 	if err := db.Save(user); err != nil {
 		shared.Logger().Error("save user", "debug", err.Error())
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
-
-	// create teamuser
-	teamuser := &auth.TeamUser{
-		TeamID:   installation.TeamID,
-		UserID:   request.UserID,
-		IsActive: true,
-		IsAdmin:  false,
-	}
-	if err := db.Save(teamuser); err != nil {
-		shared.Logger().Error("create team user", "debug", err.Error())
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
@@ -281,6 +262,20 @@ func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 	orguser.UserID = request.UserID
 	if err := db.Save(orguser); err != nil {
 		shared.Logger().Error("update org user", "error", err.Error())
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	// create teamuser
+	teamuser := &auth.TeamUser{
+		TeamID:                  request.TeamID,
+		UserID:                  request.UserID,
+		IsActive:                true,
+		IsAdmin:                 false,
+		IsMessageProviderLinked: false,
+		UserLoginId:             orguser.GithubUserID,
+	}
+	if err := db.Save(teamuser); err != nil {
+		shared.Logger().Error("create team user", "debug", err.Error())
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
