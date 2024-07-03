@@ -138,6 +138,19 @@ jobs:
           service: ${{ env.GCR_SERVICE }}
           image: ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
 
+      - name: Clone the infra repository
+        uses: actions/checkout@v4
+        with:
+          repository: quantmHQ/infra
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: infra
+
+      - name: List files in infra repository
+        run: ls -la infra
+
+      - name: Migrate db created
+        run: kubectl apply -f k8s/0008-quantm/002-quantm-migrate-db.yaml
+
       - name: Healthcheck for API
         id: healthcheck-api
         run: curl ${{ steps.deploy-api.outputs.url }}

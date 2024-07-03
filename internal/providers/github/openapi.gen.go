@@ -199,7 +199,7 @@ var (
 		M: &table.Metadata{
 			Name:    "github_org_users",
 			Columns: []string{"created_at", "github_org_id", "github_org_name", "github_user_id", "id", "updated_at", "user_id"},
-			PartKey: []string{"id", "user_id"},
+			PartKey: []string{"id"},
 		},
 	}
 
