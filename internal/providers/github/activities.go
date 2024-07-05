@@ -19,6 +19,7 @@ package github
 
 import (
 	"context"
+	"strings"
 
 	gh "github.com/google/go-github/v62/github"
 	"go.temporal.io/sdk/activity"
@@ -68,9 +69,21 @@ func (a *Activities) GetTeamByID(ctx context.Context, id string) (*auth.Team, er
 	return authacts.GetTeam(ctx, params)
 }
 
+// GetTeamByID retrieves a user by github user id.
+// ctx is the context for the operation.
+// id is the ID of the login id provided by github.
+// Returns the retrieved team user with message provider data if user not exist return the error and team_user both nil.
 func (a *Activities) GetTeamUserByLoginID(ctx context.Context, loginID string) (*auth.TeamUser, error) {
 	teamuser, err := authacts.GetTeamUser(ctx, loginID)
+
 	if err != nil {
+		// Check if the error message is "not found" and handle accordingly
+		// return error nil if the user not found in the system (not connect with message povider)
+		// in not foun case we return both err and teamuser to run the workflow but not send message to user
+		if strings.Contains(err.Error(), "not found") {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 

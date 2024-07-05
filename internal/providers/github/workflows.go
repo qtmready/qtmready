@@ -307,8 +307,12 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	if err := workflow.
 		ExecuteActivity(_ctx, activities.GetTeamUserByLoginID, event.Sender.ID.String()).Get(_ctx, temp); err != nil {
 		logger.Warn(
-			"github/push: database error, retrying ... ",
+			"github/push: database error, return ... ",
 			slog.Int64("github_user__sender_id", event.Sender.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+			slog.String("github_repo__id", repo.ID.String()),
+			slog.String("core_repo__id", corepo.ID.String()),
+			slog.String("err", err.Error()),
 		)
 	}
 
