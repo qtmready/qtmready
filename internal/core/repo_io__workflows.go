@@ -26,6 +26,7 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/core/timers"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -35,6 +36,10 @@ type (
 	}
 
 	BranchCtrlLogger func(level string, message string, attrs ...any)
+)
+
+const (
+	DefaultStaleCheckDuration = 1 * time.Minute // TODO: make this configurable.
 )
 
 // RepoCtrl is the controller for all the workflows related to the repository.
@@ -88,13 +93,21 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "", branch)
 	selector := workflow.NewSelector(ctx)
 	done := false
+	interval := timers.NewInterval(ctx, DefaultStaleCheckDuration)
 
-	// channels
+	// handle stale check.
+	workflow.Go(ctx, func(ctx workflow.Context) {
+		for !done {
+			interval.Next(ctx) // TODO: @alyfinder - send message to slack.
+		}
+	})
+
+	// handling signals
 
 	// push event signal.
-	// detect changges. if changes are greater than threshold, send early warning message.
+	// detect changes. if changes are greater than threshold, send early warning message.
 	pushchannel := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
-	selector.AddReceive(pushchannel, w.onBranchPush(ctx, repo, branch)) // post processing for push event recieved on repo.
+	selector.AddReceive(pushchannel, w.onBranchPush(ctx, repo, branch, interval)) // post processing for push event recieved on repo.
 
 	// rebase signal.
 	// attempts to rebase the branch with the base branch. if there are merge conflicts, sends message.
@@ -186,11 +199,13 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 }
 
 // onBranchPush is a shared.ChannelHandler that is called when a branch is pushed to a repository.
-func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch string) shared.ChannelHandler {
+func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch string, interval timers.Interval) shared.ChannelHandler {
 	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "push", branch)
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 10 * time.Minute}
 
 	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	interval.Restart(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
 		payload := &RepoSignalPushPayload{}
