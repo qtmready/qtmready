@@ -81,6 +81,7 @@ type (
 		Name          string `json:"name"`
 		DefaultBranch string `json:"default_branch"`
 		ProviderID    string `json:"provider_id"`
+		Owner         string `json:"owner"`
 	}
 
 	RepoIOInfoPayload struct {

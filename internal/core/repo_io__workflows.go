@@ -99,6 +99,30 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	workflow.Go(ctx, func(ctx workflow.Context) {
 		for !done {
 			interval.Next(ctx) // TODO: @alyfinder - send message to slack.
+
+			opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+			ctx = workflow.WithActivityOptions(ctx, opts)
+
+			// get the gtihub repo by ctrl_id
+			data := &RepoIORepoData{}
+			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).GetRepoData, repo.CtrlID.String()).Get(ctx, data)
+
+			msg := &MessageIOStaleBranchPayload{
+				MessageIOPayload: &MessageIOPayload{
+					WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
+					ChannelID:   repo.MessageProviderData.Slack.ChannelID,
+					BotToken:    repo.MessageProviderData.Slack.BotToken,
+					RepoName:    repo.Name,
+					BranchName:  branch,
+				},
+				CommitUrl: fmt.Sprintf("https://github.com/%s/%s/tree/%s",
+					data.Owner, data.Name, branch),
+				RepoUrl: fmt.Sprintf("https://github.com/%s/%s", data.Owner, data.Name),
+			}
+
+			logger.Info("stale branch detected, sending message ...", "stale", msg.RepoUrl)
+
+			_ = workflow.ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendStaleBranchMessage, msg)
 		}
 	})
 

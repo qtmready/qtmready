@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	gh "github.com/google/go-github/v62/github"
@@ -28,6 +29,7 @@ func (r *RepoIO) GetRepoData(ctx context.Context, id string) (*core.RepoIORepoDa
 		Name:          repo.Name,
 		DefaultBranch: repo.DefaultBranch,
 		ProviderID:    repo.GithubID.String(),
+		Owner:         strings.Split(repo.FullName, "/")[0],
 	}
 
 	return data, nil
