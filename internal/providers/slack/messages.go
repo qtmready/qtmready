@@ -95,15 +95,8 @@ func formatMergeConflictAttachment(payload *core.MessageIOMergeConflictPayload) 
 
 func formatStaleBranchAttachment(payload *core.MessageIOStaleBranchPayload) slack.Attachment {
 	return slack.Attachment{
-		Color:   "warning",
-		Pretext: "Stale branch is detected. Please review and take necessary action.", // TODO: need to finalize
-		Fields: []slack.AttachmentField{
-			createRepositoryField(payload.MessageIOPayload.RepoName, payload.RepoUrl, true),
-			createBranchField(payload.MessageIOPayload.BranchName, payload.CommitUrl, true),
-		},
-		MarkdownIn: []string{"fields"},
-		Footer:     footer,
-		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
+		Pretext: fmt.Sprintf("Stale branch <%s|%s> is detected on repository <%s|%s>. Please review and take necessary action.",
+			payload.CommitUrl, payload.MessageIOPayload.BranchName, payload.RepoUrl, payload.MessageIOPayload.RepoName),
 	}
 }
 
