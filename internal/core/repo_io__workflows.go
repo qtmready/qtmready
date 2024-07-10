@@ -39,7 +39,7 @@ type (
 )
 
 const (
-	DefaultStaleCheckDuration = 1 * time.Minute // TODO: make this configurable.
+	DefaultStaleCheckDuration = 5 * 24 * time.Hour // TODO: make this configurable. (5 days)
 )
 
 // RepoCtrl is the controller for all the workflows related to the repository.
