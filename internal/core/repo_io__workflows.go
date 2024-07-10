@@ -26,6 +26,7 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/core/timers"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -35,6 +36,10 @@ type (
 	}
 
 	BranchCtrlLogger func(level string, message string, attrs ...any)
+)
+
+const (
+	DefaultStaleCheckDuration = 15 * 24 * time.Hour // TODO: make this configurable. (15 days)
 )
 
 // RepoCtrl is the controller for all the workflows related to the repository.
@@ -88,13 +93,45 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "", branch)
 	selector := workflow.NewSelector(ctx)
 	done := false
+	interval := timers.NewInterval(ctx, DefaultStaleCheckDuration)
 
-	// channels
+	// handle stale check.
+	workflow.Go(ctx, func(ctx workflow.Context) {
+		for !done {
+			interval.Next(ctx) // TODO: @alyfinder - send message to slack.
+
+			opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+			ctx = workflow.WithActivityOptions(ctx, opts)
+
+			// get the gtihub repo by ctrl_id
+			data := &RepoIORepoData{}
+			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).GetRepoData, repo.CtrlID.String()).Get(ctx, data)
+
+			msg := &MessageIOStaleBranchPayload{
+				MessageIOPayload: &MessageIOPayload{
+					WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
+					ChannelID:   repo.MessageProviderData.Slack.ChannelID,
+					BotToken:    repo.MessageProviderData.Slack.BotToken,
+					RepoName:    repo.Name,
+					BranchName:  branch,
+				},
+				CommitUrl: fmt.Sprintf("https://github.com/%s/%s/tree/%s",
+					data.Owner, data.Name, branch),
+				RepoUrl: fmt.Sprintf("https://github.com/%s/%s", data.Owner, data.Name),
+			}
+
+			logger.Info("stale branch detected, sending message ...", "stale", msg.RepoUrl)
+
+			_ = workflow.ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendStaleBranchMessage, msg)
+		}
+	})
+
+	// handling signals
 
 	// push event signal.
-	// detect changges. if changes are greater than threshold, send early warning message.
+	// detect changes. if changes are greater than threshold, send early warning message.
 	pushchannel := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
-	selector.AddReceive(pushchannel, w.onBranchPush(ctx, repo, branch)) // post processing for push event recieved on repo.
+	selector.AddReceive(pushchannel, w.onBranchPush(ctx, repo, branch, interval)) // post processing for push event recieved on repo.
 
 	// rebase signal.
 	// attempts to rebase the branch with the base branch. if there are merge conflicts, sends message.
@@ -186,11 +223,13 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 }
 
 // onBranchPush is a shared.ChannelHandler that is called when a branch is pushed to a repository.
-func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch string) shared.ChannelHandler {
+func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch string, interval timers.Interval) shared.ChannelHandler {
 	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "push", branch)
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 10 * time.Minute}
 
 	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	interval.Restart(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
 		payload := &RepoSignalPushPayload{}
