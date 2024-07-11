@@ -19,7 +19,9 @@ package shared
 
 import (
 	"encoding/json"
+	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gocql/gocql"
@@ -33,6 +35,10 @@ type (
 	Int64 int64
 	// WorkflowSignal is a type alias to define the name of the workflow signal.
 	WorkflowSignal string
+
+	Duration struct {
+		time.Duration
+	}
 
 	// PullRequestSignal is the sent to PR workflows to trigger a deployment.
 	PullRequestSignal struct {
@@ -160,4 +166,69 @@ func (i *Int64) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
 	*i = Int64(v)
 
 	return nil
+}
+
+// UnmarshalCQL unmarshals a Cassandra duration (stored as text or varchar) into Duration.
+// NOTE - saving duration as a string in database.
+func (d *Duration) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
+	if info.Type() != gocql.TypeVarchar && info.Type() != gocql.TypeText {
+		return fmt.Errorf("expected varchar or text type, got %v", info.Type())
+	}
+
+	if len(data) == 0 {
+		return nil // Handle null values if needed
+	}
+
+	s := string(data)
+
+	duration, err := time.ParseDuration(s)
+	if err != nil {
+		return fmt.Errorf("error parsing duration %s: %w", s, err)
+	}
+
+	d.Duration = duration
+
+	return nil
+}
+
+// MarshalCQL marshals Duration into a Cassandra duration.
+func (d Duration) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
+	Logger().Debug("MarshalCQL/info.Type", "info.Type", info.Type())
+
+	return []byte(d.String()), nil
+}
+
+// MarshalJSON marshals Duration to JSON string.
+func (d Duration) MarshalJSON() ([]byte, error) {
+	if d.Duration == 0 {
+		return []byte("null"), nil // Handle null case for JSON
+	}
+
+	return []byte(fmt.Sprintf(`"%s"`, d.String())), nil
+}
+
+// UnmarshalJSON unmarshals JSON string into Duration.
+func (d *Duration) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+
+	if s == "null" {
+		return nil // Handle null case for JSON
+	}
+
+	duration, err := time.ParseDuration(s)
+	if err != nil {
+		return fmt.Errorf("error parsing duration %s: %w", s, err)
+	}
+
+	d.Duration = duration
+
+	return nil
+}
+
+// String returns the string representation of Duration.
+func (d Duration) String() string {
+	return d.Duration.String()
 }

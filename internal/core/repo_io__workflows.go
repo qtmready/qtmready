@@ -38,10 +38,6 @@ type (
 	BranchCtrlLogger func(level string, message string, attrs ...any)
 )
 
-const (
-	DefaultStaleCheckDuration = 15 * 24 * time.Hour // TODO: make this configurable. (15 days)
-)
-
 // RepoCtrl is the controller for all the workflows related to the repository.
 //
 // NOTE: This workflow is only meant to be started with SignalWithStartWorkflow.
@@ -93,7 +89,8 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "", branch)
 	selector := workflow.NewSelector(ctx)
 	done := false
-	interval := timers.NewInterval(ctx, DefaultStaleCheckDuration)
+
+	interval := timers.NewInterval(ctx, repo.StaleTime.Duration)
 
 	// handle stale check.
 	workflow.Go(ctx, func(ctx workflow.Context) {

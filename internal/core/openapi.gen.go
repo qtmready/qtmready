@@ -182,6 +182,7 @@ type Repo struct {
 	Name                string              `cql:"name" json:"name"`
 	Provider            RepoProvider        `cql:"provider" json:"provider"`
 	ProviderID          string              `cql:"provider_id" json:"provider_id"`
+	StaleTime           shared.Duration     `cql:"stale_time" json:"stale_time"`
 	TeamID              gocql.UUID          `cql:"team_id" json:"team_id"`
 	Threshold           shared.Int64        `cql:"threshold" json:"threshold"`
 	UpdatedAt           time.Time           `cql:"updated_at" json:"updated_at"`
@@ -191,7 +192,7 @@ var (
 	repoMeta = itable.Metadata{
 		M: &table.Metadata{
 			Name:    "repos",
-			Columns: []string{"created_at", "ctrl_id", "default_branch", "id", "is_monorepo", "message_provider", "message_provider_data", "name", "provider", "provider_id", "team_id", "threshold", "updated_at"},
+			Columns: []string{"created_at", "ctrl_id", "default_branch", "id", "is_monorepo", "message_provider", "message_provider_data", "name", "provider", "provider_id", "stale_time", "team_id", "threshold", "updated_at"},
 			PartKey: []string{"id", "team_id"},
 		},
 	}
@@ -210,6 +211,7 @@ type RepoCreateRequest struct {
 	MessageProvider     MessageProvider     `json:"message_provider"`
 	MessageProviderData MessageProviderData `json:"message_provider_data"`
 	Provider            RepoProvider        `json:"provider"`
+	StaleTime           shared.Duration     `json:"stale_time"`
 	Threshold           shared.Int64        `json:"threshold"`
 }
 
