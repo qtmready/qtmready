@@ -140,8 +140,8 @@ type (
 	}
 )
 
-// CheckStale checks if the Branch is stale.
-func (state *RepoWorkflowStateBranchCtrl) CheckStale(ctx context.Context) bool {
+// IsStale checks if the Branch is stale.
+func (state *RepoWorkflowStateBranchCtrl) IsStale(ctx context.Context) bool {
 	return false
 }
 

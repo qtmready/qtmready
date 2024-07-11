@@ -14,7 +14,7 @@ type (
 		channel  workflow.Channel
 	}
 
-	// Interval helps to schedule a recurring task.
+	// Interval provides helpers to manage a recurring interval in the context of a temporal workflow.
 	Interval interface {
 		// Next blocks until the the end of the interval. After that, it prepares the interval for the next iteration.
 		Next(ctx workflow.Context)
@@ -101,15 +101,15 @@ func (t *interval) wait(ctx workflow.Context) {
 
 // update updates the interval's duration and the time at which the interval should stop.
 // The duration parameter specifies the new interval duration.
-func (t *interval) update(_ workflow.Context, duration time.Duration) {
+func (t *interval) update(ctx workflow.Context, duration time.Duration) {
 	t.duration = duration
-	t.until = time.Now().Add(duration)
+	t.until = Now(ctx).Add(duration)
 }
 
 func NewInterval(ctx workflow.Context, duration time.Duration) Interval {
 	return &interval{
 		duration: duration,
-		until:    time.Now().Add(duration),
+		until:    Now(ctx).Add(duration),
 		channel:  workflow.NewChannel(ctx),
 	}
 }
