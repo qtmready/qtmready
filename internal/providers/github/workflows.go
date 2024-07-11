@@ -254,7 +254,9 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	if err := workflow.
 		ExecuteActivity(_ctx, activities.GetReposForInstallation, event.Installation.ID.String(), event.Repository.ID.String()).
 		Get(_ctx, &repos); err != nil {
-		logger.Warn("github/push: database error, retrying ... ")
+		logger.Error("github/push: temporal error, aborting ... ")
+
+		return err
 	}
 
 	if len(repos) == 0 {
@@ -274,6 +276,8 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
 			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
 		)
+
+		return nil
 	}
 
 	repo := repos[0]
@@ -352,41 +356,76 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	return nil
 }
 
-func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, payload *GithubWorkflowRunEvent) error {
-	logger := workflow.GetLogger(ctx)
-
-	if actionWorkflowStatuses[payload.Repository.Name] != nil {
-		logger.Debug("Workflow action file:", "action", payload.Action)
-		logger.Debug("Workflow action file:", "file", payload.Workflow.Path)
-		actionWorkflowStatuses[payload.Repository.Name][payload.Workflow.Path] = payload.Action
-	}
-
-	return nil
-}
-
 // After the creation of the idempotency key, we pass the idempotency key as a signal to the Aperture Workflow.
-func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullRequestEvent) error {
+func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestEvent) error {
 	logger := workflow.GetLogger(ctx)
 	logger.Info("OnPullRequestEvent workflow started ...")
-	// status := &PullRequestWorkflowStatus{Complete: false}
 
-	// wait for artifact to generate and push to registery
-	ch := workflow.GetSignalChannel(ctx, WorkflowSignalArtifactReady.String())
-	artifact := &ArtifactReadySignal{}
-	ch.Receive(ctx, artifact)
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	_ctx := workflow.WithActivityOptions(ctx, opts)
+	repos := make([]Repo, 0)
+	corepo := &core.Repo{}
+	user := &auth.TeamUser{}
 
-	// setting activity options
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
+	logger.Info(
+		"github/pull request: preparing ...",
+		slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+		slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+	)
 
-	// get core repo
-	repo := &Repo{GithubID: payload.Repository.ID}
-	coreRepo := &core.Repo{}
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.GetReposForInstallation, event.Installation.ID.String(), event.Repository.ID.String()).
+		Get(_ctx, &repos); err != nil {
+		logger.Error("github/push: temporal error, aborting ... ")
 
-	err := workflow.ExecuteActivity(actx, activities.GetCoreRepo, repo).Get(ctx, coreRepo)
-	if err != nil {
-		logger.Error("error getting core repo", "error", err)
 		return err
+	}
+
+	if len(repos) == 0 {
+		logger.Warn(
+			"github/pull_request: unknown repo",
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+		)
+
+		return nil
+	}
+
+	// TODO: handle the unique together case during installation.
+	if len(repos) > 1 {
+		logger.Warn(
+			"github/pull_request: multiple repos found",
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+		)
+
+		return nil
+	}
+
+	repo := repos[0]
+
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.GetCoreRepoByCtrlID, repo.ID.String()).
+		Get(_ctx, corepo); err != nil {
+		logger.Warn(
+			"github/pull_request: database error, retrying ... ",
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+			slog.String("github_repo__id", repo.ID.String()),
+			slog.String("core_repo__id", corepo.ID.String()),
+		)
+	}
+
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.GetTeamUserByLoginID, event.Sender.ID.String()).Get(_ctx, user); err != nil {
+		logger.Warn(
+			"github/push: database error, return ... ",
+			slog.Int64("github_user__sender_id", event.Sender.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+			slog.String("github_repo__id", repo.ID.String()),
+			slog.String("core_repo__id", corepo.ID.String()),
+			slog.String("err", err.Error()),
+		)
 	}
 
 	return nil
@@ -430,6 +469,18 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 	// wait for all the repositories to be saved.
 	for range payload.RepositoriesAdded {
 		selector.Select(ctx)
+	}
+
+	return nil
+}
+
+func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, payload *GithubWorkflowRunEvent) error {
+	logger := workflow.GetLogger(ctx)
+
+	if actionWorkflowStatuses[payload.Repository.Name] != nil {
+		logger.Debug("Workflow action file:", "action", payload.Action)
+		logger.Debug("Workflow action file:", "file", payload.Workflow.Path)
+		actionWorkflowStatuses[payload.Repository.Name][payload.Workflow.Path] = payload.Action
 	}
 
 	return nil
