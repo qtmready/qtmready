@@ -359,77 +359,14 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 // OnPullRequestEvent normalize the pull request event and then signal the core repo.
 func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestEvent) error {
 	logger := workflow.GetLogger(ctx)
-	logger.Info("OnPullRequestEvent workflow started ...")
+	logger.Info("github/pull_request: preparing ...")
 
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	_ctx := workflow.WithActivityOptions(ctx, opts)
-	repos := make([]Repo, 0)
-	corepo := &core.Repo{}
-	user := &auth.TeamUser{}
 
-	logger.Info(
-		"github/pull request: preparing ...",
-		slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
-		slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-	)
-
-	if err := workflow.
-		ExecuteActivity(_ctx, activities.GetReposForInstallation, event.Installation.ID.String(), event.Repository.ID.String()).
-		Get(_ctx, &repos); err != nil {
-		logger.Error("github/push: temporal error, aborting ... ")
-
-		return err
-	}
-
-	if len(repos) == 0 {
-		logger.Warn(
-			"github/pull_request: unknown repo",
-			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
-			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-		)
-
-		return nil
-	}
-
-	// TODO: handle the unique together case during installation.
-	if len(repos) > 1 {
-		logger.Warn(
-			"github/pull_request: multiple repos found",
-			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
-			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-		)
-
-		return nil
-	}
-
-	repo := repos[0]
-
-	if err := workflow.
-		ExecuteActivity(_ctx, activities.GetCoreRepoByCtrlID, repo.ID.String()).
-		Get(_ctx, corepo); err != nil {
-		logger.Warn(
-			"github/pull_request: database error, retrying ... ",
-			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
-			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-			slog.String("github_repo__id", repo.ID.String()),
-			slog.String("core_repo__id", corepo.ID.String()),
-		)
-
-		return err
-	}
-
-	if err := workflow.
-		ExecuteActivity(_ctx, activities.GetTeamUserByLoginID, event.Sender.ID.String()).Get(_ctx, user); err != nil {
-		logger.Warn(
-			"github/pull_request: database error, return ... ",
-			slog.Int64("github_user__sender_id", event.Sender.ID.Int64()),
-			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-			slog.String("github_repo__id", repo.ID.String()),
-			slog.String("core_repo__id", corepo.ID.String()),
-			slog.String("err", err.Error()),
-		)
-
-		return err
+	state, err := getRepoEventState(ctx, event)
+	if err != nil {
+		logger.Error("github/pull_request: error preparing ...")
 	}
 
 	payload := &core.RepoIOSignalPullRequestPayload{
@@ -437,21 +374,21 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestE
 		Number:         event.Number,
 		RepoName:       event.Repository.Name,
 		RepoOwner:      event.Repository.Owner.Login,
-		CtrlID:         repo.ID.String(),
+		CtrlID:         state.CoreRepo.ID.String(),
 		InstallationID: event.Installation.ID,
-		ProviderID:     repo.GithubID.String(),
-		User:           user,
+		ProviderID:     state.Repo.GithubID.String(),
+		User:           state.User,
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, corepo, core.RepoIOSignalPush, payload).
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalPush, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
 			"github/push: signal error, retrying ...",
 			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
 			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-			slog.String("github_repo__id", repo.ID.String()),
-			slog.String("core_repo__id", corepo.ID.String()),
+			slog.String("github_repo__id", state.CoreRepo.ID.String()),
+			slog.String("core_repo__id", state.CoreRepo.ID.String()),
 		)
 	}
 
