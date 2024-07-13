@@ -559,3 +559,77 @@ func onInstallationRequestSignal(
 		status.RequestDone = true
 	}
 }
+
+func getRepoEventState(ctx workflow.Context, event RepoEvent) (*RepoEventState, error) {
+	logger := workflow.GetLogger(ctx)
+	logger.Info(
+		"github/repo_event: initializing state ...",
+		slog.Int64("github_repo__installation_id", event.InstallationID().Int64()),
+		slog.Int64("github_repo__github_id", event.RepoID().Int64()),
+	)
+
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	_ctx := workflow.WithActivityOptions(ctx, opts)
+	state := &RepoEventState{}
+	repos := make([]Repo, 0)
+
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.GetReposForInstallation, event.InstallationID().String(), event.RepoID().String()).
+		Get(_ctx, &repos); err != nil {
+		logger.Error("github/push: temporal error, aborting ... ")
+
+		return state, err
+	}
+
+	if len(repos) == 0 {
+		logger.Warn(
+			"github/repo_event: no repos found ...",
+			slog.Int64("github_repo__installation_id", event.InstallationID().Int64()),
+			slog.Int64("github_repo__github_id", event.RepoID().Int64()),
+		)
+
+		return state, NewRepoEventRepoNotFoundError(event.InstallationID(), event.RepoID(), event.RepoName())
+	}
+
+	// TODO: handle the unique together case during installation.
+	if len(repos) > 1 {
+		logger.Warn(
+			"github/repo_event: multiple repos found",
+			slog.Int64("github_repo__installation_id", event.InstallationID().Int64()),
+			slog.Int64("github_repo__github_id", event.RepoID().Int64()),
+		)
+
+		return state, NewRepoEventMultipleReposError(event.InstallationID(), event.RepoID(), event.RepoName())
+	}
+
+	state.Repo = &repos[0]
+
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.GetCoreRepoByCtrlID, state.Repo.ID.String()).
+		Get(_ctx, state.CoreRepo); err != nil {
+		logger.Warn(
+			"github/repo_event: database error, retrying ... ",
+			slog.Int64("github_repo__installation_id", event.InstallationID().Int64()),
+			slog.Int64("github_repo__github_id", event.RepoID().Int64()),
+			slog.String("github_repo__id", state.Repo.ID.String()),
+			slog.String("core_repo__id", state.CoreRepo.ID.String()),
+		)
+
+		return state, err
+	}
+
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.GetTeamUserByLoginID, event.SenderID()).Get(_ctx, state.User); err != nil {
+		logger.Warn(
+			"github/repo_event: database error, retrying ... ",
+			slog.Int64("github_repo__installation_id", event.InstallationID().Int64()),
+			slog.Int64("github_repo__github_id", event.RepoID().Int64()),
+			slog.String("github_repo__id", state.Repo.ID.String()),
+			slog.String("core_repo__id", state.CoreRepo.ID.String()),
+		)
+
+		return state, nil
+	}
+
+	return state, nil
+}

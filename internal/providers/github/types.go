@@ -21,6 +21,8 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 
+	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -29,6 +31,13 @@ type (
 	WebhookEvent         string                               // WebhookEvent defines the event type.
 	WebhookEventHandler  func(ctx echo.Context) error         // EventHandler is the signature of the event handler function.
 	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers.
+
+	RepoEvent interface {
+		RepoID() shared.Int64
+		RepoName() string
+		InstallationID() shared.Int64
+		SenderID() string
+	}
 )
 
 type (
@@ -207,3 +216,43 @@ const (
 	WorkflowSignalPullRequestLabeled   shared.WorkflowSignal = "pull_request_labeled"
 	WorkflowSignalPushEvent            shared.WorkflowSignal = "push_event"
 )
+
+type (
+	RepoEventState struct {
+		CoreRepo *core.Repo     `json:"core_repo"`
+		Repo     *Repo          `json:"repo"`
+		User     *auth.TeamUser `json:"user"`
+	}
+)
+
+func (p *PushEvent) RepoID() shared.Int64 {
+	return p.Repository.ID
+}
+
+func (p *PushEvent) InstallationID() shared.Int64 {
+	return p.Installation.ID
+}
+
+func (p *PushEvent) RepoName() string {
+	return p.Repository.Name
+}
+
+func (p *PushEvent) SenderID() string {
+	return p.Sender.ID.String()
+}
+
+func (p *PullRequestEvent) RepoID() shared.Int64 {
+	return p.Repository.ID
+}
+
+func (p *PullRequestEvent) InstallationID() shared.Int64 {
+	return p.Installation.ID
+}
+
+func (p *PullRequestEvent) RepoName() string {
+	return p.Repository.Name
+}
+
+func (p *PullRequestEvent) SenderID() string {
+	return p.Sender.ID.String()
+}
