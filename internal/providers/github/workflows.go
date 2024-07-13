@@ -74,7 +74,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 
 	// setting up callbacks for the channels
 	selector.AddReceive(webhookChannel, onInstallationWebhookSignal(ctx, webhook, status))
-	selector.AddReceive(requestChannel, onRequestSignal(ctx, request, status))
+	selector.AddReceive(requestChannel, onInstallationRequestSignal(ctx, request, status))
 
 	logger.Info("github/installation: waiting for webhook and complete installation request signals ...")
 
@@ -328,7 +328,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 		slog.String("core_repo__id", corepo.ID.String()),
 	)
 
-	payload := &core.RepoSignalPushPayload{
+	payload := &core.RepoIOSignalPushPayload{
 		BranchRef:      event.Ref,
 		Before:         event.Before,
 		After:          event.After,
@@ -356,7 +356,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	return nil
 }
 
-// After the creation of the idempotency key, we pass the idempotency key as a signal to the Aperture Workflow.
+// OnPullRequestEvent normalize the pull request event and then signal the core repo.
 func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestEvent) error {
 	logger := workflow.GetLogger(ctx)
 	logger.Info("OnPullRequestEvent workflow started ...")
@@ -414,17 +414,44 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestE
 			slog.String("github_repo__id", repo.ID.String()),
 			slog.String("core_repo__id", corepo.ID.String()),
 		)
+
+		return err
 	}
 
 	if err := workflow.
 		ExecuteActivity(_ctx, activities.GetTeamUserByLoginID, event.Sender.ID.String()).Get(_ctx, user); err != nil {
 		logger.Warn(
-			"github/push: database error, return ... ",
+			"github/pull_request: database error, return ... ",
 			slog.Int64("github_user__sender_id", event.Sender.ID.Int64()),
 			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
 			slog.String("github_repo__id", repo.ID.String()),
 			slog.String("core_repo__id", corepo.ID.String()),
 			slog.String("err", err.Error()),
+		)
+
+		return err
+	}
+
+	payload := &core.RepoIOSignalPullRequestPayload{
+		Action:         event.Action,
+		Number:         event.Number,
+		RepoName:       event.Repository.Name,
+		RepoOwner:      event.Repository.Owner.Login,
+		CtrlID:         repo.ID.String(),
+		InstallationID: event.Installation.ID,
+		ProviderID:     repo.GithubID.String(),
+		User:           user,
+	}
+
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, corepo, core.RepoIOSignalPush, payload).
+		Get(_ctx, nil); err != nil {
+		logger.Warn(
+			"github/push: signal error, retrying ...",
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+			slog.String("github_repo__id", repo.ID.String()),
+			slog.String("core_repo__id", corepo.ID.String()),
 		)
 	}
 
@@ -519,8 +546,8 @@ func onInstallationWebhookSignal(
 	}
 }
 
-// onRequestSignal handles new http requests on an installation in progress.
-func onRequestSignal(
+// onInstallationRequestSignal handles new http requests on an installation in progress.
+func onInstallationRequestSignal(
 	ctx workflow.Context, installation *CompleteInstallationSignal, status *InstallationWorkflowStatus,
 ) shared.ChannelHandler {
 	logger := workflow.GetLogger(ctx)

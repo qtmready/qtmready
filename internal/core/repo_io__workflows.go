@@ -52,6 +52,10 @@ func (w *RepoWorkflows) RepoCtrl(ctx workflow.Context, repo *Repo) error {
 	pushchannel := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
 	selector.AddReceive(pushchannel, w.onRepoPush(ctx, repo)) // post processing for push event recieved on repo.
 
+	// pull request channel
+	prchannel := workflow.GetSignalChannel(ctx, RepoIOSignalPullRequest.String())
+	selector.AddReceive(prchannel, w.onRepoPullRequest(ctx, repo)) // post processing for pull request event recieved on repo.
+
 	logger.Info("init ...", "default_branch", repo.DefaultBranch)
 
 	// TODO: need to come up with logic to shutdown when not required.
@@ -156,7 +160,7 @@ func (w *RepoWorkflows) onRepoPush(ctx workflow.Context, repo *Repo) shared.Chan
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		payload := &RepoSignalPushPayload{}
+		payload := &RepoIOSignalPushPayload{}
 		channel.Receive(ctx, payload)
 
 		logger.Info("init ...")
@@ -193,7 +197,7 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		payload := &RepoSignalPushPayload{}
+		payload := &RepoIOSignalPushPayload{}
 		channel.Receive(ctx, payload)
 
 		logger.Info("init ...", "sha", payload.After)
@@ -229,7 +233,7 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 	interval.Restart(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		payload := &RepoSignalPushPayload{}
+		payload := &RepoIOSignalPushPayload{}
 		channel.Receive(ctx, payload)
 
 		// detect changes payload -> RepoIODetectChangesPayload
@@ -327,7 +331,7 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		payload := &RepoSignalPushPayload{}
+		payload := &RepoIOSignalPushPayload{}
 		data := &RepoIOClonePayload{Repo: repo, Push: payload, Branch: branch, Path: ""}
 
 		channel.Receive(ctx, payload)
@@ -415,4 +419,8 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 
 		_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
 	}
+}
+
+func (w *RepoWorkflows) onRepoPullRequest(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
+	return func(channel workflow.ReceiveChannel, more bool) {}
 }

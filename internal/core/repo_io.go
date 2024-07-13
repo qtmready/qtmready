@@ -29,10 +29,9 @@ import (
 
 // RepoIO signals.
 const (
-	RepoIOSignalPush       shared.WorkflowSignal = "repo__push"
-	ReopIOSignalRebase     shared.WorkflowSignal = "repo__push__rebase"
-	RepoIOPullRequestLabel shared.WorkflowSignal = "repo__pull_request__label"
-	RepoIOPullRequestMerge shared.WorkflowSignal = "repo__pull_request__merge"
+	RepoIOSignalPush        shared.WorkflowSignal = "repo_io__push"
+	ReopIOSignalRebase      shared.WorkflowSignal = "repo_io__rebase"
+	RepoIOSignalPullRequest shared.WorkflowSignal = "repo_io__pull_request"
 )
 
 // RepoIO signal payloads.
@@ -57,7 +56,7 @@ type (
 		TokenizedCloneURL(ctx context.Context, payload *RepoIOInfoPayload) (string, error)
 	}
 
-	RepoSignalPushPayload struct {
+	RepoIOSignalPushPayload struct {
 		BranchRef      string         `json:"branch_ref"`
 		Before         string         `json:"before"`
 		After          string         `json:"after"`
@@ -71,9 +70,18 @@ type (
 		Author         string         `json:"author"` // NOTE:
 	}
 
-	RepoSignalPullRequestLabelPayload struct{}
-
-	RepoSignalPullRequestMergedPayload struct{}
+	RepoIOSignalPullRequestPayload struct {
+		Action         string         `json:"action"`
+		Number         shared.Int64   `json:"number"`
+		RepoName       string         `json:"repo_name"`
+		RepoOwner      string         `json:"repo_owner"`
+		BaseBranch     string         `json:"base_branch"`
+		HeadBranch     string         `json:"head_branch"`
+		CtrlID         string         `json:"ctrl_id"` // ID is the repo ID in the quantm DB. Should be UUID
+		InstallationID shared.Int64   `json:"installation_id"`
+		ProviderID     string         `json:"provider_id"`
+		User           *auth.TeamUser `json:"user"` // TODO: need to find more optimze way
+	}
 )
 
 // RepoIO types.
@@ -93,10 +101,10 @@ type (
 	}
 
 	RepoIOClonePayload struct {
-		Repo   *Repo                  `json:"repo"`   // Repo is the db record of the repo
-		Push   *RepoSignalPushPayload `json:"push"`   // Push event payload
-		Branch string                 `json:"branch"` // Branch to clone
-		Path   string                 `json:"path"`   // Path to clone to
+		Repo   *Repo                    `json:"repo"`   // Repo is the db record of the repo
+		Push   *RepoIOSignalPushPayload `json:"push"`   // Push event payload
+		Branch string                   `json:"branch"` // Branch to clone
+		Path   string                   `json:"path"`   // Path to clone to
 	}
 
 	RepoIODetectChangesPayload struct {
@@ -128,6 +136,10 @@ type (
 		SHA        string `json:"sha"`
 		Message    string `json:"message"`
 		InProgress bool   `json:"in_progress"`
+	}
+
+	RepoIOGetRepoByProviderIDPayload struct {
+		ProviderID string `json:"provider_id"`
 	}
 )
 

@@ -241,7 +241,7 @@ func (a *Activities) GetRepoByProviderID(
 	return data, nil
 }
 
-func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *core.RepoIOUpdateRepoHasRarlyWarningPayload) error {
+func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *core.RepoIOGetRepoByProviderIDPayload) error {
 	repo := &Repo{}
 
 	if err := db.Get(repo, db.QueryParams{"id": payload.ProviderID}); err != nil {
