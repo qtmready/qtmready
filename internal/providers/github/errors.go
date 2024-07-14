@@ -69,3 +69,21 @@ func NewRepoEventMultipleReposError(installationID, githubRepoID shared.Int64, r
 		Details:        "multiple_repos",
 	}
 }
+
+func NewRepoEventNotActiveError(installationID, githubRepoID shared.Int64, repoName string) error {
+	return &RepoEventError{
+		InstallationID: installationID,
+		GithubRepoID:   githubRepoID,
+		RepoName:       repoName,
+		Details:        "repo_not_active",
+	}
+}
+
+func NewRepoEventNoEarlyWarningError(installationID, githubRepoID shared.Int64, repoName string) error {
+	return &RepoEventError{
+		InstallationID: installationID,
+		GithubRepoID:   githubRepoID,
+		RepoName:       repoName,
+		Details:        "repo_no_early_warning",
+	}
+}

@@ -241,92 +241,13 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	logger := workflow.GetLogger(ctx)
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	_ctx := workflow.WithActivityOptions(ctx, opts)
-	repos := make([]Repo, 0)
-	corepo := &core.Repo{}
-	user := &auth.TeamUser{}
 
-	logger.Info(
-		"github/push: preparing ...",
-		slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
-		slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-	)
-
-	if err := workflow.
-		ExecuteActivity(_ctx, activities.GetReposForInstallation, event.Installation.ID.String(), event.Repository.ID.String()).
-		Get(_ctx, &repos); err != nil {
-		logger.Error("github/push: temporal error, aborting ... ")
+	state, err := getRepoEventState(ctx, event)
+	if err != nil {
+		logger.Error("github/push: unable to initialize event state ...", "error", err)
 
 		return err
 	}
-
-	if len(repos) == 0 {
-		logger.Warn(
-			"github/push: unknown repo",
-			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
-			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-		)
-
-		return nil
-	}
-
-	// TODO: handle the unique together case during installation.
-	if len(repos) > 1 {
-		logger.Warn(
-			"github/push: multiple repos found",
-			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
-			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-		)
-
-		return nil
-	}
-
-	repo := repos[0]
-
-	// TODO: notify the user that there is an unconfigured repo?
-	if !repo.HasEarlyWarning || !repo.IsActive {
-		logger.Warn(
-			"webhook/push: uncofigured repo",
-			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
-			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-			slog.String("github_repo__id", repo.ID.String()),
-		)
-
-		return nil
-	}
-
-	if err := workflow.
-		ExecuteActivity(_ctx, activities.GetCoreRepoByCtrlID, repo.ID.String()).
-		Get(_ctx, corepo); err != nil {
-		logger.Warn(
-			"github/push: database error, retrying ... ",
-			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
-			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-			slog.String("github_repo__id", repo.ID.String()),
-			slog.String("core_repo__id", corepo.ID.String()),
-		)
-	}
-
-	// TODO - get the team user with message provider (slack info) to send message to user in private
-	// event has the sender which has the unique ID and using this ID get the team_user info which has the message provider user info
-	if err := workflow.
-		ExecuteActivity(_ctx, activities.GetTeamUserByLoginID, event.Sender.ID.String()).Get(_ctx, user); err != nil {
-		logger.Warn(
-			"github/push: database error, return ... ",
-			slog.Int64("github_user__sender_id", event.Sender.ID.Int64()),
-			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-			slog.String("github_repo__id", repo.ID.String()),
-			slog.String("core_repo__id", corepo.ID.String()),
-			slog.String("err", err.Error()),
-		)
-	}
-
-	logger.Info(
-		"github/push: signal core repo ...",
-		slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
-		slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-		slog.String("github_repo__id", repo.ID.String()),
-		slog.String("core_repo__id", corepo.ID.String()),
-	)
 
 	payload := &core.RepoIOSignalPushPayload{
 		BranchRef:      event.Ref,
@@ -334,22 +255,21 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 		After:          event.After,
 		RepoName:       event.Repository.Name,
 		RepoOwner:      event.Repository.Owner.Login,
-		CtrlID:         repo.ID.String(),
+		CtrlID:         state.Repo.ID.String(),
 		InstallationID: event.Installation.ID,
-		ProviderID:     repo.GithubID.String(),
-		User:           user,
-		Author:         event.Sender.Login,
+		ProviderID:     state.Repo.GithubID.String(),
+		User:           state.User,
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, corepo, core.RepoIOSignalPush, payload).
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalPush, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
 			"github/push: signal error, retrying ...",
 			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
 			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-			slog.String("github_repo__id", repo.ID.String()),
-			slog.String("core_repo__id", corepo.ID.String()),
+			slog.String("github_repo__id", state.Repo.ID.String()),
+			slog.String("core_repo__id", state.Repo.ID.String()),
 		)
 	}
 
@@ -367,6 +287,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestE
 	state, err := getRepoEventState(ctx, event)
 	if err != nil {
 		logger.Error("github/pull_request: error preparing ...")
+		return err
 	}
 
 	payload := &core.RepoIOSignalPullRequestPayload{
@@ -374,7 +295,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestE
 		Number:         event.Number,
 		RepoName:       event.Repository.Name,
 		RepoOwner:      event.Repository.Owner.Login,
-		CtrlID:         state.CoreRepo.ID.String(),
+		CtrlID:         state.Repo.ID.String(),
 		InstallationID: event.Installation.ID,
 		ProviderID:     state.Repo.GithubID.String(),
 		User:           state.User,
@@ -540,6 +461,26 @@ func getRepoEventState(ctx workflow.Context, event RepoEvent) (*RepoEventState, 
 	}
 
 	state.Repo = &repos[0]
+
+	if !state.Repo.IsActive {
+		logger.Warn(
+			"github/repo_event: repo is not active",
+			slog.Int64("github_repo__installation_id", event.InstallationID().Int64()),
+			slog.Int64("github_repo__github_id", event.RepoID().Int64()),
+		)
+
+		return state, NewRepoEventNotActiveError(event.InstallationID(), event.RepoID(), event.RepoName())
+	}
+
+	if !state.Repo.HasEarlyWarning {
+		logger.Warn(
+			"github/repo_event: repo has no early warning",
+			slog.Int64("github_repo__installation_id", event.InstallationID().Int64()),
+			slog.Int64("github_repo__github_id", event.RepoID().Int64()),
+		)
+
+		return state, NewRepoEventNoEarlyWarningError(event.InstallationID(), event.RepoID(), event.RepoName())
+	}
 
 	if err := workflow.
 		ExecuteActivity(_ctx, activities.GetCoreRepoByCtrlID, state.Repo.ID.String()).
