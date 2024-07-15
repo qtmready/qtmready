@@ -244,7 +244,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 
 	state, err := getRepoEventState(ctx, event)
 	if err != nil {
-		logger.Error("github/push: unable to initialize event state ...", "error", err)
+		logger.Error("github/push: unable to initialize event state ...", "error", err.Error())
 
 		return err
 	}
@@ -286,7 +286,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestE
 
 	state, err := getRepoEventState(ctx, event)
 	if err != nil {
-		logger.Error("github/pull_request: error preparing ...")
+		logger.Error("github/pull_request: error preparing ...", "error", err.Error())
 		return err
 	}
 
@@ -446,7 +446,7 @@ func getRepoEventState(ctx workflow.Context, event RepoEvent) (*RepoEventState, 
 			slog.Int64("github_repo__github_id", event.RepoID().Int64()),
 		)
 
-		return state, NewRepoEventRepoNotFoundError(event.InstallationID(), event.RepoID(), event.RepoName())
+		return state, NewRepoNotFoundRepoEventError(event.InstallationID(), event.RepoID(), event.RepoName())
 	}
 
 	// TODO: handle the unique together case during installation.
@@ -457,7 +457,7 @@ func getRepoEventState(ctx workflow.Context, event RepoEvent) (*RepoEventState, 
 			slog.Int64("github_repo__github_id", event.RepoID().Int64()),
 		)
 
-		return state, NewRepoEventMultipleReposError(event.InstallationID(), event.RepoID(), event.RepoName())
+		return state, NewMultipleReposFoundRepoEventError(event.InstallationID(), event.RepoID(), event.RepoName())
 	}
 
 	state.Repo = &repos[0]
@@ -469,7 +469,7 @@ func getRepoEventState(ctx workflow.Context, event RepoEvent) (*RepoEventState, 
 			slog.Int64("github_repo__github_id", event.RepoID().Int64()),
 		)
 
-		return state, NewRepoEventNotActiveError(event.InstallationID(), event.RepoID(), event.RepoName())
+		return state, NewInactiveRepoRepoEventError(event.InstallationID(), event.RepoID(), event.RepoName())
 	}
 
 	if !state.Repo.HasEarlyWarning {
@@ -479,7 +479,7 @@ func getRepoEventState(ctx workflow.Context, event RepoEvent) (*RepoEventState, 
 			slog.Int64("github_repo__github_id", event.RepoID().Int64()),
 		)
 
-		return state, NewRepoEventNoEarlyWarningError(event.InstallationID(), event.RepoID(), event.RepoName())
+		return state, NewHasNoEarlyWarningRepoEventError(event.InstallationID(), event.RepoID(), event.RepoName())
 	}
 
 	if err := workflow.
@@ -506,7 +506,7 @@ func getRepoEventState(ctx workflow.Context, event RepoEvent) (*RepoEventState, 
 			slog.String("core_repo__id", state.CoreRepo.ID.String()),
 		)
 
-		return state, nil
+		return state, err
 	}
 
 	return state, nil

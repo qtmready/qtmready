@@ -52,7 +52,7 @@ func (e *RepoEventError) Error() string {
 	)
 }
 
-func NewRepoEventRepoNotFoundError(installationID, githubRepoID shared.Int64, repoName string) error {
+func NewRepoNotFoundRepoEventError(installationID, githubRepoID shared.Int64, repoName string) error {
 	return &RepoEventError{
 		InstallationID: installationID,
 		GithubRepoID:   githubRepoID,
@@ -61,16 +61,16 @@ func NewRepoEventRepoNotFoundError(installationID, githubRepoID shared.Int64, re
 	}
 }
 
-func NewRepoEventMultipleReposError(installationID, githubRepoID shared.Int64, repoName string) error {
+func NewMultipleReposFoundRepoEventError(installationID, githubRepoID shared.Int64, repoName string) error {
 	return &RepoEventError{
 		InstallationID: installationID,
 		GithubRepoID:   githubRepoID,
 		RepoName:       repoName,
-		Details:        "multiple_repos",
+		Details:        "multiple_repos_associated",
 	}
 }
 
-func NewRepoEventNotActiveError(installationID, githubRepoID shared.Int64, repoName string) error {
+func NewInactiveRepoRepoEventError(installationID, githubRepoID shared.Int64, repoName string) error {
 	return &RepoEventError{
 		InstallationID: installationID,
 		GithubRepoID:   githubRepoID,
@@ -79,11 +79,11 @@ func NewRepoEventNotActiveError(installationID, githubRepoID shared.Int64, repoN
 	}
 }
 
-func NewRepoEventNoEarlyWarningError(installationID, githubRepoID shared.Int64, repoName string) error {
+func NewHasNoEarlyWarningRepoEventError(installationID, githubRepoID shared.Int64, repoName string) error {
 	return &RepoEventError{
 		InstallationID: installationID,
 		GithubRepoID:   githubRepoID,
 		RepoName:       repoName,
-		Details:        "repo_no_early_warning",
+		Details:        "repo_has_no_early_warning",
 	}
 }
