@@ -67,7 +67,7 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 		TeamID:              teamID,
 		MessageProvider:     request.MessageProvider,
 		MessageProviderData: request.MessageProviderData,
-		StaleTime:           request.StaleTime,
+		StaleDuration:       request.StaleDuration,
 	}
 
 	if err := db.Save(repo); err != nil {
