@@ -422,5 +422,33 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 }
 
 func (w *RepoWorkflows) onRepoPullRequest(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
-	return func(channel workflow.ReceiveChannel, more bool) {}
+	logger := NewRepoIOWorkflowLogger(ctx, repo, "repo_ctrl", "pull_request", "")
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	return func(channel workflow.ReceiveChannel, more bool) {
+		payload := &RepoIOSignalPullRequestPayload{}
+		channel.Receive(ctx, payload)
+
+		logger.Info("init ...")
+
+		logger.Info("on repo pull request", payload)
+		logger.Info("on repo pull request action", payload.Action)
+
+		// TODO - convert to map call repo activites to handle the pr actions
+		switch payload.Action {
+		case "opened":
+			logger.Info("pull request with open action")
+
+		case "labeled":
+			logger.Info("pull request with labeled action")
+
+		case "synchronize":
+			logger.Info("pull request with synchronize action")
+
+		default:
+			logger.Info("handlePullRequest Event default closing...")
+		}
+	}
 }
