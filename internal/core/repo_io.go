@@ -62,7 +62,7 @@ type (
 		After          string         `json:"after"`
 		RepoName       string         `json:"repo_name"`
 		RepoOwner      string         `json:"repo_owner"`
-		CtrlID         string         `json:"ctrl_id"` // ID is the repo ID in the quantm DB. Should be UUID
+		CtrlID         string         `json:"ctrl_id"` // CtrlID represents the id of the provider repo in the quantm DB. Should be UUID.
 		InstallationID shared.Int64   `json:"installation_id"`
 		ProviderID     string         `json:"provider_id"`
 		Commits        []RepoIOCommit `json:"commits"`
@@ -77,7 +77,7 @@ type (
 		RepoOwner      string         `json:"repo_owner"`
 		BaseBranch     string         `json:"base_branch"`
 		HeadBranch     string         `json:"head_branch"`
-		CtrlID         string         `json:"ctrl_id"` // ID is the repo ID in the quantm DB. Should be UUID
+		CtrlID         string         `json:"ctrl_id"`
 		InstallationID shared.Int64   `json:"installation_id"`
 		ProviderID     string         `json:"provider_id"`
 		User           *auth.TeamUser `json:"user"` // TODO: need to find more optimze way

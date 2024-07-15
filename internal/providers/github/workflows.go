@@ -57,7 +57,8 @@ type (
 // for the system. See the README.md for a detailed explanation on how this workflow works.
 //
 // NOTE: This workflow is only meant to be started with SignalWithStartWorkflow.
-func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, error) {
+// TODO: Refactor this workflow to reduce complexity.
+func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, error) { // nolint:funlen
 	// prelude
 	logger := workflow.GetLogger(ctx)
 	selector := workflow.NewSelector(ctx)
