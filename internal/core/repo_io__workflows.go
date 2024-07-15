@@ -90,7 +90,6 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	selector := workflow.NewSelector(ctx)
 	done := false
 
-	logger.Warn("repo.StaleDuration.Duration", repo.StaleDuration.Duration)
 	interval := timers.NewInterval(ctx, repo.StaleDuration.Duration)
 
 	// handle stale check.

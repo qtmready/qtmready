@@ -193,8 +193,6 @@ func (d *Duration) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
 
 // MarshalCQL marshals Duration into a Cassandra duration.
 func (d Duration) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
-	Logger().Debug("MarshalCQL/info.Type", "info.Type", info.Type())
-
 	return []byte(d.String()), nil
 }
 
