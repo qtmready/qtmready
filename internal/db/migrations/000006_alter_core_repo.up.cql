@@ -1,0 +1,1 @@
+alter table repos add stale_duration varchar;

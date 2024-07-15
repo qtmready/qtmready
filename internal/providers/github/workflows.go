@@ -334,6 +334,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 		InstallationID: event.Installation.ID,
 		ProviderID:     repo.GithubID.String(),
 		User:           user,
+		Author:         event.Sender.Login,
 	}
 
 	if err := workflow.

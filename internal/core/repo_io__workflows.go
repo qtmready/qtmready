@@ -38,10 +38,6 @@ type (
 	BranchCtrlLogger func(level string, message string, attrs ...any)
 )
 
-const (
-	DefaultStaleCheckDuration = 15 * 24 * time.Hour // TODO: make this configurable. (15 days)
-)
-
 // RepoCtrl is the controller for all the workflows related to the repository.
 //
 // NOTE: This workflow is only meant to be started with SignalWithStartWorkflow.
@@ -93,7 +89,8 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "", branch)
 	selector := workflow.NewSelector(ctx)
 	done := false
-	interval := timers.NewInterval(ctx, DefaultStaleCheckDuration)
+
+	interval := timers.NewInterval(ctx, repo.StaleDuration.Duration)
 
 	// handle stale check.
 	workflow.Go(ctx, func(ctx workflow.Context) {
@@ -262,6 +259,7 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 								BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
 								RepoName:    repo.Name,
 								BranchName:  branch,
+								IsChannel:   false,
 							},
 							Threshold:     repo.Threshold,
 							DetectChanges: changes,
@@ -280,8 +278,11 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 						WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
 						ChannelID:   repo.MessageProviderData.Slack.ChannelID,
 						BotToken:    repo.MessageProviderData.Slack.BotToken,
+						Author:      payload.Author,
+						AuthorUrl:   fmt.Sprintf("https://github.com/%s", payload.Author),
 						RepoName:    repo.Name,
 						BranchName:  branch,
+						IsChannel:   true,
 					},
 					Threshold:     repo.Threshold,
 					DetectChanges: changes,
@@ -363,6 +364,7 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 									BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
 									RepoName:    repo.Name,
 									BranchName:  branch,
+									IsChannel:   false,
 								},
 								CommitUrl: fmt.Sprintf("https://github.com/%s/%s/commits/%s",
 									payload.RepoOwner, payload.RepoName, payload.After),
@@ -383,8 +385,11 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 							WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
 							ChannelID:   repo.MessageProviderData.Slack.ChannelID,
 							BotToken:    repo.MessageProviderData.Slack.BotToken,
+							Author:      payload.Author,
+							AuthorUrl:   fmt.Sprintf("https://github.com/%s", payload.Author),
 							RepoName:    repo.Name,
 							BranchName:  branch,
+							IsChannel:   true,
 						},
 						CommitUrl: fmt.Sprintf("https://github.com/%s/%s/commits/%s", payload.RepoOwner, payload.RepoName, payload.After),
 						RepoUrl:   fmt.Sprintf("https://github.com/%s/%s", payload.RepoOwner, payload.RepoName),

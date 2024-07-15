@@ -29,6 +29,9 @@ type (
 		BotToken    string `json:"bot_token"`
 		RepoName    string `json:"repo_name"`
 		BranchName  string `json:"branch_name"`
+		Author      string `json:"author"`
+		AuthorUrl   string `json:"author_url"`
+		IsChannel   bool   `json:"is_channel"`
 	}
 
 	// TODO: need to refine.

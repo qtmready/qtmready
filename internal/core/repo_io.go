@@ -67,7 +67,8 @@ type (
 		InstallationID shared.Int64   `json:"installation_id"`
 		ProviderID     string         `json:"provider_id"`
 		Commits        []RepoIOCommit `json:"commits"`
-		User           *auth.TeamUser `json:"user"` // TODO: need to find more optimze way
+		User           *auth.TeamUser `json:"user"`   // NOTE:
+		Author         string         `json:"author"` // NOTE:
 	}
 
 	RepoSignalPullRequestLabelPayload struct{}
