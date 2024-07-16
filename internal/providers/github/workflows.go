@@ -304,15 +304,17 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestE
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalPush, payload).
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalPullRequest, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
-			"github/push: signal error, retrying ...",
+			"github/push: error signaling repo ctrl ...",
 			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
 			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
 			slog.String("github_repo__id", state.CoreRepo.ID.String()),
 			slog.String("core_repo__id", state.CoreRepo.ID.String()),
 		)
+
+		return err
 	}
 
 	return nil
