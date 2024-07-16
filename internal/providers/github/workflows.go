@@ -260,6 +260,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 		InstallationID: event.Installation.ID,
 		ProviderID:     state.Repo.GithubID.String(),
 		User:           state.User,
+		Author:         event.Sender.Login,
 	}
 
 	if err := workflow.
@@ -485,7 +486,7 @@ func getRepoEventState(ctx workflow.Context, event RepoEvent) (*RepoEventState, 
 
 	if err := workflow.
 		ExecuteActivity(_ctx, activities.GetCoreRepoByCtrlID, state.Repo.ID.String()).
-		Get(_ctx, state.CoreRepo); err != nil {
+		Get(_ctx, &state.CoreRepo); err != nil {
 		logger.Warn(
 			"github/repo_event: database error, retrying ... ",
 			slog.Int64("github_repo__installation_id", event.InstallationID().Int64()),
@@ -498,7 +499,7 @@ func getRepoEventState(ctx workflow.Context, event RepoEvent) (*RepoEventState, 
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.GetTeamUserByLoginID, event.SenderID()).Get(_ctx, state.User); err != nil {
+		ExecuteActivity(_ctx, activities.GetTeamUserByLoginID, event.SenderID()).Get(_ctx, &state.User); err != nil {
 		logger.Warn(
 			"github/repo_event: database error, retrying ... ",
 			slog.Int64("github_repo__installation_id", event.InstallationID().Int64()),
