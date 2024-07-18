@@ -53,7 +53,7 @@ func main() {
 	providerWrkr.RegisterWorkflow(githubwfs.OnInstallationEvent)
 	providerWrkr.RegisterWorkflow(githubwfs.OnInstallationRepositoriesEvent)
 	providerWrkr.RegisterWorkflow(githubwfs.PostInstall)
-	providerWrkr.RegisterWorkflow(githubwfs.OnRepoEvent)
+	providerWrkr.RegisterWorkflow(githubwfs.OnPushEvent)
 	providerWrkr.RegisterWorkflow(githubwfs.OnPullRequestEvent)
 	providerWrkr.RegisterWorkflow(githubwfs.OnWorkflowRunEvent)
 

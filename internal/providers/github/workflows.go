@@ -235,8 +235,8 @@ func (w *Workflows) PostInstall(ctx workflow.Context, payload *Installation) err
 	return nil
 }
 
-// OnRepoEvent is run when ever a repo event is received. Repo Event can be push event or a create event.
-func (w *Workflows) OnRepoEvent(ctx workflow.Context, event *PushEvent) error {
+// OnPushEvent is run when ever a repo event is received. Repo Event can be push event or a create event.
+func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	logger := workflow.GetLogger(ctx)
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	_ctx := workflow.WithActivityOptions(ctx, opts)
