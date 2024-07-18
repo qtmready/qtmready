@@ -19,6 +19,7 @@ package core
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
@@ -41,8 +42,11 @@ func NewServerHandler(security echo.MiddlewareFunc) *ServerHandler {
 	}
 }
 
+// create core repo handler will create or update the repo with its message provider info (channel).
 func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 	request := &RepoCreateRequest{}
+	repo := &Repo{}
+
 	if err := ctx.Bind(request); err != nil {
 		return err
 	}
@@ -56,18 +60,33 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
-	repo := &Repo{
-		Name:                data.Name,
-		DefaultBranch:       data.DefaultBranch,
-		IsMonorepo:          request.IsMonorepo,
-		Provider:            request.Provider,
-		ProviderID:          data.ProviderID,
-		CtrlID:              request.CtrlID,
-		Threshold:           request.Threshold,
-		TeamID:              teamID,
-		MessageProvider:     request.MessageProvider,
-		MessageProviderData: request.MessageProviderData,
-		StaleDuration:       request.StaleDuration,
+	// Get the core repo by CtrlID if it exit update the record otherwise create the record
+	err = db.Get(repo, db.QueryParams{"ctrl_id": request.CtrlID.String()})
+	if err != nil && !strings.Contains(err.Error(), "not found") {
+		return shared.NewAPIError(http.StatusInternalServerError, err)
+	}
+
+	if err != nil && strings.Contains(err.Error(), "not found") {
+		repo = &Repo{
+			Name:                data.Name,
+			DefaultBranch:       data.DefaultBranch,
+			IsMonorepo:          request.IsMonorepo,
+			Provider:            request.Provider,
+			ProviderID:          data.ProviderID,
+			CtrlID:              request.CtrlID,
+			Threshold:           request.Threshold,
+			TeamID:              teamID,
+			MessageProvider:     request.MessageProvider,
+			MessageProviderData: request.MessageProviderData,
+			StaleDuration:       request.StaleDuration,
+		}
+	} else {
+		repo.IsMonorepo = request.IsMonorepo
+		repo.Provider = request.Provider
+		repo.Threshold = request.Threshold
+		repo.MessageProvider = request.MessageProvider
+		repo.MessageProviderData = request.MessageProviderData
+		repo.StaleDuration = request.StaleDuration
 	}
 
 	if err := db.Save(repo); err != nil {
