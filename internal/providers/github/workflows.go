@@ -235,17 +235,15 @@ func (w *Workflows) PostInstall(ctx workflow.Context, payload *Installation) err
 	return nil
 }
 
-// OnPushEvent checks if the push event is associated with an open pull request.If so, it will get the idempotent key for
-// the immutable rollout. Depending upon the target branch, it will either queue the rollout or update the existing
-// rollout.
-func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
+// OnRepoEvent is run when ever a repo event is received. Repo Event can be push event or a create event.
+func (w *Workflows) OnRepoEvent(ctx workflow.Context, event *PushEvent) error {
 	logger := workflow.GetLogger(ctx)
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	_ctx := workflow.WithActivityOptions(ctx, opts)
 
 	state, err := getRepoEventState(ctx, event)
 	if err != nil {
-		logger.Error("github/push: unable to initialize event state ...", "error", err.Error())
+		logger.Error("github/repo_event: unable to initialize event state ...", "error", err.Error())
 
 		return err
 	}
@@ -267,7 +265,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalPush, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
-			"github/push: signal error, retrying ...",
+			"github/repo_event: signal error, retrying ...",
 			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
 			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
 			slog.String("github_repo__id", state.Repo.ID.String()),
@@ -307,7 +305,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestE
 		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalPullRequest, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
-			"github/push: error signaling repo ctrl ...",
+			"github/pull_request: error signaling repo ctrl ...",
 			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
 			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
 			slog.String("github_repo__id", state.CoreRepo.ID.String()),

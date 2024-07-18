@@ -27,11 +27,24 @@ import (
 	"go.breu.io/quantm/internal/shared"
 )
 
+type (
+	PullRequestAction string
+)
+
 // RepoIO signals.
 const (
 	RepoIOSignalPush        shared.WorkflowSignal = "repo_io__push"
 	ReopIOSignalRebase      shared.WorkflowSignal = "repo_io__rebase"
 	RepoIOSignalPullRequest shared.WorkflowSignal = "repo_io__pull_request"
+)
+
+const (
+	PullRequestActionCreated       PullRequestAction = "created"
+	PullRequestActionLabeled       PullRequestAction = "labeled"
+	PullRequestActionClosed        PullRequestAction = "closed"
+	PullRequestActionMerged        PullRequestAction = "merged"
+	PullRequestActionReviewRequest PullRequestAction = "review_request"
+	PullRequestActionApproved      PullRequestAction = "approved"
 )
 
 // RepoIO signal payloads.
@@ -145,7 +158,7 @@ type (
 
 // Workflow States.
 type (
-	RepoWorkflowStateBranchCtrl struct {
+	RepoIOBranchCtrlState struct {
 		CreatedAt             time.Time `json:"created_at"`
 		LatestCommitTimestamp time.Time `json:"latest_commit_timestamp"`
 		LatestCommitSHA       string    `json:"latest_commit_sha"`
@@ -154,20 +167,23 @@ type (
 )
 
 // IsStale checks if the Branch is stale.
-func (state *RepoWorkflowStateBranchCtrl) IsStale(ctx context.Context) bool {
+func (state *RepoIOBranchCtrlState) IsStale(ctx context.Context) bool {
 	return false
 }
 
-func (state *RepoWorkflowStateBranchCtrl) SetLatestCommit(commit *RepoIOCommit) {
+// SetLatestCommit sets the latest commit on the state.
+func (state *RepoIOBranchCtrlState) SetLatestCommit(commit *RepoIOCommit) {
 	state.LatestCommitSHA = commit.SHA
 	state.LatestCommitTimestamp = commit.Timestamp
 }
 
-func (state *RepoWorkflowStateBranchCtrl) HasPR(ctx context.Context) bool {
+// HasPR checks if the branch has a PR associated with it.
+func (state *RepoIOBranchCtrlState) HasPR(ctx context.Context) bool {
 	return state.PullRequest != ""
 }
 
-func (state *RepoWorkflowStateBranchCtrl) Now(ctx workflow.Context) time.Time {
+// Now returns the current time.
+func (state *RepoIOBranchCtrlState) Now(ctx workflow.Context) time.Time {
 	var now time.Time
 
 	_ = workflow.SideEffect(ctx, func(_ctx workflow.Context) any { return time.Now() }).Get(&now)

@@ -18,6 +18,9 @@
 package github
 
 import (
+	"encoding/json"
+	"time"
+
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 
@@ -25,6 +28,40 @@ import (
 	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/shared"
 )
+
+type (
+	Timestamp time.Time // Timestamp is hack around github's funky use of time
+)
+
+func (t *Timestamp) UnmarshalJSON(data []byte) error {
+	var raw any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	switch v := raw.(type) {
+	case float64:
+		*t = Timestamp(time.Unix(int64(v), 0))
+	case string:
+		t_, err := time.Parse("2006-01-02T15:04:05Z", v)
+		if err != nil {
+			return err
+		}
+
+		*t = Timestamp(t_)
+	}
+
+	return nil
+}
+
+func (t Timestamp) MarshalJSON() ([]byte, error) {
+	t_ := time.Time(t)
+	return json.Marshal(t_.Format(time.RFC3339))
+}
+
+func (t Timestamp) Time() time.Time {
+	return time.Time(t)
+}
 
 // Webhook events & Workflow singals.
 type (

@@ -62,15 +62,15 @@ func handleInstallationEvent(ctx echo.Context) error {
 	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
 }
 
-// handlePushEvent handles GitHub push event.
-func handlePushEvent(ctx echo.Context) error {
+// handleRepoEvent handles GitHub push/create event.
+func handleRepoEvent(ctx echo.Context) error {
 	payload := &PushEvent{}
 	if err := ctx.Bind(payload); err != nil {
 		shared.Logger().Error("unable to bind payload ...", "error", err)
 		return err
 	}
 
-	shared.Logger().Info("push event received ...", "action", payload.Installation.ID)
+	shared.Logger().Info("repo event received ...", "action", payload.Installation.ID)
 
 	// the value will be `NoCommit` if we have a tag push.
 	// TODO: handle tag.
@@ -79,6 +79,7 @@ func handlePushEvent(ctx echo.Context) error {
 	}
 
 	w := &Workflows{}
+	event := WebhookEvent(ctx.Request().Header.Get("X-GitHub-Event"))
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
 	opts := shared.Temporal().
 		Queue(shared.ProvidersQueue).
@@ -87,11 +88,11 @@ func handlePushEvent(ctx echo.Context) error {
 			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
 			shared.WithWorkflowElement("repo"),
 			shared.WithWorkflowElementID(payload.Repository.ID.String()),
-			shared.WithWorkflowMod(WebhookEventPush.String()),
+			shared.WithWorkflowMod(event.String()),
 			shared.WithWorkflowModID(delievery),
 		)
 
-	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPushEvent, payload)
+	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnRepoEvent, payload)
 	if err != nil {
 		shared.Logger().Error("unable to signal OnPushEvent ...", "options", opts, "error", err)
 		return nil

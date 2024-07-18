@@ -117,9 +117,9 @@ type (
 		NotificationsURL string       `json:"notifications_url"`
 		LabelsURL        string       `json:"labels_url"`
 		ReleasesURL      string       `json:"releases_url"`
-		CreatedAt        int64        `json:"created_at"`
-		UpdatedAt        time.Time    `json:"updated_at"`
-		PushedAt         int64        `json:"pushed_at"`
+		CreatedAt        Timestamp    `json:"created_at"`
+		UpdatedAt        Timestamp    `json:"updated_at"`
+		PushedAt         Timestamp    `json:"pushed_at"`
 		GitURL           string       `json:"git_url"`
 		SSHUrl           string       `json:"ssh_url"`
 		CloneURL         string       `json:"clone_url"`

@@ -442,7 +442,7 @@ func (w *RepoWorkflows) onRepoPullRequest(ctx workflow.Context, repo *Repo) shar
 }
 
 func (w *RepoWorkflows) onBranchPullRequest(ctx workflow.Context, repo *Repo, branch string) shared.ChannelHandler {
-	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "pull_request", "")
+	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "pull_request", branch)
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 
 	ctx = workflow.WithActivityOptions(ctx, opts)

@@ -72,7 +72,8 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 	handlers := WebhookEventHandlers{
 		WebhookEventInstallation:             handleInstallationEvent,
 		WebhookEventInstallationRepositories: handleInstallationRepositoriesEvent,
-		WebhookEventPush:                     handlePushEvent,
+		WebhookEventCreate:                   handleRepoEvent,
+		WebhookEventPush:                     handleRepoEvent,
 		WebhookEventPullRequest:              handlePullRequestEvent,
 		WebhookEventWorkflowRun:              handleWorkflowRunEvent,
 	}
