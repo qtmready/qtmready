@@ -18,6 +18,8 @@
 package core
 
 import (
+	"fmt"
+
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -56,3 +58,32 @@ type (
 		RepoUrl          string            `json:"repo_url"`
 	}
 )
+
+// NewMergeConflictMessage creates a new MessageIOMergeConflictPayload instance with the provided RepoIOSignalPushPayload
+// and Repo information.
+//
+// FIXME: this is generic to github. If we are using generic, should we create the url's depending upon the provider?
+func NewMergeConflictMessage(payload *RepoIOSignalPushPayload, repo *Repo, branch string) *MessageIOMergeConflictPayload {
+	msg := &MessageIOMergeConflictPayload{
+		RepoUrl:   fmt.Sprintf("https://github.com/%s/%s", payload.RepoOwner, payload.RepoName),
+		SHA:       payload.After,
+		CommitUrl: fmt.Sprintf("https://github.com/%s/%s/commits/%s", payload.RepoOwner, payload.RepoName, payload.After),
+		MessageIOPayload: &MessageIOPayload{
+			WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
+			ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
+			BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
+			RepoName:    repo.Name, // TODO: do we really need repo.Name here? isn't that part of the payload i.e. payload.RepoName?
+			BranchName:  branch,
+		},
+	}
+
+	if payload.User != nil && payload.User.IsMessageProviderLinked {
+		msg.MessageIOPayload.IsChannel = false
+	} else {
+		msg.MessageIOPayload.IsChannel = true
+		msg.MessageIOPayload.Author = payload.Author
+		msg.MessageIOPayload.AuthorUrl = fmt.Sprintf("https://github.com/%s", payload.Author)
+	}
+
+	return msg
+}
