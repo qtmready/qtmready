@@ -136,6 +136,18 @@ type (
 		Installation InstallationID `json:"installation"`
 	}
 
+	CreateEvent struct {
+		Ref          string         `json:"ref"`
+		RefType      string         `json:"ref_type"`
+		MasterBranch string         `json:"master_branch"`
+		Description  string         `json:"description"`
+		PusherType   string         `json:"pusher_type"`
+		Repository   Repository     `json:"repository"`
+		Organization Organization   `json:"organization"`
+		Sender       User           `json:"sender"`
+		Installation InstallationID `json:"installation"`
+	}
+
 	GithubWorkflowRunEvent struct {
 		Action       string             `json:"action"`
 		Repository   RepositoryPR       `json:"repository"`
@@ -291,5 +303,21 @@ func (p *PullRequestEvent) RepoName() string {
 }
 
 func (p *PullRequestEvent) SenderID() string {
+	return p.Sender.ID.String()
+}
+
+func (p *CreateEvent) RepoID() shared.Int64 {
+	return p.Repository.ID
+}
+
+func (p *CreateEvent) InstallationID() shared.Int64 {
+	return p.Installation.ID
+}
+
+func (p *CreateEvent) RepoName() string {
+	return p.Repository.Name
+}
+
+func (p *CreateEvent) SenderID() string {
 	return p.Sender.ID.String()
 }

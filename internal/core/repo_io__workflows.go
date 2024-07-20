@@ -49,12 +49,16 @@ func (w *RepoWorkflows) RepoCtrl(ctx workflow.Context, repo *Repo) error {
 
 	// channels
 	// push event signal
-	pushchannel := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
-	selector.AddReceive(pushchannel, w.onRepoPush(ctx, repo)) // post processing for push event recieved on repo.
+	push := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
+	selector.AddReceive(push, w.onRepoPush(ctx, repo)) // post processing for push event recieved on repo.
+
+	// create
+	create := workflow.GetSignalChannel(ctx, RepoIOSignalCreate.String())
+	selector.AddReceive(create, w.onRepoCreate(ctx, repo))
 
 	// pull request channel
-	prchannel := workflow.GetSignalChannel(ctx, RepoIOSignalPullRequest.String())
-	selector.AddReceive(prchannel, w.onRepoPullRequest(ctx, repo)) // post processing for pull request event recieved on repo.
+	pr := workflow.GetSignalChannel(ctx, RepoIOSignalPullRequest.String())
+	selector.AddReceive(pr, w.onRepoPullRequest(ctx, repo)) // post processing for pull request event recieved on repo.
 
 	logger.Info("init ...", "default_branch", repo.DefaultBranch)
 
@@ -362,30 +366,30 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 				if apperr.Type() == "RepoIORebaseError" && !rebase.InProgress {
 					logger.Info("merge conflict detected ...", "sha", rebase.SHA, "commit_message", rebase.Message, "path", data.Path)
 
-					if payload.User != nil {
-						if payload.User.IsMessageProviderLinked {
-							// TODO: get the team_user and check is slack is linked or not
-							msg := &MessageIOMergeConflictPayload{
-								MessageIOPayload: &MessageIOPayload{
-									WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
-									ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
-									BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
-									RepoName:    repo.Name,
-									BranchName:  branch,
-									IsChannel:   false,
-								},
-								CommitUrl: fmt.Sprintf("https://github.com/%s/%s/commits/%s",
-									payload.RepoOwner, payload.RepoName, payload.After),
-								RepoUrl: fmt.Sprintf("https://github.com/%s/%s", payload.RepoOwner, payload.RepoName),
-								SHA:     payload.After,
-							}
-
-							logger.Info("merge conflict detected, sending message ...", "sha", payload.After, payload.RepoName)
-
-							_ = workflow.
-								ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg).
-								Get(ctx, nil)
+					if payload.User != nil && payload.User.IsMessageProviderLinked {
+						// TODO: get the team_user and check is slack is linked or not
+						msg := &MessageIOMergeConflictPayload{
+							MessageIOPayload: &MessageIOPayload{
+								WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
+								ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
+								BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
+								RepoName:    repo.Name,
+								BranchName:  branch,
+								IsChannel:   false,
+							},
+							CommitUrl: fmt.Sprintf("https://github.com/%s/%s/commits/%s",
+								payload.RepoOwner, payload.RepoName, payload.After),
+							RepoUrl: fmt.Sprintf("https://github.com/%s/%s", payload.RepoOwner, payload.RepoName),
+							SHA:     payload.After,
 						}
+
+						logger.Info("merge conflict detected, sending message ...", "sha", payload.After, payload.RepoName)
+
+						_ = workflow.
+							ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg).
+							Get(ctx, nil)
+
+						return
 					}
 
 					msg := &MessageIOMergeConflictPayload{
@@ -423,6 +427,10 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 
 		_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
 	}
+}
+
+func (w *RepoWorkflows) onRepoCreate(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
+	return func(channel workflow.ReceiveChannel, more bool) {}
 }
 
 func (w *RepoWorkflows) onRepoPullRequest(ctx workflow.Context, repo *Repo) shared.ChannelHandler {

@@ -276,6 +276,48 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	return nil
 }
 
+// OnPushEvent is run when ever a repo event is received. Repo Event can be push event or a create event.
+func (w *Workflows) OnCreateEvent(ctx workflow.Context, event *CreateEvent) error {
+	logger := workflow.GetLogger(ctx)
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	_ctx := workflow.WithActivityOptions(ctx, opts)
+
+	state, err := getRepoEventState(ctx, event)
+	if err != nil {
+		logger.Error("github/repo_event: unable to initialize event state ...", "error", err.Error())
+
+		return err
+	}
+
+	payload := &core.RepoIOSignalCreatePayload{
+		Ref:            event.Ref,
+		RefType:        event.RefType,
+		DefaultBranch:  event.Repository.DefaultBranch,
+		RepoName:       event.Repository.Name,
+		RepoOwner:      event.Repository.Owner.Login,
+		CtrlID:         state.Repo.ID.String(),
+		InstallationID: event.Installation.ID,
+		ProviderID:     state.Repo.GithubID.String(),
+		User:           state.User,
+	}
+
+	if err := workflow.
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalCreate, payload).
+		Get(_ctx, nil); err != nil {
+		logger.Warn(
+			"github/repo_event: signal error, retrying ...",
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+			slog.String("github_repo__id", state.Repo.ID.String()),
+			slog.String("core_repo__id", state.Repo.ID.String()),
+		)
+
+		return err
+	}
+
+	return nil
+}
+
 // OnPullRequestEvent normalize the pull request event and then signal the core repo.
 func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestEvent) error {
 	logger := workflow.GetLogger(ctx)

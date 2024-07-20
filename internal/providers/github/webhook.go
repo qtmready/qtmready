@@ -101,6 +101,39 @@ func handlePushEvent(ctx echo.Context) error {
 	return ctx.NoContent(http.StatusNoContent)
 }
 
+// handlePushEvent handles GitHub push/create event.
+func handleCreateEvent(ctx echo.Context) error {
+	payload := &CreateEvent{}
+	if err := ctx.Bind(payload); err != nil {
+		shared.Logger().Error("unable to bind payload ...", "error", err)
+		return err
+	}
+
+	shared.Logger().Info("repo event received ...", "installation", payload.Installation.ID)
+
+	w := &Workflows{}
+	event := WebhookEvent(ctx.Request().Header.Get("X-GitHub-Event"))
+	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
+	opts := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowOptions(
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
+			shared.WithWorkflowElement("repo"),
+			shared.WithWorkflowElementID(payload.Repository.ID.String()),
+			shared.WithWorkflowMod(event.String()),
+			shared.WithWorkflowModID(delievery),
+		)
+
+	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPushEvent, payload)
+	if err != nil {
+		shared.Logger().Error("unable to signal OnPushEvent ...", "options", opts, "error", err)
+		return nil
+	}
+
+	return ctx.NoContent(http.StatusNoContent)
+}
+
 // handleReleaseEvent handles GitHub release event.
 func handlePullRequestEvent(ctx echo.Context) error {
 	payload := &PullRequestEvent{}

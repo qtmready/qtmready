@@ -34,6 +34,7 @@ type (
 // RepoIO signals.
 const (
 	RepoIOSignalPush        shared.WorkflowSignal = "repo_io__push"
+	RepoIOSignalCreate      shared.WorkflowSignal = "repo_io__create"
 	ReopIOSignalRebase      shared.WorkflowSignal = "repo_io__rebase"
 	RepoIOSignalPullRequest shared.WorkflowSignal = "repo_io__pull_request"
 )
@@ -79,8 +80,20 @@ type (
 		InstallationID shared.Int64   `json:"installation_id"`
 		ProviderID     string         `json:"provider_id"`
 		Commits        []RepoIOCommit `json:"commits"`
-		User           *auth.TeamUser `json:"user"`   // NOTE:
-		Author         string         `json:"author"` // NOTE:
+		User           *auth.TeamUser `json:"user"`
+		Author         string         `json:"author"`
+	}
+
+	RepoIOSignalCreatePayload struct {
+		Ref            string         `json:"ref"`
+		RefType        string         `json:"ref_type"`
+		DefaultBranch  string         `json:"default_branch"`
+		RepoName       string         `json:"repo_name"`
+		RepoOwner      string         `json:"repo_owner"`
+		CtrlID         string         `json:"ctrl_id"` // CtrlID represents the id of the provider repo in the quantm DB. Should be UUID.
+		InstallationID shared.Int64   `json:"installation_id"`
+		ProviderID     string         `json:"provider_id"`
+		User           *auth.TeamUser `json:"user"`
 	}
 
 	RepoIOSignalPullRequestPayload struct {
