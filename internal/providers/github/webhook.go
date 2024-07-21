@@ -125,7 +125,7 @@ func handleCreateEvent(ctx echo.Context) error {
 			shared.WithWorkflowModID(delievery),
 		)
 
-	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPushEvent, payload)
+	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnCreateEvent, payload)
 	if err != nil {
 		shared.Logger().Error("unable to signal OnPushEvent ...", "options", opts, "error", err)
 		return nil

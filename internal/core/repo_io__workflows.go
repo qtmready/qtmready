@@ -33,8 +33,6 @@ type (
 	RepoWorkflows struct {
 		acts *RepoActivities
 	}
-
-	BranchCtrlLogger func(level string, message string, attrs ...any)
 )
 
 // RepoCtrl is the controller for all the workflows related to the repository.
@@ -78,8 +76,8 @@ func (w *RepoWorkflows) DefaultBranchCtrl(ctx workflow.Context, repo *Repo) erro
 
 	// channels
 	// push event signal
-	pushchannel := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
-	selector.AddReceive(pushchannel, w.onDefaultBranchPush(ctx, repo)) // post processing for push event recieved on repo.
+	push := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
+	selector.AddReceive(push, w.onDefaultBranchPush(ctx, repo)) // post processing for push event recieved on repo.
 
 	logger.Info("init ...")
 
@@ -360,7 +358,17 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 }
 
 func (w *RepoWorkflows) onRepoCreate(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
-	return func(channel workflow.ReceiveChannel, more bool) {}
+	logger := NewRepoIOWorkflowLogger(ctx, repo, "repo_ctrl", "create", "")
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	return func(channel workflow.ReceiveChannel, more bool) {
+		payload := &RepoIOSignalCreatePayload{}
+		channel.Receive(ctx, payload)
+
+		logger.Info("init ...")
+	}
 }
 
 func (w *RepoWorkflows) onRepoPullRequest(ctx workflow.Context, repo *Repo) shared.ChannelHandler {

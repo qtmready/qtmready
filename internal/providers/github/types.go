@@ -19,6 +19,7 @@ package github
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/gocql/gocql"
@@ -43,12 +44,21 @@ func (t *Timestamp) UnmarshalJSON(data []byte) error {
 	case float64:
 		*t = Timestamp(time.Unix(int64(v), 0))
 	case string:
-		t_, err := time.Parse("2006-01-02T15:04:05Z", v)
-		if err != nil {
-			return err
-		}
+		if strings.HasSuffix(v, "Z") {
+			t_, err := time.Parse("2006-01-02T15:04:05Z", v)
+			if err != nil {
+				return err
+			}
 
-		*t = Timestamp(t_)
+			*t = Timestamp(t_)
+		} else {
+			t_, err := time.Parse(time.RFC3339, v)
+			if err != nil {
+				return err
+			}
+
+			*t = Timestamp(t_)
+		}
 	}
 
 	return nil
@@ -165,7 +175,7 @@ type (
 		Organization *Organization  `json:"organization"`
 		Installation InstallationID `json:"installation"`
 		Sender       User           `json:"sender"`
-		Label        Label          `json:"label"`
+		Label        *Label         `json:"label"`
 	}
 
 	InstallationRepositoriesEvent struct {

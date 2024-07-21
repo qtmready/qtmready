@@ -19,7 +19,7 @@ services:
   # common
   database:
     container_name: database
-    image: scylladb/scylla:6.0
+    image: scylladb/scylla:6.0.1
     ports:
       - "9042:9042"
     volumes:
@@ -80,7 +80,7 @@ services:
     environment:
       TEMPORAL_ADDRESS: temporal:7233
       TEMPORAL_CORS_ORIGINS: http://localhost:3000
-    image: temporalio/ui:2.25.0
+    image: temporalio/ui:2.29.0
     ports:
       - 8080:8080
     networks:

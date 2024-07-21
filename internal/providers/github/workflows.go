@@ -245,7 +245,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	if err != nil {
 		logger.Error("github/repo_event: unable to initialize event state ...", "error", err.Error())
 
-		return err
+		return nil // TODO: faulty integration
 	}
 
 	payload := &core.RepoIOSignalPushPayload{
@@ -284,9 +284,9 @@ func (w *Workflows) OnCreateEvent(ctx workflow.Context, event *CreateEvent) erro
 
 	state, err := getRepoEventState(ctx, event)
 	if err != nil {
-		logger.Error("github/repo_event: unable to initialize event state ...", "error", err.Error())
+		logger.Warn("github/repo_event: unable to initialize event state ...", "error", err.Error())
 
-		return err
+		return nil // TODO: We should do some sort of notification because we have a faulty integration.
 	}
 
 	payload := &core.RepoIOSignalCreatePayload{
@@ -337,6 +337,8 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestE
 		Number:         event.Number,
 		RepoName:       event.Repository.Name,
 		RepoOwner:      event.Repository.Owner.Login,
+		BaseBranch:     event.PullRequest.Base.Ref,
+		HeadBranch:     event.PullRequest.Head.Ref,
 		CtrlID:         state.Repo.ID.String(),
 		InstallationID: event.Installation.ID,
 		ProviderID:     state.Repo.GithubID.String(),
@@ -505,6 +507,8 @@ func getRepoEventState(ctx workflow.Context, event RepoEvent) (*RepoEventState, 
 	}
 
 	state.Repo = &repos[0]
+
+	logger.Info("github/repo_event: repo?", slog.Any("repo", state.Repo))
 
 	if !state.Repo.IsActive {
 		logger.Warn(
