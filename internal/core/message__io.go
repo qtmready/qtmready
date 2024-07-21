@@ -63,27 +63,87 @@ type (
 // and Repo information.
 //
 // FIXME: this is generic to github. If we are using generic, should we create the url's depending upon the provider?
-func NewMergeConflictMessage(payload *RepoIOSignalPushPayload, repo *Repo, branch string) *MessageIOMergeConflictPayload {
+func NewMergeConflictMessage(payload *RepoIOSignalPushPayload, repo *Repo, branch string, is_channel bool) *MessageIOMergeConflictPayload {
 	msg := &MessageIOMergeConflictPayload{
 		RepoUrl:   fmt.Sprintf("https://github.com/%s/%s", payload.RepoOwner, payload.RepoName),
 		SHA:       payload.After,
 		CommitUrl: fmt.Sprintf("https://github.com/%s/%s/commits/%s", payload.RepoOwner, payload.RepoName, payload.After),
-		MessageIOPayload: &MessageIOPayload{
+	}
+
+	if is_channel {
+		msg.MessageIOPayload = &MessageIOPayload{
+			WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
+			ChannelID:   repo.MessageProviderData.Slack.ChannelID,
+			BotToken:    repo.MessageProviderData.Slack.BotToken,
+			Author:      payload.Author,
+			AuthorUrl:   fmt.Sprintf("https://github.com/%s", payload.Author),
+			RepoName:    repo.Name,
+			BranchName:  branch,
+			IsChannel:   is_channel,
+		}
+	} else {
+		msg.MessageIOPayload = &MessageIOPayload{
 			WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
 			ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
 			BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
-			RepoName:    repo.Name, // TODO: do we really need repo.Name here? isn't that part of the payload i.e. payload.RepoName?
+			RepoName:    repo.Name,
 			BranchName:  branch,
-		},
-	}
-
-	if payload.User != nil && payload.User.IsMessageProviderLinked {
-		msg.MessageIOPayload.IsChannel = false
-	} else {
-		msg.MessageIOPayload.IsChannel = true
-		msg.MessageIOPayload.Author = payload.Author
-		msg.MessageIOPayload.AuthorUrl = fmt.Sprintf("https://github.com/%s", payload.Author)
+			IsChannel:   is_channel,
+		}
 	}
 
 	return msg
+}
+
+// NewNumberOfLinesExceedMessage creates a new MessageIOLineExeededPayload instance with the provided RepoIOSignalPushPayload
+// and Repo information and changes.
+func NewNumberOfLinesExceedMessage(
+	payload *RepoIOSignalPushPayload, repo *Repo, branch string, changes *RepoIOChanges, is_channel bool,
+) *MessageIOLineExeededPayload {
+	msg := &MessageIOLineExeededPayload{
+		Threshold:     repo.Threshold,
+		DetectChanges: changes,
+	}
+
+	if is_channel {
+		msg.MessageIOPayload = &MessageIOPayload{
+			WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
+			ChannelID:   repo.MessageProviderData.Slack.ChannelID,
+			BotToken:    repo.MessageProviderData.Slack.BotToken,
+			Author:      payload.Author,
+			AuthorUrl:   fmt.Sprintf("https://github.com/%s", payload.Author),
+			RepoName:    repo.Name,
+			BranchName:  branch,
+			IsChannel:   is_channel,
+		}
+	} else {
+		msg.MessageIOPayload = &MessageIOPayload{
+			WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
+			ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
+			BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
+			RepoName:    repo.Name,
+			BranchName:  branch,
+			IsChannel:   is_channel,
+		}
+	}
+
+	return msg
+}
+
+// NewStaleBranchMessage creates a new MessageIOStaleBranchPayload instance with the provided RepoIOSignalPushPayload
+// and Repo information.
+// Only for channel.
+func NewStaleBranchMessage(data *RepoIORepoData, repo *Repo, branch string) *MessageIOStaleBranchPayload {
+	return &MessageIOStaleBranchPayload{
+		CommitUrl: fmt.Sprintf("https://github.com/%s/%s/tree/%s",
+			data.Owner, data.Name, branch),
+		RepoUrl: fmt.Sprintf("https://github.com/%s/%s", data.Owner, data.Name),
+		MessageIOPayload: &MessageIOPayload{
+			WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
+			ChannelID:   repo.MessageProviderData.Slack.ChannelID,
+			BotToken:    repo.MessageProviderData.Slack.BotToken,
+			RepoName:    repo.Name,
+			BranchName:  branch,
+		},
+	}
 }
