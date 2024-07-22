@@ -226,3 +226,4 @@ build/
 gha-creds-*
 gha-kubeconfig-*
 scratch/
+go-mod-cache/

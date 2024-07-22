@@ -1,10 +1,10 @@
-FROM cgr.dev/chainguard/go:latest as base
+FROM cgr.dev/chainguard/go:latest AS base
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/root/go/pkg/mod,sharing=locked \
   go mod download
 
-FROM base as src
+FROM base AS src
 
 WORKDIR /src
 COPY . .
@@ -12,7 +12,7 @@ RUN git status
 
 
 # migrate
-FROM src as build-migrate
+FROM src AS build-migrate
 LABEL io.quantm.artifacts.app="quantm"
 LABEL io.quantm.artifacts.component="migrate"
 
@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/root/go/pkg/mod,sharing=locked \
   --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
   go build -o ./build/migrate ./cmd/jobs/migrate
 
-FROM cgr.dev/chainguard/git:latest-glibc as migrate
+FROM cgr.dev/chainguard/git:latest-glibc AS migrate
 
 COPY --from=build-migrate /src/build/migrate /bin/migrate
 
@@ -29,7 +29,7 @@ CMD ["/bin/migrate"]
 
 
 # mothership
-FROM src as build-mothership
+FROM src AS build-mothership
 LABEL io.quantm.artifacts.app="quantm"
 LABEL io.quantm.artifacts.component="mothership"
 
@@ -37,7 +37,7 @@ RUN --mount=type=cache,target=/root/go/pkg/mod,sharing=locked \
   --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
   go build -o ./build/mothership ./cmd/workers/mothership
 
-FROM cgr.dev/chainguard/git:latest-glibc as mothership
+FROM cgr.dev/chainguard/git:latest-glibc AS mothership
 
 COPY --from=build-mothership /src/build/mothership /bin/
 
@@ -46,7 +46,7 @@ CMD ["/bin/mothership"]
 
 
 # api
-FROM src as build-api
+FROM src AS build-api
 LABEL io.quantm.artifacts.app="quantm"
 LABEL io.quantm.artifacts.component="api"
 
@@ -54,7 +54,7 @@ RUN --mount=type=cache,target=/root/go/pkg/mod,sharing=locked \
   --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
   go build -o ./build/api ./cmd/api
 
-FROM cgr.dev/chainguard/git:latest-glibc as api
+FROM cgr.dev/chainguard/git:latest-glibc AS api
 
 COPY --from=build-api /src/build/api /bin/api
 
