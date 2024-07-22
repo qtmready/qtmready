@@ -246,9 +246,11 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, detect).Get(ctx, changes)
 
 			if changes.Delta > repo.Threshold {
-				if payload.User != nil && payload.User.IsMessageProviderLinked {
-					msg := NewNumberOfLinesExceedMessage(payload, repo, branch, changes, false)
+				// if the user and provider message exist make the message for user otherwise for channel
+				for_user := payload.User != nil && payload.User.IsMessageProviderLinked
+				msg := NewNumberOfLinesExceedMessage(payload, repo, branch, changes, for_user)
 
+				if for_user {
 					logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
 
 					_ = workflow.
@@ -259,11 +261,9 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 					return
 				}
 
-				// if user not exit then will send message to channel (repo message provider channel)
-				msg := NewNumberOfLinesExceedMessage(payload, repo, branch, changes, true)
-
 				logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
 
+				// if user not exit then will send message to channel (repo message provider channel)
 				_ = workflow.
 					ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
 					Get(ctx, nil)
@@ -328,9 +328,11 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 				if apperr.Type() == "RepoIORebaseError" && !rebase.InProgress {
 					logger.Info("merge conflict detected ...", "sha", rebase.SHA, "commit_message", rebase.Message, "path", data.Path)
 
-					if payload.User != nil && payload.User.IsMessageProviderLinked {
-						msg := NewMergeConflictMessage(payload, repo, branch, false)
+					// if the user and provider message exist make the message for user otherwise for channel
+					for_user := payload.User != nil && payload.User.IsMessageProviderLinked
+					msg := NewMergeConflictMessage(payload, repo, branch, for_user)
 
+					if for_user {
 						logger.Info("merge conflict detected, sending message ...", "sha", payload.After, payload.RepoName)
 
 						_ = workflow.
@@ -343,11 +345,9 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 						return
 					}
 
-					// if user not exit then will send message to channel (repo message provider channel)
-					msg := NewMergeConflictMessage(payload, repo, branch, true)
-
 					logger.Info("merge conflict detected, sending message ...", "sha", payload.After, payload.RepoName)
 
+					// if user not exit then will send message to channel (repo message provider channel)
 					_ = workflow.ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg)
 					_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
 

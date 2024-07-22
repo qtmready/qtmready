@@ -63,14 +63,25 @@ type (
 // and Repo information.
 //
 // FIXME: this is generic to github. If we are using generic, should we create the url's depending upon the provider?
-func NewMergeConflictMessage(payload *RepoIOSignalPushPayload, repo *Repo, branch string, is_channel bool) *MessageIOMergeConflictPayload {
+func NewMergeConflictMessage(payload *RepoIOSignalPushPayload, repo *Repo, branch string, for_user bool) *MessageIOMergeConflictPayload {
 	msg := &MessageIOMergeConflictPayload{
 		RepoUrl:   fmt.Sprintf("https://github.com/%s/%s", payload.RepoOwner, payload.RepoName),
 		SHA:       payload.After,
 		CommitUrl: fmt.Sprintf("https://github.com/%s/%s/commits/%s", payload.RepoOwner, payload.RepoName, payload.After),
 	}
 
-	if is_channel {
+	// set the payload for user message provider
+	if for_user {
+		msg.MessageIOPayload = &MessageIOPayload{
+			WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
+			ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
+			BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
+			RepoName:    repo.Name,
+			BranchName:  branch,
+			IsChannel:   false,
+		}
+	} else {
+		// set the payload for channel message provider
 		msg.MessageIOPayload = &MessageIOPayload{
 			WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
 			ChannelID:   repo.MessageProviderData.Slack.ChannelID,
@@ -79,16 +90,7 @@ func NewMergeConflictMessage(payload *RepoIOSignalPushPayload, repo *Repo, branc
 			AuthorUrl:   fmt.Sprintf("https://github.com/%s", payload.Author),
 			RepoName:    repo.Name,
 			BranchName:  branch,
-			IsChannel:   is_channel,
-		}
-	} else {
-		msg.MessageIOPayload = &MessageIOPayload{
-			WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
-			ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
-			BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
-			RepoName:    repo.Name,
-			BranchName:  branch,
-			IsChannel:   is_channel,
+			IsChannel:   true,
 		}
 	}
 
@@ -98,14 +100,25 @@ func NewMergeConflictMessage(payload *RepoIOSignalPushPayload, repo *Repo, branc
 // NewNumberOfLinesExceedMessage creates a new MessageIOLineExeededPayload instance with the provided RepoIOSignalPushPayload
 // and Repo information and changes.
 func NewNumberOfLinesExceedMessage(
-	payload *RepoIOSignalPushPayload, repo *Repo, branch string, changes *RepoIOChanges, is_channel bool,
+	payload *RepoIOSignalPushPayload, repo *Repo, branch string, changes *RepoIOChanges, for_user bool,
 ) *MessageIOLineExeededPayload {
 	msg := &MessageIOLineExeededPayload{
 		Threshold:     repo.Threshold,
 		DetectChanges: changes,
 	}
 
-	if is_channel {
+	// set the payload for user message provider
+	if for_user {
+		msg.MessageIOPayload = &MessageIOPayload{
+			WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
+			ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
+			BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
+			RepoName:    repo.Name,
+			BranchName:  branch,
+			IsChannel:   false,
+		}
+	} else {
+		// set the payload for channel message provider
 		msg.MessageIOPayload = &MessageIOPayload{
 			WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
 			ChannelID:   repo.MessageProviderData.Slack.ChannelID,
@@ -114,16 +127,7 @@ func NewNumberOfLinesExceedMessage(
 			AuthorUrl:   fmt.Sprintf("https://github.com/%s", payload.Author),
 			RepoName:    repo.Name,
 			BranchName:  branch,
-			IsChannel:   is_channel,
-		}
-	} else {
-		msg.MessageIOPayload = &MessageIOPayload{
-			WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
-			ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
-			BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
-			RepoName:    repo.Name,
-			BranchName:  branch,
-			IsChannel:   is_channel,
+			IsChannel:   true,
 		}
 	}
 

@@ -29,7 +29,8 @@ import (
 )
 
 const (
-	footer = "Powered by quantm.io"
+	footer  = "Powered by quantm.io"
+	preview = "Message from Quantm" // This is a preview of the message content.
 )
 
 func formatLineThresholdExceededAttachment(payload *core.MessageIOLineExeededPayload) slack.Attachment {
@@ -71,6 +72,7 @@ func formatLineThresholdExceededAttachment(payload *core.MessageIOLineExeededPay
 	return slack.Attachment{
 		Color:      "warning",
 		Pretext:    "The number of lines in this pull request exceeds the allowed threshold. Please review and adjust accordingly.",
+		Text:       preview,
 		Fields:     fields,
 		MarkdownIn: []string{"fields"},
 		Footer:     footer,
@@ -97,6 +99,7 @@ func formatMergeConflictAttachment(payload *core.MessageIOMergeConflictPayload) 
 		Color: "warning",
 		Pretext: fmt.Sprintf("A recent commit on defualt branch has caused the merge conflict on <%s|%s> branch.",
 			payload.CommitUrl, payload.MessageIOPayload.BranchName),
+		Text:       preview,
 		Fields:     fields,
 		MarkdownIn: []string{"fields"},
 		Footer:     footer,
@@ -108,6 +111,7 @@ func formatStaleBranchAttachment(payload *core.MessageIOStaleBranchPayload) slac
 	return slack.Attachment{
 		Pretext: fmt.Sprintf("Stale branch <%s|%s> is detected on repository <%s|%s>. Please review and take necessary action.",
 			payload.CommitUrl, payload.MessageIOPayload.BranchName, payload.RepoUrl, payload.MessageIOPayload.RepoName),
+		Text: preview,
 	}
 }
 
