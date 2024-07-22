@@ -102,8 +102,8 @@ func handlePushEvent(ctx echo.Context) error {
 }
 
 // handlePushEvent handles GitHub push/create event.
-func handleCreateEvent(ctx echo.Context) error {
-	payload := &CreateEvent{}
+func handleCreateOrDeleteEvent(ctx echo.Context) error {
+	payload := &CreateOrDeleteEvent{}
 	if err := ctx.Bind(payload); err != nil {
 		shared.Logger().Error("unable to bind payload ...", "error", err)
 		return err
@@ -125,7 +125,7 @@ func handleCreateEvent(ctx echo.Context) error {
 			shared.WithWorkflowModID(delievery),
 		)
 
-	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnCreateEvent, payload)
+	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnCreateOrDeleteEvent, payload)
 	if err != nil {
 		shared.Logger().Error("unable to signal OnPushEvent ...", "options", opts, "error", err)
 		return nil

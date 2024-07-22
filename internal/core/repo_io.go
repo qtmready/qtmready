@@ -33,10 +33,10 @@ type (
 
 // RepoIO signals.
 const (
-	RepoIOSignalPush        shared.WorkflowSignal = "repo_io__push"
-	RepoIOSignalCreate      shared.WorkflowSignal = "repo_io__create"
-	ReopIOSignalRebase      shared.WorkflowSignal = "repo_io__rebase"
-	RepoIOSignalPullRequest shared.WorkflowSignal = "repo_io__pull_request"
+	RepoIOSignalPush           shared.WorkflowSignal = "repo_io__push"
+	RepoIOSignalCreateOrDelete shared.WorkflowSignal = "repo_io__create_or_delete"
+	ReopIOSignalRebase         shared.WorkflowSignal = "repo_io__rebase"
+	RepoIOSignalPullRequest    shared.WorkflowSignal = "repo_io__pull_request"
 )
 
 const (
@@ -85,6 +85,7 @@ type (
 	}
 
 	RepoIOSignalCreatePayload struct {
+		IsCreated      bool           `json:"is_created"`
 		Ref            string         `json:"ref"`
 		RefType        string         `json:"ref_type"`
 		DefaultBranch  string         `json:"default_branch"`

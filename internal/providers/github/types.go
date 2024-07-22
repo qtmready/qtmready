@@ -146,11 +146,11 @@ type (
 		Installation InstallationID `json:"installation"`
 	}
 
-	CreateEvent struct {
+	CreateOrDeleteEvent struct {
 		Ref          string         `json:"ref"`
 		RefType      string         `json:"ref_type"`
-		MasterBranch string         `json:"master_branch"`
-		Description  string         `json:"description"`
+		MasterBranch *string        `json:"master_branch"` // NOTE: This is only present in the create event.
+		Description  *string        `json:"description"`   // NOTE: This is only present in the create event.
 		PusherType   string         `json:"pusher_type"`
 		Repository   Repository     `json:"repository"`
 		Organization Organization   `json:"organization"`
@@ -316,18 +316,18 @@ func (p *PullRequestEvent) SenderID() string {
 	return p.Sender.ID.String()
 }
 
-func (p *CreateEvent) RepoID() shared.Int64 {
+func (p *CreateOrDeleteEvent) RepoID() shared.Int64 {
 	return p.Repository.ID
 }
 
-func (p *CreateEvent) InstallationID() shared.Int64 {
+func (p *CreateOrDeleteEvent) InstallationID() shared.Int64 {
 	return p.Installation.ID
 }
 
-func (p *CreateEvent) RepoName() string {
+func (p *CreateOrDeleteEvent) RepoName() string {
 	return p.Repository.Name
 }
 
-func (p *CreateEvent) SenderID() string {
+func (p *CreateOrDeleteEvent) SenderID() string {
 	return p.Sender.ID.String()
 }

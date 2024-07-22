@@ -277,7 +277,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 }
 
 // OnPushEvent is run when ever a repo event is received. Repo Event can be push event or a create event.
-func (w *Workflows) OnCreateEvent(ctx workflow.Context, event *CreateEvent) error {
+func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, event *CreateOrDeleteEvent) error {
 	logger := workflow.GetLogger(ctx)
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	_ctx := workflow.WithActivityOptions(ctx, opts)
@@ -302,7 +302,7 @@ func (w *Workflows) OnCreateEvent(ctx workflow.Context, event *CreateEvent) erro
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalCreate, payload).
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalCreateOrDelete, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
 			"github/repo_event: signal error, retrying ...",

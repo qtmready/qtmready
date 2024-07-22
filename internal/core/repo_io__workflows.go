@@ -49,9 +49,9 @@ func (w *RepoWorkflows) RepoCtrl(ctx workflow.Context, repo *Repo) error {
 	push := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
 	selector.AddReceive(push, w.onRepoPush(ctx, repo)) // post processing for push event recieved on repo.
 
-	// create
-	create := workflow.GetSignalChannel(ctx, RepoIOSignalCreate.String())
-	selector.AddReceive(create, w.onRepoCreate(ctx, repo))
+	// create_delete
+	create_delete := workflow.GetSignalChannel(ctx, RepoIOSignalCreateOrDelete.String())
+	selector.AddReceive(create_delete, w.onRepoCreateOrDelete(ctx, repo))
 
 	// pull request channel
 	pr := workflow.GetSignalChannel(ctx, RepoIOSignalPullRequest.String())
@@ -357,8 +357,8 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 	}
 }
 
-func (w *RepoWorkflows) onRepoCreate(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
-	logger := NewRepoIOWorkflowLogger(ctx, repo, "repo_ctrl", "create", "")
+func (w *RepoWorkflows) onRepoCreateOrDelete(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
+	logger := NewRepoIOWorkflowLogger(ctx, repo, "repo_ctrl", "create_delete", "")
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 
 	ctx = workflow.WithActivityOptions(ctx, opts)
