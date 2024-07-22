@@ -255,9 +255,11 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 						ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
 						Get(ctx, nil)
 
+					// return the workflow is user exit not send message to channel
 					return
 				}
 
+				// if user not exit then will send message to channel (repo message provider channel)
 				msg := NewNumberOfLinesExceedMessage(payload, repo, branch, changes, true)
 
 				logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
@@ -335,9 +337,11 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 							ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg).
 							Get(ctx, nil)
 
+						// return the workflow is user exit not send message to channel
 						return
 					}
 
+					// if user not exit then will send message to channel (repo message provider channel)
 					msg := NewMergeConflictMessage(payload, repo, branch, true)
 
 					logger.Info("merge conflict detected, sending message ...", "sha", payload.After, payload.RepoName)
