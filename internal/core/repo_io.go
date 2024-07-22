@@ -27,12 +27,25 @@ import (
 	"go.breu.io/quantm/internal/shared"
 )
 
+type (
+	PullRequestAction string
+)
+
 // RepoIO signals.
 const (
-	RepoIOSignalPush       shared.WorkflowSignal = "repo__push"
-	ReopIOSignalRebase     shared.WorkflowSignal = "repo__push__rebase"
-	RepoIOPullRequestLabel shared.WorkflowSignal = "repo__pull_request__label"
-	RepoIOPullRequestMerge shared.WorkflowSignal = "repo__pull_request__merge"
+	RepoIOSignalPush           shared.WorkflowSignal = "repo_io__push"
+	RepoIOSignalCreateOrDelete shared.WorkflowSignal = "repo_io__create_or_delete"
+	ReopIOSignalRebase         shared.WorkflowSignal = "repo_io__rebase"
+	RepoIOSignalPullRequest    shared.WorkflowSignal = "repo_io__pull_request"
+)
+
+const (
+	PullRequestActionCreated       PullRequestAction = "created"
+	PullRequestActionLabeled       PullRequestAction = "labeled"
+	PullRequestActionClosed        PullRequestAction = "closed"
+	PullRequestActionMerged        PullRequestAction = "merged"
+	PullRequestActionReviewRequest PullRequestAction = "review_request"
+	PullRequestActionApproved      PullRequestAction = "approved"
 )
 
 // RepoIO signal payloads.
@@ -57,23 +70,45 @@ type (
 		TokenizedCloneURL(ctx context.Context, payload *RepoIOInfoPayload) (string, error)
 	}
 
-	RepoSignalPushPayload struct {
+	RepoIOSignalPushPayload struct {
 		BranchRef      string         `json:"branch_ref"`
 		Before         string         `json:"before"`
 		After          string         `json:"after"`
 		RepoName       string         `json:"repo_name"`
 		RepoOwner      string         `json:"repo_owner"`
-		CtrlID         string         `json:"ctrl_id"` // ID is the repo ID in the quantm DB. Should be UUID
+		CtrlID         string         `json:"ctrl_id"` // CtrlID represents the id of the provider repo in the quantm DB. Should be UUID.
 		InstallationID shared.Int64   `json:"installation_id"`
 		ProviderID     string         `json:"provider_id"`
 		Commits        []RepoIOCommit `json:"commits"`
-		User           *auth.TeamUser `json:"user"`   // NOTE:
-		Author         string         `json:"author"` // NOTE:
+		User           *auth.TeamUser `json:"user"`
+		Author         string         `json:"author"`
 	}
 
-	RepoSignalPullRequestLabelPayload struct{}
+	RepoIOSignalCreatePayload struct {
+		IsCreated      bool           `json:"is_created"`
+		Ref            string         `json:"ref"`
+		RefType        string         `json:"ref_type"`
+		DefaultBranch  string         `json:"default_branch"`
+		RepoName       string         `json:"repo_name"`
+		RepoOwner      string         `json:"repo_owner"`
+		CtrlID         string         `json:"ctrl_id"` // CtrlID represents the id of the provider repo in the quantm DB. Should be UUID.
+		InstallationID shared.Int64   `json:"installation_id"`
+		ProviderID     string         `json:"provider_id"`
+		User           *auth.TeamUser `json:"user"`
+	}
 
-	RepoSignalPullRequestMergedPayload struct{}
+	RepoIOSignalPullRequestPayload struct {
+		Action         string         `json:"action"`
+		Number         shared.Int64   `json:"number"`
+		RepoName       string         `json:"repo_name"`
+		RepoOwner      string         `json:"repo_owner"`
+		BaseBranch     string         `json:"base_branch"`
+		HeadBranch     string         `json:"head_branch"`
+		CtrlID         string         `json:"ctrl_id"`
+		InstallationID shared.Int64   `json:"installation_id"`
+		ProviderID     string         `json:"provider_id"`
+		User           *auth.TeamUser `json:"user"` // TODO: need to find more optimze way
+	}
 )
 
 // RepoIO types.
@@ -93,10 +128,10 @@ type (
 	}
 
 	RepoIOClonePayload struct {
-		Repo   *Repo                  `json:"repo"`   // Repo is the db record of the repo
-		Push   *RepoSignalPushPayload `json:"push"`   // Push event payload
-		Branch string                 `json:"branch"` // Branch to clone
-		Path   string                 `json:"path"`   // Path to clone to
+		Repo   *Repo                    `json:"repo"`   // Repo is the db record of the repo
+		Push   *RepoIOSignalPushPayload `json:"push"`   // Push event payload
+		Branch string                   `json:"branch"` // Branch to clone
+		Path   string                   `json:"path"`   // Path to clone to
 	}
 
 	RepoIODetectChangesPayload struct {
@@ -129,11 +164,15 @@ type (
 		Message    string `json:"message"`
 		InProgress bool   `json:"in_progress"`
 	}
+
+	RepoIOGetRepoByProviderIDPayload struct {
+		ProviderID string `json:"provider_id"`
+	}
 )
 
 // Workflow States.
 type (
-	RepoWorkflowStateBranchCtrl struct {
+	RepoIOBranchCtrlState struct {
 		CreatedAt             time.Time `json:"created_at"`
 		LatestCommitTimestamp time.Time `json:"latest_commit_timestamp"`
 		LatestCommitSHA       string    `json:"latest_commit_sha"`
@@ -142,20 +181,23 @@ type (
 )
 
 // IsStale checks if the Branch is stale.
-func (state *RepoWorkflowStateBranchCtrl) IsStale(ctx context.Context) bool {
+func (state *RepoIOBranchCtrlState) IsStale(ctx context.Context) bool {
 	return false
 }
 
-func (state *RepoWorkflowStateBranchCtrl) SetLatestCommit(commit *RepoIOCommit) {
+// SetLatestCommit sets the latest commit on the state.
+func (state *RepoIOBranchCtrlState) SetLatestCommit(commit *RepoIOCommit) {
 	state.LatestCommitSHA = commit.SHA
 	state.LatestCommitTimestamp = commit.Timestamp
 }
 
-func (state *RepoWorkflowStateBranchCtrl) HasPR(ctx context.Context) bool {
+// HasPR checks if the branch has a PR associated with it.
+func (state *RepoIOBranchCtrlState) HasPR(ctx context.Context) bool {
 	return state.PullRequest != ""
 }
 
-func (state *RepoWorkflowStateBranchCtrl) Now(ctx workflow.Context) time.Time {
+// Now returns the current time.
+func (state *RepoIOBranchCtrlState) Now(ctx workflow.Context) time.Time {
 	var now time.Time
 
 	_ = workflow.SideEffect(ctx, func(_ctx workflow.Context) any { return time.Now() }).Get(&now)

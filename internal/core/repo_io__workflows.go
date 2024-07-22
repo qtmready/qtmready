@@ -19,7 +19,6 @@ package core
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,8 +33,6 @@ type (
 	RepoWorkflows struct {
 		acts *RepoActivities
 	}
-
-	BranchCtrlLogger func(level string, message string, attrs ...any)
 )
 
 // RepoCtrl is the controller for all the workflows related to the repository.
@@ -49,8 +46,16 @@ func (w *RepoWorkflows) RepoCtrl(ctx workflow.Context, repo *Repo) error {
 
 	// channels
 	// push event signal
-	pushchannel := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
-	selector.AddReceive(pushchannel, w.onRepoPush(ctx, repo)) // post processing for push event recieved on repo.
+	push := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
+	selector.AddReceive(push, w.onRepoPush(ctx, repo)) // post processing for push event recieved on repo.
+
+	// create_delete
+	create_delete := workflow.GetSignalChannel(ctx, RepoIOSignalCreateOrDelete.String())
+	selector.AddReceive(create_delete, w.onRepoCreateOrDelete(ctx, repo))
+
+	// pull request channel
+	pr := workflow.GetSignalChannel(ctx, RepoIOSignalPullRequest.String())
+	selector.AddReceive(pr, w.onRepoPullRequest(ctx, repo)) // post processing for pull request event recieved on repo.
 
 	logger.Info("init ...", "default_branch", repo.DefaultBranch)
 
@@ -71,8 +76,8 @@ func (w *RepoWorkflows) DefaultBranchCtrl(ctx workflow.Context, repo *Repo) erro
 
 	// channels
 	// push event signal
-	pushchannel := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
-	selector.AddReceive(pushchannel, w.onDefaultBranchPush(ctx, repo)) // post processing for push event recieved on repo.
+	push := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
+	selector.AddReceive(push, w.onDefaultBranchPush(ctx, repo)) // post processing for push event recieved on repo.
 
 	logger.Info("init ...")
 
@@ -95,7 +100,7 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	// handle stale check.
 	workflow.Go(ctx, func(ctx workflow.Context) {
 		for !done {
-			interval.Next(ctx) // TODO: @alyfinder - send message to slack.
+			interval.Next(ctx)
 
 			opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 			ctx = workflow.WithActivityOptions(ctx, opts)
@@ -104,18 +109,8 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 			data := &RepoIORepoData{}
 			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).GetRepoData, repo.CtrlID.String()).Get(ctx, data)
 
-			msg := &MessageIOStaleBranchPayload{
-				MessageIOPayload: &MessageIOPayload{
-					WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
-					ChannelID:   repo.MessageProviderData.Slack.ChannelID,
-					BotToken:    repo.MessageProviderData.Slack.BotToken,
-					RepoName:    repo.Name,
-					BranchName:  branch,
-				},
-				CommitUrl: fmt.Sprintf("https://github.com/%s/%s/tree/%s",
-					data.Owner, data.Name, branch),
-				RepoUrl: fmt.Sprintf("https://github.com/%s/%s", data.Owner, data.Name),
-			}
+			// Only send message to provider channel
+			msg := NewStaleBranchMessage(data, repo, branch)
 
 			logger.Info("stale branch detected, sending message ...", "stale", msg.RepoUrl)
 
@@ -123,17 +118,19 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 		}
 	})
 
-	// handling signals
-
 	// push event signal.
 	// detect changes. if changes are greater than threshold, send early warning message.
-	pushchannel := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
-	selector.AddReceive(pushchannel, w.onBranchPush(ctx, repo, branch, interval)) // post processing for push event recieved on repo.
+	push := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
+	selector.AddReceive(push, w.onBranchPush(ctx, repo, branch, interval)) // post processing for push event recieved on repo.
 
 	// rebase signal.
 	// attempts to rebase the branch with the base branch. if there are merge conflicts, sends message.
 	rebase := workflow.GetSignalChannel(ctx, ReopIOSignalRebase.String())
 	selector.AddReceive(rebase, w.onBranchRebase(ctx, repo, branch)) // post processing for early warning signal.
+
+	// pr signal.
+	pr := workflow.GetSignalChannel(ctx, RepoIOSignalPullRequest.String())
+	selector.AddReceive(pr, w.onBranchPullRequest(ctx, repo, branch)) // post processing for pull request event recieved on repo.
 
 	logger.Info("init ...")
 
@@ -156,7 +153,7 @@ func (w *RepoWorkflows) onRepoPush(ctx workflow.Context, repo *Repo) shared.Chan
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		payload := &RepoSignalPushPayload{}
+		payload := &RepoIOSignalPushPayload{}
 		channel.Receive(ctx, payload)
 
 		logger.Info("init ...")
@@ -193,7 +190,7 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		payload := &RepoSignalPushPayload{}
+		payload := &RepoIOSignalPushPayload{}
 		channel.Receive(ctx, payload)
 
 		logger.Info("init ...", "sha", payload.After)
@@ -229,11 +226,11 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 	interval.Restart(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		payload := &RepoSignalPushPayload{}
+		payload := &RepoIOSignalPushPayload{}
 		channel.Receive(ctx, payload)
 
 		// detect changes payload -> RepoIODetectChangesPayload
-		msg := &RepoIODetectChangesPayload{
+		detect := &RepoIODetectChangesPayload{
 			InstallationID: payload.InstallationID,
 			RepoName:       payload.RepoName,
 			RepoOwner:      payload.RepoOwner,
@@ -246,50 +243,27 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 		if repo.MessageProvider != MessageProviderNone {
 			logger.Info("detecting changes ...", "sha", payload.After)
 
-			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, msg).Get(ctx, changes)
+			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, detect).Get(ctx, changes)
 
 			if changes.Delta > repo.Threshold {
-				if payload.User != nil {
-					if payload.User.IsMessageProviderLinked {
-						// TODO: get the team_user and check is slack is linked or not
-						msg := &MessageIOLineExeededPayload{
-							MessageIOPayload: &MessageIOPayload{
-								WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
-								ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
-								BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
-								RepoName:    repo.Name,
-								BranchName:  branch,
-								IsChannel:   false,
-							},
-							Threshold:     repo.Threshold,
-							DetectChanges: changes,
-						}
+				// if the user and provider message exist make the message for user otherwise for channel
+				for_user := payload.User != nil && payload.User.IsMessageProviderLinked
+				msg := NewNumberOfLinesExceedMessage(payload, repo, branch, changes, for_user)
 
-						logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
+				if for_user {
+					logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
 
-						_ = workflow.
-							ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
-							Get(ctx, nil)
-					}
-				}
+					_ = workflow.
+						ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
+						Get(ctx, nil)
 
-				msg := &MessageIOLineExeededPayload{
-					MessageIOPayload: &MessageIOPayload{
-						WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
-						ChannelID:   repo.MessageProviderData.Slack.ChannelID,
-						BotToken:    repo.MessageProviderData.Slack.BotToken,
-						Author:      payload.Author,
-						AuthorUrl:   fmt.Sprintf("https://github.com/%s", payload.Author),
-						RepoName:    repo.Name,
-						BranchName:  branch,
-						IsChannel:   true,
-					},
-					Threshold:     repo.Threshold,
-					DetectChanges: changes,
+					// return the workflow is user exit not send message to channel
+					return
 				}
 
 				logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
 
+				// if user not exit then will send message to channel (repo message provider channel)
 				_ = workflow.
 					ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
 					Get(ctx, nil)
@@ -327,7 +301,7 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		payload := &RepoSignalPushPayload{}
+		payload := &RepoIOSignalPushPayload{}
 		data := &RepoIOClonePayload{Repo: repo, Push: payload, Branch: branch, Path: ""}
 
 		channel.Receive(ctx, payload)
@@ -354,52 +328,26 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 				if apperr.Type() == "RepoIORebaseError" && !rebase.InProgress {
 					logger.Info("merge conflict detected ...", "sha", rebase.SHA, "commit_message", rebase.Message, "path", data.Path)
 
-					if payload.User != nil {
-						if payload.User.IsMessageProviderLinked {
-							// TODO: get the team_user and check is slack is linked or not
-							msg := &MessageIOMergeConflictPayload{
-								MessageIOPayload: &MessageIOPayload{
-									WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
-									ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
-									BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
-									RepoName:    repo.Name,
-									BranchName:  branch,
-									IsChannel:   false,
-								},
-								CommitUrl: fmt.Sprintf("https://github.com/%s/%s/commits/%s",
-									payload.RepoOwner, payload.RepoName, payload.After),
-								RepoUrl: fmt.Sprintf("https://github.com/%s/%s", payload.RepoOwner, payload.RepoName),
-								SHA:     payload.After,
-							}
+					// if the user and provider message exist make the message for user otherwise for channel
+					for_user := payload.User != nil && payload.User.IsMessageProviderLinked
+					msg := NewMergeConflictMessage(payload, repo, branch, for_user)
 
-							logger.Info("merge conflict detected, sending message ...", "sha", payload.After, payload.RepoName)
+					if for_user {
+						logger.Info("merge conflict detected, sending message ...", "sha", payload.After, payload.RepoName)
 
-							_ = workflow.
-								ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg).
-								Get(ctx, nil)
-						}
-					}
+						_ = workflow.
+							ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg).
+							Get(ctx, nil)
 
-					msg := &MessageIOMergeConflictPayload{
-						MessageIOPayload: &MessageIOPayload{
-							WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
-							ChannelID:   repo.MessageProviderData.Slack.ChannelID,
-							BotToken:    repo.MessageProviderData.Slack.BotToken,
-							Author:      payload.Author,
-							AuthorUrl:   fmt.Sprintf("https://github.com/%s", payload.Author),
-							RepoName:    repo.Name,
-							BranchName:  branch,
-							IsChannel:   true,
-						},
-						CommitUrl: fmt.Sprintf("https://github.com/%s/%s/commits/%s", payload.RepoOwner, payload.RepoName, payload.After),
-						RepoUrl:   fmt.Sprintf("https://github.com/%s/%s", payload.RepoOwner, payload.RepoName),
-						SHA:       payload.After,
+						_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
+
+						// return the workflow is user exit not send message to channel
+						return
 					}
 
 					logger.Info("merge conflict detected, sending message ...", "sha", payload.After, payload.RepoName)
 
-					// TODO: get the team_user and check is slack is linked or not
-
+					// if user not exit then will send message to channel (repo message provider channel)
 					_ = workflow.ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg)
 					_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
 
@@ -414,5 +362,66 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 		}
 
 		_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
+	}
+}
+
+func (w *RepoWorkflows) onRepoCreateOrDelete(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
+	logger := NewRepoIOWorkflowLogger(ctx, repo, "repo_ctrl", "create_delete", "")
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	return func(channel workflow.ReceiveChannel, more bool) {
+		payload := &RepoIOSignalCreatePayload{}
+		channel.Receive(ctx, payload)
+
+		logger.Info("init ...")
+	}
+}
+
+func (w *RepoWorkflows) onRepoPullRequest(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
+	logger := NewRepoIOWorkflowLogger(ctx, repo, "repo_ctrl", "pull_request", "")
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	return func(channel workflow.ReceiveChannel, more bool) {
+		payload := &RepoIOSignalPullRequestPayload{}
+		channel.Receive(ctx, payload)
+
+		logger.Info("init ...")
+
+		_ = workflow.ExecuteActivity(ctx, w.acts.SignalBranch, repo, RepoIOSignalPullRequest, payload, payload.HeadBranch).Get(ctx, nil)
+	}
+}
+
+func (w *RepoWorkflows) onBranchPullRequest(ctx workflow.Context, repo *Repo, branch string) shared.ChannelHandler {
+	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "pull_request", branch)
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	return func(channel workflow.ReceiveChannel, more bool) {
+		payload := &RepoIOSignalPullRequestPayload{}
+		channel.Receive(ctx, payload)
+
+		logger.Info("on repo pull request", payload)
+		logger.Info("on repo pull request action", payload.Action)
+		logger.Info("repo branch on which pull request", branch)
+
+		// TODO - convert to map call repo activites to handle the pr actions
+		switch payload.Action {
+		case "opened":
+			logger.Info("pull request with open action")
+
+		case "labeled":
+			logger.Info("pull request with labeled action")
+
+		case "synchronize":
+			logger.Info("pull request with synchronize action")
+
+		default:
+			logger.Info("handlePullRequest Event default closing...")
+		}
 	}
 }

@@ -18,17 +18,73 @@
 package github
 
 import (
+	"encoding/json"
+	"strings"
+	"time"
+
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 
+	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/core"
 	"go.breu.io/quantm/internal/shared"
 )
+
+type (
+	Timestamp time.Time // Timestamp is hack around github's funky use of time
+)
+
+func (t *Timestamp) UnmarshalJSON(data []byte) error {
+	var raw any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	switch v := raw.(type) {
+	case float64:
+		*t = Timestamp(time.Unix(int64(v), 0))
+	case string:
+		if strings.HasSuffix(v, "Z") {
+			t_, err := time.Parse("2006-01-02T15:04:05Z", v)
+			if err != nil {
+				return err
+			}
+
+			*t = Timestamp(t_)
+		} else {
+			t_, err := time.Parse(time.RFC3339, v)
+			if err != nil {
+				return err
+			}
+
+			*t = Timestamp(t_)
+		}
+	}
+
+	return nil
+}
+
+func (t Timestamp) MarshalJSON() ([]byte, error) {
+	t_ := time.Time(t)
+	return json.Marshal(t_.Format(time.RFC3339))
+}
+
+func (t Timestamp) Time() time.Time {
+	return time.Time(t)
+}
 
 // Webhook events & Workflow singals.
 type (
 	WebhookEvent         string                               // WebhookEvent defines the event type.
 	WebhookEventHandler  func(ctx echo.Context) error         // EventHandler is the signature of the event handler function.
 	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers.
+
+	RepoEvent interface {
+		RepoID() shared.Int64
+		RepoName() string
+		InstallationID() shared.Int64
+		SenderID() string
+	}
 )
 
 type (
@@ -90,6 +146,18 @@ type (
 		Installation InstallationID `json:"installation"`
 	}
 
+	CreateOrDeleteEvent struct {
+		Ref          string         `json:"ref"`
+		RefType      string         `json:"ref_type"`
+		MasterBranch *string        `json:"master_branch"` // NOTE: This is only present in the create event.
+		Description  *string        `json:"description"`   // NOTE: This is only present in the create event.
+		PusherType   string         `json:"pusher_type"`
+		Repository   Repository     `json:"repository"`
+		Organization Organization   `json:"organization"`
+		Sender       User           `json:"sender"`
+		Installation InstallationID `json:"installation"`
+	}
+
 	GithubWorkflowRunEvent struct {
 		Action       string             `json:"action"`
 		Repository   RepositoryPR       `json:"repository"`
@@ -107,7 +175,7 @@ type (
 		Organization *Organization  `json:"organization"`
 		Installation InstallationID `json:"installation"`
 		Sender       User           `json:"sender"`
-		Label        Label          `json:"label"`
+		Label        *Label         `json:"label"`
 	}
 
 	InstallationRepositoriesEvent struct {
@@ -207,3 +275,59 @@ const (
 	WorkflowSignalPullRequestLabeled   shared.WorkflowSignal = "pull_request_labeled"
 	WorkflowSignalPushEvent            shared.WorkflowSignal = "push_event"
 )
+
+type (
+	RepoEventState struct {
+		CoreRepo *core.Repo     `json:"core_repo"`
+		Repo     *Repo          `json:"repo"`
+		User     *auth.TeamUser `json:"user"`
+	}
+)
+
+func (p *PushEvent) RepoID() shared.Int64 {
+	return p.Repository.ID
+}
+
+func (p *PushEvent) InstallationID() shared.Int64 {
+	return p.Installation.ID
+}
+
+func (p *PushEvent) RepoName() string {
+	return p.Repository.Name
+}
+
+func (p *PushEvent) SenderID() string {
+	return p.Sender.ID.String()
+}
+
+func (p *PullRequestEvent) RepoID() shared.Int64 {
+	return p.Repository.ID
+}
+
+func (p *PullRequestEvent) InstallationID() shared.Int64 {
+	return p.Installation.ID
+}
+
+func (p *PullRequestEvent) RepoName() string {
+	return p.Repository.Name
+}
+
+func (p *PullRequestEvent) SenderID() string {
+	return p.Sender.ID.String()
+}
+
+func (p *CreateOrDeleteEvent) RepoID() shared.Int64 {
+	return p.Repository.ID
+}
+
+func (p *CreateOrDeleteEvent) InstallationID() shared.Int64 {
+	return p.Installation.ID
+}
+
+func (p *CreateOrDeleteEvent) RepoName() string {
+	return p.Repository.Name
+}
+
+func (p *CreateOrDeleteEvent) SenderID() string {
+	return p.Sender.ID.String()
+}

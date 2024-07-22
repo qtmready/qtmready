@@ -19,10 +19,20 @@ package github
 
 import (
 	"errors"
+	"fmt"
+
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
 	MissingConfigurationError struct{}
+
+	RepoEventError struct {
+		InstallationID shared.Int64 `json:"installation_id"`
+		GithubRepoID   shared.Int64 `json:"github_repo_id"`
+		RepoName       string       `json:"repo_name"`
+		Details        string       `json:"details"`
+	}
 )
 
 var (
@@ -34,3 +44,46 @@ var (
 	ErrPayloadParser                = errors.New("error parsing payload")
 	ErrVerifySignature              = errors.New("HMAC verification failed")
 )
+
+func (e *RepoEventError) Error() string {
+	return fmt.Sprintf(
+		"repo_event_error: installation_id: %d, github_repo_id: %d, repo_name: %s, details: %s",
+		e.InstallationID, e.GithubRepoID, e.RepoName, e.Details,
+	)
+}
+
+func NewRepoNotFoundRepoEventError(installationID, githubRepoID shared.Int64, repoName string) error {
+	return &RepoEventError{
+		InstallationID: installationID,
+		GithubRepoID:   githubRepoID,
+		RepoName:       repoName,
+		Details:        "repo_not_found",
+	}
+}
+
+func NewMultipleReposFoundRepoEventError(installationID, githubRepoID shared.Int64, repoName string) error {
+	return &RepoEventError{
+		InstallationID: installationID,
+		GithubRepoID:   githubRepoID,
+		RepoName:       repoName,
+		Details:        "multiple_repos_associated",
+	}
+}
+
+func NewInactiveRepoRepoEventError(installationID, githubRepoID shared.Int64, repoName string) error {
+	return &RepoEventError{
+		InstallationID: installationID,
+		GithubRepoID:   githubRepoID,
+		RepoName:       repoName,
+		Details:        "repo_not_active",
+	}
+}
+
+func NewHasNoEarlyWarningRepoEventError(installationID, githubRepoID shared.Int64, repoName string) error {
+	return &RepoEventError{
+		InstallationID: installationID,
+		GithubRepoID:   githubRepoID,
+		RepoName:       repoName,
+		Details:        "repo_has_no_early_warning",
+	}
+}

@@ -60,10 +60,7 @@ func main() {
 	)
 
 	// init open telemetry
-	otelshutdown, err := _otel(
-		ctx, shared.Service().GetName(),
-		shared.Service().GetVersion(),
-	)
+	otelshutdown, err := _otel(ctx, shared.Service().GetName(), shared.Service().GetVersion())
 	if err != nil {
 		slog.Error("failed to setup opentelemetry, exiting ...", slog.Any("error", err.Error()))
 		errs <- err
