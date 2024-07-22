@@ -230,7 +230,7 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 		channel.Receive(ctx, payload)
 
 		// detect changes payload -> RepoIODetectChangesPayload
-		msg := &RepoIODetectChangesPayload{
+		detect := &RepoIODetectChangesPayload{
 			InstallationID: payload.InstallationID,
 			RepoName:       payload.RepoName,
 			RepoOwner:      payload.RepoOwner,
@@ -243,7 +243,7 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 		if repo.MessageProvider != MessageProviderNone {
 			logger.Info("detecting changes ...", "sha", payload.After)
 
-			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, msg).Get(ctx, changes)
+			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, detect).Get(ctx, changes)
 
 			if changes.Delta > repo.Threshold {
 				if payload.User != nil && payload.User.IsMessageProviderLinked {
