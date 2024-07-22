@@ -100,7 +100,7 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	// handle stale check.
 	workflow.Go(ctx, func(ctx workflow.Context) {
 		for !done {
-			interval.Next(ctx) // TODO: @alyfinder - send message to slack.
+			interval.Next(ctx)
 
 			opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 			ctx = workflow.WithActivityOptions(ctx, opts)
@@ -117,8 +117,6 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 			_ = workflow.ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendStaleBranchMessage, msg)
 		}
 	})
-
-	// handling signals
 
 	// push event signal.
 	// detect changes. if changes are greater than threshold, send early warning message.
@@ -256,6 +254,8 @@ func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch st
 					_ = workflow.
 						ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
 						Get(ctx, nil)
+
+					return
 				}
 
 				msg := NewNumberOfLinesExceedMessage(payload, repo, branch, changes, true)
@@ -334,6 +334,8 @@ func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch 
 						_ = workflow.
 							ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg).
 							Get(ctx, nil)
+
+						return
 					}
 
 					msg := NewMergeConflictMessage(payload, repo, branch, true)
