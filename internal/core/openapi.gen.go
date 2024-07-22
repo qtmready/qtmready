@@ -115,39 +115,6 @@ func (v *RepoProvider) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// BranchChanges Branch changes lines exceed.
-type BranchChanges struct {
-	// Additions Number of additions
-	Additions int `json:"additions"`
-
-	// Changes Total number of changes
-	Changes int `json:"changes"`
-
-	// CompareUrl Compare url
-	CompareUrl string `json:"compare_url"`
-
-	// Deletions Number of deletions
-	Deletions int `json:"deletions"`
-
-	// FileCount Number of changed files
-	FileCount int `json:"file_count"`
-
-	// Files List of changed files
-	Files []string `json:"files"`
-
-	// RepoUrl Repo url
-	RepoUrl string `json:"repo_url"`
-}
-
-// LatestCommit get the latest commit information.
-type LatestCommit struct {
-	Branch    string `json:"branch"`
-	CommitUrl string `json:"commit_url"`
-	RepoName  string `json:"repo_name"`
-	RepoUrl   string `json:"repo_url"`
-	SHA       string `json:"sha"`
-}
-
 // MessageProvider defines model for MessageProvider.
 type MessageProvider string
 
