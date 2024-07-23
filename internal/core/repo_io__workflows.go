@@ -94,6 +94,7 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "", branch)
 	selector := workflow.NewSelector(ctx)
 	done := false
+	state := NewBranchCtrlState(ctx, repo, branch)
 
 	interval := timers.NewInterval(ctx, repo.StaleDuration.Duration)
 
@@ -121,7 +122,8 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	// push event signal.
 	// detect changes. if changes are greater than threshold, send early warning message.
 	push := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
-	selector.AddReceive(push, w.onBranchPush(ctx, repo, branch, interval)) // post processing for push event recieved on repo.
+	selector.AddReceive(push, w.onBranchPush(ctx, state)) // post processing for push event recieved on repo.
+	// selector.AddReceive(push, w.onBranchPush(ctx, repo, branch, interval)) // post processing for push event recieved on repo.
 
 	// rebase signal.
 	// attempts to rebase the branch with the base branch. if there are merge conflicts, sends message.
@@ -216,70 +218,84 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 	}
 }
 
-// onBranchPush is a shared.ChannelHandler that is called when a branch is pushed to a repository.
-func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch string, interval timers.Interval) shared.ChannelHandler {
-	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "push", branch)
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 10 * time.Minute}
-
-	ctx = workflow.WithActivityOptions(ctx, opts)
-
-	interval.Restart(ctx)
-
+func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, state *RepoIOBranchCtrlState) shared.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
 		payload := &RepoIOSignalPushPayload{}
 		channel.Receive(ctx, payload)
 
-		// detect changes payload -> RepoIODetectChangesPayload
-		detect := &RepoIODetectChangesPayload{
-			InstallationID: payload.InstallationID,
-			RepoName:       payload.RepoName,
-			RepoOwner:      payload.RepoOwner,
-			DefaultBranch:  repo.DefaultBranch,
-			TargetBranch:   branch,
-		}
-		changes := &RepoIOChanges{}
-
-		// check the message provider if not ignore the early warning
-		if repo.MessageProvider != MessageProviderNone {
-			logger.Info("detecting changes ...", "sha", payload.After)
-
-			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, detect).Get(ctx, changes)
-
-			if changes.Delta > repo.Threshold {
-				// if the user and provider message exist make the message for user otherwise for channel
-				for_user := payload.User != nil && payload.User.IsMessageProviderLinked
-				msg := NewNumberOfLinesExceedMessage(payload, repo, branch, changes, for_user)
-
-				if for_user {
-					logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
-
-					_ = workflow.
-						ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
-						Get(ctx, nil)
-
-					// return the workflow is user exit not send message to channel
-					return
-				}
-
-				logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
-
-				// if user not exit then will send message to channel (repo message provider channel)
-				_ = workflow.
-					ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
-					Get(ctx, nil)
-
-				return
-			}
-
-			logger.Info("no changes detected ...", "sha", payload.After)
-
-			return
+		complexity := state.check_complexity(ctx, payload)
+		if complexity.Delta > state.repo.Threshold {
+			state.warn_for_complexity(ctx, payload, complexity)
 		}
 
-		// TODO: notify customer that message provider is not set.
-		logger.Warn("message provider not set, ignoring early warning ...", "sha", payload.After)
+		state.interval.Restart(ctx)
 	}
 }
+
+// onBranchPush is a shared.ChannelHandler that is called when a branch is pushed to a repository.
+// func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch string, interval timers.Interval) shared.ChannelHandler {
+// 	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "push", branch)
+// 	opts := workflow.ActivityOptions{StartToCloseTimeout: 10 * time.Minute}
+
+// 	ctx = workflow.WithActivityOptions(ctx, opts)
+
+// 	interval.Restart(ctx)
+
+// 	return func(channel workflow.ReceiveChannel, more bool) {
+// 		payload := &RepoIOSignalPushPayload{}
+// 		channel.Receive(ctx, payload)
+
+// 		// detect changes payload -> RepoIODetectChangesPayload
+// 		detect := &RepoIODetectChangesPayload{
+// 			InstallationID: payload.InstallationID,
+// 			RepoName:       payload.RepoName,
+// 			RepoOwner:      payload.RepoOwner,
+// 			DefaultBranch:  repo.DefaultBranch,
+// 			TargetBranch:   branch,
+// 		}
+// 		changes := &RepoIOChanges{}
+
+// 		// check the message provider if not ignore the early warning
+// 		if repo.MessageProvider != MessageProviderNone {
+// 			logger.Info("detecting changes ...", "sha", payload.After)
+
+// 			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, detect).Get(ctx, changes)
+
+// 			if changes.Delta > repo.Threshold {
+// 				// if the user and provider message exist make the message for user otherwise for channel
+// 				for_user := payload.User != nil && payload.User.IsMessageProviderLinked
+// 				msg := NewNumberOfLinesExceedMessage(payload, repo, branch, changes, for_user)
+
+// 				if for_user {
+// 					logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
+
+// 					_ = workflow.
+// 						ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
+// 						Get(ctx, nil)
+
+// 					// return the workflow is user exit not send message to channel
+// 					return
+// 				}
+
+// 				logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
+
+// 				// if user not exit then will send message to channel (repo message provider channel)
+// 				_ = workflow.
+// 					ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
+// 					Get(ctx, nil)
+
+// 				return
+// 			}
+
+// 			logger.Info("no changes detected ...", "sha", payload.After)
+
+// 			return
+// 		}
+
+// 		// TODO: notify customer that message provider is not set.
+// 		logger.Warn("message provider not set, ignoring early warning ...", "sha", payload.After)
+// 	}
+// }
 
 // onBranchRebase is a workflow handler that handles the rebase operation for a given repository and branch.
 // It clones the repository, fetches the default branch, and then rebases the given branch at the specified commit.
