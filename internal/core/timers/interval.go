@@ -57,16 +57,19 @@ func (t *interval) Next(ctx workflow.Context) {
 	t.NextWith(ctx, t.duration)
 }
 
+// Restart restarts the current interval.
 func (t *interval) Restart(ctx workflow.Context) {
 	t.RestartWith(ctx, t.duration)
 }
 
+// Cancel stops the current interval by sending a 0 duration to the channel, which will cause the interval to stop.
 func (t *interval) Cancel(ctx workflow.Context) {
 	t.channel.Send(ctx, time.Duration(0))
 }
 
-// wait blocks until the timer expires or a message is received on the channel. The timer is cancelled if the duration is 0,
-// otherwise it is reset.
+// wait blocks until the end of the interval or until a new duration is received on the channel.
+// If a new duration is received, it updates the interval's duration and the time at which the interval should stop.
+// If a 0 duration is received, it sets the done flag to true to stop the interval.
 func (t *interval) wait(ctx workflow.Context) {
 	done := false
 
@@ -82,7 +85,7 @@ func (t *interval) wait(ctx workflow.Context) {
 			cancel()
 
 			if duration == 0 {
-				done = true // the timer is cancelled, so the interval is over.
+				done = true // we recieved a 0 duration, so we should stop the interval.
 			} else {
 				t.update(_ctx, t.duration)
 			}
@@ -100,7 +103,6 @@ func (t *interval) wait(ctx workflow.Context) {
 }
 
 // update updates the interval's duration and the time at which the interval should stop.
-// The duration parameter specifies the new interval duration.
 func (t *interval) update(ctx workflow.Context, duration time.Duration) {
 	t.duration = duration
 	t.until = Now(ctx).Add(duration)

@@ -21,8 +21,6 @@ import (
 	"context"
 	"time"
 
-	"go.temporal.io/sdk/workflow"
-
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/shared"
 )
@@ -79,7 +77,7 @@ type (
 		CtrlID         string         `json:"ctrl_id"` // CtrlID represents the id of the provider repo in the quantm DB. Should be UUID.
 		InstallationID shared.Int64   `json:"installation_id"`
 		ProviderID     string         `json:"provider_id"`
-		Commits        []RepoIOCommit `json:"commits"`
+		Commits        RepoIOCommits  `json:"commits"`
 		User           *auth.TeamUser `json:"user"`
 		Author         string         `json:"author"`
 	}
@@ -159,6 +157,14 @@ type (
 		Changes   RepoIOChanges `json:"changes"`
 	}
 
+	RepoIOCommits []RepoIOCommit
+
+	RepoIOPullRequest struct {
+		Number     shared.Int64 `json:"number"`
+		HeadBranch string       `json:"head_branch"`
+		BaseBranch string       `json:"base_branch"`
+	}
+
 	RepoIORebaseAtCommitResponse struct {
 		SHA        string `json:"sha"`
 		Message    string `json:"message"`
@@ -173,34 +179,37 @@ type (
 // Workflow States.
 type (
 	RepoIOBranchCtrlState struct {
-		CreatedAt             time.Time `json:"created_at"`
-		LatestCommitTimestamp time.Time `json:"latest_commit_timestamp"`
-		LatestCommitSHA       string    `json:"latest_commit_sha"`
-		PullRequest           string    `json:"pull-request"`
+		Repo        *Repo              `json:"repo"`
+		Branch      string             `json:"branch"`
+		CreatedAt   time.Time          `json:"created_at"`
+		LastCommit  *RepoIOCommit      `json:"last_commit"`
+		PullRequest *RepoIOPullRequest `json:"pull_request"`
+		Open        bool               `json:"open"`
 	}
 )
 
-// IsStale checks if the Branch is stale.
-func (state *RepoIOBranchCtrlState) IsStale(ctx context.Context) bool {
-	return false
+func (commits RepoIOCommits) Size() int {
+	return len(commits)
 }
 
-// SetLatestCommit sets the latest commit on the state.
-func (state *RepoIOBranchCtrlState) SetLatestCommit(commit *RepoIOCommit) {
-	state.LatestCommitSHA = commit.SHA
-	state.LatestCommitTimestamp = commit.Timestamp
+func (commits RepoIOCommits) Latest() *RepoIOCommit {
+	if len(commits) == 0 {
+		return nil
+	}
+
+	return &commits[0]
 }
 
-// HasPR checks if the branch has a PR associated with it.
-func (state *RepoIOBranchCtrlState) HasPR(ctx context.Context) bool {
-	return state.PullRequest != ""
+func (state *RepoIOBranchCtrlState) SetCommit(commit *RepoIOCommit) {
+	state.LastCommit = commit
 }
 
-// Now returns the current time.
-func (state *RepoIOBranchCtrlState) Now(ctx workflow.Context) time.Time {
-	var now time.Time
-
-	_ = workflow.SideEffect(ctx, func(_ctx workflow.Context) any { return time.Now() }).Get(&now)
-
-	return now
+func NewCommit(sha, message, author string, timestamp time.Time, changes RepoIOChanges) *RepoIOCommit {
+	return &RepoIOCommit{
+		SHA:       sha,
+		Message:   message,
+		Author:    author,
+		Timestamp: timestamp,
+		Changes:   changes,
+	}
 }

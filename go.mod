@@ -34,13 +34,16 @@ require (
 	go.opentelemetry.io/otel/sdk v1.28.0
 	go.opentelemetry.io/otel/trace v1.28.0
 	go.step.sm/crypto v0.50.0
-	go.temporal.io/sdk v1.27.0
+	go.temporal.io/sdk v1.28.1
 	golang.org/x/crypto v0.25.0
 	golang.org/x/tools v0.23.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
-require github.com/containerd/errdefs v0.1.0 // indirect
+require (
+	github.com/containerd/errdefs v0.1.0 // indirect
+	github.com/nexus-rpc/sdk-go v0.0.9 // indirect
+)
 
 require (
 	cloud.google.com/go v0.115.0 // indirect
@@ -152,7 +155,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.49.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.49.0 // indirect
 	go.opentelemetry.io/otel/metric v1.28.0 // indirect
-	go.temporal.io/api v1.34.0 // indirect
+	go.temporal.io/api v1.36.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20231127185646-65229373498e // indirect
 	golang.org/x/mod v0.19.0 // indirect
@@ -164,8 +167,8 @@ require (
 	golang.org/x/time v0.5.0 // indirect
 	google.golang.org/api v0.187.0 // indirect
 	google.golang.org/genproto v0.0.0-20240624140628-dc46fd24d27d // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240617180043-68d350f18fd4 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240624140628-dc46fd24d27d // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240711142825-46eb208f015d // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240711142825-46eb208f015d // indirect
 	google.golang.org/grpc v1.65.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect

@@ -120,7 +120,7 @@ func _otel(ctx context.Context, name, version string) (shutdown shutdownfn, err 
 // _exporter returns a trace exporter based on the environment. When running on GCE, the cloudtrace exporter is used.
 func _exporter() (trace.SpanExporter, error) {
 	if metadata.OnGCE() {
-		project, _ := metadata.ProjectID()
+		project, _ := metadata.ProjectIDWithContext(context.Background())
 		return cloudtrace.New(cloudtrace.WithProjectID(project))
 	}
 
