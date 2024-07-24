@@ -99,6 +99,7 @@ func (state *RepoIOBranchCtrlState) run_coroutine_state_check(ctx workflow.Conte
 	})
 }
 
+// get_repo_data returns the core repo by provider repo id.
 func (state *RepoIOBranchCtrlState) get_repo_data(ctx workflow.Context) *RepoIORepoData {
 	data := &RepoIORepoData{}
 	io := Instance().RepoIO(state.repo.Provider)
