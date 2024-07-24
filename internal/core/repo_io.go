@@ -180,6 +180,10 @@ func (commits RepoIOCommits) Size() int {
 	return len(commits)
 }
 
+// Latest returns the most recent RepoIOCommit from the provided slice of commits.
+// If the slice is empty, it returns nil.
+//
+// FIXME: it should iterate over the commits and return the most recent commit based on the timestamp.
 func (commits RepoIOCommits) Latest() *RepoIOCommit {
 	if len(commits) == 0 {
 		return nil

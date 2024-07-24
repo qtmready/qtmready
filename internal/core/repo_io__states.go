@@ -82,6 +82,31 @@ func (state *RepoIOBranchCtrlState) last_active(ctx workflow.Context) time.Time 
 	return state.last_commit.Timestamp
 }
 
+// start_stale_check_coroutine runs a background goroutine that periodically checks if the branch is stale and sends
+// a warning message if it is.
+func (state *RepoIOBranchCtrlState) start_stale_check_coroutine(ctx workflow.Context) {
+	data := state.get_repo_data(ctx)
+
+	workflow.Go(ctx, func(ctx workflow.Context) {
+		for state.is_active(ctx) {
+			state.interval.Next(ctx)
+			state.warn_stale(ctx, data)
+		}
+	})
+}
+
+func (state *RepoIOBranchCtrlState) get_repo_data(ctx workflow.Context) *RepoIORepoData {
+	data := &RepoIORepoData{}
+	io := Instance().RepoIO(state.repo.Provider)
+
+	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	_ = state.run(ctx, "get_repo_data", io.GetRepoData, data, state.repo.CtrlID)
+
+	return data
+}
+
 // calculate_complexity checks the complexity of the changes pushed on the current branch.
 func (state *RepoIOBranchCtrlState) calculate_complexity(ctx workflow.Context, signal *RepoIOSignalPushPayload) *RepoIOChanges {
 	changes := &RepoIOChanges{}
@@ -93,7 +118,10 @@ func (state *RepoIOBranchCtrlState) calculate_complexity(ctx workflow.Context, s
 		TargetBranch:   state.branch,
 	}
 
-	_ = state._execute(ctx, "detect_changes", Instance().RepoIO(state.repo.Provider).DetectChanges, changes, detect)
+	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	_ = state.run(ctx, "calculate_complexity", Instance().RepoIO(state.repo.Provider).DetectChanges, changes, detect)
 
 	return changes
 }
@@ -105,8 +133,27 @@ func (state *RepoIOBranchCtrlState) warn_complexity(ctx workflow.Context, signal
 	for_user := signal.User != nil && signal.User.IsMessageProviderLinked
 	msg := NewNumberOfLinesExceedMessage(signal, state.repo, state.branch, complexity, for_user)
 	io := Instance().MessageIO(state.repo.MessageProvider)
+	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
+	ctx = workflow.WithActivityOptions(ctx, opts)
 
-	_ = state._execute(ctx, "send_complexity_warning", io.SendNumberOfLinesExceedMessage, nil, msg)
+	_ = state.run(ctx, "warn_complexity", io.SendNumberOfLinesExceedMessage, nil, msg)
+}
+
+func (state *RepoIOBranchCtrlState) warn_stale(ctx workflow.Context, data *RepoIORepoData) {
+	msg := NewStaleBranchMessage(data, state.repo, state.branch)
+	io := Instance().MessageIO(state.repo.MessageProvider)
+
+	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	_ = state.run(ctx, "warn_stale", io.SendStaleBranchMessage, nil, msg)
+}
+
+// shutdown is called to mark the RepoIOBranchCtrlState as inactive and cancel any associated timers.
+// This function should be called when the branch control state is no longer needed, such as branch is being deleted or merged.
+func (state *RepoIOBranchCtrlState) shutdown(ctx workflow.Context) {
+	state.set_done(ctx)
+	state.interval.Cancel(ctx)
 }
 
 // increment is a helper function that increments the steps counter in the RepoIOBranchCtrlState.
@@ -117,18 +164,20 @@ func (state *RepoIOBranchCtrlState) increment(ctx workflow.Context) {
 	state.counter++
 }
 
-// _execute is a helper function that executes an activity within the context of the RepoIOBranchCtrlState.
+// run is a helper function that executes an activity within the context of the RepoIOBranchCtrlState.
 // It logs the start and success of the activity, and increments the steps counter in the state.
 //
 // The function takes the following parameters:
 // - ctx: the workflow context
 // - action: a string describing the action being performed
-// - activity: the activity function to _execute
+// - activity: the activity function to run
 // - result: a pointer to a variable to receive the result of the activity
 // - args: any additional arguments to pass to the activity function
 //
 // If the activity fails, the function logs the error and returns it.
-func (state *RepoIOBranchCtrlState) _execute(ctx workflow.Context, action string, activity any, result any, args ...any) error {
+//
+// NOTE: This assumes that workflow.Context has been updated with activity options.
+func (state *RepoIOBranchCtrlState) run(ctx workflow.Context, action string, activity any, result any, args ...any) error {
 	logger := NewRepoIOWorkflowLogger(ctx, state.repo, "branch_ctrl", state.branch, action)
 	logger.Info("init")
 

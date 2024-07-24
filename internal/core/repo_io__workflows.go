@@ -25,7 +25,6 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/quantm/internal/core/timers"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -96,28 +95,7 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	done := false
 	state := NewBranchCtrlState(ctx, repo, branch)
 
-	interval := timers.NewInterval(ctx, repo.StaleDuration.Duration)
-
-	// handle stale check.
-	workflow.Go(ctx, func(ctx workflow.Context) {
-		for !done {
-			interval.Next(ctx)
-
-			opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-			ctx = workflow.WithActivityOptions(ctx, opts)
-
-			// get the gtihub repo by ctrl_id
-			data := &RepoIORepoData{}
-			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).GetRepoData, repo.CtrlID.String()).Get(ctx, data)
-
-			// Only send message to provider channel
-			msg := NewStaleBranchMessage(data, repo, branch)
-
-			logger.Info("stale branch detected, sending message ...", "stale", msg.RepoUrl)
-
-			_ = workflow.ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendStaleBranchMessage, msg)
-		}
-	})
+	state.start_stale_check_coroutine(ctx) // start the stale check coroutine.
 
 	// push event signal.
 	// detect changes. if changes are greater than threshold, send early warning message.
