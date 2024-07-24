@@ -108,12 +108,12 @@ func (state *RepoIOBranchCtrlState) get_repo_data(ctx workflow.Context) *RepoIOR
 }
 
 // calculate_complexity checks the complexity of the changes pushed on the current branch.
-func (state *RepoIOBranchCtrlState) calculate_complexity(ctx workflow.Context, signal *RepoIOSignalPushPayload) *RepoIOChanges {
+func (state *RepoIOBranchCtrlState) calculate_complexity(ctx workflow.Context, push *RepoIOSignalPushPayload) *RepoIOChanges {
 	changes := &RepoIOChanges{}
 	detect := &RepoIODetectChangesPayload{
-		InstallationID: signal.InstallationID,
-		RepoName:       signal.RepoName,
-		RepoOwner:      signal.RepoOwner,
+		InstallationID: push.InstallationID,
+		RepoName:       push.RepoName,
+		RepoOwner:      push.RepoOwner,
 		DefaultBranch:  state.repo.DefaultBranch,
 		TargetBranch:   state.branch,
 	}
@@ -129,9 +129,9 @@ func (state *RepoIOBranchCtrlState) calculate_complexity(ctx workflow.Context, s
 // warn_complexity sends a warning message to the linked message provider if the complexity of the changes exceeds the threshold.
 // it sends a message to the user if the git user is linked to the quantm user and the linked quantm user also has connected the message
 // provider, otherwise it sends a message to the linked channel of the repo.
-func (state *RepoIOBranchCtrlState) warn_complexity(ctx workflow.Context, signal *RepoIOSignalPushPayload, complexity *RepoIOChanges) {
-	for_user := signal.User != nil && signal.User.IsMessageProviderLinked
-	msg := NewNumberOfLinesExceedMessage(signal, state.repo, state.branch, complexity, for_user)
+func (state *RepoIOBranchCtrlState) warn_complexity(ctx workflow.Context, push *RepoIOSignalPushPayload, complexity *RepoIOChanges) {
+	for_user := push.User != nil && push.User.IsMessageProviderLinked
+	msg := NewNumberOfLinesExceedMessage(push, state.repo, state.branch, complexity, for_user)
 	io := Instance().MessageIO(state.repo.MessageProvider)
 	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
 	ctx = workflow.WithActivityOptions(ctx, opts)
@@ -149,13 +149,6 @@ func (state *RepoIOBranchCtrlState) warn_stale(ctx workflow.Context, data *RepoI
 	_ = state.run(ctx, "warn_stale", io.SendStaleBranchMessage, nil, msg)
 }
 
-// shutdown is called to mark the RepoIOBranchCtrlState as inactive and cancel any associated timers.
-// This function should be called when the branch control state is no longer needed, such as branch is being deleted or merged.
-func (state *RepoIOBranchCtrlState) shutdown(ctx workflow.Context) {
-	state.set_done(ctx)
-	state.interval.Cancel(ctx)
-}
-
 // increment is a helper function that increments the steps counter in the RepoIOBranchCtrlState.
 func (state *RepoIOBranchCtrlState) increment(ctx workflow.Context) {
 	_ = state.mutex.Lock(ctx)
@@ -164,16 +157,30 @@ func (state *RepoIOBranchCtrlState) increment(ctx workflow.Context) {
 	state.counter++
 }
 
+func (state *RepoIOBranchCtrlState) create_session(ctx workflow.Context) workflow.Context {
+	opts := &workflow.SessionOptions{ExecutionTimeout: 30 * time.Minute, CreationTimeout: 60 * time.Minute}
+	ctx, _ = workflow.CreateSession(ctx, opts)
+
+	return ctx
+}
+
+func (state *RepoIOBranchCtrlState) clone_at_commit(ctx workflow.Context, push *RepoIOSignalPushPayload) *RepoIOClonePayload {
+	return nil
+}
+
+func (state *RepoIOBranchCtrlState) fetch_branch(ctx workflow.Context, cloned *RepoIOClonePayload) {}
+
+func (state *RepoIOBranchCtrlState) rebase_at_commit(ctx workflow.Context, cloned *RepoIOClonePayload) error {
+	return nil
+}
+
+func (state *RepoIOBranchCtrlState) warn_merge_conflict(ctx workflow.Context, push *RepoIOSignalPushPayload) {
+}
+
+func (state *RepoIOBranchCtrlState) remove_cloned(ctx workflow.Context, cloned *RepoIOClonePayload) {}
+
 // run is a helper function that executes an activity within the context of the RepoIOBranchCtrlState.
 // It logs the start and success of the activity, and increments the steps counter in the state.
-//
-// The function takes the following parameters:
-// - ctx: the workflow context
-// - action: a string describing the action being performed
-// - activity: the activity function to run
-// - result: a pointer to a variable to receive the result of the activity
-// - args: any additional arguments to pass to the activity function
-//
 // If the activity fails, the function logs the error and returns it.
 //
 // NOTE: This assumes that workflow.Context has been updated with activity options.
@@ -191,6 +198,13 @@ func (state *RepoIOBranchCtrlState) run(ctx workflow.Context, action string, act
 	logger.Info("success")
 
 	return nil
+}
+
+// shutdown is called to mark the RepoIOBranchCtrlState as inactive and cancel any associated timers.
+// This function should be called when the branch control state is no longer needed, such as branch is being deleted or merged.
+func (state *RepoIOBranchCtrlState) shutdown(ctx workflow.Context) {
+	state.set_done(ctx)
+	state.interval.Cancel(ctx)
 }
 
 func NewBranchCtrlState(ctx workflow.Context, repo *Repo, branch string) *RepoIOBranchCtrlState {

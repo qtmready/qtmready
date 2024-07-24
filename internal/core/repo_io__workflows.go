@@ -101,12 +101,11 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	// detect changes. if changes are greater than threshold, send early warning message.
 	push := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
 	selector.AddReceive(push, w.on_branch_push(ctx, state)) // post processing for push event recieved on repo.
-	// selector.AddReceive(push, w.onBranchPush(ctx, repo, branch, interval)) // post processing for push event recieved on repo.
 
 	// rebase signal.
 	// attempts to rebase the branch with the base branch. if there are merge conflicts, sends message.
 	rebase := workflow.GetSignalChannel(ctx, ReopIOSignalRebase.String())
-	selector.AddReceive(rebase, w.onBranchRebase(ctx, repo, branch)) // post processing for early warning signal.
+	selector.AddReceive(rebase, w.on_branch_rebase(ctx, state)) // post processing for early warning signal.
 
 	// pr signal.
 	pr := workflow.GetSignalChannel(ctx, RepoIOSignalPullRequest.String())
@@ -214,6 +213,30 @@ func (w *RepoWorkflows) on_branch_push(ctx workflow.Context, state *RepoIOBranch
 		}
 
 		state.interval.Restart(ctx)
+	}
+}
+
+func (w *RepoWorkflows) on_branch_rebase(ctx workflow.Context, state *RepoIOBranchCtrlState) shared.ChannelHandler {
+	return func(channel workflow.ReceiveChannel, more bool) {
+		push := &RepoIOSignalPushPayload{}
+
+		channel.Receive(ctx, push)
+
+		session := state.create_session(ctx)
+		defer workflow.CompleteSession(session)
+
+		cloned := state.clone_at_commit(session, push)
+		if cloned == nil {
+			return
+		}
+
+		state.fetch_branch(session, cloned)
+
+		if err := state.rebase_at_commit(session, cloned); err != nil {
+			state.warn_merge_conflict(ctx, push)
+		}
+
+		state.remove_cloned(ctx, cloned)
 	}
 }
 
