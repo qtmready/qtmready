@@ -263,9 +263,9 @@ func (state *RepoIOBranchCtrlState) increment(ctx workflow.Context) {
 	state.counter++
 }
 
-// shutdown is called to mark the RepoIOBranchCtrlState as inactive and cancel any associated timers.
+// terminate is called to mark the RepoIOBranchCtrlState as inactive and cancel any associated timers.
 // This function should be called when the branch control state is no longer needed, such as branch is being deleted or merged.
-func (state *RepoIOBranchCtrlState) shutdown(ctx workflow.Context) {
+func (state *RepoIOBranchCtrlState) terminate(ctx workflow.Context) {
 	state.set_done(ctx)
 	state.interval.Cancel(ctx)
 }

@@ -289,7 +289,7 @@ func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, event *CreateOrD
 		return nil // TODO: We should do some sort of notification because we have a faulty integration.
 	}
 
-	payload := &core.RepoIOSignalCreatePayload{
+	payload := &core.RepoIOSignalCreateOrDeletePayload{
 		Ref:            event.Ref,
 		RefType:        event.RefType,
 		DefaultBranch:  event.Repository.DefaultBranch,

@@ -21,6 +21,8 @@ import (
 	"context"
 	"time"
 
+	"go.temporal.io/sdk/workflow"
+
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/shared"
 )
@@ -82,7 +84,7 @@ type (
 		Author         string         `json:"author"`
 	}
 
-	RepoIOSignalCreatePayload struct {
+	RepoIOSignalCreateOrDeletePayload struct {
 		IsCreated      bool           `json:"is_created"`
 		Ref            string         `json:"ref"`
 		RefType        string         `json:"ref_type"`
@@ -190,4 +192,12 @@ func (commits RepoIOCommits) Latest() *RepoIOCommit {
 	}
 
 	return &commits[0]
+}
+
+func (signal *RepoIOSignalCreateOrDeletePayload) ForBranch(ctx workflow.Context) bool {
+	return signal.RefType == "branch"
+}
+
+func (signal *RepoIOSignalCreateOrDeletePayload) ForTag(ctx workflow.Context) bool {
+	return signal.RefType == "tag"
 }

@@ -22,6 +22,7 @@ import (
 
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/core/timers"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -103,6 +104,11 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	// attempts to rebase the branch with the base branch. if there are merge conflicts, sends message.
 	rebase := workflow.GetSignalChannel(ctx, ReopIOSignalRebase.String())
 	selector.AddReceive(rebase, w.on_branch_rebase(ctx, state)) // post processing for early warning signal.
+
+	// create_delete signal.
+	// creates or deletes the branch.
+	create_delete := workflow.GetSignalChannel(ctx, RepoIOSignalCreateOrDelete.String())
+	selector.AddReceive(create_delete, w.on_branch_create_delete(ctx, state))
 
 	// pr signal.
 	pr := workflow.GetSignalChannel(ctx, RepoIOSignalPullRequest.String())
@@ -213,6 +219,9 @@ func (w *RepoWorkflows) on_branch_push(ctx workflow.Context, state *RepoIOBranch
 	}
 }
 
+// on_branch_rebase is a shared.ChannelHandler that is called when a branch needs to be rebased. It handles the logic for
+// cloning the repository, fetching the default branch, rebasing the branch at the latest commit, and pushing the rebased
+// branch back to the repository.
 func (w *RepoWorkflows) on_branch_rebase(ctx workflow.Context, state *RepoIOBranchCtrlState) shared.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
 		push := &RepoIOSignalPushPayload{}
@@ -238,6 +247,24 @@ func (w *RepoWorkflows) on_branch_rebase(ctx workflow.Context, state *RepoIOBran
 	}
 }
 
+// on_branch_create_delete is a shared.ChannelHandler that is called when a branch is created or deleted. It handles the logic for
+// updating the state of the branch control when a create or delete event is received.
+//
+// If the payload indicates the branch was created, the function sets the created timestamp in the state.
+// If the payload indicates the branch was deleted, the function terminates the state.
+func (w *RepoWorkflows) on_branch_create_delete(ctx workflow.Context, state *RepoIOBranchCtrlState) shared.ChannelHandler {
+	return func(channel workflow.ReceiveChannel, more bool) {
+		payload := &RepoIOSignalCreateOrDeletePayload{}
+		channel.Receive(ctx, payload)
+
+		if payload.IsCreated {
+			state.set_created_at(ctx, timers.Now(ctx))
+		} else {
+			state.terminate(ctx)
+		}
+	}
+}
+
 func (w *RepoWorkflows) onRepoCreateOrDelete(ctx workflow.Context, repo *Repo) shared.ChannelHandler {
 	logger := NewRepoIOWorkflowLogger(ctx, repo, "repo_ctrl", "create_delete", "")
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
@@ -245,7 +272,7 @@ func (w *RepoWorkflows) onRepoCreateOrDelete(ctx workflow.Context, repo *Repo) s
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		payload := &RepoIOSignalCreatePayload{}
+		payload := &RepoIOSignalCreateOrDeletePayload{}
 		channel.Receive(ctx, payload)
 
 		logger.Info("init ...")
