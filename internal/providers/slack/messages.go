@@ -70,9 +70,10 @@ func formatLineThresholdExceededAttachment(payload *core.MessageIOLineExeededPay
 	}
 
 	return slack.Attachment{
-		Color:      "warning",
-		Pretext:    "The number of lines in this pull request exceeds the allowed threshold. Please review and adjust accordingly.",
-		Text:       preview,
+		Color:   "warning",
+		Pretext: "The number of lines in this pull request exceeds the allowed threshold. Please review and adjust accordingly.",
+		// a plain text summary of the attachment used in clients that don't show formatted text (eg. IRC, mobile notifications).
+		Fallback:   preview,
 		Fields:     fields,
 		MarkdownIn: []string{"fields"},
 		Footer:     footer,
@@ -99,7 +100,8 @@ func formatMergeConflictAttachment(payload *core.MessageIOMergeConflictPayload) 
 		Color: "warning",
 		Pretext: fmt.Sprintf("A recent commit on defualt branch has caused the merge conflict on <%s|%s> branch.",
 			payload.CommitUrl, payload.MessageIOPayload.BranchName),
-		Text:       preview,
+		// a plain text summary of the attachment used in clients that don't show formatted text (eg. IRC, mobile notifications).
+		Fallback:   preview,
 		Fields:     fields,
 		MarkdownIn: []string{"fields"},
 		Footer:     footer,
@@ -111,7 +113,8 @@ func formatStaleBranchAttachment(payload *core.MessageIOStaleBranchPayload) slac
 	return slack.Attachment{
 		Pretext: fmt.Sprintf("Stale branch <%s|%s> is detected on repository <%s|%s>. Please review and take necessary action.",
 			payload.CommitUrl, payload.MessageIOPayload.BranchName, payload.RepoUrl, payload.MessageIOPayload.RepoName),
-		Text: preview,
+		// a plain text summary of the attachment used in clients that don't show formatted text (eg. IRC, mobile notifications).
+		Fallback: preview,
 	}
 }
 

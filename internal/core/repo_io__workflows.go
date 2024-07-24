@@ -18,11 +18,8 @@
 package core
 
 import (
-	"errors"
 	"time"
 
-	"github.com/google/uuid"
-	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/timers"
@@ -94,39 +91,24 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "", branch)
 	selector := workflow.NewSelector(ctx)
 	done := false
+	state := NewBranchCtrlState(ctx, repo, branch)
 
-	interval := timers.NewInterval(ctx, repo.StaleDuration.Duration)
-
-	// handle stale check.
-	workflow.Go(ctx, func(ctx workflow.Context) {
-		for !done {
-			interval.Next(ctx)
-
-			opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-			ctx = workflow.WithActivityOptions(ctx, opts)
-
-			// get the gtihub repo by ctrl_id
-			data := &RepoIORepoData{}
-			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).GetRepoData, repo.CtrlID.String()).Get(ctx, data)
-
-			// Only send message to provider channel
-			msg := NewStaleBranchMessage(data, repo, branch)
-
-			logger.Info("stale branch detected, sending message ...", "stale", msg.RepoUrl)
-
-			_ = workflow.ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendStaleBranchMessage, msg)
-		}
-	})
+	state.run_coroutine_state_check(ctx) // start the stale check coroutine.
 
 	// push event signal.
 	// detect changes. if changes are greater than threshold, send early warning message.
 	push := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
-	selector.AddReceive(push, w.onBranchPush(ctx, repo, branch, interval)) // post processing for push event recieved on repo.
+	selector.AddReceive(push, w.on_branch_push(ctx, state)) // post processing for push event recieved on repo.
 
 	// rebase signal.
 	// attempts to rebase the branch with the base branch. if there are merge conflicts, sends message.
 	rebase := workflow.GetSignalChannel(ctx, ReopIOSignalRebase.String())
-	selector.AddReceive(rebase, w.onBranchRebase(ctx, repo, branch)) // post processing for early warning signal.
+	selector.AddReceive(rebase, w.on_branch_rebase(ctx, state)) // post processing for early warning signal.
+
+	// create_delete signal.
+	// creates or deletes the branch.
+	create_delete := workflow.GetSignalChannel(ctx, RepoIOSignalCreateOrDelete.String())
+	selector.AddReceive(create_delete, w.on_branch_create_delete(ctx, state))
 
 	// pr signal.
 	pr := workflow.GetSignalChannel(ctx, RepoIOSignalPullRequest.String())
@@ -216,152 +198,70 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 	}
 }
 
-// onBranchPush is a shared.ChannelHandler that is called when a branch is pushed to a repository.
-func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, repo *Repo, branch string, interval timers.Interval) shared.ChannelHandler {
-	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "push", branch)
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 10 * time.Minute}
-
-	ctx = workflow.WithActivityOptions(ctx, opts)
-
-	interval.Restart(ctx)
-
+// on_branch_push is a shared.ChannelHandler that is called when commits are pushed to a branch. It handles the logic for
+// detecting changes in the pushed branch and warning the user if the changes exceed a configured threshold.
+func (w *RepoWorkflows) on_branch_push(ctx workflow.Context, state *RepoIOBranchCtrlState) shared.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
 		payload := &RepoIOSignalPushPayload{}
 		channel.Receive(ctx, payload)
 
-		// detect changes payload -> RepoIODetectChangesPayload
-		detect := &RepoIODetectChangesPayload{
-			InstallationID: payload.InstallationID,
-			RepoName:       payload.RepoName,
-			RepoOwner:      payload.RepoOwner,
-			DefaultBranch:  repo.DefaultBranch,
-			TargetBranch:   branch,
-		}
-		changes := &RepoIOChanges{}
-
-		// check the message provider if not ignore the early warning
-		if repo.MessageProvider != MessageProviderNone {
-			logger.Info("detecting changes ...", "sha", payload.After)
-
-			_ = workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).DetectChanges, detect).Get(ctx, changes)
-
-			if changes.Delta > repo.Threshold {
-				// if the user and provider message exist make the message for user otherwise for channel
-				for_user := payload.User != nil && payload.User.IsMessageProviderLinked
-				msg := NewNumberOfLinesExceedMessage(payload, repo, branch, changes, for_user)
-
-				if for_user {
-					logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
-
-					_ = workflow.
-						ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
-						Get(ctx, nil)
-
-					// return the workflow is user exit not send message to channel
-					return
-				}
-
-				logger.Info("threshold exceeded ...", "sha", payload.After, "threshold", repo.Threshold, "delta", changes.Delta)
-
-				// if user not exit then will send message to channel (repo message provider channel)
-				_ = workflow.
-					ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendNumberOfLinesExceedMessage, msg).
-					Get(ctx, nil)
-
-				return
-			}
-
-			logger.Info("no changes detected ...", "sha", payload.After)
-
-			return
+		latest := payload.Commits.Latest()
+		if latest != nil {
+			state.set_commit(ctx, latest)
 		}
 
-		// TODO: notify customer that message provider is not set.
-		logger.Warn("message provider not set, ignoring early warning ...", "sha", payload.After)
+		complexity := state.calculate_complexity(ctx, payload)
+		if complexity.Delta > state.repo.Threshold {
+			state.warn_complexity(ctx, payload, complexity)
+		}
+
+		state.interval.Restart(ctx)
 	}
 }
 
-// onBranchRebase is a workflow handler that handles the rebase operation for a given repository and branch.
-// It clones the repository, fetches the default branch, and then rebases the given branch at the specified commit.
-// If a merge conflict is detected during the rebase, it sends a message via the message provider.
-// In order to make sure that all the activities are executed on the same node, a session is created.
-//
-// NOTE:  _ = workflow.ExecuteActivity(ctx, ...) might look blasphempous! right? well, it's not. In the scope of the temporal workflow,
-// the returned error is generally a temporal.ApplicationError, and will only happen if the number of retries is exhausted. We generally
-// return the error to tell us that workflow has failed. In this case, we are not interested in the error.
-func (w *RepoWorkflows) onBranchRebase(ctx workflow.Context, repo *Repo, branch string) shared.ChannelHandler {
-	// _logger := workflow.GetLogger(ctx)
-	// _log := w.logbranch(_logger, "push", repo.ID.String(), repo.Provider.String(), repo.ProviderID, branch)
-	logger := NewRepoIOWorkflowLogger(ctx, repo, "branch_ctrl", "rebase", branch)
-	retries := &temporal.RetryPolicy{NonRetryableErrorTypes: []string{"RepoIORebaseError"}}
-	sopts := &workflow.SessionOptions{ExecutionTimeout: 30 * time.Minute, CreationTimeout: 60 * time.Minute} // TODO: make it configurable.
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second, RetryPolicy: retries}
-	w.acts = &RepoActivities{}
-
-	ctx = workflow.WithActivityOptions(ctx, opts)
-
+// on_branch_rebase is a shared.ChannelHandler that is called when a branch needs to be rebased. It handles the logic for
+// cloning the repository, fetching the default branch, rebasing the branch at the latest commit, and pushing the rebased
+// branch back to the repository.
+func (w *RepoWorkflows) on_branch_rebase(ctx workflow.Context, state *RepoIOBranchCtrlState) shared.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
-		payload := &RepoIOSignalPushPayload{}
-		data := &RepoIOClonePayload{Repo: repo, Push: payload, Branch: branch, Path: ""}
+		push := &RepoIOSignalPushPayload{}
 
-		channel.Receive(ctx, payload)
+		channel.Receive(ctx, push)
 
-		logger.Info("init ...", "sha", payload.After)
+		session := state.create_session(ctx)
+		defer workflow.CompleteSession(session)
 
-		_ = workflow.SideEffect(ctx, func(ctx workflow.Context) any { return "/tmp/" + uuid.New().String() }).Get(&data.Path)
-
-		sessionctx, _ := workflow.CreateSession(ctx, sopts)
-		defer workflow.CompleteSession(sessionctx)
-
-		logger.Info("cloning repo at branch ...", "sha", payload.After, "target_branch", branch, "path", data.Path)
-		_ = workflow.ExecuteActivity(sessionctx, w.acts.CloneBranch, data).Get(sessionctx, nil)
-
-		logger.Info("fetching default branch ...", "sha", payload.After, "path", data.Path)
-		_ = workflow.ExecuteActivity(sessionctx, w.acts.FetchBranch, data).Get(sessionctx, nil)
-
-		logger.Info("rebasing at commit ...", "sha", payload.After, "path", data.Path)
-
-		rebase := &RepoIORebaseAtCommitResponse{}
-		if err := workflow.ExecuteActivity(sessionctx, w.acts.RebaseAtCommit, data).Get(sessionctx, rebase); err != nil {
-			var apperr *temporal.ApplicationError
-			if errors.As(err, &apperr) {
-				if apperr.Type() == "RepoIORebaseError" && !rebase.InProgress {
-					logger.Info("merge conflict detected ...", "sha", rebase.SHA, "commit_message", rebase.Message, "path", data.Path)
-
-					// if the user and provider message exist make the message for user otherwise for channel
-					for_user := payload.User != nil && payload.User.IsMessageProviderLinked
-					msg := NewMergeConflictMessage(payload, repo, branch, for_user)
-
-					if for_user {
-						logger.Info("merge conflict detected, sending message ...", "sha", payload.After, payload.RepoName)
-
-						_ = workflow.
-							ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg).
-							Get(ctx, nil)
-
-						_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
-
-						// return the workflow is user exit not send message to channel
-						return
-					}
-
-					logger.Info("merge conflict detected, sending message ...", "sha", payload.After, payload.RepoName)
-
-					// if user not exit then will send message to channel (repo message provider channel)
-					_ = workflow.ExecuteActivity(ctx, Instance().MessageIO(repo.MessageProvider).SendMergeConflictsMessage, msg)
-					_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
-
-					return
-				}
-			}
-
-			_ = workflow.ExecuteActivity(ctx, w.acts.Push, branch, data.Path, true).Get(ctx, nil)
-			_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
-
+		cloned := state.clone_at_commit(session, push)
+		if cloned == nil {
 			return
 		}
 
-		_ = workflow.ExecuteActivity(ctx, w.acts.RemoveClonedAtPath, data.Path).Get(ctx, nil)
+		state.fetch_default_branch(session, cloned)
+
+		if err := state.rebase_at_commit(session, cloned); err != nil {
+			state.warn_conflict(ctx, push)
+		}
+
+		state.push_branch(session, cloned)
+		state.remove_cloned(ctx, cloned)
+	}
+}
+
+// on_branch_create_delete is a shared.ChannelHandler that is called when a branch is created or deleted. It handles the logic for
+// updating the state of the branch control when a create or delete event is received.
+//
+// If the payload indicates the branch was created, the function sets the created timestamp in the state.
+// If the payload indicates the branch was deleted, the function terminates the state.
+func (w *RepoWorkflows) on_branch_create_delete(ctx workflow.Context, state *RepoIOBranchCtrlState) shared.ChannelHandler {
+	return func(channel workflow.ReceiveChannel, more bool) {
+		payload := &RepoIOSignalCreateOrDeletePayload{}
+		channel.Receive(ctx, payload)
+
+		if payload.IsCreated {
+			state.set_created_at(ctx, timers.Now(ctx))
+		} else {
+			state.terminate(ctx)
+		}
 	}
 }
 
@@ -372,7 +272,7 @@ func (w *RepoWorkflows) onRepoCreateOrDelete(ctx workflow.Context, repo *Repo) s
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
-		payload := &RepoIOSignalCreatePayload{}
+		payload := &RepoIOSignalCreateOrDeletePayload{}
 		channel.Receive(ctx, payload)
 
 		logger.Info("init ...")

@@ -17,7 +17,7 @@ type (
 	LogWriter func(msg string, keyvals ...any)
 )
 
-func NewRepoIOWorkflowLogger(ctx workflow.Context, repo *Repo, kind, scope, branch string) *RepoIOWorkflowLogger {
+func NewRepoIOWorkflowLogger(ctx workflow.Context, repo *Repo, kind, branch, scope string) *RepoIOWorkflowLogger {
 	logger := workflow.GetLogger(ctx)
 
 	return &RepoIOWorkflowLogger{repo, kind, branch, scope, logger}
@@ -47,7 +47,7 @@ func (r *RepoIOWorkflowLogger) prefix() string {
 	}
 
 	if r.scope != "" {
-		prefix += " <- " + r.scope
+		prefix += "/" + r.scope
 	}
 
 	return prefix + " : "

@@ -79,12 +79,12 @@ type (
 		CtrlID         string         `json:"ctrl_id"` // CtrlID represents the id of the provider repo in the quantm DB. Should be UUID.
 		InstallationID shared.Int64   `json:"installation_id"`
 		ProviderID     string         `json:"provider_id"`
-		Commits        []RepoIOCommit `json:"commits"`
+		Commits        RepoIOCommits  `json:"commits"`
 		User           *auth.TeamUser `json:"user"`
 		Author         string         `json:"author"`
 	}
 
-	RepoIOSignalCreatePayload struct {
+	RepoIOSignalCreateOrDeletePayload struct {
 		IsCreated      bool           `json:"is_created"`
 		Ref            string         `json:"ref"`
 		RefType        string         `json:"ref_type"`
@@ -159,6 +159,14 @@ type (
 		Changes   RepoIOChanges `json:"changes"`
 	}
 
+	RepoIOCommits []RepoIOCommit
+
+	RepoIOPullRequest struct {
+		Number     shared.Int64 `json:"number"`
+		HeadBranch string       `json:"head_branch"`
+		BaseBranch string       `json:"base_branch"`
+	}
+
 	RepoIORebaseAtCommitResponse struct {
 		SHA        string `json:"sha"`
 		Message    string `json:"message"`
@@ -170,37 +178,26 @@ type (
 	}
 )
 
-// Workflow States.
-type (
-	RepoIOBranchCtrlState struct {
-		CreatedAt             time.Time `json:"created_at"`
-		LatestCommitTimestamp time.Time `json:"latest_commit_timestamp"`
-		LatestCommitSHA       string    `json:"latest_commit_sha"`
-		PullRequest           string    `json:"pull-request"`
+func (commits RepoIOCommits) Size() int {
+	return len(commits)
+}
+
+// Latest returns the most recent RepoIOCommit from the provided slice of commits.
+// If the slice is empty, it returns nil.
+//
+// FIXME: it should iterate over the commits and return the most recent commit based on the timestamp.
+func (commits RepoIOCommits) Latest() *RepoIOCommit {
+	if len(commits) == 0 {
+		return nil
 	}
-)
 
-// IsStale checks if the Branch is stale.
-func (state *RepoIOBranchCtrlState) IsStale(ctx context.Context) bool {
-	return false
+	return &commits[0]
 }
 
-// SetLatestCommit sets the latest commit on the state.
-func (state *RepoIOBranchCtrlState) SetLatestCommit(commit *RepoIOCommit) {
-	state.LatestCommitSHA = commit.SHA
-	state.LatestCommitTimestamp = commit.Timestamp
+func (signal *RepoIOSignalCreateOrDeletePayload) ForBranch(ctx workflow.Context) bool {
+	return signal.RefType == "branch"
 }
 
-// HasPR checks if the branch has a PR associated with it.
-func (state *RepoIOBranchCtrlState) HasPR(ctx context.Context) bool {
-	return state.PullRequest != ""
-}
-
-// Now returns the current time.
-func (state *RepoIOBranchCtrlState) Now(ctx workflow.Context) time.Time {
-	var now time.Time
-
-	_ = workflow.SideEffect(ctx, func(_ctx workflow.Context) any { return time.Now() }).Get(&now)
-
-	return now
+func (signal *RepoIOSignalCreateOrDeletePayload) ForTag(ctx workflow.Context) bool {
+	return signal.RefType == "tag"
 }
