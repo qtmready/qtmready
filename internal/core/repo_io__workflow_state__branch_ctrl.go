@@ -137,7 +137,7 @@ func (state *RepoIOBranchCtrlState) create_session(ctx workflow.Context) workflo
 	return ctx
 }
 
-// clone_at_commit clones the branch at the specified commit.
+// clone_at_commit clones the branch at the specified commit with depth = 0. The cloned repository is stored in the cloned.Path field.
 func (state *RepoIOBranchCtrlState) clone_at_commit(ctx workflow.Context, push *RepoIOSignalPushPayload) *RepoIOClonePayload {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
 	ctx = workflow.WithActivityOptions(ctx, opts)
@@ -150,13 +150,15 @@ func (state *RepoIOBranchCtrlState) clone_at_commit(ctx workflow.Context, push *
 	return cloned
 }
 
-func (state *RepoIOBranchCtrlState) fetch_branch(ctx workflow.Context, cloned *RepoIOClonePayload) {
+// fetch_default_branch fetches the default branch for the cloned repository.
+func (state *RepoIOBranchCtrlState) fetch_default_branch(ctx workflow.Context, cloned *RepoIOClonePayload) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	_ = state.do(ctx, "fetch_branch", state.activties.FetchBranch, nil, cloned)
 }
 
+// rebase_at_commit rebases the branch at the specified commit.
 func (state *RepoIOBranchCtrlState) rebase_at_commit(ctx workflow.Context, cloned *RepoIOClonePayload) error {
 	retry_policy := &temporal.RetryPolicy{NonRetryableErrorTypes: []string{"RepoIORebaseError"}}
 	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute, RetryPolicy: retry_policy}
@@ -176,6 +178,15 @@ func (state *RepoIOBranchCtrlState) rebase_at_commit(ctx workflow.Context, clone
 	return nil
 }
 
+// push_branch pushes the branch from the cloned repository to the remote repository.
+func (state *RepoIOBranchCtrlState) push_branch(ctx workflow.Context, cloned *RepoIOClonePayload) {
+	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	_ = state.do(ctx, "push_branch", state.activties.Push, nil, cloned.Branch, cloned.Path, true)
+}
+
+// remove_cloned removes the cloned repository at the specified path.
 func (state *RepoIOBranchCtrlState) remove_cloned(ctx workflow.Context, cloned *RepoIOClonePayload) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
 	ctx = workflow.WithActivityOptions(ctx, opts)
@@ -196,6 +207,9 @@ func (state *RepoIOBranchCtrlState) warn_complexity(ctx workflow.Context, push *
 	_ = state.do(ctx, "warn_complexity", io.SendNumberOfLinesExceedMessage, nil, msg)
 }
 
+// warn_stale sends a warning message to the linked message provider if the branch is stale.
+// It sends a message to the user if the git user is linked to the quantm user and the linked quantm user also has connected the message
+// provider, otherwise it sends a message to the linked channel of the repo.
 func (state *RepoIOBranchCtrlState) warn_stale(ctx workflow.Context, data *RepoIORepoData) {
 	msg := NewStaleBranchMessage(data, state.repo, state.branch)
 	io := Instance().MessageIO(state.repo.MessageProvider)
@@ -206,7 +220,10 @@ func (state *RepoIOBranchCtrlState) warn_stale(ctx workflow.Context, data *RepoI
 	_ = state.do(ctx, "warn_stale", io.SendStaleBranchMessage, nil, msg)
 }
 
-func (state *RepoIOBranchCtrlState) warn_merge_conflict(ctx workflow.Context, push *RepoIOSignalPushPayload) {
+// warn_conflict sends a warning message to the linked message provider if there is a merge conflict.
+// It sends a message to the user if the git user is linked to the quantm user and the linked quantm user also has connected the message
+// provider, otherwise it sends a message to the linked channel of the repo.
+func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, push *RepoIOSignalPushPayload) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 

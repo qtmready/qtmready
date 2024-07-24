@@ -227,12 +227,13 @@ func (w *RepoWorkflows) on_branch_rebase(ctx workflow.Context, state *RepoIOBran
 			return
 		}
 
-		state.fetch_branch(session, cloned)
+		state.fetch_default_branch(session, cloned)
 
 		if err := state.rebase_at_commit(session, cloned); err != nil {
-			state.warn_merge_conflict(ctx, push)
+			state.warn_conflict(ctx, push)
 		}
 
+		state.push_branch(session, cloned)
 		state.remove_cloned(ctx, cloned)
 	}
 }
