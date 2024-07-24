@@ -122,7 +122,7 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	// push event signal.
 	// detect changes. if changes are greater than threshold, send early warning message.
 	push := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
-	selector.AddReceive(push, w.onBranchPush(ctx, state)) // post processing for push event recieved on repo.
+	selector.AddReceive(push, w.on_branch_push(ctx, state)) // post processing for push event recieved on repo.
 	// selector.AddReceive(push, w.onBranchPush(ctx, repo, branch, interval)) // post processing for push event recieved on repo.
 
 	// rebase signal.
@@ -218,14 +218,21 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 	}
 }
 
-func (w *RepoWorkflows) onBranchPush(ctx workflow.Context, state *RepoIOBranchCtrlState) shared.ChannelHandler {
+// on_branch_push is a shared.ChannelHandler that is called when commits are pushed to a branch. It handles the logic for
+// detecting changes in the pushed branch and warning the user if the changes exceed a configured threshold.
+func (w *RepoWorkflows) on_branch_push(ctx workflow.Context, state *RepoIOBranchCtrlState) shared.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
 		payload := &RepoIOSignalPushPayload{}
 		channel.Receive(ctx, payload)
 
-		complexity := state.check_complexity(ctx, payload)
+		latest := payload.Commits.Latest()
+		if latest != nil {
+			state.set_commit(ctx, latest)
+		}
+
+		complexity := state.calculate_complexity(ctx, payload)
 		if complexity.Delta > state.repo.Threshold {
-			state.warn_for_complexity(ctx, payload, complexity)
+			state.warn_complexity(ctx, payload, complexity)
 		}
 
 		state.interval.Restart(ctx)
