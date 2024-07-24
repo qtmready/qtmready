@@ -95,7 +95,7 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	done := false
 	state := NewBranchCtrlState(ctx, repo, branch)
 
-	state.start_stale_check_coroutine(ctx) // start the stale check coroutine.
+	state.run_coroutine_state_check(ctx) // start the stale check coroutine.
 
 	// push event signal.
 	// detect changes. if changes are greater than threshold, send early warning message.

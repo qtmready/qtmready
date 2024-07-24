@@ -82,9 +82,9 @@ func (state *RepoIOBranchCtrlState) last_active(ctx workflow.Context) time.Time 
 	return state.last_commit.Timestamp
 }
 
-// start_stale_check_coroutine runs a background goroutine that periodically checks if the branch is stale and sends
+// run_coroutine_state_check runs a background goroutine that periodically checks if the branch is stale and sends
 // a warning message if it is.
-func (state *RepoIOBranchCtrlState) start_stale_check_coroutine(ctx workflow.Context) {
+func (state *RepoIOBranchCtrlState) run_coroutine_state_check(ctx workflow.Context) {
 	data := state.get_repo_data(ctx)
 
 	workflow.Go(ctx, func(ctx workflow.Context) {
