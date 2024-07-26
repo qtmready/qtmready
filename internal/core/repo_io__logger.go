@@ -9,18 +9,18 @@ type (
 	RepoIOWorkflowLogger struct {
 		repo   *Repo
 		kind   string
-		scope  string
 		branch string
+		action string
 		logger log.Logger
 	}
 
 	LogWriter func(msg string, keyvals ...any)
 )
 
-func NewRepoIOWorkflowLogger(ctx workflow.Context, repo *Repo, kind, branch, scope string) *RepoIOWorkflowLogger {
+func NewRepoIOWorkflowLogger(ctx workflow.Context, repo *Repo, kind, branch, action string) *RepoIOWorkflowLogger {
 	logger := workflow.GetLogger(ctx)
 
-	return &RepoIOWorkflowLogger{repo, kind, branch, scope, logger}
+	return &RepoIOWorkflowLogger{repo, kind, branch, action, logger}
 }
 
 func (r *RepoIOWorkflowLogger) Info(msg string, keyvals ...any) {
@@ -46,11 +46,11 @@ func (r *RepoIOWorkflowLogger) prefix() string {
 		prefix += "/" + r.branch
 	}
 
-	if r.scope != "" {
-		prefix += "/" + r.scope
+	if r.action != "" {
+		prefix += "/" + r.action
 	}
 
-	return prefix + " : "
+	return prefix + ": "
 }
 
 func (r *RepoIOWorkflowLogger) write(writer LogWriter, msg string, keyvals ...any) {
@@ -63,8 +63,8 @@ func (r *RepoIOWorkflowLogger) write(writer LogWriter, msg string, keyvals ...an
 		keyvals = append(keyvals, "branch", r.branch)
 	}
 
-	if r.scope != "" {
-		keyvals = append(keyvals, "scope", r.scope)
+	if r.action != "" {
+		keyvals = append(keyvals, "scope", r.action)
 	}
 
 	writer(r.prefix()+msg, keyvals...)

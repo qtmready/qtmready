@@ -114,10 +114,12 @@ type (
 // RepoIO types.
 type (
 	RepoIORepoData struct {
-		Name          string `json:"name"`
-		DefaultBranch string `json:"default_branch"`
-		ProviderID    string `json:"provider_id"`
-		Owner         string `json:"owner"`
+		Name           string       `json:"name"`
+		RepoName       string       `json:"repo_name"`
+		RepoOwner      string       `json:"owner"`
+		DefaultBranch  string       `json:"default_branch"`
+		ProviderID     string       `json:"provider_id"`
+		InstallationID shared.Int64 `json:"installation_id"`
 	}
 
 	RepoIOInfoPayload struct {
@@ -132,6 +134,19 @@ type (
 		Push   *RepoIOSignalPushPayload `json:"push"`   // Push event payload
 		Branch string                   `json:"branch"` // Branch to clone
 		Path   string                   `json:"path"`   // Path to clone to
+	}
+
+	RepoIOPushBranchPayload struct {
+		Branch string `json:"branch"`
+		Path   string `json:"path"`
+		Force  bool   `json:"force"`
+	}
+
+	RepoIOSignalBranchCtrlPayload struct {
+		Repo    *Repo                 `json:"repo"`    // Repo is the db record of the repo
+		Branch  string                `json:"branch"`  // Branch to signal
+		Signal  shared.WorkflowSignal `json:"signal"`  // Signal to send
+		Payload any                   `json:"payload"` // Payload to send
 	}
 
 	RepoIODetectChangesPayload struct {

@@ -29,7 +29,7 @@ func (r *RepoIO) GetRepoData(ctx context.Context, id string) (*core.RepoIORepoDa
 		Name:          repo.Name,
 		DefaultBranch: repo.DefaultBranch,
 		ProviderID:    repo.GithubID.String(),
-		Owner:         strings.Split(repo.FullName, "/")[0],
+		RepoOwner:     strings.Split(repo.FullName, "/")[0],
 	}
 
 	return data, nil
@@ -99,7 +99,8 @@ func (r *RepoIO) DetectChanges(ctx context.Context, payload *core.RepoIODetectCh
 		return nil, err
 	}
 
-	comparison, _, err := client.Repositories.
+	comparison, _, err := client.
+		Repositories.
 		CompareCommits(context.Background(), payload.RepoOwner, payload.RepoName, payload.DefaultBranch, payload.TargetBranch, nil)
 	if err != nil {
 		return nil, err

@@ -93,17 +93,17 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 	done := false
 	state := NewBranchCtrlState(ctx, repo, branch)
 
-	state.run_coroutine_state_check(ctx) // start the stale check coroutine.
+	state.check_stale(ctx) // start the stale check coroutine.
 
 	// push event signal.
 	// detect changes. if changes are greater than threshold, send early warning message.
 	push := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
-	selector.AddReceive(push, w.on_branch_push(ctx, state)) // post processing for push event recieved on repo.
+	selector.AddReceive(push, w.on_branch_push(ctx, state))
 
 	// rebase signal.
 	// attempts to rebase the branch with the base branch. if there are merge conflicts, sends message.
 	rebase := workflow.GetSignalChannel(ctx, ReopIOSignalRebase.String())
-	selector.AddReceive(rebase, w.on_branch_rebase(ctx, state)) // post processing for early warning signal.
+	selector.AddReceive(rebase, w.on_branch_rebase(ctx, state))
 
 	// create_delete signal.
 	// creates or deletes the branch.
@@ -112,7 +112,7 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 
 	// pr signal.
 	pr := workflow.GetSignalChannel(ctx, RepoIOSignalPullRequest.String())
-	selector.AddReceive(pr, w.onBranchPullRequest(ctx, repo, branch)) // post processing for pull request event recieved on repo.
+	selector.AddReceive(pr, w.on_branch_pr(ctx, state))
 
 	logger.Info("init ...")
 
@@ -155,7 +155,7 @@ func (w *RepoWorkflows) onRepoPush(ctx workflow.Context, repo *Repo) shared.Chan
 
 		branch := BranchNameFromRef(payload.BranchRef)
 
-		err := workflow.ExecuteActivity(ctx, w.acts.SignalBranch, repo, RepoIOSignalPush, payload, branch).Get(ctx, nil)
+		err := workflow.ExecuteActivity(ctx, w.acts.SignalBranch_, repo, RepoIOSignalPush, payload, branch).Get(ctx, nil)
 		if err != nil {
 			logger.Warn("error signaling branch, retrying ...", "error", err.Error())
 		}
@@ -190,7 +190,7 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 			if branch != repo.DefaultBranch && !IsQuantmBranch(branch) {
 				logger.Info("signlaing branch controller to rebase ...", "target_branch", branch, "sha", payload.After)
 
-				if err := workflow.ExecuteActivity(ctx, w.acts.SignalBranch, repo, ReopIOSignalRebase, payload, branch).Get(ctx, nil); err != nil { // nolint:revive
+				if err := workflow.ExecuteActivity(ctx, w.acts.SignalBranch_, repo, ReopIOSignalRebase, payload, branch).Get(ctx, nil); err != nil { // nolint:revive
 					logger.Warn("error sending rebase signal, retrying ...", "error", err.Error())
 				}
 			}
@@ -200,7 +200,7 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 
 // on_branch_push is a shared.ChannelHandler that is called when commits are pushed to a branch. It handles the logic for
 // detecting changes in the pushed branch and warning the user if the changes exceed a configured threshold.
-func (w *RepoWorkflows) on_branch_push(ctx workflow.Context, state *RepoIOBranchCtrlState) shared.ChannelHandler {
+func (w *RepoWorkflows) on_branch_push(ctx workflow.Context, state *BranchCtrlState) shared.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
 		payload := &RepoIOSignalPushPayload{}
 		channel.Receive(ctx, payload)
@@ -222,7 +222,7 @@ func (w *RepoWorkflows) on_branch_push(ctx workflow.Context, state *RepoIOBranch
 // on_branch_rebase is a shared.ChannelHandler that is called when a branch needs to be rebased. It handles the logic for
 // cloning the repository, fetching the default branch, rebasing the branch at the latest commit, and pushing the rebased
 // branch back to the repository.
-func (w *RepoWorkflows) on_branch_rebase(ctx workflow.Context, state *RepoIOBranchCtrlState) shared.ChannelHandler {
+func (w *RepoWorkflows) on_branch_rebase(ctx workflow.Context, state *BranchCtrlState) shared.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
 		push := &RepoIOSignalPushPayload{}
 
@@ -252,7 +252,7 @@ func (w *RepoWorkflows) on_branch_rebase(ctx workflow.Context, state *RepoIOBran
 //
 // If the payload indicates the branch was created, the function sets the created timestamp in the state.
 // If the payload indicates the branch was deleted, the function terminates the state.
-func (w *RepoWorkflows) on_branch_create_delete(ctx workflow.Context, state *RepoIOBranchCtrlState) shared.ChannelHandler {
+func (w *RepoWorkflows) on_branch_create_delete(ctx workflow.Context, state *BranchCtrlState) shared.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
 		payload := &RepoIOSignalCreateOrDeletePayload{}
 		channel.Receive(ctx, payload)
@@ -261,6 +261,20 @@ func (w *RepoWorkflows) on_branch_create_delete(ctx workflow.Context, state *Rep
 			state.set_created_at(ctx, timers.Now(ctx))
 		} else {
 			state.terminate(ctx)
+		}
+	}
+}
+
+func (w *RepoWorkflows) on_branch_pr(ctx workflow.Context, state *BranchCtrlState) shared.ChannelHandler {
+	return func(channel workflow.ReceiveChannel, more bool) {
+		payload := &RepoIOSignalPullRequestPayload{}
+		channel.Receive(ctx, payload)
+
+		switch payload.Action {
+		case "opened":
+			state.set_pr(ctx, &RepoIOPullRequest{Number: payload.Number, HeadBranch: payload.HeadBranch, BaseBranch: payload.BaseBranch})
+		default:
+			state.log(ctx, "info", "pull_request", "unhandled action", "action", payload.Action)
 		}
 	}
 }
@@ -291,7 +305,7 @@ func (w *RepoWorkflows) onRepoPullRequest(ctx workflow.Context, repo *Repo) shar
 
 		logger.Info("init ...")
 
-		_ = workflow.ExecuteActivity(ctx, w.acts.SignalBranch, repo, RepoIOSignalPullRequest, payload, payload.HeadBranch).Get(ctx, nil)
+		_ = workflow.ExecuteActivity(ctx, w.acts.SignalBranch_, repo, RepoIOSignalPullRequest, payload, payload.HeadBranch).Get(ctx, nil)
 	}
 }
 
