@@ -407,11 +407,9 @@ func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *core.Repo, si
 			shared.WithWorkflowBlockID(repo.ID.String()),
 		)
 
-	rw := &core.RepoWorkflows{}
-
 	_, err := shared.Temporal().
 		Client().
-		SignalWithStartWorkflow(context.Background(), opts.ID, signal.String(), payload, opts, rw.RepoCtrl, repo)
+		SignalWithStartWorkflow(context.Background(), opts.ID, signal.String(), payload, opts, core.RepoCtrl, repo)
 
 	return err
 }

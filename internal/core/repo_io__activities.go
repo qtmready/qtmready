@@ -67,58 +67,6 @@ func (a *RepoActivities) SignalBranch(ctx context.Context, payload *RepoIOSignal
 	return err
 }
 
-// SignalDefaultBranch signals the default branch of a repository with a given workflow signal and payload.
-// It uses Temporal to queue the workflow and passes the necessary options and parameters.
-// If the signal and workflow start are successful, it returns nil. Otherwise, it returns an error.
-func (a *RepoActivities) SignalDefaultBranch(ctx context.Context, repo *Repo, signal shared.WorkflowSignal, payload any) error {
-	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
-		shared.WithWorkflowBlock("repo"),
-		shared.WithWorkflowBlockID(repo.ID.String()),
-		shared.WithWorkflowElement("branch"),
-		shared.WithWorkflowElementID(repo.DefaultBranch),
-	)
-
-	w := &RepoWorkflows{}
-
-	_, err := shared.Temporal().
-		Client().
-		SignalWithStartWorkflow(context.Background(), opts.ID, signal.String(), payload, opts, w.DefaultBranchCtrl, repo)
-
-	if err != nil {
-		return err
-	}
-
-	shared.Logger().Info("signaled default branch", "repo", repo.ID, "signal", signal, "payload", payload)
-
-	return nil
-}
-
-// SignalBranch_ signals a branch other than the default branch of a repository.
-// This is mostly responsible for handling the early warning system.
-//
-//   - on default branch push, rebase the commits from main branch onto the branch. if it fails, send a merge conflict warning.
-//   - on push, tries to check if the number of lines changed is greater than the threshold defined on repo.
-func (a *RepoActivities) SignalBranch_(ctx context.Context, repo *Repo, signal shared.WorkflowSignal, payload any, branch string) error {
-	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
-		shared.WithWorkflowBlock("repo"),
-		shared.WithWorkflowBlockID(repo.ID.String()),
-		shared.WithWorkflowElement("branch"),
-		shared.WithWorkflowElementID(branch),
-	)
-
-	w := &RepoWorkflows{}
-
-	_, err := shared.Temporal().
-		Client().
-		SignalWithStartWorkflow(context.Background(), opts.ID, signal.String(), payload, opts, w.BranchCtrl, repo, branch)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // CloneBranch clones a repository branch at the temporary location, as specified by the payload.
 // It uses the RepoIO interface to get the url with the oauth token in it.
 // If an error occurs retrieving the clone URL, it is returned.

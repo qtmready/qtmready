@@ -47,7 +47,6 @@ func main() {
 	)
 
 	githubwfs := &github.Workflows{}
-	repowfs := &core.RepoWorkflows{}
 
 	// provider workflows
 	providerWrkr.RegisterWorkflow(githubwfs.OnInstallationEvent)
@@ -67,9 +66,9 @@ func main() {
 	providerWrkr.RegisterWorkflow(mutex.Workflow)
 
 	// repo workflows
-	coreWrkr.RegisterWorkflow(repowfs.RepoCtrl)
-	coreWrkr.RegisterWorkflow(repowfs.DefaultBranchCtrl)
-	coreWrkr.RegisterWorkflow(repowfs.BranchCtrl)
+	coreWrkr.RegisterWorkflow(core.RepoCtrl)
+	coreWrkr.RegisterWorkflow(core.TrunkCtrl)
+	coreWrkr.RegisterWorkflow(core.BranchCtrl)
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.RepoActivities{})
