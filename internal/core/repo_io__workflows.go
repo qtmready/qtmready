@@ -102,7 +102,7 @@ func (w *RepoWorkflows) BranchCtrl(ctx workflow.Context, repo *Repo, branch stri
 
 	// rebase signal.
 	// attempts to rebase the branch with the base branch. if there are merge conflicts, sends message.
-	rebase := workflow.GetSignalChannel(ctx, ReopIOSignalRebase.String())
+	rebase := workflow.GetSignalChannel(ctx, RepoIOSignalRebase.String())
 	selector.AddReceive(rebase, w.on_branch_rebase(ctx, state))
 
 	// create_delete signal.
@@ -179,7 +179,7 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 
 		// get all branches
 		branches := []string{}
-		info := &RepoIOInfoPayload{InstallationID: payload.InstallationID, RepoName: payload.RepoName, RepoOwner: payload.RepoOwner}
+		info := &RepoIOProviderInfo{InstallationID: payload.InstallationID, RepoName: payload.RepoName, RepoOwner: payload.RepoOwner}
 
 		if err := workflow.ExecuteActivity(ctx, Instance().RepoIO(repo.Provider).GetAllBranches, info).Get(ctx, &branches); err != nil {
 			logger.Warn("error getting branches, retrying ...", "error", err.Error())
@@ -190,7 +190,7 @@ func (w *RepoWorkflows) onDefaultBranchPush(ctx workflow.Context, repo *Repo) sh
 			if branch != repo.DefaultBranch && !IsQuantmBranch(branch) {
 				logger.Info("signlaing branch controller to rebase ...", "target_branch", branch, "sha", payload.After)
 
-				if err := workflow.ExecuteActivity(ctx, w.acts.SignalBranch_, repo, ReopIOSignalRebase, payload, branch).Get(ctx, nil); err != nil { // nolint:revive
+				if err := workflow.ExecuteActivity(ctx, w.acts.SignalBranch_, repo, RepoIOSignalRebase, payload, branch).Get(ctx, nil); err != nil { // nolint:revive
 					logger.Warn("error sending rebase signal, retrying ...", "error", err.Error())
 				}
 			}
@@ -274,7 +274,7 @@ func (w *RepoWorkflows) on_branch_pr(ctx workflow.Context, state *BranchCtrlStat
 		case "opened":
 			state.set_pr(ctx, &RepoIOPullRequest{Number: payload.Number, HeadBranch: payload.HeadBranch, BaseBranch: payload.BaseBranch})
 		default:
-			state.log(ctx, "info", "pull_request", "unhandled action", "action", payload.Action)
+			return
 		}
 	}
 }

@@ -4,6 +4,9 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
+// BranchCtrl is a workflow function that manages the lifecycle branch other than the default branch.
+// It sets up signal channels to handle various branch-related events, such as pushes, rebases, creation/deletion, and pull requests.
+// The function runs in a loop, listening for and responding to these signals until the branch control state is no longer active.
 func BranchCtrl(ctx workflow.Context, repo *Repo, branch string) error {
 	selector := workflow.NewSelector(ctx)
 	state := NewBranchCtrlState(ctx, repo, branch)
@@ -20,7 +23,7 @@ func BranchCtrl(ctx workflow.Context, repo *Repo, branch string) error {
 
 	// rebase signal.
 	// attempts to rebase the branch with the base branch. if there are merge conflicts, sends message.
-	rebase := workflow.GetSignalChannel(ctx, ReopIOSignalRebase.String())
+	rebase := workflow.GetSignalChannel(ctx, RepoIOSignalRebase.String())
 	selector.AddReceive(rebase, state.on_rebase(ctx))
 
 	// create_delete signal.

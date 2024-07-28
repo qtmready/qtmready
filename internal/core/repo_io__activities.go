@@ -33,6 +33,7 @@ type (
 )
 
 func (a *RepoActivities) SignalBranch(ctx context.Context, payload *RepoIOSignalBranchCtrlPayload) error {
+	args := make([]any, 0)
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
 		shared.WithWorkflowBlock("repo"),
 		shared.WithWorkflowBlockID(payload.Repo.ID.String()),
@@ -40,17 +41,14 @@ func (a *RepoActivities) SignalBranch(ctx context.Context, payload *RepoIOSignal
 		shared.WithWorkflowElementID(payload.Branch),
 	)
 
-	args := make([]any, 0)
+	args = append(args, payload.Repo)
 
 	var workflow any
 	if payload.Repo.DefaultBranch == payload.Branch {
-		workflow = DefaultBranchCtrl
+		workflow = TrunkCtrl
 	} else {
 		workflow = BranchCtrl
-	}
 
-	args = append(args, payload.Repo)
-	if payload.Repo.DefaultBranch != payload.Branch {
 		args = append(args, payload.Branch)
 	}
 
@@ -129,7 +127,7 @@ func (a *RepoActivities) CloneBranch(ctx context.Context, payload *RepoIOClonePa
 		RepoIO(payload.Repo.Provider).
 		TokenizedCloneURL(
 			ctx,
-			&RepoIOInfoPayload{
+			&RepoIOProviderInfo{
 				InstallationID: payload.Push.InstallationID,
 				RepoName:       payload.Push.RepoName,
 				RepoOwner:      payload.Push.RepoOwner,

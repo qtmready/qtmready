@@ -10,38 +10,34 @@ import (
 )
 
 type (
-	RepoCtrlState struct {
-		activties *RepoActivities // activities is the activities for the branch control state
-		repo      *Repo           // repo is the db record of the repo
-		info      *RepoIOProviderInfo
-		branches  []string       // branches is the list of branches for the repo except the default branch.
-		mutex     workflow.Mutex // mutex is the mutex for the repo control state
-		active    bool
-		counter   int // counter is the number of activity executions
+	TrunkState struct {
+		activties *RepoActivities     // activities is the activities for the branch control state
+		repo      *Repo               // repo is the db record of the repo
+		info      *RepoIOProviderInfo // info is the provider info for the repo
+		branches  []string            // branches is the list of branches for the repo except the default branch.
+		mutex     workflow.Mutex      // mutex is the mutex for the repo control state
+		active    bool                // active is whether the branch control state is currently active
+		counter   int                 // counter is the number of activity executions
 	}
 )
 
-// on_push is a channel handler that processes push events for the repository.
-func (state *RepoCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
+func (state *TrunkState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		push := &RepoIOSignalPushPayload{}
 		rx.Receive(ctx, push)
 
-		state.signal_branch(ctx, BranchNameFromRef(push.BranchRef), RepoIOSignalPush, push)
+		for _, branch := range state.branches {
+			state.signal_branch(ctx, branch, RepoIOSignalRebase, push)
+		}
 	}
 }
 
-// on_create_delete is a channel handler that processes create or delete events for the repository.
-//
-// TODO: handle create and delete events for tags.
-func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
+func (state *TrunkState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		create_delete := &RepoIOSignalCreateOrDeletePayload{}
 		rx.Receive(ctx, create_delete)
 
 		if create_delete.RefType == "branch" {
-			state.signal_branch(ctx, create_delete.Ref, RepoIOSignalCreateOrDelete, create_delete)
-
 			if create_delete.IsCreated {
 				state.add_branch(ctx, create_delete.Ref)
 			} else {
@@ -51,20 +47,10 @@ func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.Channe
 	}
 }
 
-// on_pr is a channel handler that processes pull request events for the repository.
-func (state *RepoCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
-	return func(rx workflow.ReceiveChannel, more bool) {
-		pr := &RepoIOSignalPullRequestPayload{}
-		rx.Receive(ctx, pr)
-
-		state.signal_branch(ctx, pr.HeadBranch, RepoIOSignalPullRequest, pr)
-	}
-}
-
 // set_done marks the RepoCtrlState as inactive, releasing the mutex lock.
 // This function should be called when the branch control state is no longer needed,
 // such as when the branch is being deleted or merged.
-func (state *RepoCtrlState) set_done(ctx workflow.Context) {
+func (state *TrunkState) set_done(ctx workflow.Context) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 
@@ -73,11 +59,11 @@ func (state *RepoCtrlState) set_done(ctx workflow.Context) {
 
 // is_active returns whether the RepoCtrlState is currently active.
 // When the state is active, it means the branch control state is in use and the mutex is locked.
-func (state *RepoCtrlState) is_active() bool {
+func (state *TrunkState) is_active() bool {
 	return state.active
 }
 
-func (state *RepoCtrlState) refresh_info(ctx workflow.Context) {
+func (state *TrunkState) refresh_info(ctx workflow.Context) {
 	io := Instance().RepoIO(state.repo.Provider)
 	info := &RepoIOProviderInfo{}
 
@@ -89,7 +75,7 @@ func (state *RepoCtrlState) refresh_info(ctx workflow.Context) {
 	state.info = info
 }
 
-func (state *RepoCtrlState) refresh_branches(ctx workflow.Context) {
+func (state *TrunkState) refresh_branches(ctx workflow.Context) {
 	if state.info == nil {
 		state.refresh_info(ctx)
 	}
@@ -105,7 +91,7 @@ func (state *RepoCtrlState) refresh_branches(ctx workflow.Context) {
 	state.branches = branches
 }
 
-func (state *RepoCtrlState) add_branch(ctx workflow.Context, branch string) {
+func (state *TrunkState) add_branch(ctx workflow.Context, branch string) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 
@@ -114,7 +100,7 @@ func (state *RepoCtrlState) add_branch(ctx workflow.Context, branch string) {
 	}
 }
 
-func (state *RepoCtrlState) remove_branch(ctx workflow.Context, branch string) {
+func (state *TrunkState) remove_branch(ctx workflow.Context, branch string) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 
@@ -127,7 +113,7 @@ func (state *RepoCtrlState) remove_branch(ctx workflow.Context, branch string) {
 }
 
 // signal_branch sends a signal to the branch control state for the specified branch.
-func (state *RepoCtrlState) signal_branch(ctx workflow.Context, branch string, signal shared.WorkflowSignal, payload any) {
+func (state *TrunkState) signal_branch(ctx workflow.Context, branch string, signal shared.WorkflowSignal, payload any) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
@@ -140,7 +126,7 @@ func (state *RepoCtrlState) signal_branch(ctx workflow.Context, branch string, s
 }
 
 // increment is a helper function that increments the steps counter in the RepoIOBranchCtrlState.
-func (state *RepoCtrlState) increment(ctx workflow.Context) {
+func (state *TrunkState) increment(ctx workflow.Context) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 
@@ -149,7 +135,7 @@ func (state *RepoCtrlState) increment(ctx workflow.Context) {
 
 // terminate is called to mark the RepoIOBranchCtrlState as inactive and cancel any associated timers.
 // This function should be called when the branch control state is no longer needed, such as branch is being deleted or merged.
-func (state *RepoCtrlState) terminate(ctx workflow.Context) {
+func (state *TrunkState) terminate(ctx workflow.Context) {
 	state.set_done(ctx)
 }
 
@@ -158,15 +144,18 @@ func (state *RepoCtrlState) terminate(ctx workflow.Context) {
 // If the activity fails, the function logs the error and returns it.
 //
 // NOTE: This assumes that workflow.Context has been updated with activity options.
-func (state *RepoCtrlState) do(ctx workflow.Context, action string, activity, payload, result any, keyvals ...any) error {
-	return _do(ctx, state.repo, "", "repo_ctrl", action, activity, payload, result, keyvals...)
+func (state *TrunkState) do(ctx workflow.Context, action string, activity, payload, result any, keyvals ...any) error {
+	return _do(ctx, state.repo, state.repo.DefaultBranch, "trunk_ctrl", action, activity, payload, result, keyvals...)
 }
 
-func NewRepoCtrlState(ctx workflow.Context, repo *Repo) *RepoCtrlState {
-	return &RepoCtrlState{
+// NewTrunkState creates a new TrunkState with the specified repo and activities.
+func NewTrunkState(ctx workflow.Context, repo *Repo) *TrunkState {
+	return &TrunkState{
 		activties: &RepoActivities{},
 		repo:      repo,
+		branches:  make([]string, 0),
 		mutex:     workflow.NewMutex(ctx),
+		active:    true,
 		counter:   0,
 	}
 }

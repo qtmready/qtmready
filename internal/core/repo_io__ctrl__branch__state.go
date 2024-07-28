@@ -94,14 +94,14 @@ func (state *BranchCtrlState) check_stale(ctx workflow.Context) {
 }
 
 // get_repo_data returns the core repo by provider repo id.
-func (state *BranchCtrlState) get_repo_data(ctx workflow.Context) *RepoIORepoData {
-	data := &RepoIORepoData{}
+func (state *BranchCtrlState) get_repo_data(ctx workflow.Context) *RepoIOProviderInfo {
+	data := &RepoIOProviderInfo{}
 	io := Instance().RepoIO(state.repo.Provider)
 
 	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
-	_ = state.do(ctx, "get_repo_data", io.GetRepoData, state.repo.CtrlID, data)
+	_ = state.do(ctx, "get_repo_data", io.GetProviderInfo, state.repo.CtrlID, data)
 
 	return data
 }
@@ -206,7 +206,7 @@ func (state *BranchCtrlState) warn_complexity(ctx workflow.Context, push *RepoIO
 // warn_stale sends a warning message to the linked message provider if the branch is stale.
 // It sends a message to the user if the git user is linked to the quantm user and the linked quantm user also has connected the message
 // provider, otherwise it sends a message to the linked channel of the repo.
-func (state *BranchCtrlState) warn_stale(ctx workflow.Context, data *RepoIORepoData) {
+func (state *BranchCtrlState) warn_stale(ctx workflow.Context, data *RepoIOProviderInfo) {
 	msg := NewStaleBranchMessage(data, state.repo, state.branch)
 	io := Instance().MessageIO(state.repo.MessageProvider)
 
@@ -301,7 +301,7 @@ func (state *BranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler 
 		case "opened": //nolint
 			state.set_pr(ctx, &RepoIOPullRequest{Number: pr.Number, HeadBranch: pr.HeadBranch, BaseBranch: pr.BaseBranch})
 		default:
-			state.log(ctx, "info", "pull_request", "unhandled action", "action", pr.Action)
+			return
 		}
 	}
 }
@@ -330,39 +330,7 @@ func (state *BranchCtrlState) on_create_delete(ctx workflow.Context) shared.Chan
 //
 // NOTE: This assumes that workflow.Context has been updated with activity options.
 func (state *BranchCtrlState) do(ctx workflow.Context, action string, activity, payload, result any, keyvals ...any) error {
-	// logger := NewRepoIOWorkflowLogger(ctx, state.repo, "branch_ctrl", state.branch, action)
-	// logger.Info("init", keyvals...)
-	state.log(ctx, "info", action, "init", keyvals...)
-
-	if err := workflow.ExecuteActivity(ctx, activity, payload).Get(ctx, result); err != nil {
-		keyvals = append(keyvals, "error", err)
-		state.log(ctx, "error", action, "error", keyvals...)
-
-		return err
-	}
-
-	state.increment(ctx)
-
-	state.log(ctx, "info", action, "success", keyvals...)
-
-	return nil
-}
-
-func (state *BranchCtrlState) log(ctx workflow.Context, level, action, msg string, keyvals ...any) {
-	logger := NewRepoIOWorkflowLogger(ctx, state.repo, "branch_ctrl", state.branch, action)
-
-	switch level {
-	case "info":
-		logger.Info(msg, keyvals...)
-	case "warn":
-		logger.Warn(msg, keyvals...)
-	case "error":
-		logger.Error(msg, keyvals...)
-	case "debug":
-		logger.Debug(msg, keyvals...)
-	default:
-		logger.Info(msg, keyvals...)
-	}
+	return _do(ctx, state.repo, state.branch, "branch_ctrl", action, activity, payload, result, keyvals...)
 }
 
 func NewBranchCtrlState(ctx workflow.Context, repo *Repo, branch string) *BranchCtrlState {

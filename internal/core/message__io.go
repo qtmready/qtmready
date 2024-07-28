@@ -137,7 +137,7 @@ func NewNumberOfLinesExceedMessage(
 // NewStaleBranchMessage creates a new MessageIOStaleBranchPayload instance with the provided RepoIOSignalPushPayload
 // and Repo information.
 // Only for channel.
-func NewStaleBranchMessage(data *RepoIORepoData, repo *Repo, branch string) *MessageIOStaleBranchPayload {
+func NewStaleBranchMessage(data *RepoIOProviderInfo, repo *Repo, branch string) *MessageIOStaleBranchPayload {
 	return &MessageIOStaleBranchPayload{
 		CommitUrl: fmt.Sprintf("https://github.com/%s/%s/tree/%s",
 			data.RepoOwner, data.Name, branch),
