@@ -31,7 +31,7 @@ type (
 func (w *MergeQueueActivities) ProcessSignalActivity(ctx context.Context, q Queue) error {
 	logger := activity.GetLogger(ctx)
 
-	logger.Info("Processing signal", "Branch", q.merge_queue_signal.Branch)
+	logger.Info("Processing signal", "Branch", q.pull_request_id)
 
 	// TODO - Call here the core repo or provider repo activities
 

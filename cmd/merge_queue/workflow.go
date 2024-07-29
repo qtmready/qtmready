@@ -14,21 +14,21 @@ func (w *MergeQueueWorkflows) MergeQueueWorkflow(ctx workflow.Context) error {
 
 	// Listen for signals to add tasks to the queue
 	for {
-		var signal Signal
+		q := Queue{}
 
-		workflow.GetSignalChannel(ctx, "mergeQueueSignal").Receive(ctx, &signal)
+		workflow.GetSignalChannel(ctx, queue_signal_id).Receive(ctx, &q)
 
 		// Add the signal to the queue
-		signal.priority = w.calculate_priority(signal)
-		w.MergeQueue = append(w.MergeQueue, &signal)
+		q.priority = w.calculate_priority(q)
+		w.MergeQueue = append(w.MergeQueue, &q)
 
 		// Process the queue
 		w.process(ctx)
 	}
 }
 
-func (w *MergeQueueWorkflows) calculate_priority(signal Signal) float64 {
-	age := time.Since(signal.created_at).Seconds()
+func (w *MergeQueueWorkflows) calculate_priority(q Queue) float64 {
+	age := time.Since(q.created_at).Seconds()
 	return 1.0 / (1.0 + age) // Example: simple inverse age
 }
 

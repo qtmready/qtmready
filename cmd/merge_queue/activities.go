@@ -7,8 +7,8 @@ import (
 )
 
 // Activity method to process a signal.
-func (w *MergeQueueWorkflows) ProcessSignalActivity(ctx context.Context, signal Signal) error {
-	activity.GetLogger(ctx).Info("Processing signal", "Branch", signal.merge_queue_signal.Branch)
+func (w *MergeQueueWorkflows) ProcessSignalActivity(ctx context.Context, q Queue) error {
+	activity.GetLogger(ctx).Info("Processing signal", "pull_request_id", q.pull_request_id)
 	// Implement the processing logic for the signal
 	return nil
 }

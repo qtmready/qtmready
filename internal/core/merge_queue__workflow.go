@@ -22,17 +22,17 @@ import (
 	"time"
 
 	"go.temporal.io/sdk/workflow"
-
-	"go.breu.io/quantm/internal/shared"
 )
 
 // NOTE - It is POC.
 type (
 	Queue struct {
-		merge_queue_signal *shared.MergeQueueSignal
-		created_at         time.Time      // created_at is the time when the branch was created
-		mutex              workflow.Mutex // mutex is the mutex for the state
-		priority           float64
+		pull_request_id string
+		repo            *Repo
+		activties       *RepoActivities
+		created_at      time.Time      // created_at is the time when the branch was created
+		mutex           workflow.Mutex // mutex is the mutex for the state
+		priority        float64
 	}
 
 	MergeQueue []*Queue

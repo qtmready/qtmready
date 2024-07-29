@@ -71,15 +71,6 @@ type (
 		DefaultBranch  string
 		InstallationID Int64
 	}
-
-	MergeQueueSignal struct {
-		PullRequestID  Int64
-		InstallationID Int64
-		RepoOwner      string
-		RepoName       string
-		Branch         string
-		RepoProvider   string
-	}
 )
 
 var (
