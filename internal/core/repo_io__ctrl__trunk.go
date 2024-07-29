@@ -6,7 +6,7 @@ import (
 
 // TrunkCtrl is a workflow function that controls the trunk.
 func TrunkCtrl(ctx workflow.Context, repo *Repo) error {
-	state := NewRepoCtrlState(ctx, repo)
+	state := NewTrunkState(ctx, repo)
 	selector := workflow.NewSelector(ctx)
 
 	// setup

@@ -34,9 +34,14 @@ func (state *TrunkState) on_push(ctx workflow.Context) shared.ChannelHandler {
 		rx.Receive(ctx, push)
 
 		for _, branch := range state.branches {
-			if branch == push.BranchRef {
-				state.signal_branch(ctx, branch, RepoIOSignalRebase, push)
+			if branch == BranchNameFromRef(push.BranchRef) {
+				// NOTE - when to main branch skip the rebase workflow.
+				// state.branches has all the branch including main.
+				continue
 			}
+
+			// run rebase on all the feature branches. (except main).
+			state.signal_branch(ctx, branch, RepoIOSignalRebase, push)
 		}
 	}
 }
@@ -113,6 +118,8 @@ func (state *TrunkState) refresh_branches(ctx workflow.Context) {
 
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
+
+	// TODO - pop the default branch from the branches array.
 
 	state.branches = branches
 }
