@@ -23,22 +23,19 @@ import (
 
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/quantm/internal/core/timers"
 	"go.breu.io/quantm/internal/shared"
 )
 
 // NOTE - It is POC.
 type (
-	Signal struct {
+	Queue struct {
 		merge_queue_signal *shared.MergeQueueSignal
-		created_at         time.Time       // created_at is the time when the branch was created
-		interval           timers.Interval // interval is the interval at which the branch is checked for staleness
-		mutex              workflow.Mutex  // mutex is the mutex for the state
-		counter            int             // counter is the number of steps taken by the branch
+		created_at         time.Time      // created_at is the time when the branch was created
+		mutex              workflow.Mutex // mutex is the mutex for the state
 		priority           float64
 	}
 
-	MergeQueue []*Signal
+	MergeQueue []*Queue
 
 	MergeQueueWorkflows struct {
 		MergeQueue MergeQueue
@@ -47,7 +44,7 @@ type (
 
 // set_created_at sets the created_at timestamp for the merge queue signal.
 // This method is thread-safe and locks the merge queue signal's mutex before updating the created_at field.
-func (signal *Signal) set_created_at(ctx workflow.Context, t time.Time) {
+func (signal *Queue) set_created_at(ctx workflow.Context, t time.Time) {
 	_ = signal.mutex.Lock(ctx)
 	defer signal.mutex.Unlock()
 
@@ -62,21 +59,21 @@ func (w *MergeQueueWorkflows) MergeQueueWorkflow(ctx workflow.Context) error {
 	// Listen for signals to add tasks to the queue
 	// Understaind the logic
 	for {
-		var signal Signal
+		q := Queue{}
 
-		workflow.GetSignalChannel(ctx, "merge_queue_signal").Receive(ctx, &signal)
+		workflow.GetSignalChannel(ctx, "merge_queue_signal").Receive(ctx, &q)
 
 		// Add the signal to the queue
-		signal.priority = w.priority(signal)
-		w.MergeQueue = append(w.MergeQueue, &signal)
+		q.priority = w.priority(q)
+		w.MergeQueue = append(w.MergeQueue, &q)
 
 		w.sort(ctx)
 	}
 }
 
 // TEST Workflow may not needed.
-func (w *MergeQueueWorkflows) priority(signal Signal) float64 {
-	age := time.Since(signal.created_at).Seconds()
+func (w *MergeQueueWorkflows) priority(q Queue) float64 {
+	age := time.Since(q.created_at).Seconds()
 	return 1.0 / (1.0 + age) // Example: simple inverse age
 }
 
@@ -106,25 +103,25 @@ func (w *MergeQueueWorkflows) sort(ctx workflow.Context) {
 	}
 }
 
-// func (mq MergeQueue) Len() int { return len(mq) }
+func (mq MergeQueue) Len() int { return len(mq) }
 
-// func (mq MergeQueue) Less(i, j int) bool {
-// 	return mq[i].priority < mq[j].priority
-// }
+func (mq MergeQueue) Less(i, j int) bool {
+	return mq[i].priority < mq[j].priority
+}
 
-// func (mq MergeQueue) Swap(i, j int) {
-// 	mq[i], mq[j] = mq[j], mq[i]
-// }
+func (mq MergeQueue) Swap(i, j int) {
+	mq[i], mq[j] = mq[j], mq[i]
+}
 
-// func (mq *MergeQueue) Push(x *Singal) {
-// 	*mq = append(*mq, x)
-// }
+func (mq *MergeQueue) Push(x *Queue) {
+	*mq = append(*mq, x)
+}
 
-// func (mq *MergeQueue) Pop() *Singal {
-// 	old := *mq
-// 	n := len(old)
-// 	item := old[n-1]
-// 	*mq = old[0 : n-1]
+func (mq *MergeQueue) Pop() *Queue {
+	old := *mq
+	n := len(old)
+	item := old[n-1]
+	*mq = old[0 : n-1]
 
-// 	return item
-// }
+	return item
+}

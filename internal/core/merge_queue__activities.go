@@ -28,10 +28,10 @@ type (
 )
 
 // Activity method to process a signal.
-func (w *MergeQueueActivities) ProcessSignalActivity(ctx context.Context, signal Signal) error {
+func (w *MergeQueueActivities) ProcessSignalActivity(ctx context.Context, q Queue) error {
 	logger := activity.GetLogger(ctx)
 
-	logger.Info("Processing signal", "Branch", signal.merge_queue_signal.Branch)
+	logger.Info("Processing signal", "Branch", q.merge_queue_signal.Branch)
 
 	// TODO - Call here the core repo or provider repo activities
 
