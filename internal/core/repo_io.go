@@ -35,7 +35,7 @@ type (
 const (
 	RepoIOSignalPush           shared.WorkflowSignal = "repo_io__push"
 	RepoIOSignalCreateOrDelete shared.WorkflowSignal = "repo_io__create_or_delete"
-	ReopIOSignalRebase         shared.WorkflowSignal = "repo_io__rebase"
+	RepoIOSignalRebase         shared.WorkflowSignal = "repo_io__rebase"
 	RepoIOSignalPullRequest    shared.WorkflowSignal = "repo_io__pull_request"
 )
 
@@ -52,14 +52,14 @@ const (
 type (
 	// RepoIO is the interface that defines the operations that can be performed on a repository.
 	RepoIO interface {
-		// GetRepoData gets the name & default branch for the provider repo.
-		GetRepoData(ctx context.Context, id string) (*RepoIORepoData, error)
+		// GetProviderInfo gets the name & default branch for the provider repo.
+		GetProviderInfo(ctx context.Context, id string) (*RepoIOProviderInfo, error)
 
 		// SetEarlyWarning sets the early warning flag for the provider repo.
 		SetEarlyWarning(ctx context.Context, id string, value bool) error
 
 		// GetAllBranches gets all the branches for the provider repo.
-		GetAllBranches(ctx context.Context, payload *RepoIOInfoPayload) ([]string, error)
+		GetAllBranches(ctx context.Context, payload *RepoIOProviderInfo) ([]string, error)
 
 		DetectChanges(ctx context.Context, payload *RepoIODetectChangesPayload) (*RepoIOChanges, error)
 
@@ -67,9 +67,12 @@ type (
 		//
 		// NOTE - Since the url contains oauth token, it is best not to call this as activity.
 		// LINK - https://github.com/orgs/community/discussions/24575#discussioncomment-3244524
-		TokenizedCloneURL(ctx context.Context, payload *RepoIOInfoPayload) (string, error)
+		TokenizedCloneURL(ctx context.Context, payload *RepoIOProviderInfo) (string, error)
 	}
+)
 
+// signal payloads.
+type (
 	RepoIOSignalPushPayload struct {
 		BranchRef      string         `json:"branch_ref"`
 		Before         string         `json:"before"`
@@ -113,18 +116,12 @@ type (
 
 // RepoIO types.
 type (
-	RepoIORepoData struct {
-		Name          string `json:"name"`
-		DefaultBranch string `json:"default_branch"`
-		ProviderID    string `json:"provider_id"`
-		Owner         string `json:"owner"`
-	}
-
-	RepoIOInfoPayload struct {
-		InstallationID shared.Int64 `json:"installation_id"`
+	RepoIOProviderInfo struct {
 		RepoName       string       `json:"repo_name"`
-		RepoOwner      string       `json:"repo_owner"`
-		DefaultBranch  string       `json:"defualt_branch"`
+		RepoOwner      string       `json:"owner"`
+		DefaultBranch  string       `json:"default_branch"`
+		ProviderID     string       `json:"provider_id"`
+		InstallationID shared.Int64 `json:"installation_id"`
 	}
 
 	RepoIOClonePayload struct {
@@ -132,6 +129,12 @@ type (
 		Push   *RepoIOSignalPushPayload `json:"push"`   // Push event payload
 		Branch string                   `json:"branch"` // Branch to clone
 		Path   string                   `json:"path"`   // Path to clone to
+	}
+
+	RepoIOPushBranchPayload struct {
+		Branch string `json:"branch"`
+		Path   string `json:"path"`
+		Force  bool   `json:"force"`
 	}
 
 	RepoIODetectChangesPayload struct {
@@ -175,6 +178,13 @@ type (
 
 	RepoIOGetRepoByProviderIDPayload struct {
 		ProviderID string `json:"provider_id"`
+	}
+
+	RepoIOSignalBranchCtrlPayload struct {
+		Repo    *Repo                 `json:"repo"`    // Repo is the db record of the repo
+		Branch  string                `json:"branch"`  // Branch to signal
+		Signal  shared.WorkflowSignal `json:"signal"`  // Signal to send
+		Payload any                   `json:"payload"` // Payload to send
 	}
 )
 

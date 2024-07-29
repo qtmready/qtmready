@@ -19,17 +19,18 @@ type (
 	RepoIO struct{}
 )
 
-func (r *RepoIO) GetRepoData(ctx context.Context, id string) (*core.RepoIORepoData, error) {
+func (r *RepoIO) GetProviderInfo(ctx context.Context, id string) (*core.RepoIOProviderInfo, error) {
 	repo := &Repo{}
 	if err := db.Get(repo, db.QueryParams{"id": id}); err != nil {
 		return nil, err
 	}
 
-	data := &core.RepoIORepoData{
-		Name:          repo.Name,
-		DefaultBranch: repo.DefaultBranch,
-		ProviderID:    repo.GithubID.String(),
-		Owner:         strings.Split(repo.FullName, "/")[0],
+	data := &core.RepoIOProviderInfo{
+		RepoName:       repo.Name,
+		DefaultBranch:  repo.DefaultBranch,
+		ProviderID:     repo.GithubID.String(),
+		RepoOwner:      strings.Split(repo.FullName, "/")[0],
+		InstallationID: repo.InstallationID,
 	}
 
 	return data, nil
@@ -50,7 +51,7 @@ func (r *RepoIO) SetEarlyWarning(ctx context.Context, id string, value bool) err
 	return nil
 }
 
-func (r *RepoIO) GetAllBranches(ctx context.Context, payload *core.RepoIOInfoPayload) ([]string, error) {
+func (r *RepoIO) GetAllBranches(ctx context.Context, payload *core.RepoIOProviderInfo) ([]string, error) {
 	branches := make([]string, 0)
 	page := 1
 
@@ -99,7 +100,8 @@ func (r *RepoIO) DetectChanges(ctx context.Context, payload *core.RepoIODetectCh
 		return nil, err
 	}
 
-	comparison, _, err := client.Repositories.
+	comparison, _, err := client.
+		Repositories.
 		CompareCommits(context.Background(), payload.RepoOwner, payload.RepoName, payload.DefaultBranch, payload.TargetBranch, nil)
 	if err != nil {
 		return nil, err
@@ -131,7 +133,7 @@ func (r *RepoIO) DetectChanges(ctx context.Context, payload *core.RepoIODetectCh
 
 // Clone shallow clones a repository at a sepcific commit.
 // see https://stackoverflow.com/a/76334845
-func (r *RepoIO) TokenizedCloneURL(ctx context.Context, payload *core.RepoIOInfoPayload) (string, error) {
+func (r *RepoIO) TokenizedCloneURL(ctx context.Context, payload *core.RepoIOProviderInfo) (string, error) {
 	installation, err := ghinstallation.New(
 		http.DefaultTransport, Instance().AppID, payload.InstallationID.Int64(), []byte(Instance().PrivateKey),
 	)

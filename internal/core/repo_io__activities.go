@@ -32,56 +32,39 @@ type (
 	RepoActivities struct{}
 )
 
-// SignalDefaultBranch signals the default branch of a repository with a given workflow signal and payload.
-// It uses Temporal to queue the workflow and passes the necessary options and parameters.
-// If the signal and workflow start are successful, it returns nil. Otherwise, it returns an error.
-func (a *RepoActivities) SignalDefaultBranch(ctx context.Context, repo *Repo, signal shared.WorkflowSignal, payload any) error {
+func (a *RepoActivities) SignalBranch(ctx context.Context, payload *RepoIOSignalBranchCtrlPayload) error {
+	args := make([]any, 0)
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
 		shared.WithWorkflowBlock("repo"),
-		shared.WithWorkflowBlockID(repo.ID.String()),
+		shared.WithWorkflowBlockID(payload.Repo.ID.String()),
 		shared.WithWorkflowElement("branch"),
-		shared.WithWorkflowElementID(repo.DefaultBranch),
+		shared.WithWorkflowElementID(payload.Branch),
 	)
 
-	w := &RepoWorkflows{}
+	args = append(args, payload.Repo)
+
+	var workflow any
+	if payload.Repo.DefaultBranch == payload.Branch {
+		workflow = TrunkCtrl
+	} else {
+		workflow = BranchCtrl
+
+		args = append(args, payload.Branch)
+	}
 
 	_, err := shared.Temporal().
 		Client().
-		SignalWithStartWorkflow(context.Background(), opts.ID, signal.String(), payload, opts, w.DefaultBranchCtrl, repo)
+		SignalWithStartWorkflow(
+			context.Background(),
+			opts.ID,
+			payload.Signal.String(),
+			payload.Payload,
+			opts,
+			workflow,
+			args...,
+		)
 
-	if err != nil {
-		return err
-	}
-
-	shared.Logger().Info("signaled default branch", "repo", repo.ID, "signal", signal, "payload", payload)
-
-	return nil
-}
-
-// SignalBranch signals a branch other than the default branch of a repository.
-// This is mostly responsible for handling the early warning system.
-//
-//   - on default branch push, rebase the commits from main branch onto the branch. if it fails, send a merge conflict warning.
-//   - on push, tries to check if the number of lines changed is greater than the threshold defined on repo.
-func (a *RepoActivities) SignalBranch(ctx context.Context, repo *Repo, signal shared.WorkflowSignal, payload any, branch string) error {
-	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
-		shared.WithWorkflowBlock("repo"),
-		shared.WithWorkflowBlockID(repo.ID.String()),
-		shared.WithWorkflowElement("branch"),
-		shared.WithWorkflowElementID(branch),
-	)
-
-	w := &RepoWorkflows{}
-
-	_, err := shared.Temporal().
-		Client().
-		SignalWithStartWorkflow(context.Background(), opts.ID, signal.String(), payload, opts, w.BranchCtrl, repo, branch)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
 // CloneBranch clones a repository branch at the temporary location, as specified by the payload.
@@ -92,7 +75,7 @@ func (a *RepoActivities) CloneBranch(ctx context.Context, payload *RepoIOClonePa
 		RepoIO(payload.Repo.Provider).
 		TokenizedCloneURL(
 			ctx,
-			&RepoIOInfoPayload{
+			&RepoIOProviderInfo{
 				InstallationID: payload.Push.InstallationID,
 				RepoName:       payload.Push.RepoName,
 				RepoOwner:      payload.Push.RepoOwner,
@@ -177,9 +160,9 @@ func (a *RepoActivities) RebaseAtCommit(ctx context.Context, payload RepoIOClone
 
 // Push pushes the contents of the repository at the given path to the remote.
 // If force is true, the push will be forced (--force).
-func (a *RepoActivities) Push(ctx context.Context, branch, path string, force bool) error {
-	args := []string{"-C", path, "push", "origin", branch}
-	if force {
+func (a *RepoActivities) Push(ctx context.Context, payload *RepoIOPushBranchPayload) error {
+	args := []string{"-C", payload.Path, "push", "origin", payload.Branch}
+	if payload.Force {
 		args = append(args, "--force")
 	}
 

@@ -156,6 +156,7 @@ type (
 		Organization Organization   `json:"organization"`
 		Sender       User           `json:"sender"`
 		Installation InstallationID `json:"installation"`
+		IsCreated    bool           `json:"is_created"`
 	}
 
 	GithubWorkflowRunEvent struct {

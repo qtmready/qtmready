@@ -290,13 +290,14 @@ func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, event *CreateOrD
 	}
 
 	payload := &core.RepoIOSignalCreateOrDeletePayload{
+		IsCreated:      event.IsCreated,
 		Ref:            event.Ref,
 		RefType:        event.RefType,
 		DefaultBranch:  event.Repository.DefaultBranch,
 		RepoName:       event.Repository.Name,
 		RepoOwner:      event.Repository.Owner.Login,
-		CtrlID:         state.Repo.ID.String(),
 		InstallationID: event.Installation.ID,
+		CtrlID:         state.Repo.ID.String(),
 		ProviderID:     state.Repo.GithubID.String(),
 		User:           state.User,
 	}
@@ -375,7 +376,7 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 
 	err := workflow.
 		ExecuteActivity(actx, activities.GetInstallation, payload.Installation.ID).
-		Get(ctx, installation)
+		Get(actx, installation)
 	if err != nil {
 		logger.Error("error getting installation", "error", err)
 		return err
