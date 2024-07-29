@@ -68,7 +68,7 @@ func (s *ServerHandler) CreateRepo(ctx echo.Context) error {
 
 	if err != nil && strings.Contains(err.Error(), "not found") {
 		repo = &Repo{
-			Name:                data.Name,
+			Name:                data.RepoName,
 			DefaultBranch:       data.DefaultBranch,
 			IsMonorepo:          request.IsMonorepo,
 			Provider:            request.Provider,

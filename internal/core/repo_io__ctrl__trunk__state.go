@@ -37,7 +37,7 @@ func (state *TrunkState) on_create_delete(ctx workflow.Context) shared.ChannelHa
 		create_delete := &RepoIOSignalCreateOrDeletePayload{}
 		rx.Receive(ctx, create_delete)
 
-		if create_delete.RefType == "branch" {
+		if create_delete.ForBranch(ctx) {
 			if create_delete.IsCreated {
 				state.add_branch(ctx, create_delete.Ref)
 			} else {
@@ -64,6 +64,8 @@ func (state *TrunkState) is_active() bool {
 }
 
 func (state *TrunkState) refresh_info(ctx workflow.Context) {
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	ctx = workflow.WithActivityOptions(ctx, opts)
 	io := Instance().RepoIO(state.repo.Provider)
 	info := &RepoIOProviderInfo{}
 
@@ -76,14 +78,16 @@ func (state *TrunkState) refresh_info(ctx workflow.Context) {
 }
 
 func (state *TrunkState) refresh_branches(ctx workflow.Context) {
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	ctx = workflow.WithActivityOptions(ctx, opts)
+	branches := make([]string, 0)
+	io := Instance().RepoIO(state.repo.Provider)
+
 	if state.info == nil {
 		state.refresh_info(ctx)
 	}
 
-	branches := make([]string, 0)
-	io := Instance().RepoIO(state.repo.Provider)
-
-	_ = state.do(ctx, "refresh_branches", io.GetAllBranches, state.repo, &branches)
+	_ = state.do(ctx, "refresh_branches", io.GetAllBranches, state.info, &branches)
 
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
@@ -114,7 +118,7 @@ func (state *TrunkState) remove_branch(ctx workflow.Context, branch string) {
 
 // signal_branch sends a signal to the branch control state for the specified branch.
 func (state *TrunkState) signal_branch(ctx workflow.Context, branch string, signal shared.WorkflowSignal, payload any) {
-	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	next := &RepoIOSignalBranchCtrlPayload{state.repo, branch, signal, payload}

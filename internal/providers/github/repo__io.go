@@ -26,10 +26,11 @@ func (r *RepoIO) GetProviderInfo(ctx context.Context, id string) (*core.RepoIOPr
 	}
 
 	data := &core.RepoIOProviderInfo{
-		Name:          repo.Name,
-		DefaultBranch: repo.DefaultBranch,
-		ProviderID:    repo.GithubID.String(),
-		RepoOwner:     strings.Split(repo.FullName, "/")[0],
+		RepoName:       repo.Name,
+		DefaultBranch:  repo.DefaultBranch,
+		ProviderID:     repo.GithubID.String(),
+		RepoOwner:      strings.Split(repo.FullName, "/")[0],
+		InstallationID: repo.InstallationID,
 	}
 
 	return data, nil

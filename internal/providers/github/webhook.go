@@ -112,7 +112,12 @@ func handleCreateOrDeleteEvent(ctx echo.Context) error {
 	shared.Logger().Info("repo event received ...", "installation", payload.Installation.ID)
 
 	w := &Workflows{}
+
 	event := WebhookEvent(ctx.Request().Header.Get("X-GitHub-Event"))
+	if event == WebhookEventCreate {
+		payload.IsCreated = true
+	}
+
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
 	opts := shared.Temporal().
 		Queue(shared.ProvidersQueue).

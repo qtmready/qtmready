@@ -117,7 +117,6 @@ type (
 // RepoIO types.
 type (
 	RepoIOProviderInfo struct {
-		Name           string       `json:"name"`
 		RepoName       string       `json:"repo_name"`
 		RepoOwner      string       `json:"owner"`
 		DefaultBranch  string       `json:"default_branch"`

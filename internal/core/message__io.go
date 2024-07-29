@@ -140,8 +140,8 @@ func NewNumberOfLinesExceedMessage(
 func NewStaleBranchMessage(data *RepoIOProviderInfo, repo *Repo, branch string) *MessageIOStaleBranchPayload {
 	return &MessageIOStaleBranchPayload{
 		CommitUrl: fmt.Sprintf("https://github.com/%s/%s/tree/%s",
-			data.RepoOwner, data.Name, branch),
-		RepoUrl: fmt.Sprintf("https://github.com/%s/%s", data.RepoOwner, data.Name),
+			data.RepoOwner, data.RepoName, branch),
+		RepoUrl: fmt.Sprintf("https://github.com/%s/%s", data.RepoOwner, data.RepoName),
 		MessageIOPayload: &MessageIOPayload{
 			WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
 			ChannelID:   repo.MessageProviderData.Slack.ChannelID,

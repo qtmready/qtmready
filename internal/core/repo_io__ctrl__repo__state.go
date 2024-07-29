@@ -39,7 +39,7 @@ func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.Channe
 		create_delete := &RepoIOSignalCreateOrDeletePayload{}
 		rx.Receive(ctx, create_delete)
 
-		if create_delete.RefType == "branch" {
+		if create_delete.ForBranch(ctx) {
 			state.signal_branch(ctx, create_delete.Ref, RepoIOSignalCreateOrDelete, create_delete)
 
 			if create_delete.IsCreated {
@@ -81,6 +81,9 @@ func (state *RepoCtrlState) refresh_info(ctx workflow.Context) {
 	io := Instance().RepoIO(state.repo.Provider)
 	info := &RepoIOProviderInfo{}
 
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
 	_ = state.do(ctx, "refresh_provider_info", io.GetProviderInfo, state.repo.CtrlID.String(), info, nil)
 
 	_ = state.mutex.Lock(ctx)
@@ -94,10 +97,12 @@ func (state *RepoCtrlState) refresh_branches(ctx workflow.Context) {
 		state.refresh_info(ctx)
 	}
 
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	ctx = workflow.WithActivityOptions(ctx, opts)
 	branches := make([]string, 0)
 	io := Instance().RepoIO(state.repo.Provider)
 
-	_ = state.do(ctx, "refresh_branches", io.GetAllBranches, state.repo, &branches)
+	_ = state.do(ctx, "refresh_branches", io.GetAllBranches, state.info, &branches)
 
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
@@ -128,7 +133,7 @@ func (state *RepoCtrlState) remove_branch(ctx workflow.Context, branch string) {
 
 // signal_branch sends a signal to the branch control state for the specified branch.
 func (state *RepoCtrlState) signal_branch(ctx workflow.Context, branch string, signal shared.WorkflowSignal, payload any) {
-	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	next := &RepoIOSignalBranchCtrlPayload{state.repo, branch, signal, payload}
@@ -168,5 +173,6 @@ func NewRepoCtrlState(ctx workflow.Context, repo *Repo) *RepoCtrlState {
 		repo:      repo,
 		mutex:     workflow.NewMutex(ctx),
 		counter:   0,
+		active:    true,
 	}
 }
