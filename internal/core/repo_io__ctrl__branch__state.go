@@ -30,6 +30,9 @@ type (
 	}
 )
 
+// on_push is a shared.ChannelHandler that is called when a push event is received for the branch. It handles the logic for
+// updating the last commit on the branch, calculating the complexity of the changes, and sending a warning message if the
+// complexity exceeds the threshold.
 func (state *BranchCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		push := &RepoIOSignalPushPayload{}
@@ -77,6 +80,8 @@ func (state *BranchCtrlState) on_rebase(ctx workflow.Context) shared.ChannelHand
 	}
 }
 
+// on_pr is a shared.ChannelHandler that is called when a pull request event is received for the branch. It handles the logic for
+// updating the pull request information in the state.
 func (state *BranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		pr := &RepoIOSignalPullRequestPayload{}
@@ -136,6 +141,9 @@ func (state *BranchCtrlState) set_pr(ctx workflow.Context, pr *RepoIOPullRequest
 	state.pr = pr
 }
 
+// set_done marks the RepoCtrlState as inactive, releasing the mutex lock.
+// This function should be called when the branch control state is no longer needed,
+// such as when the branch is being deleted or merged.
 func (state *BranchCtrlState) set_done(ctx workflow.Context) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
@@ -143,14 +151,19 @@ func (state *BranchCtrlState) set_done(ctx workflow.Context) {
 	state.active = false
 }
 
+// is_active returns whether the RepoCtrlState is currently active.
+// When the state is active, it means the branch control state is in use and the mutex is locked.
 func (state *BranchCtrlState) is_active() bool {
 	return state.active
 }
 
+// has_pr returns whether the RepoIOBranchCtrlState has a pull request associated with it.
 func (state *BranchCtrlState) has_pr() bool {
 	return state.pr != nil
 }
 
+// last_active returns the timestamp of the last activity on the branch.
+// If there is no last commit, it returns the created_at timestamp.
 func (state *BranchCtrlState) last_active() time.Time {
 	if state.last_commit == nil {
 		return state.created_at
@@ -204,6 +217,7 @@ func (state *BranchCtrlState) calculate_complexity(ctx workflow.Context, push *R
 	return changes
 }
 
+// create_session creates a new workflow session with the specified options.
 func (state *BranchCtrlState) create_session(ctx workflow.Context) workflow.Context {
 	opts := &workflow.SessionOptions{ExecutionTimeout: 60 * time.Minute, CreationTimeout: 60 * time.Minute}
 	ctx, _ = workflow.CreateSession(ctx, opts)
@@ -333,6 +347,7 @@ func (state *BranchCtrlState) do(ctx workflow.Context, action string, activity, 
 	return _do(ctx, state.repo, state.branch, "branch_ctrl", action, activity, payload, result, keyvals...)
 }
 
+// NewBranchCtrlState creates a new BranchCtrlState with the specified repo and branch.
 func NewBranchCtrlState(ctx workflow.Context, repo *Repo, branch string) *BranchCtrlState {
 	return &BranchCtrlState{
 		activties:  &RepoActivities{},
