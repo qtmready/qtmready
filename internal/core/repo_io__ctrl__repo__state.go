@@ -10,6 +10,9 @@ import (
 )
 
 type (
+	// RepoCtrlState defines the state for RepoWorkflows.RepoCtrl.
+	//
+	// NOTE: This state is local to the workflow and all the members are private. It cannot be passed to child workflows.
 	RepoCtrlState struct {
 		activties *RepoActivities // activities is the activities for the branch control state
 		repo      *Repo           // repo is the db record of the repo
@@ -22,6 +25,9 @@ type (
 )
 
 // on_push is a channel handler that processes push events for the repository.
+//
+// It receives a RepoIOSignalPushPayload from the push signal channel and signals the branch control state
+// for the corresponding branch with the RepoIOSignalPush signal and the received payload.
 func (state *RepoCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		push := &RepoIOSignalPushPayload{}
@@ -32,6 +38,12 @@ func (state *RepoCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler 
 }
 
 // on_create_delete is a channel handler that processes create or delete events for the repository.
+//
+// It receives a RepoIOSignalCreateOrDeletePayload from the create/delete signal channel and signals the branch control state
+// for the corresponding branch with the RepoIOSignalCreateOrDelete signal and the received payload.
+//
+// If the payload indicates a branch was created, the function adds the branch to the list of branches in the state.
+// If the payload indicates a branch was deleted, the function removes the branch from the list of branches in the state.
 //
 // TODO: handle create and delete events for tags.
 func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
@@ -52,6 +64,9 @@ func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.Channe
 }
 
 // on_pr is a channel handler that processes pull request events for the repository.
+//
+// It receives a RepoIOSignalPullRequestPayload from the pull request signal channel and signals the branch control state
+// for the corresponding branch with the RepoIOSignalPullRequest signal and the received payload.
 func (state *RepoCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		pr := &RepoIOSignalPullRequestPayload{}
@@ -77,6 +92,9 @@ func (state *RepoCtrlState) is_active() bool {
 	return state.active
 }
 
+// refresh_info refreshes the provider information for the repository.
+//
+// It executes an activity to fetch the provider information and updates the state with the retrieved data.
 func (state *RepoCtrlState) refresh_info(ctx workflow.Context) {
 	io := Instance().RepoIO(state.repo.Provider)
 	info := &RepoIOProviderInfo{}
@@ -92,6 +110,9 @@ func (state *RepoCtrlState) refresh_info(ctx workflow.Context) {
 	state.info = info
 }
 
+// refresh_branches refreshes the list of branches for the repository.
+//
+// It executes an activity to fetch all branches from the provider and updates the state with the retrieved data.
 func (state *RepoCtrlState) refresh_branches(ctx workflow.Context) {
 	if state.info == nil {
 		state.refresh_info(ctx)
@@ -110,6 +131,9 @@ func (state *RepoCtrlState) refresh_branches(ctx workflow.Context) {
 	state.branches = branches
 }
 
+// add_branch adds a branch to the list of branches in the state.
+//
+// It acquires the mutex lock, appends the branch to the list of branches, and releases the lock.
 func (state *RepoCtrlState) add_branch(ctx workflow.Context, branch string) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
@@ -119,6 +143,9 @@ func (state *RepoCtrlState) add_branch(ctx workflow.Context, branch string) {
 	}
 }
 
+// remove_branch removes a branch from the list of branches in the state.
+//
+// It acquires the mutex lock, iterates through the list of branches, removes the specified branch, and releases the lock.
 func (state *RepoCtrlState) remove_branch(ctx workflow.Context, branch string) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
@@ -132,6 +159,8 @@ func (state *RepoCtrlState) remove_branch(ctx workflow.Context, branch string) {
 }
 
 // signal_branch sends a signal to the branch control state for the specified branch.
+//
+// It executes an activity to signal the branch control state with the specified signal and payload.
 func (state *RepoCtrlState) signal_branch(ctx workflow.Context, branch string, signal shared.WorkflowSignal, payload any) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
@@ -145,6 +174,8 @@ func (state *RepoCtrlState) signal_branch(ctx workflow.Context, branch string, s
 }
 
 // increment is a helper function that increments the steps counter in the RepoIOBranchCtrlState.
+//
+// It acquires the mutex lock, increments the counter, and releases the lock.
 func (state *RepoCtrlState) increment(ctx workflow.Context) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
@@ -167,6 +198,7 @@ func (state *RepoCtrlState) do(ctx workflow.Context, action string, activity, pa
 	return _do(ctx, state.repo, "", "repo_ctrl", action, activity, payload, result, keyvals...)
 }
 
+// NewRepoCtrlState creates a new RepoCtrlState with the specified repo and activities.
 func NewRepoCtrlState(ctx workflow.Context, repo *Repo) *RepoCtrlState {
 	return &RepoCtrlState{
 		activties: &RepoActivities{},
