@@ -19,20 +19,20 @@ func (w *MergeQueueWorkflows) MergeQueueWorkflow(ctx workflow.Context) error {
 		workflow.GetSignalChannel(ctx, "mergeQueueSignal").Receive(ctx, &signal)
 
 		// Add the signal to the queue
-		signal.priority = w.calculatePriority(signal)
+		signal.priority = w.calculate_priority(signal)
 		w.MergeQueue = append(w.MergeQueue, &signal)
 
 		// Process the queue
-		w.processQueue(ctx)
+		w.process(ctx)
 	}
 }
 
-func (w *MergeQueueWorkflows) calculatePriority(signal Signal) float64 {
+func (w *MergeQueueWorkflows) calculate_priority(signal Signal) float64 {
 	age := time.Since(signal.created_at).Seconds()
 	return 1.0 / (1.0 + age) // Example: simple inverse age
 }
 
-func (w *MergeQueueWorkflows) processQueue(ctx workflow.Context) {
+func (w *MergeQueueWorkflows) process(ctx workflow.Context) {
 	// Sort the queue by priority (higher priority first)
 	sort.SliceStable(w.MergeQueue, func(i, j int) bool {
 		return w.MergeQueue[i].priority < w.MergeQueue[j].priority
