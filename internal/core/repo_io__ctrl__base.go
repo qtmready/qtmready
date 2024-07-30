@@ -12,7 +12,7 @@ import (
 
 // DoFn represents the signature of the do function.
 type (
-	DoFn func(ctx workflow.Context, action string, activity, payload, result any, keyvals ...any) error
+	CallAsync func(workflow.Context)
 
 	// base_ctrl represents the base control structure for repository operations.
 	// It provides common functionality for various repository control types.
@@ -97,7 +97,9 @@ func (base *base_ctrl) remove_branch(ctx workflow.Context, branch string) {
 func (base *base_ctrl) signal_branch(ctx workflow.Context, branch string, signal shared.WorkflowSignal, payload any) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
+
 	next := &RepoIOSignalBranchCtrlPayload{base.repo, branch, signal, payload}
+
 	_ = base.do(
 		ctx, "signal_branch_ctrl", base.activities.SignalBranch, next, nil,
 		slog.String("signal", signal.String()),
@@ -114,11 +116,12 @@ func (base *base_ctrl) rx(ctx workflow.Context, channel workflow.ReceiveChannel,
 
 // refresh_info updates the provider information for the repository.
 func (base *base_ctrl) refresh_info(ctx workflow.Context) {
-	io := Instance().RepoIO(base.repo.Provider)
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
-	_ = base.do(ctx, "get_repo_data", io.GetProviderInfo, base.repo.CtrlID, base.info)
+	io := Instance().RepoIO(base.repo.Provider)
+
+	_ = base.do(ctx, "get_repo_info", io.GetProviderInfo, base.repo.CtrlID, base.info)
 }
 
 // refresh_branches updates the list of branches for the repository.
@@ -130,9 +133,10 @@ func (base *base_ctrl) refresh_branches(ctx workflow.Context) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
 
+	io := Instance().RepoIO(base.repo.Provider)
+
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
-	io := Instance().RepoIO(base.repo.Provider)
 
 	_ = base.do(ctx, "refresh_branches", io.GetAllBranches, base.info, &base.branches)
 
@@ -162,30 +166,21 @@ func (base *base_ctrl) do(ctx workflow.Context, action string, activity, payload
 	return nil
 }
 
-// do_async executes an activity asynchronously and returns a Future.
-// It logs the initiation, execution, and result of the activity.
-// The result parameter should be a pointer to the variable where the result will be stored.
+// call_async executes an activity asynchronously and returns a Future.
 // If a WaitGroup is provided, it will be decremented when the operation completes.
-func (base *base_ctrl) do_async(
-	ctx workflow.Context, action string, fn DoFn, activity, payload, result any, wg workflow.WaitGroup, keyvals ...any,
-) workflow.Future {
+func (base *base_ctrl) call_async(ctx workflow.Context, action string, fn CallAsync, wg workflow.WaitGroup) workflow.Future {
 	logger := base.log(ctx, action)
-	logger.Info("init async", keyvals...)
 
-	future, settable := workflow.NewFuture(ctx)
+	future, setable := workflow.NewFuture(ctx)
 	workflow.Go(ctx, func(ctx workflow.Context) {
+		logger.Info("calling async ...")
+
 		if wg != nil {
 			defer wg.Done()
 		}
 
-		err := fn(ctx, action, activity, payload, result, keyvals...)
-		if err != nil {
-			logger.Warn("async error", append(keyvals, "error", err)...)
-			settable.SetError(err)
-		} else {
-			logger.Info("async success", append(keyvals, "result", result)...)
-			settable.Set(result, nil)
-		}
+		fn(ctx)
+		setable.Set(nil, nil)
 	})
 
 	return future
@@ -197,6 +192,7 @@ func NewBaseCtrl(ctx workflow.Context, kind string, repo *Repo) *base_ctrl {
 	base := &base_ctrl{
 		kind:       kind,
 		activities: &RepoActivities{},
+		info:       &RepoIOProviderInfo{},
 		repo:       repo,
 		mutex:      workflow.NewMutex(ctx),
 		active:     true,
@@ -205,9 +201,11 @@ func NewBaseCtrl(ctx workflow.Context, kind string, repo *Repo) *base_ctrl {
 
 	wg.Add(2)
 
-	base.info = &RepoIOProviderInfo{}
-	base.do_async(ctx, "refresh_info", base.do, base.refresh_info, nil, base.info, wg)
-	base.do_async(ctx, "refresh_branches", base.do, base.refresh_branches, nil, &base.branches, wg)
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	base.call_async(ctx, "refresh_info", base.refresh_info, wg)
+	base.call_async(ctx, "refresh_branches", base.refresh_branches, wg)
 
 	wg.Wait(ctx)
 
