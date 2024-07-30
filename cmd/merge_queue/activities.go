@@ -15,6 +15,7 @@ func BranchPop(ctx context.Context, q *Queue) error {
 		branch := q.pop()
 		if branch != nil {
 			activity.GetLogger(ctx).Info("Processing branch", "branch", *branch)
+
 			// Simulate processing the branch
 			time.Sleep(time.Second)
 		}
