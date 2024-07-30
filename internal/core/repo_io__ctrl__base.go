@@ -49,23 +49,23 @@ func (base *base_ctrl) branch() string {
 func (base *base_ctrl) set_info(ctx workflow.Context, info *RepoIOProviderInfo) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
+
 	base.info = info
-	base.increment(ctx, 1)
 }
 
 // set_branches sets the list of branches associated with the control.
 func (base *base_ctrl) set_branches(ctx workflow.Context, branches []string) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
+
 	base.branches = branches
-	base.increment(ctx, 1)
 }
 
 // set_done marks the control as inactive.
 func (base *base_ctrl) set_done(ctx workflow.Context) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
-	base.increment(ctx, 1)
+
 	base.active = false
 }
 
@@ -79,6 +79,7 @@ func (base *base_ctrl) terminate(ctx workflow.Context) {
 func (base *base_ctrl) increment(ctx workflow.Context, steps int) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
+
 	base.counter += steps
 }
 
@@ -90,8 +91,6 @@ func (base *base_ctrl) add_branch(ctx workflow.Context, branch string) {
 	if branch != "" || branch != base.repo.DefaultBranch {
 		base.branches = append(base.branches, branch)
 	}
-
-	base.increment(ctx, 1)
 }
 
 // remove_branch removes a branch from the list of branches.
@@ -105,8 +104,6 @@ func (base *base_ctrl) remove_branch(ctx workflow.Context, branch string) {
 			break
 		}
 	}
-
-	base.increment(ctx, 1)
 }
 
 // signal_branch sends a signal to a specific branch.
@@ -147,9 +144,6 @@ func (base *base_ctrl) refresh_branches(ctx workflow.Context) {
 	if base.info == nil {
 		base.refresh_info(ctx)
 	}
-
-	_ = base.mutex.Lock(ctx)
-	defer base.mutex.Unlock()
 
 	io := Instance().RepoIO(base.repo.Provider)
 	branches := []string{}
