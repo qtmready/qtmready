@@ -9,10 +9,6 @@ func TrunkCtrl(ctx workflow.Context, repo *Repo) error {
 	state := NewTrunkState(ctx, repo)
 	selector := workflow.NewSelector(ctx)
 
-	// setup
-	state.refresh_info(ctx)
-	state.refresh_branches(ctx)
-
 	// channels
 	// push event
 	push := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
