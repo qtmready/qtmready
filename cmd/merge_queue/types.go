@@ -1,22 +1,8 @@
 package main
 
-import (
-	"time"
-
-	"go.temporal.io/sdk/workflow"
-
-	"go.breu.io/quantm/internal/core"
-)
-
 type (
 	Queue struct {
-		pull_request_id string
-		repo            *core.Repo
-		branches        []*string
-		activties       *core.RepoActivities
-		created_at      time.Time      // created_at is the time when the branch was created
-		mutex           workflow.Mutex // mutex is the mutex for the state
-		priority        float64
+		Branches []*string `json:"branches"`
 	}
 
 	MergeQueue []*Queue
@@ -26,21 +12,20 @@ type (
 	}
 )
 
+// return true if the branch exit.
 func (q *Queue) next() bool {
-	if len(q.branches) == 0 {
+	if len(q.Branches) == 0 {
 		return false
 	}
 
 	return true
 }
 
-func (q *Queue) pop(ctx workflow.Context) *string {
-	_ = q.mutex.Lock(ctx)
-	defer q.mutex.Unlock()
-
+// pop the branch to queue.
+func (q *Queue) pop() *string {
 	if q.next() {
-		branch := q.branches[0]
-		q.branches = q.branches[1:]
+		branch := q.Branches[0]
+		q.Branches = q.Branches[1:]
 
 		return branch
 	}
@@ -48,9 +33,31 @@ func (q *Queue) pop(ctx workflow.Context) *string {
 	return nil
 }
 
-func (q *Queue) push(ctx workflow.Context, branch string) {
-	_ = q.mutex.Lock(ctx)
-	defer q.mutex.Unlock()
+// push the branch to queue.
+func (q *Queue) push(branch string) {
+	q.Branches = append(q.Branches, &branch)
+}
 
-	q.branches = append(q.branches, &branch)
+// front returns the branch at the front of the queue.
+func (q *Queue) front() *string {
+	if q.is_empty() {
+		return nil
+	}
+
+	return q.Branches[0]
+}
+
+// is_empty returns true if the queue is empty.
+func (q *Queue) is_empty() bool {
+	return len(q.Branches) == 0
+}
+
+// size returns the number of branches in the queue.
+func (q *Queue) size() int {
+	return len(q.Branches)
+}
+
+// New creates a new Queue.
+func NewQueue() *Queue {
+	return &Queue{Branches: []*string{}}
 }
