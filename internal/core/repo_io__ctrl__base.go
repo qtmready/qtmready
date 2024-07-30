@@ -45,6 +45,22 @@ func (base *base_ctrl) branch() string {
 	return ""
 }
 
+// set_info sets the provider-specific information for the control.
+func (base *base_ctrl) set_info(ctx workflow.Context, info *RepoIOProviderInfo) {
+	_ = base.mutex.Lock(ctx)
+	defer base.mutex.Unlock()
+	base.info = info
+	base.increment(ctx, 1)
+}
+
+// set_branches sets the list of branches associated with the control.
+func (base *base_ctrl) set_branches(ctx workflow.Context, branches []string) {
+	_ = base.mutex.Lock(ctx)
+	defer base.mutex.Unlock()
+	base.branches = branches
+	base.increment(ctx, 1)
+}
+
 // set_done marks the control as inactive.
 func (base *base_ctrl) set_done(ctx workflow.Context) {
 	_ = base.mutex.Lock(ctx)
@@ -119,9 +135,11 @@ func (base *base_ctrl) refresh_info(ctx workflow.Context) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
+	info := &RepoIOProviderInfo{}
 	io := Instance().RepoIO(base.repo.Provider)
 
-	_ = base.do(ctx, "get_repo_info", io.GetProviderInfo, base.repo.CtrlID, base.info)
+	_ = base.do(ctx, "get_repo_info", io.GetProviderInfo, base.repo.CtrlID, info)
+	base.set_info(ctx, info)
 }
 
 // refresh_branches updates the list of branches for the repository.
@@ -134,13 +152,13 @@ func (base *base_ctrl) refresh_branches(ctx workflow.Context) {
 	defer base.mutex.Unlock()
 
 	io := Instance().RepoIO(base.repo.Provider)
+	branches := []string{}
 
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
-	_ = base.do(ctx, "refresh_branches", io.GetAllBranches, base.info, &base.branches)
-
-	base.increment(ctx, 1)
+	_ = base.do(ctx, "refresh_branches", io.GetAllBranches, base.info, &branches)
+	base.set_branches(ctx, branches)
 }
 
 // log creates a new logger for the current action.
@@ -158,9 +176,9 @@ func (base *base_ctrl) do(ctx workflow.Context, action string, activity, payload
 		return err
 	}
 
-	base.increment(ctx, 3)
-
 	logger.Info("success", keyvals...)
+
+	base.increment(ctx, 3)
 
 	return nil
 }
