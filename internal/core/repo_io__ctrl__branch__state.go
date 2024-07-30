@@ -16,11 +16,12 @@ import (
 type (
 	// RepoIOBranchCtrlState represents the state of a branch control workflow.
 	RepoIOBranchCtrlState struct {
-		*base_ctrl                     // base_ctrl is the embedded struct with common functionality for repo controls.
-		created_at  time.Time          // created_at is the time when the branch was created.
-		last_commit *RepoIOCommit      // last_commit is the most recent commit on the branch.
-		pr          *RepoIOPullRequest // pr is the pull request associated with the branch, if any.
-		interval    timers.Interval    // interval is the stale check duration.
+		*base_ctrl                       // base_ctrl is the embedded struct with common functionality for repo controls.
+		active_branch string             // active_branch is the name of the branch associated with this control.
+		created_at    time.Time          // created_at is the time when the branch was created.
+		last_commit   *RepoIOCommit      // last_commit is the most recent commit on the branch.
+		pr            *RepoIOPullRequest // pr is the pull request associated with the branch, if any.
+		interval      timers.Interval    // interval is the stale check duration.
 	}
 )
 
@@ -279,8 +280,9 @@ func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, push *Re
 // NewBranchCtrlState creates a new RepoIOBranchCtrlState instance.
 func NewBranchCtrlState(ctx workflow.Context, repo *Repo, branch string) *RepoIOBranchCtrlState {
 	return &RepoIOBranchCtrlState{
-		base_ctrl:  NewBaseCtrl(ctx, "branch_ctrl", repo),
-		created_at: timers.Now(ctx),
-		interval:   timers.NewInterval(ctx, repo.StaleDuration.Duration),
+		base_ctrl:     NewBaseCtrl(ctx, "branch_ctrl", repo),
+		active_branch: branch,
+		created_at:    timers.Now(ctx),
+		interval:      timers.NewInterval(ctx, repo.StaleDuration.Duration),
 	}
 }
