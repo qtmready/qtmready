@@ -4,9 +4,14 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-// BranchCtrl is a workflow function that manages the lifecycle branch other than the default branch.
-// It sets up signal channels to handle various branch-related events, such as pushes, rebases, creation/deletion, and pull requests.
-// The function runs in a loop, listening for and responding to these signals until the branch control state is no longer active.
+// BranchCtrl is the event loop to process events during the lifecycle of a branch.
+//
+// It processes the following events:
+//
+//   - push
+//   - rebase
+//   - create_delete
+//   - pr
 func BranchCtrl(ctx workflow.Context, repo *Repo, branch string) error {
 	selector := workflow.NewSelector(ctx)
 	ctx, state := NewBranchCtrlState(ctx, repo, branch)
@@ -35,11 +40,17 @@ func BranchCtrl(ctx workflow.Context, repo *Repo, branch string) error {
 	pr := workflow.GetSignalChannel(ctx, RepoIOSignalPullRequest.String())
 	selector.AddReceive(pr, state.on_pr(ctx))
 
-	// listen to all signals
-
+	// main event loop
 	for state.is_active() {
 		selector.Select(ctx)
+
+		if state.needs_reset() {
+			return state.as_new(ctx, "event history exceeded threshold", BranchCtrl, repo, branch)
+		}
 	}
+
+	// graceful shutdown
+	state.terminate(ctx)
 
 	return nil
 }
