@@ -160,7 +160,6 @@ func (base *base_ctrl) do(ctx workflow.Context, action string, activity, payload
 
 	base.increment(ctx, 3)
 
-	logger.Info("result", append(keyvals, "result", result)...)
 	logger.Info("success", keyvals...)
 
 	return nil
@@ -188,7 +187,6 @@ func (base *base_ctrl) call_async(ctx workflow.Context, action string, fn CallAs
 
 // NewBaseCtrl creates a new base control instance and refreshes repository information and branches.
 func NewBaseCtrl(ctx workflow.Context, kind string, repo *Repo) *base_ctrl {
-	wg := workflow.NewWaitGroup(ctx)
 	base := &base_ctrl{
 		kind:       kind,
 		activities: &RepoActivities{},
@@ -199,15 +197,8 @@ func NewBaseCtrl(ctx workflow.Context, kind string, repo *Repo) *base_ctrl {
 		counter:    0,
 	}
 
-	wg.Add(2)
-
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
-
-	base.call_async(ctx, "refresh_info", base.refresh_info, wg)
-	base.call_async(ctx, "refresh_branches", base.refresh_branches, wg)
-
-	wg.Wait(ctx)
+	base.refresh_info(ctx)
+	base.refresh_branches(ctx)
 
 	return base
 }
