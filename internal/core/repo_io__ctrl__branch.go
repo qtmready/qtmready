@@ -9,7 +9,7 @@ import (
 // The function runs in a loop, listening for and responding to these signals until the branch control state is no longer active.
 func BranchCtrl(ctx workflow.Context, repo *Repo, branch string) error {
 	selector := workflow.NewSelector(ctx)
-	state := NewBranchCtrlState(ctx, repo, branch)
+	ctx, state := NewBranchCtrlState(ctx, repo, branch)
 
 	// start the stale check coroutine.
 	state.check_stale(ctx)

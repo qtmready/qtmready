@@ -277,14 +277,12 @@ func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, push *Re
 }
 
 // NewBranchCtrlState creates a new RepoIOBranchCtrlState instance.
-func NewBranchCtrlState(ctx workflow.Context, repo *Repo, branch string) *RepoIOBranchCtrlState {
+func NewBranchCtrlState(ctx workflow.Context, repo *Repo, branch string) (workflow.Context, *RepoIOBranchCtrlState) {
 	base := &RepoIOBranchCtrlState{
 		base_ctrl:  NewBaseCtrl(ctx, "branch_ctrl", repo),
 		created_at: timers.Now(ctx),
 		interval:   timers.NewInterval(ctx, repo.StaleDuration.Duration),
 	}
 
-	base.set_branch(ctx, branch)
-
-	return base
+	return base.set_branch(ctx, branch), base
 }
