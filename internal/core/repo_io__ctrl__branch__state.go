@@ -16,12 +16,11 @@ import (
 type (
 	// RepoIOBranchCtrlState represents the state of a branch control workflow.
 	RepoIOBranchCtrlState struct {
-		*base_ctrl                       // base_ctrl is the embedded struct with common functionality for repo controls.
-		active_branch string             // active_branch is the name of the branch associated with this control.
-		created_at    time.Time          // created_at is the time when the branch was created.
-		last_commit   *RepoIOCommit      // last_commit is the most recent commit on the branch.
-		pr            *RepoIOPullRequest // pr is the pull request associated with the branch, if any.
-		interval      timers.Interval    // interval is the stale check duration.
+		*base_ctrl                     // base_ctrl is the embedded struct with common functionality for repo controls.
+		created_at  time.Time          // created_at is the time when the branch was created.
+		last_commit *RepoIOCommit      // last_commit is the most recent commit on the branch.
+		pr          *RepoIOPullRequest // pr is the pull request associated with the branch, if any.
+		interval    timers.Interval    // interval is the stale check duration.
 	}
 )
 
@@ -103,10 +102,6 @@ func (state *RepoIOBranchCtrlState) on_create_delete(ctx workflow.Context) share
 
 // Core methods
 
-func (state *RepoIOBranchCtrlState) branch() string {
-	return state.active_branch
-}
-
 // set_created_at sets the creation time of the branch.
 func (state *RepoIOBranchCtrlState) set_created_at(ctx workflow.Context, t time.Time) {
 	_ = state.mutex.Lock(ctx)
@@ -173,7 +168,7 @@ func (state *RepoIOBranchCtrlState) clone_at_commit(ctx workflow.Context, push *
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
-	cloned := &RepoIOClonePayload{Repo: state.repo, Push: push, Branch: state.branch()}
+	cloned := &RepoIOClonePayload{Repo: state.repo, Push: push, Branch: state.branch(ctx)}
 	_ = workflow.SideEffect(ctx, func(ctx workflow.Context) any { return "/tmp/" + uuid.New().String() }).Get(&cloned.Path)
 
 	_ = state.do(ctx, "clone_at_commit", state.activities.CloneBranch, cloned, nil)
@@ -236,7 +231,7 @@ func (state *RepoIOBranchCtrlState) calculate_complexity(ctx workflow.Context, p
 		RepoName:       push.RepoName,
 		RepoOwner:      push.RepoOwner,
 		DefaultBranch:  state.repo.DefaultBranch,
-		TargetBranch:   state.branch(),
+		TargetBranch:   state.branch(ctx),
 	}
 
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
@@ -250,7 +245,7 @@ func (state *RepoIOBranchCtrlState) calculate_complexity(ctx workflow.Context, p
 // warn_complexity sends a warning message if the complexity of changes exceeds the threshold.
 func (state *RepoIOBranchCtrlState) warn_complexity(ctx workflow.Context, push *RepoIOSignalPushPayload, complexity *RepoIOChanges) {
 	for_user := push.User != nil && push.User.IsMessageProviderLinked
-	msg := NewNumberOfLinesExceedMessage(push, state.repo, state.branch(), complexity, for_user)
+	msg := NewNumberOfLinesExceedMessage(push, state.repo, state.branch(ctx), complexity, for_user)
 	io := Instance().MessageIO(state.repo.MessageProvider)
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
@@ -260,7 +255,7 @@ func (state *RepoIOBranchCtrlState) warn_complexity(ctx workflow.Context, push *
 
 // warn_stale sends a warning message if the branch is stale.
 func (state *RepoIOBranchCtrlState) warn_stale(ctx workflow.Context) {
-	msg := NewStaleBranchMessage(state.info, state.repo, state.branch())
+	msg := NewStaleBranchMessage(state.info, state.repo, state.branch(ctx))
 	io := Instance().MessageIO(state.repo.MessageProvider)
 
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
@@ -275,7 +270,7 @@ func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, push *Re
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	for_user := push.User != nil && push.User.IsMessageProviderLinked
-	msg := NewMergeConflictMessage(push, state.repo, state.branch(), for_user)
+	msg := NewMergeConflictMessage(push, state.repo, state.branch(ctx), for_user)
 	io := Instance().MessageIO(state.repo.MessageProvider)
 
 	_ = state.do(ctx, "warn_merge_conflict", io.SendMergeConflictsMessage, msg, nil)
@@ -283,10 +278,13 @@ func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, push *Re
 
 // NewBranchCtrlState creates a new RepoIOBranchCtrlState instance.
 func NewBranchCtrlState(ctx workflow.Context, repo *Repo, branch string) *RepoIOBranchCtrlState {
-	return &RepoIOBranchCtrlState{
-		base_ctrl:     NewBaseCtrl(ctx, "branch_ctrl", repo),
-		active_branch: branch,
-		created_at:    timers.Now(ctx),
-		interval:      timers.NewInterval(ctx, repo.StaleDuration.Duration),
+	base := &RepoIOBranchCtrlState{
+		base_ctrl:  NewBaseCtrl(ctx, "branch_ctrl", repo),
+		created_at: timers.Now(ctx),
+		interval:   timers.NewInterval(ctx, repo.StaleDuration.Duration),
 	}
+
+	base.set_branch(ctx, branch)
+
+	return base
 }

@@ -33,7 +33,18 @@ func (base *base_ctrl) is_active() bool {
 }
 
 // branch returns the branch name associated with this control.
-func (base *base_ctrl) branch() string { return "" }
+func (base *base_ctrl) branch(ctx workflow.Context) string {
+	if branch, ok := ctx.Value("active_branch").(string); ok {
+		return branch
+	}
+
+	return ""
+}
+
+// set_branch sets the active branch in the context.
+func (base *base_ctrl) set_branch(ctx workflow.Context, branch string) workflow.Context {
+	return workflow.WithValue(ctx, "active_branch", branch)
+}
 
 // set_info sets the provider-specific information for the control.
 func (base *base_ctrl) set_info(ctx workflow.Context, info *RepoIOProviderInfo) {
@@ -147,7 +158,7 @@ func (base *base_ctrl) refresh_branches(ctx workflow.Context) {
 
 // log creates a new logger for the current action.
 func (base *base_ctrl) log(ctx workflow.Context, action string) *RepoIOWorkflowLogger {
-	return NewRepoIOWorkflowLogger(ctx, base.repo, base.kind, base.branch(), action)
+	return NewRepoIOWorkflowLogger(ctx, base.repo, base.kind, base.branch(ctx), action)
 }
 
 // do executes an activity and logs the result.
