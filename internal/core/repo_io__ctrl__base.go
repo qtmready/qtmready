@@ -2,7 +2,6 @@ package core
 
 import (
 	"log/slog"
-	"reflect"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -34,16 +33,7 @@ func (base *base_ctrl) is_active() bool {
 }
 
 // branch returns the branch name associated with this control.
-func (base *base_ctrl) branch() string {
-	v := reflect.ValueOf(base).Elem()
-
-	field := v.FieldByName("active_branch")
-	if field.IsValid() {
-		return field.String()
-	}
-
-	return ""
-}
+func (base *base_ctrl) branch() string { return "" }
 
 // set_info sets the provider-specific information for the control.
 func (base *base_ctrl) set_info(ctx workflow.Context, info *RepoIOProviderInfo) {

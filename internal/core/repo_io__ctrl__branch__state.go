@@ -103,6 +103,10 @@ func (state *RepoIOBranchCtrlState) on_create_delete(ctx workflow.Context) share
 
 // Core methods
 
+func (state *RepoIOBranchCtrlState) branch() string {
+	return state.active_branch
+}
+
 // set_created_at sets the creation time of the branch.
 func (state *RepoIOBranchCtrlState) set_created_at(ctx workflow.Context, t time.Time) {
 	_ = state.mutex.Lock(ctx)
