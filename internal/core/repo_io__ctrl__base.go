@@ -9,6 +9,10 @@ import (
 	"go.breu.io/quantm/internal/shared"
 )
 
+const (
+	event_threshold = 4000
+)
+
 // DoFn represents the signature of the do function.
 type (
 	CallAsync func(workflow.Context)
@@ -30,6 +34,11 @@ type (
 // is_active returns the active status of the control.
 func (base *base_ctrl) is_active() bool {
 	return base.active
+}
+
+// needs_reset checks if the event count has reached the threshold for resetting.
+func (base *base_ctrl) needs_reset() bool {
+	return base.counter >= event_threshold
 }
 
 // branch returns the branch name associated with this control.
@@ -74,6 +83,12 @@ func (base *base_ctrl) set_done(ctx workflow.Context) {
 func (base *base_ctrl) terminate(ctx workflow.Context) {
 	base.set_done(ctx)
 	base.log(ctx, "terminate").Info("state terminated")
+}
+
+// as_new continues the workflow as new with the given function and arguments.
+func (base *base_ctrl) as_new(ctx workflow.Context, msg string, fn any, args ...any) error {
+	base.log(ctx, "as_new").Warn(msg)
+	return workflow.NewContinueAsNewError(ctx, fn, args...)
 }
 
 // increment increases the operation counter by the specified number of steps.

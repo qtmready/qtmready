@@ -4,9 +4,13 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-// RepoCtrl is the main control loop for managing a repository. It sets up signal channels
-// for various repository events, processes those events, and gracefully shuts down when
-// the context is canceled.
+// RepoCtrl is the event loop to process events during the lifecycle of a repository.
+//
+// It processes the following events:
+//
+//   - push
+//   - create_delete
+//   - pr
 func RepoCtrl(ctx workflow.Context, repo *Repo) error {
 	state := NewRepoCtrlState(ctx, repo)
 	selector := workflow.NewSelector(ctx)
@@ -28,9 +32,13 @@ func RepoCtrl(ctx workflow.Context, repo *Repo) error {
 	pr := workflow.GetSignalChannel(ctx, RepoIOSignalPullRequest.String())
 	selector.AddReceive(pr, state.on_pr(ctx))
 
-	// processing signals
+	// main event loop
 	for state.is_active() {
 		selector.Select(ctx)
+
+		if state.needs_reset() {
+			return state.as_new(ctx, "event history exceeded threshold", RepoCtrl, repo)
+		}
 	}
 
 	// graceful shutdown
