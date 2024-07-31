@@ -33,10 +33,14 @@ type (
 
 // RepoIO signals.
 const (
-	RepoIOSignalPush           shared.WorkflowSignal = "repo_io__push"
-	RepoIOSignalCreateOrDelete shared.WorkflowSignal = "repo_io__create_or_delete"
-	RepoIOSignalRebase         shared.WorkflowSignal = "repo_io__rebase"
-	RepoIOSignalPullRequest    shared.WorkflowSignal = "repo_io__pull_request"
+	RepoIOSignalPush             shared.WorkflowSignal = "repo_io__push"
+	RepoIOSignalCreateOrDelete   shared.WorkflowSignal = "repo_io__create_or_delete"
+	RepoIOSignalRebase           shared.WorkflowSignal = "repo_io__rebase"
+	RepoIOSignalPullRequest      shared.WorkflowSignal = "repo_io__pull_request"
+	RepoIOSignalQueueAdd         shared.WorkflowSignal = "repo_io__queue__add"
+	RepoIOSignalQueueAddPriority shared.WorkflowSignal = "repo_io__queue__add__priority"
+	RepoIOSignalQueuePromote     shared.WorkflowSignal = "repo_io__queue__promote"
+	RepoIOSignalQueueDemote      shared.WorkflowSignal = "repo_io__queue__demote"
 )
 
 const (

@@ -2,6 +2,8 @@ package core
 
 import (
 	"go.temporal.io/sdk/workflow"
+
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -219,14 +221,80 @@ func (q *Queue) length() int {
 	return len(q.index)
 }
 
-// push adds a new pull request to either the primary or priority queue.
+/**
+ * QueueCtrlState methods
+ */
+
+// Signal handlers
+
+// on_add handles the addition of a new pull request to the primary queue.
 //
-// Example:
+// Usage:
 //
-//	s := NewQueueCtrlState(base)
-//	ctx := workflow.Context{}
-//	pr := RepoIOPullRequest{Number: 123}
-//	s.push(ctx, pr, true) // Push to priority queue
+//	state := NewQueueCtrlState(ctx, repo, branch)
+//	add_handler := state.on_add(ctx)
+//	selector.AddReceive(add_channel, add_handler)
+func (s *QueueCtrlState) on_add(ctx workflow.Context) shared.ChannelHandler {
+	return func(c workflow.ReceiveChannel, more bool) {
+		payload := &RepoIOPullRequest{}
+
+		s.rx(ctx, c, payload)
+		s.push(ctx, *payload, false)
+	}
+}
+
+// on_add_priority handles the addition of a new pull request to the priority queue.
+//
+// Usage:
+//
+//	state := NewQueueCtrlState(ctx, repo, branch)
+//	add_priority_handler := state.on_add_priority(ctx)
+//	selector.AddReceive(add_priority_channel, add_priority_handler)
+func (s *QueueCtrlState) on_add_priority(ctx workflow.Context) shared.ChannelHandler {
+	return func(c workflow.ReceiveChannel, more bool) {
+		payload := &RepoIOPullRequest{}
+
+		s.rx(ctx, c, payload)
+		s.push(ctx, *payload, true)
+	}
+}
+
+// on_promote handles the promotion of a pull request in the primary queue.
+//
+// Usage:
+//
+//	state := NewQueueCtrlState(ctx, repo, branch)
+//	promote_handler := state.on_promote(ctx)
+//	selector.AddReceive(promote_channel, promote_handler)
+func (s *QueueCtrlState) on_promote(ctx workflow.Context) shared.ChannelHandler {
+	return func(c workflow.ReceiveChannel, more bool) {
+		payload := &RepoIOPullRequest{}
+
+		s.rx(ctx, c, payload)
+		s.primary.reorder(ctx, *payload, true)
+	}
+}
+
+// on_demote handles the demotion of a pull request in the primary queue.
+//
+// Usage:
+//
+//	state := NewQueueCtrlState(ctx, repo, branch)
+//	demote_handler := state.on_demote(ctx)
+//	selector.AddReceive(demote_channel, demote_handler)
+func (s *QueueCtrlState) on_demote(ctx workflow.Context) shared.ChannelHandler {
+	return func(c workflow.ReceiveChannel, more bool) {
+		payload := &RepoIOPullRequest{}
+
+		s.rx(ctx, c, payload)
+		s.primary.reorder(ctx, *payload, false)
+	}
+}
+
+/**
+ * Other QueueCtrlState methods
+ */
+
 func (s *QueueCtrlState) push(ctx workflow.Context, pr RepoIOPullRequest, urgent bool) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
@@ -238,29 +306,12 @@ func (s *QueueCtrlState) push(ctx workflow.Context, pr RepoIOPullRequest, urgent
 	}
 }
 
-// peek returns true if any of the queues (priority or primary) has an item in it.
-//
-// Example:
-//
-//	s := NewQueueCtrlState(base)
-//	if s.peek() {
-//	    fmt.Println("At least one queue has items")
-//	}
-func (s *QueueCtrlState) peek() bool {
-	return s.priority.peek() || s.primary.peek()
+func (s *QueueCtrlState) next(ctx workflow.Context) error {
+	return workflow.Await(ctx, func() bool {
+		return s.priority.peek() || s.primary.peek()
+	})
 }
 
-// pop removes and returns the next pull request from the queues.
-// It prioritizes the priority queue over the primary queue.
-//
-// Example:
-//
-//	s := NewQueueCtrlState(base)
-//	ctx := workflow.Context{}
-//	pr := s.pop(ctx)
-//	if pr != nil {
-//	    fmt.Printf("Popped PR number: %d\n", pr.Number)
-//	}
 func (s *QueueCtrlState) pop(ctx workflow.Context) *RepoIOPullRequest {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
@@ -283,16 +334,21 @@ func NewQueue() Queue {
 	}
 }
 
-// NewQueueCtrlState creates a new QueueCtrlState.
+// NewQueueCtrlState creates a new QueueCtrlState and sets the branch.
+// It returns the updated context and the new QueueCtrlState.
 //
 // Example:
 //
-//	base := &base_ctrl{}
-//	s := NewQueueCtrlState(base)
-func NewQueueCtrlState(base *base_ctrl) *QueueCtrlState {
-	return &QueueCtrlState{
-		base_ctrl: base,
+//	ctx := workflow.Context{}
+//	repo := &Repo{}
+//	branch := "main"
+//	newCtx, state := NewQueueCtrlState(ctx, repo, branch)
+func NewQueueCtrlState(ctx workflow.Context, repo *Repo, branch string) (workflow.Context, *QueueCtrlState) {
+	ctrl := &QueueCtrlState{
+		base_ctrl: NewBaseCtrl(ctx, "queue_ctrl", repo),
 		primary:   NewQueue(),
 		priority:  NewQueue(),
 	}
+
+	return ctrl.set_branch(ctx, branch), ctrl
 }
