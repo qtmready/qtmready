@@ -9,7 +9,7 @@ import (
 type (
 	// Node represents a single node in the queue.
 	Node struct {
-		pr   RepoIOPullRequest
+		pr   *RepoIOPullRequest
 		prev *Node
 		next *Node
 	}
@@ -32,8 +32,8 @@ type (
 
 	// QueueItem represents a single item in the queue for frontend representation.
 	QueueItem struct {
-		PR       RepoIOPullRequest `json:"pr"`
-		Position int               `json:"position"`
+		PR       *RepoIOPullRequest `json:"pr"`
+		Position int                `json:"position"`
 	}
 )
 
@@ -45,7 +45,7 @@ type (
 //	ctx := workflow.Context{}
 //	pr := RepoIOPullRequest{Number: 123}
 //	q.push(ctx, pr)
-func (q *Queue) push(ctx workflow.Context, pr RepoIOPullRequest) {
+func (q *Queue) push(ctx workflow.Context, pr *RepoIOPullRequest) {
 	_ = q.mutex.Lock(ctx)
 	defer q.mutex.Unlock()
 
@@ -92,7 +92,7 @@ func (q *Queue) pop(ctx workflow.Context) *RepoIOPullRequest {
 
 	delete(q.index, pr.Number.Int64())
 
-	return &pr
+	return pr
 }
 
 // peek returns true if the queue is not empty, false otherwise.
@@ -304,7 +304,7 @@ func (s *QueueCtrlState) on_add(ctx workflow.Context) shared.ChannelHandler {
 		payload := &RepoIOPullRequest{}
 
 		s.rx(ctx, c, payload)
-		s.push(ctx, *payload, false)
+		s.push(ctx, payload, false)
 	}
 }
 
@@ -320,7 +320,7 @@ func (s *QueueCtrlState) on_add_priority(ctx workflow.Context) shared.ChannelHan
 		payload := &RepoIOPullRequest{}
 
 		s.rx(ctx, c, payload)
-		s.push(ctx, *payload, true)
+		s.push(ctx, payload, true)
 	}
 }
 
@@ -368,7 +368,7 @@ func (s *QueueCtrlState) on_demote(ctx workflow.Context) shared.ChannelHandler {
 //	pr := RepoIOPullRequest{Number: 123}
 //	state.push(ctx, pr, false) // Add to primary queue
 //	state.push(ctx, pr, true)  // Add to priority queue
-func (s *QueueCtrlState) push(ctx workflow.Context, pr RepoIOPullRequest, urgent bool) {
+func (s *QueueCtrlState) push(ctx workflow.Context, pr *RepoIOPullRequest, urgent bool) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
 
