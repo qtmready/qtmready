@@ -134,6 +134,26 @@ func (q *Queue) reorder(ctx workflow.Context, pr RepoIOPullRequest, promote bool
 }
 
 // promote moves a Node one position up in the queue.
+// initial state: a <-> b <-> c <-> d
+// promote node d
+//
+// Example:
+//
+//	q := NewQueue()
+//	ctx := workflow.Context{}
+//	a := RepoIOPullRequest{Number: 1}
+//	b := RepoIOPullRequest{Number: 2}
+//	c := RepoIOPullRequest{Number: 3}
+//	d := RepoIOPullRequest{Number: 4}
+//
+//	q.push(ctx, a)
+//	q.push(ctx, b)
+//	q.push(ctx, c)
+//	q.push(ctx, d)
+//
+//	q.promote(d)
+//
+//	the queue should now be: a <-> b <-> d <-> c
 func (q *Queue) promote(node *Node) {
 	if node.prev != nil {
 		prev_prev := node.prev.prev
@@ -159,6 +179,26 @@ func (q *Queue) promote(node *Node) {
 }
 
 // demote moves a Node one position down in the queue.
+// initial state: a <-> b <-> c <-> d,
+// demote node b.
+//
+// Example:
+//
+//	q := NewQueue()
+//	ctx := workflow.Context{}
+//	a := RepoIOPullRequest{Number: 1}
+//	b := RepoIOPullRequest{Number: 2}
+//	c := RepoIOPullRequest{Number: 3}
+//	d := RepoIOPullRequest{Number: 4}
+//
+//	q.push(ctx, a)
+//	q.push(ctx, b)
+//	q.push(ctx, c)
+//	q.push(ctx, d)
+//
+//	q.demote(b)
+//
+//	the queue should now be: a <-> c <-> b <-> d
 func (q *Queue) demote(node *Node) {
 	if node.next != nil {
 		prev := node.prev
