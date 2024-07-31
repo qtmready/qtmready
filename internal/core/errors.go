@@ -69,10 +69,6 @@ func NewResourceNotFoundError(name string, provider string) error {
 	return &resourceNotFoundError{name, provider}
 }
 
-func NewQueueError(pr *RepoIOPullRequest, repo *Repo, code int) error {
-	return &queueError{pr, repo, code}
-}
-
 func NewQueueSchedulingError(pr *RepoIOPullRequest, repo *Repo) error {
 	return &queueError{pr, repo, 10400}
 }

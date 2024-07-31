@@ -221,6 +221,31 @@ func (q *Queue) length() int {
 	return len(q.index)
 }
 
+// remove removes a specific pull request from the queue.
+func (q *Queue) remove(ctx workflow.Context, prNumber int64) {
+	_ = q.mutex.Lock(ctx)
+	defer q.mutex.Unlock()
+
+	node, exists := q.index[prNumber]
+	if !exists {
+		return // Item not in queue, do nothing
+	}
+
+	if node.prev != nil {
+		node.prev.next = node.next
+	} else {
+		q.head = node.next
+	}
+
+	if node.next != nil {
+		node.next.prev = node.prev
+	} else {
+		q.tail = node.prev
+	}
+
+	delete(q.index, prNumber)
+}
+
 /**
  * QueueCtrlState methods
  */
@@ -295,6 +320,14 @@ func (s *QueueCtrlState) on_demote(ctx workflow.Context) shared.ChannelHandler {
  * Other QueueCtrlState methods
  */
 
+// push adds a new pull request to either the primary or priority queue.
+//
+// Example:
+//
+//	state := NewQueueCtrlState(ctx, repo, branch)
+//	pr := RepoIOPullRequest{Number: 123}
+//	state.push(ctx, pr, false) // Add to primary queue
+//	state.push(ctx, pr, true)  // Add to priority queue
 func (s *QueueCtrlState) push(ctx workflow.Context, pr RepoIOPullRequest, urgent bool) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
@@ -306,12 +339,30 @@ func (s *QueueCtrlState) push(ctx workflow.Context, pr RepoIOPullRequest, urgent
 	}
 }
 
+// next waits for the next item to be available in either queue.
+//
+// Example:
+//
+//	state := NewQueueCtrlState(ctx, repo, branch)
+//	err := state.next(ctx)
+//	if err != nil {
+//	    // Handle error
+//	}
 func (s *QueueCtrlState) next(ctx workflow.Context) error {
 	return workflow.Await(ctx, func() bool {
 		return s.priority.peek() || s.primary.peek()
 	})
 }
 
+// pop removes and returns the next pull request from either queue.
+//
+// Example:
+//
+//	state := NewQueueCtrlState(ctx, repo, branch)
+//	pr := state.pop(ctx)
+//	if pr != nil {
+//	    // Process the pull request
+//	}
 func (s *QueueCtrlState) pop(ctx workflow.Context) *RepoIOPullRequest {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
@@ -328,8 +379,11 @@ func (s *QueueCtrlState) pop(ctx workflow.Context) *RepoIOPullRequest {
 // Example:
 //
 //	q := NewQueue()
-func NewQueue() Queue {
+func NewQueue(ctx workflow.Context) Queue {
 	return Queue{
+		mutex: workflow.NewMutex(ctx),
+		head:  &Node{},
+		tail:  &Node{},
 		index: make(map[int64]*Node),
 	}
 }
@@ -342,12 +396,12 @@ func NewQueue() Queue {
 //	ctx := workflow.Context{}
 //	repo := &Repo{}
 //	branch := "main"
-//	newCtx, state := NewQueueCtrlState(ctx, repo, branch)
+//	ctx, state := NewQueueCtrlState(ctx, repo, branch)
 func NewQueueCtrlState(ctx workflow.Context, repo *Repo, branch string) (workflow.Context, *QueueCtrlState) {
 	ctrl := &QueueCtrlState{
 		base_ctrl: NewBaseCtrl(ctx, "queue_ctrl", repo),
-		primary:   NewQueue(),
-		priority:  NewQueue(),
+		primary:   NewQueue(ctx),
+		priority:  NewQueue(ctx),
 	}
 
 	return ctrl.set_branch(ctx, branch), ctrl
