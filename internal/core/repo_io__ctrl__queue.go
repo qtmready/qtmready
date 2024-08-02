@@ -33,6 +33,14 @@ func QueueCtrl(ctx workflow.Context, repo *Repo, branch string) error {
 	})
 
 	// the main event loop is not implemented yet
+	for state.is_active() {
+		pr := state.pop(ctx)
+		if pr != nil {
+			// process the pr
+			// is process is in base_ctrl or queue_ctrl
+			// state.process(ctx, pr)
+		}
+	}
 
 	return nil
 }
