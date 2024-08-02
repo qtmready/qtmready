@@ -414,6 +414,30 @@ func (s *QueueCtrlState) pop(ctx workflow.Context) *RepoIOPullRequest {
 	return s.primary.pop(ctx)
 }
 
+// process handles the processing of a pull request popped from the queue.
+func (s *QueueCtrlState) process(ctx workflow.Context, pr *RepoIOPullRequest) error {
+	if !s.can_process_pr(pr) {
+		return nil // TODO - return error
+	}
+
+	// TODO - signal ctrls
+	err := s.do_child(ctx, "process_pr", pr.Number.String(), PrCtrl, pr, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *QueueCtrlState) can_process_pr(pr *RepoIOPullRequest) bool {
+	// Add logic to check if the pull request can be processed
+	// For example, you can check if the pull request is open, not a draft, and not a work-in-progress
+	// Return true if the pull request can be processed, false otherwise
+	shared.Logger().Info("queue/merge/can_process_pr", "info", pr)
+
+	return true
+}
+
 // NewQueue creates a new Queue.
 //
 // Example:

@@ -230,3 +230,8 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 func (d Duration) String() string {
 	return d.Duration.String()
 }
+
+// NewDuration creates a new Duration from a time.Duration.
+func NewDuration(d time.Duration) Duration {
+	return Duration{d}
+}

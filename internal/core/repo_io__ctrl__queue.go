@@ -37,10 +37,17 @@ func QueueCtrl(ctx workflow.Context, repo *Repo, branch string) error {
 		pr := state.pop(ctx)
 		if pr != nil {
 			// process the pr
-			// is process is in base_ctrl or queue_ctrl
-			// state.process(ctx, pr)
+			err := state.process(ctx, pr) // TODO - handle error
+			if err != nil {
+				return err
+			}
 		}
 	}
 
+	return nil
+}
+
+// PrCtrl is a child worklow handle the pr activities and handle the pull request.
+func PrCtrl(ctx workflow.Context, pr *RepoIOPullRequest) error {
 	return nil
 }

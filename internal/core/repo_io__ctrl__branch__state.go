@@ -276,6 +276,32 @@ func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, push *Re
 	_ = state.do(ctx, "warn_merge_conflict", io.SendMergeConflictsMessage, msg, nil)
 }
 
+// TODO - need tp refine.
+func (base *base_ctrl) do_child(ctx workflow.Context, action, w_id string, fn, payload any, keyvals ...any) error {
+	logger := base.log(ctx, action)
+	logger.Info("init", keyvals...)
+
+	opts := workflow.ChildWorkflowOptions{
+		TaskQueue:                "quantm_queue", // TODO - queue name
+		WorkflowExecutionTimeout: 10 * time.Minute,
+		WorkflowID:               w_id,
+	}
+	ctx = workflow.WithChildOptions(ctx, opts)
+
+	// Execute the child workflow
+	err := workflow.ExecuteChildWorkflow(ctx, fn, payload).Get(ctx, nil)
+	if err != nil {
+		logger.Warn("error", append(keyvals, "error", err)...)
+		return err
+	}
+
+	logger.Info("success", keyvals...)
+
+	base.increment(ctx, 3)
+
+	return nil
+}
+
 // NewBranchCtrlState creates a new RepoIOBranchCtrlState instance.
 func NewBranchCtrlState(ctx workflow.Context, repo *Repo, branch string) (workflow.Context, *RepoIOBranchCtrlState) {
 	base := &RepoIOBranchCtrlState{
