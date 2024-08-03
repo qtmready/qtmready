@@ -21,6 +21,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"time"
 
@@ -109,9 +110,13 @@ func DecodeJWE(token string) (map[string]any, error) {
 	return claims, nil
 }
 
+func info() string {
+	return fmt.Sprintf("%s (%s)", prefix, salt)
+}
+
 // Derive generates a derived key using HKDF.
 func Derive() []byte {
-	kdf := hkdf.New(sha256.New, []byte(shared.Service().GetSecret()), []byte(salt), []byte(prefix))
+	kdf := hkdf.New(sha256.New, []byte(shared.Service().GetSecret()), []byte(salt), []byte(info()))
 	key := make([]byte, 64)
 	_, _ = io.ReadFull(kdf, key)
 
