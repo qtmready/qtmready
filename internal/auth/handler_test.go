@@ -36,7 +36,7 @@ import (
 
 type (
 	Containers struct {
-		network  testcontainers.Network
+		network  *testcontainers.DockerNetwork
 		db       *testutils.Container
 		temporal *testutils.Container
 		// nats       *testutils.Container
