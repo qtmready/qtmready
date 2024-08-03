@@ -30,10 +30,19 @@ type (
 		priority Queue
 	}
 
-	// QueueItem represents a single item in the queue for frontend representation.
-	QueueItem struct {
+	// QueueMember represents a single item in the queue for frontend representation.
+	QueueMember struct {
 		PR       *RepoIOPullRequest `json:"pr"`
 		Position int                `json:"position"`
+	}
+
+	// QueueMembers is a slice of QueueMember.
+	QueueMembers []QueueMember
+
+	// QueueCtrlSerializedState represents the serialized version of the QueueCtrlState.
+	QueueCtrlSerializedState struct {
+		Primary  QueueMembers `json:"primary"`
+		Priority QueueMembers `json:"priority"`
 	}
 )
 
@@ -223,34 +232,6 @@ func (q *Queue) demote(node *Node) {
 	}
 }
 
-// items returns a list representation of the queue for frontend use.
-//
-// Example:
-//
-//	q := NewQueue()
-//	ctx := workflow.Context{}
-//	items := q.items(ctx)
-//	for _, item := range items {
-//	    fmt.Printf("PR %d at position %d\n", item.PR.Number, item.Position)
-//	}
-func (q *Queue) items(ctx workflow.Context) []QueueItem {
-	_ = q.mutex.Lock(ctx)
-	defer q.mutex.Unlock()
-
-	items := make([]QueueItem, 0, len(q.index))
-	position := 1
-
-	for node := q.head; node != nil; node = node.next {
-		items = append(items, QueueItem{
-			PR:       node.pr,
-			Position: position,
-		})
-		position++
-	}
-
-	return items
-}
-
 // length returns the number of items in the queue.
 //
 // Example:
@@ -284,6 +265,72 @@ func (q *Queue) remove(ctx workflow.Context, prNumber int64) {
 	}
 
 	delete(q.index, prNumber)
+}
+
+// serialize converts the Queue to a slice of QueueMembers
+//
+// Example:
+//
+//	q := NewQueue(ctx)
+//	pr1 := RepoIOPullRequest{Number: 123}
+//	pr2 := RepoIOPullRequest{Number: 456}
+//	q.push(ctx, &pr1)
+//	q.push(ctx, &pr2)
+//	serialized := q.serialize(ctx)
+//	// Do something with serialized QueueMembers
+func (q *Queue) serialize(ctx workflow.Context) QueueMembers {
+	_ = q.mutex.Lock(ctx)
+	defer q.mutex.Unlock()
+
+	members := make(QueueMembers, 0, len(q.index))
+	position := 1
+
+	for node := q.head; node != nil; node = node.next {
+		members = append(members, QueueMember{
+			PR:       node.pr,
+			Position: position,
+		})
+		position++
+	}
+
+	return members
+}
+
+// deserialize reconstructs the Queue from a slice of QueueMembers
+//
+// Example:
+//
+//	q := NewQueue(ctx)
+//	members := QueueMembers{
+//	    {PR: &RepoIOPullRequest{Number: 123}, Position: 1},
+//	    {PR: &RepoIOPullRequest{Number: 456}, Position: 2},
+//	}
+//	q.deserialize(ctx, members)
+//	// Queue is now reconstructed from the serialized data
+func (q *Queue) deserialize(ctx workflow.Context, members QueueMembers) {
+	_ = q.mutex.Lock(ctx)
+	defer q.mutex.Unlock()
+
+	q.head = nil
+	q.tail = nil
+	q.index = make(map[int64]*Node)
+
+	prev := &Node{}
+
+	for _, member := range members {
+		node := &Node{pr: member.PR}
+		if prev == nil {
+			q.head = node
+		} else {
+			prev.next = node
+			node.prev = prev
+		}
+
+		prev = node
+		q.index[member.PR.Number.Int64()] = node
+	}
+
+	q.tail = prev
 }
 
 /**
@@ -436,6 +483,40 @@ func (s *QueueCtrlState) can_process_pr(pr *RepoIOPullRequest) bool {
 	shared.Logger().Info("queue/merge/can_process_pr", "info", pr)
 
 	return true
+}
+
+// serialize converts the QueueCtrlState to a QueueCtrlSerializedState
+//
+// Example:
+//
+//	ctx, state := NewQueueCtrlState(ctx, repo, branch)
+//	pr1 := RepoIOPullRequest{Number: 123}
+//	pr2 := RepoIOPullRequest{Number: 456}
+//	state.push(ctx, &pr1, false)
+//	state.push(ctx, &pr2, true)
+//	serialized := state.serialize(ctx)
+//	// Do something with serialized QueueCtrlSerializedState
+func (s *QueueCtrlState) serialize(ctx workflow.Context) *QueueCtrlSerializedState {
+	return &QueueCtrlSerializedState{
+		Primary:  s.primary.serialize(ctx),
+		Priority: s.priority.serialize(ctx),
+	}
+}
+
+// deserialize reconstructs the QueueCtrlState from a QueueCtrlSerializedState
+//
+// Example:
+//
+//	ctx, state := NewQueueCtrlState(ctx, repo, branch)
+//	serialized := QueueCtrlSerializedState{
+//	    Primary:  QueueMembers{{PR: &RepoIOPullRequest{Number: 123}, Position: 1}},
+//	    Priority: QueueMembers{{PR: &RepoIOPullRequest{Number: 456}, Position: 1}},
+//	}
+//	state.deserialize(ctx, serialized)
+//	// QueueCtrlState is now reconstructed from the serialized data
+func (s *QueueCtrlState) deserialize(ctx workflow.Context, serialized *QueueCtrlSerializedState) {
+	s.primary.deserialize(ctx, serialized.Primary)
+	s.priority.deserialize(ctx, serialized.Priority)
 }
 
 // NewQueue creates a new Queue.

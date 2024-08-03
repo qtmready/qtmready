@@ -5,8 +5,14 @@ import (
 )
 
 // QueueCtrl is the main workflow for managing the queue.
-func QueueCtrl(ctx workflow.Context, repo *Repo, branch string) error {
+func QueueCtrl(ctx workflow.Context, repo *Repo, branch string, queues *QueueCtrlSerializedState) error {
 	ctx, state := NewQueueCtrlState(ctx, repo, branch)
+
+	// Deserialize the state if provided
+	if queues != nil {
+		state.deserialize(ctx, queues)
+	}
+
 	selector := workflow.NewSelector(ctx)
 
 	// goroutine to handle signals, enabling uninterrupted addition and reordering of prs in the queue
@@ -32,15 +38,28 @@ func QueueCtrl(ctx workflow.Context, repo *Repo, branch string) error {
 		}
 	})
 
-	// the main event loop is not implemented yet
 	for state.is_active() {
+		err := state.next(ctx)
+		if err != nil {
+			state.log(ctx, "next").Warn("context error")
+			continue
+		}
+
 		pr := state.pop(ctx)
 		if pr != nil {
 			// process the pr
-			err := state.process(ctx, pr) // TODO - handle error
+			err := state.process(ctx, pr)
 			if err != nil {
-				return err
+				state.log(ctx, "process").Warn("processing error", "error", err)
+				// Push the PR back into the queue
+				state.push(ctx, pr, false) // Assuming it goes back to the primary queue
 			}
+		}
+
+		// check if reset is needed
+		if state.needs_reset() {
+			queues := state.serialize(ctx)
+			return state.as_new(ctx, "resetting due to event threshold", QueueCtrl, repo, branch, queues)
 		}
 	}
 
