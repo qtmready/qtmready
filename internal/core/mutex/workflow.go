@@ -38,14 +38,27 @@ var (
 	MutexStatusTimeout   MutexStatus = "timeout"
 )
 
-// Workflow is the mutex workflow. It is responsible for controlling the access to a resource. It should never be called directly, instead
-// use the New function to create a new mutex, and use the Prepare, Acquire,Release and Cleanup functions to interact with the mutex.
+// Workflow is the mutex workflow. It controls access to a resource.
 //
-// It works by listening to the following signals:
-//   - WorkflowSignalPrepare: Prepares the lock by adding the caller to the queue.
-//   - WorkflowSignalAcquire: Acquires the lock.
-//   - WorkflowSignalRelease: Releases the lock.
-//   - WorkflowSignalCleanup: Clean up shutdowns the workflow, if there are no more locks in the queue.
+// IMPORTANT: Do not use this function directly. Instead, use mutex.New to create and interact with mutex instances.
+//
+// The workflow consists of three main event loops:
+//  1. Main loop: Handles acquiring, releasing, and timing out of locks.
+//  2. Prepare loop: Listens for and handles preparation of lock requests.
+//  3. Cleanup loop: Manages the cleanup process and potential workflow shutdown.
+//
+// It operates as a state machine, transitioning between MutexStatus states:
+// Acquiring -> Locked -> Releasing -> Released (or Timeout)
+//
+// Uses two pools to manage lock requests:
+//   - Main pool: Tracks active lock requests and currently held locks.
+//   - Orphans pool: Tracks locks that have timed out.
+//
+// Responds to several signals:
+//   - WorkflowSignalPrepare: Prepares a new lock request.
+//   - WorkflowSignalAcquire: Attempts to acquire a lock.
+//   - WorkflowSignalRelease: Releases a held lock.
+//   - WorkflowSignalCleanup: Initiates the cleanup process.
 func Workflow(ctx workflow.Context, starter *Handler) error {
 	wfinfo(ctx, starter, "mutex: workflow started")
 
@@ -57,7 +70,7 @@ func Workflow(ctx workflow.Context, starter *Handler) error {
 	shutdown, shutdownfn := workflow.NewFuture(ctx)
 
 	// coroutines responsible for scheduling the lock request or scheduling a graceful shutdown of the mutex workflow.
-	workflow.Go(ctx, _prepare(ctx, starter, pool, &persist))
+	workflow.Go(ctx, prepare(ctx, starter, pool, &persist))
 	workflow.Go(ctx, cleanup(ctx, starter, pool, shutdownfn))
 
 	// main loop to handle
@@ -124,8 +137,8 @@ func Workflow(ctx workflow.Context, starter *Handler) error {
 	return nil
 }
 
-// _prepare is a coroutine that listens to the prepare signal and adds the lock request to the queue.
-func _prepare(ctx workflow.Context, handler *Handler, pool *Pool, persist *bool) shared.CoroutineHandler {
+// prepare is a coroutine that listens to the prepare signal and adds the lock request to the queue.
+func prepare(ctx workflow.Context, handler *Handler, pool *Pool, persist *bool) shared.CoroutineHandler {
 	wfinfo(ctx, handler, "mutex: setting up workflow to prepare signal ....")
 
 	return func(ctx workflow.Context) {

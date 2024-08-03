@@ -9,6 +9,7 @@
 //   - Global Locking: Allows locking resources across different workflows and activities.
 //   - Durability: Locks persist even if the original locking workflow terminates unexpectedly.
 //   - Timeout Handling: Supports automatic lock release after a specified timeout.
+//   - Orphan Tracking: Keeps track of timed-out locks for potential recovery or cleanup.
 //   - Cleanup Mechanism: Provides a way to clean up and shut down mutex workflows when no longer needed.
 //   - Flexible Resource Identification: Supports a hierarchical resource ID system for precise locking.
 //
