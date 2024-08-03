@@ -16,7 +16,6 @@ require (
 	github.com/fatih/color v1.17.0
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/gocql/gocql v1.6.0
-	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/go-github/v62 v62.0.0
 	github.com/gosimple/slug v1.14.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
@@ -41,11 +40,6 @@ require (
 )
 
 require (
-	github.com/containerd/errdefs v0.1.0 // indirect
-	github.com/nexus-rpc/sdk-go v0.0.9 // indirect
-)
-
-require (
 	cloud.google.com/go v0.115.0 // indirect
 	cloud.google.com/go/auth v0.6.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.2 // indirect
@@ -67,6 +61,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/containerd/containerd v1.7.18 // indirect
+	github.com/containerd/errdefs v0.1.0 // indirect
 	github.com/containerd/log v0.1.0 // indirect
 	github.com/cpuguy83/dockercfg v0.3.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
@@ -87,6 +82,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
 	github.com/golang-migrate/migrate/v4 v4.17.1
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/mock v1.6.0 // indirect
@@ -126,6 +122,7 @@ require (
 	github.com/moby/term v0.5.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826 // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
+	github.com/nexus-rpc/sdk-go v0.0.9 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect

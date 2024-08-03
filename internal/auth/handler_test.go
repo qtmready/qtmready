@@ -24,7 +24,6 @@ import (
 	"testing"
 
 	"github.com/Pallinder/go-randomdata"
-	"github.com/golang-jwt/jwt/v4"
 	pwg "github.com/sethvargo/go-password/password"
 	"github.com/stretchr/testify/suite"
 	"github.com/testcontainers/testcontainers-go"
@@ -37,7 +36,7 @@ import (
 
 type (
 	Containers struct {
-		network  testcontainers.Network
+		network  *testcontainers.DockerNetwork
 		db       *testutils.Container
 		temporal *testutils.Container
 		// nats       *testutils.Container
@@ -275,14 +274,14 @@ func (s *ServerHandlerTestSuite) Test_0101_Login() {
 
 	access := parsed.JSON200.AccessToken
 
-	paccess, err := jwt.NewParser().ParseWithClaims(access, &auth.JWTClaims{}, auth.SecretFn)
+	claims, err := auth.DecodeJWE(access)
 	if err != nil {
-		s.T().Fatalf("failed to parse access token: %v", err)
+		s.T().Fatalf("failed to decode access token: %v", err)
 	}
 
-	if claims, ok := paccess.Claims.(*auth.JWTClaims); ok {
-		s.Assert().Equal(claims.UserID, s.responses.register.User.ID.String())
-		s.Assert().Equal(claims.TeamID, s.responses.register.Team.ID.String())
+	if userClaims, ok := claims["user"].(map[string]any); ok {
+		s.Assert().Equal(s.responses.register.User.ID.String(), userClaims["id"])
+		s.Assert().Equal(s.responses.register.Team.ID.String(), userClaims["team_id"])
 	} else {
 		s.T().Fatalf("failed to parse claims")
 	}

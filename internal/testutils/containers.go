@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/mount"
 	"github.com/testcontainers/testcontainers-go"
 	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
@@ -39,7 +40,7 @@ const (
 	TemporalContainerHost   = "test-temporal"
 	NatsIOImage             = "nats:2.9.15"
 	NatsIOContainerHost     = "test-natsio"
-	AirImage                = "cosmtrek/air:v1.49.0"
+	AirImage                = "cosmtrek/air:v1.50.0"
 	APIContainerHost        = "test-api"
 	MothershipContainerHost = "test-mothership"
 )
@@ -79,12 +80,9 @@ func StartDBContainer(ctx context.Context) (*Container, error) {
 		// "JVM_EXTRA_OPTS":         "-Dcassandra.skip_wait_for_gossip_to_settle=0",
 	}
 
-	mounts := testcontainers.ContainerMounts{
-		testcontainers.ContainerMount{
-			Source: testcontainers.GenericVolumeMountSource{Name: "test-db"},
-			Target: "/var/lib/scylla",
-		},
-	}
+	mounts := testcontainers.Mounts(
+		testcontainers.VolumeMount("test-db", "/var/lib/scylla"),
+	)
 
 	req := testcontainers.ContainerRequest{
 		Name:         DBContainerHost,
@@ -123,22 +121,22 @@ func StartTemporalContainer(ctx context.Context) (*Container, error) {
 	_, caller, _, _ := runtime.Caller(0)
 	pkgroot := path.Join(path.Dir(caller), "..", "..")
 	dynamicconfigpath := path.Join(pkgroot, "deploy", "temporal", "dynamicconfig")
-	mounts := testcontainers.ContainerMounts{
-		testcontainers.ContainerMount{
-			Source: testcontainers.GenericBindMountSource{HostPath: dynamicconfigpath},
-			Target: "/etc/temporal/config/dynamicconfig",
-		},
-	}
 
 	req := testcontainers.ContainerRequest{
 		Name:         TemporalContainerHost,
 		Hostname:     TemporalContainerHost,
 		Image:        TemporalImage,
-		Mounts:       mounts,
 		Env:          env,
 		Networks:     []string{TestNetworkName},
 		ExposedPorts: []string{"7233/tcp", "7234/tcp", "7239/tcp"},
 		WaitingFor:   wait.ForListeningPort("7233/tcp").WithPollInterval(time.Second * 5).WithStartupTimeout(time.Minute * 5),
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:   mount.TypeBind,
+				Source: dynamicconfigpath,
+				Target: "/etc/temporal/config/dynamicconfig",
+			})
+		},
 	}
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -218,34 +216,41 @@ func StartAirContainer(ctx context.Context, name, secret, workdir, config, port 
 	}
 	_, caller, _, _ := runtime.Caller(0)
 	pkgroot := path.Join(path.Dir(caller), "..", "..")
-	mounts := testcontainers.ContainerMounts{
-		testcontainers.ContainerMount{
-			Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("%s-test--go-pkg-mod", name)},
-			Target: "/go/pkg/mod",
-		},
-		testcontainers.ContainerMount{
-			Source: testcontainers.GenericVolumeMountSource{Name: fmt.Sprintf("%s-test--go-build-cache", name)},
-			Target: "/root/.cache/go-build",
-		},
-		testcontainers.ContainerMount{
-			Source: testcontainers.GenericBindMountSource{HostPath: pkgroot},
-			Target: testcontainers.ContainerMountTarget(workdir),
-		},
-		testcontainers.ContainerMount{
-			Source: testcontainers.GenericBindMountSource{HostPath: path.Join(pkgroot, "deploy", "air", config)},
-			Target: testcontainers.ContainerMountTarget(path.Join(workdir, ".air.toml")),
-		},
-	}
 
 	req := testcontainers.ContainerRequest{
-		Name:           name,
-		Hostname:       name,
-		Image:          AirImage,
-		Mounts:         mounts,
-		Env:            env,
-		Networks:       []string{TestNetworkName},
-		ExposedPorts:   []string{port},
-		WaitingFor:     waiting,
+		Name:         name,
+		Hostname:     name,
+		Image:        AirImage,
+		Env:          env,
+		Networks:     []string{TestNetworkName},
+		ExposedPorts: []string{port},
+		WaitingFor:   waiting,
+		Files: []testcontainers.ContainerFile{
+			{
+				HostFilePath:      path.Join(pkgroot, "deploy", "air", config),
+				ContainerFilePath: path.Join(workdir, ".air.toml"),
+				FileMode:          0644,
+			},
+		},
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts,
+				mount.Mount{
+					Type:   mount.TypeVolume,
+					Source: fmt.Sprintf("%s-test--go-pkg-mod", name),
+					Target: "/go/pkg/mod",
+				},
+				mount.Mount{
+					Type:   mount.TypeVolume,
+					Source: fmt.Sprintf("%s-test--go-build-cache", name),
+					Target: "/root/.cache/go-build",
+				},
+				mount.Mount{
+					Type:   mount.TypeBind,
+					Source: pkgroot,
+					Target: workdir,
+				},
+			)
+		},
 		ConfigModifier: func(config *container.Config) { config.WorkingDir = workdir },
 	}
 
