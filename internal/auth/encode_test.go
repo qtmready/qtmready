@@ -173,7 +173,7 @@ func (s *EncodeTestSuite) TestDerive_Smoke() {
 	assert.Equal(s.T(), key1, key2) // Keys should be the same for the same secret
 }
 
-// TestEncode runs the test suite
+// TestEncode runs the test suite.
 func TestEncode(t *testing.T) {
 	suite.Run(t, new(EncodeTestSuite))
 }

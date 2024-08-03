@@ -121,19 +121,22 @@ func StartTemporalContainer(ctx context.Context) (*Container, error) {
 	_, caller, _, _ := runtime.Caller(0)
 	pkgroot := path.Join(path.Dir(caller), "..", "..")
 	dynamicconfigpath := path.Join(pkgroot, "deploy", "temporal", "dynamicconfig")
-	mounts := testcontainers.Mounts(
-		testcontainers.BindMount(dynamicconfigpath, "/etc/temporal/config/dynamicconfig"),
-	)
 
 	req := testcontainers.ContainerRequest{
 		Name:         TemporalContainerHost,
 		Hostname:     TemporalContainerHost,
 		Image:        TemporalImage,
-		Mounts:       mounts,
 		Env:          env,
 		Networks:     []string{TestNetworkName},
 		ExposedPorts: []string{"7233/tcp", "7234/tcp", "7239/tcp"},
 		WaitingFor:   wait.ForListeningPort("7233/tcp").WithPollInterval(time.Second * 5).WithStartupTimeout(time.Minute * 5),
+		HostConfigModifier: func(hostConfig *container.HostConfig) {
+			hostConfig.Mounts = append(hostConfig.Mounts, mount.Mount{
+				Type:   mount.TypeBind,
+				Source: dynamicconfigpath,
+				Target: "/etc/temporal/config/dynamicconfig",
+			})
+		},
 	}
 
 	ctr, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
