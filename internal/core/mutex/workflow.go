@@ -52,13 +52,13 @@ func Workflow(ctx workflow.Context, starter *Handler) error {
 	persist := true                // persist is used to keep the workflow running.
 	handler := &Handler{}          // handler is the active lock request.
 	status := MutexStatusAcquiring // status is the current status of the lock.
-	pool := NewPool()              // queue holds the lock requests.
-	orphans := NewPool()           // orphans holds the lock requests that have timed out.
+	pool := NewPool(ctx)           // queue holds the lock requests.
+	orphans := NewPool(ctx)        // orphans holds the lock requests that have timed out.
 	shutdown, shutdownfn := workflow.NewFuture(ctx)
 
 	// coroutines responsible for scheduling the lock request or scheduling a graceful shutdown of the mutex workflow.
-	workflow.Go(ctx, _prepare(ctx, starter, &pool, &persist))
-	workflow.Go(ctx, cleanup(ctx, starter, &pool, shutdownfn))
+	workflow.Go(ctx, _prepare(ctx, starter, pool, &persist))
+	workflow.Go(ctx, cleanup(ctx, starter, pool, shutdownfn))
 
 	// main loop to handle
 	//  - acquiring the lock
@@ -72,7 +72,7 @@ func Workflow(ctx workflow.Context, starter *Handler) error {
 		timeout := time.Duration(0)
 		acquirer := workflow.NewSelector(ctx)
 
-		acquirer.AddReceive(workflow.GetSignalChannel(ctx, WorkflowSignalAcquire.String()), acquire(ctx, handler, &pool, &timeout, &found))
+		acquirer.AddReceive(workflow.GetSignalChannel(ctx, WorkflowSignalAcquire.String()), acquire(ctx, handler, pool, &timeout, &found))
 		acquirer.AddFuture(shutdown, terminate(ctx, handler, &persist))
 
 		acquirer.Select(ctx)
@@ -101,9 +101,9 @@ func Workflow(ctx workflow.Context, starter *Handler) error {
 
 			releaser.AddReceive(
 				workflow.GetSignalChannel(ctx, WorkflowSignalRelease.String()),
-				release(ctx, handler, &status, &pool, &orphans),
+				release(ctx, handler, &status, pool, orphans),
 			)
-			releaser.AddFuture(workflow.NewTimer(ctx, timeout), abort(ctx, handler, &status, &pool, &orphans, timeout))
+			releaser.AddFuture(workflow.NewTimer(ctx, timeout), abort(ctx, handler, &status, pool, orphans, timeout))
 
 			releaser.Select(ctx)
 
@@ -135,7 +135,7 @@ func _prepare(ctx workflow.Context, handler *Handler, pool *Pool, persist *bool)
 
 			wfinfo(ctx, rx, "mutex: prepare request received ...", slog.Int("pool_size", pool.size()))
 
-			pool.add(rx.Info.WorkflowExecution.ID, rx.Timeout)
+			pool.add(ctx, rx.Info.WorkflowExecution.ID, rx.Timeout)
 
 			wfinfo(ctx, rx, "mutex: prepared!", slog.Int("pool_size", pool.size()))
 		}
@@ -184,7 +184,7 @@ func release(ctx workflow.Context, handler *Handler, status *MutexStatus, pool, 
 				return
 			}
 
-			pool.remove(handler.Info.WorkflowExecution.ID)
+			pool.remove(ctx, handler.Info.WorkflowExecution.ID)
 
 			*status = MutexStatusReleased
 
@@ -199,8 +199,8 @@ func abort(ctx workflow.Context, handler *Handler, status *MutexStatus, pool, or
 	return func(future workflow.Future) {
 		if *status == MutexStatusLocked && *status != MutexStatusReleasing && timeout > 0 {
 			wfinfo(ctx, handler, "mutex: timeout reached, releasing ...", slog.Duration("timeout", timeout))
-			pool.remove(handler.Info.WorkflowExecution.ID)
-			orphans.add(handler.Info.WorkflowExecution.ID, timeout)
+			pool.remove(ctx, handler.Info.WorkflowExecution.ID)
+			orphans.add(ctx, handler.Info.WorkflowExecution.ID, timeout)
 
 			*status = MutexStatusTimeout
 		}

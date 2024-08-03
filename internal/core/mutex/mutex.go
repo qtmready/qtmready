@@ -1,20 +1,55 @@
-// Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
+// Package mutex provides a distributed, durable mutex implementation for Temporal workflows.
 //
-// This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
-// found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
-// THE SOFTWARE, YOU AGREE TO THE TERMS OF THE LICENSE AGREEMENT.
+// This package offers a custom mutex solution that extends beyond Temporal's built-in mutex
+// capabilities. While Temporal's native mutex is local to a specific workflow, this implementation
+// provides global and durable locks that can persist across multiple workflows.
 //
-// The above copyright notice and the subsequent license agreement shall be included in all copies or substantial
-// portions of the software.
+// Features:
 //
-// Breu, Inc. HEREBY DISCLAIMS ANY AND ALL WARRANTIES AND CONDITIONS, EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, AND
-// SPECIFICALLY DISCLAIMS ANY WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, WITH RESPECT TO THE
-// SOFTWARE.
+//   - Global Locking: Allows locking resources across different workflows and activities.
+//   - Durability: Locks persist even if the original locking workflow terminates unexpectedly.
+//   - Timeout Handling: Supports automatic lock release after a specified timeout.
+//   - Cleanup Mechanism: Provides a way to clean up and shut down mutex workflows when no longer needed.
+//   - Flexible Resource Identification: Supports a hierarchical resource ID system for precise locking.
 //
-// Breu, Inc. SHALL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND, INCLUDING BUT NOT LIMITED TO, LOST PROFITS OR ANY
-// CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
-
+// Global and durable locks are necessary in distributed systems for several reasons:
+//
+//   - Cross-Workflow Coordination: Ensures only one workflow can access a resource at a time.
+//   - Long-Running Operations: Protects resources during extended operations, even if workflows crash.
+//   - Consistency in Distributed State: Maintains consistency by serializing access to shared resources.
+//   - Workflow Independence: Allows for flexible system design with runtime coordination.
+//   - Fault Tolerance: Prevents conflicts during partial system failures and recovery.
+//   - Complex Resource Hierarchies: Manages access to interrelated resources across workflows.
+//
+// The mutex provides four operations, all of which must be used during the lifecycle of usage:
+//
+//   - Prepare: Gets the reference for the lock. If not found, creates a new global reference.
+//   - Acquire: Attempts to acquire the lock, blocking until successful or timeout occurs.
+//   - Release: Releases the held lock, allowing other workflows to acquire it.
+//   - Cleanup: Attempts to shut down the mutex workflow if it's no longer needed.
+//
+// Usage:
+//
+//	m := mutex.New(
+//		mutex.WithHandler(ctx),
+//		mutex.WithResourceID("io.quantm.stack.123.mutex"),
+//		mutex.WithTimeout(30*time.Minute),
+//	)
+//	if err := m.Prepare(ctx); err != nil {
+//		// handle error
+//	}
+//	if err := m.Acquire(ctx); err != nil {
+//		// handle error
+//	}
+//	if err := m.Release(ctx); err != nil {
+//		// handle error
+//	}
+//	if err := m.Cleanup(ctx); err != nil {
+//		// handle error
+//	}
+//
+// This mutex implementation relies on Temporal workflows and should be used
+// within a Temporal workflow context.
 package mutex
 
 import (
@@ -224,9 +259,7 @@ func WithTimeout(timeout time.Duration) Option {
 //	)
 //	if err := m.Prepare(ctx); err != nil {/*handle error*/}
 //	if err := m.Acquire(ctx); err != nil {/*handle error*/}
-//	// do work.
 //	if err := m.Release(ctx); err != nil {/*handle error*/}
-//	// attempt to shutdown the mutex.
 //	if err := m.Cleanup(ctx); err != nil {/*handle error*/}
 func New(opts ...Option) Mutex {
 	m := &Handler{Timeout: DefaultTimeout}
