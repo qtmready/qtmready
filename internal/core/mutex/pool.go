@@ -8,23 +8,23 @@ type (
 	Pool map[string]time.Duration // Pool holds the timeout against the resource ID.
 )
 
-func (p Pool) Add(id string, timeout time.Duration) {
+func (p Pool) add(id string, timeout time.Duration) {
 	p[id] = timeout
 }
 
-func (p Pool) Remove(id string) {
+func (p Pool) remove(id string) {
 	delete(p, id)
 }
 
-func (p Pool) Get(id string) (time.Duration, bool) {
+func (p Pool) get(id string) (time.Duration, bool) {
 	timeout, ok := p[id]
 	return timeout, ok
 }
 
-func (p Pool) Size() int {
+func (p Pool) size() int {
 	return len(p)
 }
 
-func NewSimpleMap() Pool {
+func NewPool() Pool {
 	return make(Pool)
 }
