@@ -28,11 +28,11 @@ type (
 )
 
 const (
-	MutexStatusAcquiring MutexStatus = "acquiring"
-	MutexStatusLocked    MutexStatus = "locked"
-	MutexStatusReleasing MutexStatus = "releasing"
-	MutexStatusReleased  MutexStatus = "released"
-	MutexStatusTimeout   MutexStatus = "timeout"
+	MutexStatusAcquiring MutexStatus = "mutex__acquiring"
+	MutexStatusLocked    MutexStatus = "mutex__locked"
+	MutexStatusReleasing MutexStatus = "mutex__releasing"
+	MutexStatusReleased  MutexStatus = "mutex__released"
+	MutexStatusTimeout   MutexStatus = "mutex__timeout"
 )
 
 // on_prepare handles the preparation of lock requests.
