@@ -62,8 +62,8 @@ func main() {
 	providerWrkr.RegisterActivity(&slack.Activities{})
 
 	// mutex workflow
-	coreWrkr.RegisterWorkflow(mutex.Workflow)
-	providerWrkr.RegisterWorkflow(mutex.Workflow)
+	coreWrkr.RegisterWorkflow(mutex.MutexWorkflow)
+	providerWrkr.RegisterWorkflow(mutex.MutexWorkflow)
 
 	// repo workflows
 	coreWrkr.RegisterWorkflow(core.RepoCtrl)
