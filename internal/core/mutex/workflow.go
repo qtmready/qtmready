@@ -44,16 +44,16 @@ import (
 //   - WorkflowSignalAcquire: Attempts to acquire a lock.
 //   - WorkflowSignalRelease: Releases a held lock.
 //   - WorkflowSignalCleanup: Initiates the cleanup process.
-func MutexWorkflow(ctx workflow.Context, starter *Handler) error {
-	state := NewMutexState(ctx, starter)
+func MutexWorkflow(ctx workflow.Context, state *MutexState) error {
+	state.restore(ctx)
 
 	shutdown, shutdownfn := workflow.NewFuture(ctx)
 
 	workflow.Go(ctx, state.on_prepare(ctx))
 	workflow.Go(ctx, state.on_cleanup(ctx, shutdownfn))
 
-	for state.persist {
-		state.logger.info(state.handler.Info.WorkflowExecution.ID, "main_loop", "waiting for lock request ...")
+	for state.Persist {
+		state.logger.info(state.Handler.Info.WorkflowExecution.ID, "main_loop", "waiting for lock request ...")
 
 		found := true
 		acquirer := workflow.NewSelector(ctx)
@@ -63,22 +63,22 @@ func MutexWorkflow(ctx workflow.Context, starter *Handler) error {
 
 		acquirer.Select(ctx)
 
-		if !state.persist {
+		if !state.Persist {
 			break // Shutdown signal received
 		}
 
 		if !found {
-			state.logger.info(state.handler.Info.WorkflowExecution.ID, "main_loop", "lock not found in the pool, retrying ...")
+			state.logger.info(state.Handler.Info.WorkflowExecution.ID, "main_loop", "lock not found in the pool, retrying ...")
 			state.to_acquiring(ctx)
 
 			continue
 		}
 
-		state.logger.info(state.handler.Info.WorkflowExecution.ID, "main_loop", "lock acquired!")
+		state.logger.info(state.Handler.Info.WorkflowExecution.ID, "main_loop", "lock acquired!")
 		state.to_locked(ctx)
 
 		for {
-			state.logger.info(state.handler.Info.WorkflowExecution.ID, "main_loop", "waiting for release or timeout ...")
+			state.logger.info(state.Handler.Info.WorkflowExecution.ID, "main_loop", "waiting for release or timeout ...")
 
 			releaser := workflow.NewSelector(ctx)
 
@@ -86,11 +86,11 @@ func MutexWorkflow(ctx workflow.Context, starter *Handler) error {
 				workflow.GetSignalChannel(ctx, WorkflowSignalRelease.String()),
 				state.on_release(ctx),
 			)
-			releaser.AddFuture(workflow.NewTimer(ctx, state.timeout), state.on_abort(ctx))
+			releaser.AddFuture(workflow.NewTimer(ctx, state.Timeout), state.on_abort(ctx))
 
 			releaser.Select(ctx)
 
-			if state.status == MutexStatusReleased || state.status == MutexStatusTimeout {
+			if state.Status == MutexStatusReleased || state.Status == MutexStatusTimeout {
 				state.to_acquiring(ctx)
 				break
 			}
@@ -99,7 +99,7 @@ func MutexWorkflow(ctx workflow.Context, starter *Handler) error {
 
 	_ = workflow.Sleep(ctx, 500*time.Millisecond)
 
-	state.logger.info(state.handler.Info.WorkflowExecution.ID, "shutdown", "shutdown!")
+	state.logger.info(state.Handler.Info.WorkflowExecution.ID, "shutdown", "shutdown!")
 
 	return nil
 }

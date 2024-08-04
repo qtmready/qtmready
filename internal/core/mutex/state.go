@@ -15,14 +15,15 @@ type (
 
 	// MutexState encapsulates the state of the mutex workflow.
 	MutexState struct {
-		status  MutexStatus
-		handler *Handler
-		pool    *Pool
-		orphans *Pool
-		timeout time.Duration
-		logger  *MutexLogger
-		persist bool
-		mutex   workflow.Mutex
+		Status  MutexStatus   `json:"status"`
+		Handler *Handler      `json:"handler"`
+		Pool    *Pool         `json:"pool"`
+		Orphans *Pool         `json:"orphans"`
+		Timeout time.Duration `json:"timeout"`
+		Persist bool          `json:"persist"`
+
+		mutex  workflow.Mutex
+		logger *MutexLogger
 	}
 )
 
@@ -43,7 +44,7 @@ func (s *MutexState) on_prepare(_ workflow.Context) func(workflow.Context) {
 			workflow.GetSignalChannel(ctx, WorkflowSignalPrepare.String()).Receive(ctx, rx)
 
 			s.logger.info(rx.Info.WorkflowExecution.ID, "prepare", "init")
-			s.pool.add(ctx, rx.Info.WorkflowExecution.ID, rx.Timeout)
+			s.Pool.add(ctx, rx.Info.WorkflowExecution.ID, rx.Timeout)
 			s.logger.info(rx.Info.WorkflowExecution.ID, "prepare", "done")
 		}
 	}
@@ -58,7 +59,7 @@ func (s *MutexState) on_acquire(ctx workflow.Context) shared.ChannelHandler {
 
 		s.logger.info(rx.Info.WorkflowExecution.ID, "acquire", "init")
 
-		timeout, _ := s.pool.get(rx.Info.WorkflowExecution.ID)
+		timeout, _ := s.Pool.get(rx.Info.WorkflowExecution.ID)
 		s.set_handler(ctx, rx)
 		s.set_timeout(ctx, timeout)
 
@@ -77,13 +78,13 @@ func (s *MutexState) on_release(ctx workflow.Context) shared.ChannelHandler {
 
 		s.logger.info(rx.Info.WorkflowExecution.ID, "release", "init")
 
-		if rx.Info.WorkflowExecution.ID == s.handler.Info.WorkflowExecution.ID {
+		if rx.Info.WorkflowExecution.ID == s.Handler.Info.WorkflowExecution.ID {
 			s.to_releasing(ctx)
-			s.pool.remove(ctx, s.handler.Info.WorkflowExecution.ID)
+			s.Pool.remove(ctx, s.Handler.Info.WorkflowExecution.ID)
 			s.to_released(ctx)
 
 			_ = workflow.
-				SignalExternalWorkflow(ctx, s.handler.Info.WorkflowExecution.ID, "", WorkflowSignalReleased.String(), true).
+				SignalExternalWorkflow(ctx, s.Handler.Info.WorkflowExecution.ID, "", WorkflowSignalReleased.String(), true).
 				Get(ctx, nil)
 
 			s.logger.info(rx.Info.WorkflowExecution.ID, "release", "done")
@@ -95,13 +96,13 @@ func (s *MutexState) on_release(ctx workflow.Context) shared.ChannelHandler {
 // This is triggered internally when a lock timeout occurs.
 func (s *MutexState) on_abort(ctx workflow.Context) shared.FutureHandler {
 	return func(future workflow.Future) {
-		s.logger.info(s.handler.Info.WorkflowExecution.ID, "abort", "init")
+		s.logger.info(s.Handler.Info.WorkflowExecution.ID, "abort", "init")
 
-		if s.status == MutexStatusLocked && s.status != MutexStatusReleasing && s.timeout > 0 {
-			s.pool.remove(ctx, s.handler.Info.WorkflowExecution.ID)
-			s.orphans.add(ctx, s.handler.Info.WorkflowExecution.ID, s.timeout)
+		if s.Status == MutexStatusLocked && s.Status != MutexStatusReleasing && s.Timeout > 0 {
+			s.Pool.remove(ctx, s.Handler.Info.WorkflowExecution.ID)
+			s.Orphans.add(ctx, s.Handler.Info.WorkflowExecution.ID, s.Timeout)
 			s.to_timeout(ctx)
-			s.logger.info(s.handler.Info.WorkflowExecution.ID, "abort", "done")
+			s.logger.info(s.Handler.Info.WorkflowExecution.ID, "abort", "done")
 		}
 	}
 }
@@ -118,14 +119,14 @@ func (s *MutexState) on_cleanup(_ workflow.Context, fn workflow.Settable) func(w
 
 			s.logger.info(rx.Info.WorkflowExecution.ID, "cleanup", "init")
 
-			if s.pool.size() == 0 {
+			if s.Pool.size() == 0 {
 				fn.Set(rx, nil)
 
 				shutdown = true
 
-				s.logger.info(rx.Info.WorkflowExecution.ID, "cleanup", "shutdown", "pool_size", s.pool.size())
+				s.logger.info(rx.Info.WorkflowExecution.ID, "cleanup", "shutdown", "pool_size", s.Pool.size())
 			} else {
-				s.logger.info(rx.Info.WorkflowExecution.ID, "cleanup", "abort", "pool_size", s.pool.size())
+				s.logger.info(rx.Info.WorkflowExecution.ID, "cleanup", "abort", "pool_size", s.Pool.size())
 			}
 
 			_ = workflow.
@@ -155,8 +156,8 @@ func (s *MutexState) to_locked(ctx workflow.Context) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
 
-	s.status = MutexStatusLocked
-	s.logger.info(s.handler.Info.WorkflowExecution.ID, "transition", "to Locked")
+	s.Status = MutexStatusLocked
+	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to Locked")
 }
 
 // to_releasing transitions the state to Releasing.
@@ -164,8 +165,8 @@ func (s *MutexState) to_releasing(ctx workflow.Context) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
 
-	s.status = MutexStatusReleasing
-	s.logger.info(s.handler.Info.WorkflowExecution.ID, "transition", "to Releasing")
+	s.Status = MutexStatusReleasing
+	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to Releasing")
 }
 
 // to_released transitions the state to Released.
@@ -173,8 +174,8 @@ func (s *MutexState) to_released(ctx workflow.Context) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
 
-	s.status = MutexStatusReleased
-	s.logger.info(s.handler.Info.WorkflowExecution.ID, "transition", "to Released")
+	s.Status = MutexStatusReleased
+	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to Released")
 }
 
 // to_timeout transitions the state to Timeout.
@@ -182,8 +183,8 @@ func (s *MutexState) to_timeout(ctx workflow.Context) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
 
-	s.status = MutexStatusTimeout
-	s.logger.info(s.handler.Info.WorkflowExecution.ID, "transition", "to Timeout")
+	s.Status = MutexStatusTimeout
+	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to Timeout")
 }
 
 // to_acquiring transitions the state to Acquiring.
@@ -191,8 +192,8 @@ func (s *MutexState) to_acquiring(ctx workflow.Context) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
 
-	s.status = MutexStatusAcquiring
-	s.logger.info(s.handler.Info.WorkflowExecution.ID, "transition", "to Acquiring")
+	s.Status = MutexStatusAcquiring
+	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to Acquiring")
 }
 
 // set_handler updates the current handler.
@@ -200,7 +201,7 @@ func (s *MutexState) set_handler(ctx workflow.Context, handler *Handler) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
 
-	s.handler = handler
+	s.Handler = handler
 }
 
 // set_timeout updates the current timeout.
@@ -208,7 +209,7 @@ func (s *MutexState) set_timeout(ctx workflow.Context, timeout time.Duration) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
 
-	s.timeout = timeout
+	s.Timeout = timeout
 }
 
 // stop_persisting sets the persist flag to false.
@@ -216,20 +217,41 @@ func (s *MutexState) stop_persisting(ctx workflow.Context) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
 
-	s.persist = false
-	s.logger.info(s.handler.Info.WorkflowExecution.ID, "persist", "stopped")
+	s.Persist = false
+	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "persist", "stopped")
+}
+
+// restore reinitializes the mutex and logger, and restores the Pool and Orphans.
+// It should be called after deserializing a MutexState instance.
+func (s *MutexState) restore(ctx workflow.Context) {
+	s.mutex = workflow.NewMutex(ctx)
+	s.logger = NewMutexControllerLogger(ctx, s.Handler.ResourceID)
+
+	if s.Pool == nil {
+		s.Pool = NewPool(ctx)
+	} else {
+		s.Pool.restore(ctx)
+	}
+
+	if s.Orphans == nil {
+		s.Orphans = NewPool(ctx)
+	} else {
+		s.Orphans.restore(ctx)
+	}
 }
 
 // NewMutexState creates a new MutexState instance.
 func NewMutexState(ctx workflow.Context, handler *Handler) *MutexState {
-	return &MutexState{
-		status:  MutexStatusAcquiring,
-		handler: handler,
-		pool:    NewPool(ctx),
-		orphans: NewPool(ctx),
-		timeout: 0,
-		logger:  NewMutexControllerLogger(ctx, handler.ResourceID),
-		persist: true,
+	state := &MutexState{
+		Status:  MutexStatusAcquiring,
+		Handler: handler,
+		Pool:    NewPool(ctx),
+		Orphans: NewPool(ctx),
+		Timeout: 0,
+		Persist: true,
 		mutex:   workflow.NewMutex(ctx),
+		logger:  NewMutexControllerLogger(ctx, handler.ResourceID),
 	}
+
+	return state
 }

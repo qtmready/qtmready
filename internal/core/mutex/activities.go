@@ -21,9 +21,10 @@ import (
 //
 // The function performs the following steps:
 // 1. Creates workflow options using the shared.Temporal() helper, setting the queue and workflow block details.
-// 2. Calls SignalWithStartWorkflow on the Temporal client to either start a new workflow or signal an existing one.
-// 3. If an error occurs during the SignalWithStartWorkflow call, it returns an empty workflow.Execution and the error.
-// 4. On success, it returns a workflow.Execution with the ID and RunID from the started or signaled workflow.
+// 2. Creates a new MutexState instance with the necessary initial values.
+// 3. Calls SignalWithStartWorkflow on the Temporal client to either start a new workflow or signal an existing one.
+// 4. If an error occurs during the SignalWithStartWorkflow call, it returns an empty workflow.Execution and the error.
+// 5. On success, it returns a workflow.Execution with the ID and RunID from the started or signaled workflow.
 //
 // This activity is typically used as part of the mutex preparation process in a distributed system,
 // ensuring that mutex operations are properly coordinated across different workflows.
@@ -33,9 +34,16 @@ func PrepareMutexActivity(ctx context.Context, payload *Handler) (*workflow.Exec
 		shared.WithWorkflowBlockID(payload.ResourceID),
 	)
 
+	state := &MutexState{
+		Status:  MutexStatusAcquiring,
+		Handler: payload,
+		Timeout: payload.Timeout,
+		Persist: true,
+	}
+
 	exe, err := shared.Temporal().
 		Client().
-		SignalWithStartWorkflow(context.Background(), opts.ID, WorkflowSignalPrepare.String(), payload, opts, MutexWorkflow, payload)
+		SignalWithStartWorkflow(context.Background(), opts.ID, WorkflowSignalPrepare.String(), payload, opts, MutexWorkflow, state)
 
 	if err != nil {
 		return &workflow.Execution{}, err
