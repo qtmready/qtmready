@@ -136,7 +136,7 @@ func (s *MutexState) on_cleanup(_ workflow.Context, fn workflow.Settable) func(w
 
 				s.logger.info(rx.Info.WorkflowExecution.ID, "cleanup", "shutdown", "pool_size", s.Pool.size())
 			} else {
-				s.logger.info(rx.Info.WorkflowExecution.ID, "cleanup", "abort", "pool_size", s.Pool.size())
+				s.logger.info(rx.Info.WorkflowExecution.ID, "cleanup", "continue", "pool_size", s.Pool.size())
 			}
 
 			_ = workflow.
@@ -167,7 +167,7 @@ func (s *MutexState) to_locked(ctx workflow.Context) {
 	defer s.mutex.Unlock()
 
 	s.Status = MutexStatusLocked
-	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to Locked")
+	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to locked")
 }
 
 // to_releasing transitions the state to Releasing.
@@ -176,7 +176,7 @@ func (s *MutexState) to_releasing(ctx workflow.Context) {
 	defer s.mutex.Unlock()
 
 	s.Status = MutexStatusReleasing
-	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to Releasing")
+	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to releasing")
 }
 
 // to_released transitions the state to Released.
@@ -185,7 +185,7 @@ func (s *MutexState) to_released(ctx workflow.Context) {
 	defer s.mutex.Unlock()
 
 	s.Status = MutexStatusReleased
-	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to Released")
+	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to released")
 }
 
 // to_timeout transitions the state to Timeout.
@@ -194,7 +194,7 @@ func (s *MutexState) to_timeout(ctx workflow.Context) {
 	defer s.mutex.Unlock()
 
 	s.Status = MutexStatusTimeout
-	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to Timeout")
+	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to timeout")
 }
 
 // to_acquiring transitions the state to Acquiring.
@@ -203,7 +203,7 @@ func (s *MutexState) to_acquiring(ctx workflow.Context) {
 	defer s.mutex.Unlock()
 
 	s.Status = MutexStatusAcquiring
-	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to Acquiring")
+	s.logger.info(s.Handler.Info.WorkflowExecution.ID, "transition", "to acquiring")
 }
 
 // set_handler updates the current handler.

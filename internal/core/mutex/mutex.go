@@ -111,11 +111,11 @@ type (
 //	}
 func (h *Handler) Prepare(ctx workflow.Context) error {
 	if err := h.validate(); err != nil {
-		h.logger.error(h.Info.WorkflowExecution.ID, "prepare", "Unable to validate mutex", err)
+		h.logger.error(h.Info.WorkflowExecution.ID, "prepare", "validate error", err)
 		return err
 	}
 
-	h.logger.info(h.Info.WorkflowExecution.ID, "prepare", "Preparing mutex")
+	h.logger.info(h.Info.WorkflowExecution.ID, "prepare", "preparing mutex")
 
 	opts := workflow.ActivityOptions{StartToCloseTimeout: h.Timeout}
 	ctx = workflow.WithActivityOptions(ctx, opts)
@@ -128,7 +128,7 @@ func (h *Handler) Prepare(ctx workflow.Context) error {
 
 	h.Execution = exe
 
-	h.logger.info(h.Info.WorkflowExecution.ID, "prepare", "Mutex prepared", "mutex", h.Execution.ID)
+	h.logger.info(h.Info.WorkflowExecution.ID, "prepare", "mutex prepared", "id", h.Execution.ID)
 
 	return nil
 }
@@ -144,7 +144,7 @@ func (h *Handler) Prepare(ctx workflow.Context) error {
 //	}
 //	// Critical section - mutex is acquired
 func (h *Handler) Acquire(ctx workflow.Context) error {
-	h.logger.info(h.Info.WorkflowExecution.ID, "acquire", "Requesting lock")
+	h.logger.info(h.Info.WorkflowExecution.ID, "acquire", "requesting lock")
 
 	ok := true
 
@@ -155,9 +155,9 @@ func (h *Handler) Acquire(ctx workflow.Context) error {
 		return NewAcquireLockError(h.ResourceID)
 	}
 
-	h.logger.info(h.Info.WorkflowExecution.ID, "acquire", "Waiting for lock")
+	h.logger.info(h.Info.WorkflowExecution.ID, "acquire", "waiting for lock")
 	workflow.GetSignalChannel(ctx, WorkflowSignalLocked.String()).Receive(ctx, &ok)
-	h.logger.info(h.Info.WorkflowExecution.ID, "acquire", "Lock acquired")
+	h.logger.info(h.Info.WorkflowExecution.ID, "acquire", "lock acquired")
 
 	if ok {
 		return nil
@@ -176,7 +176,7 @@ func (h *Handler) Acquire(ctx workflow.Context) error {
 //		// handle error
 //	}
 func (h *Handler) Release(ctx workflow.Context) error {
-	h.logger.info(h.Info.WorkflowExecution.ID, "release", "Requesting release")
+	h.logger.info(h.Info.WorkflowExecution.ID, "release", "requesting release")
 
 	orphan := false
 
@@ -187,13 +187,13 @@ func (h *Handler) Release(ctx workflow.Context) error {
 		return NewReleaseLockError(h.ResourceID)
 	}
 
-	h.logger.info(h.Info.WorkflowExecution.ID, "release", "Waiting for release")
+	h.logger.info(h.Info.WorkflowExecution.ID, "release", "waiting for release")
 	workflow.GetSignalChannel(ctx, WorkflowSignalReleased.String()).Receive(ctx, &orphan)
 
 	if orphan {
-		h.logger.warn(h.Info.WorkflowExecution.ID, "release", "Lock released, orphaned", nil)
+		h.logger.warn(h.Info.WorkflowExecution.ID, "release", "lock released, orphaned", nil)
 	} else {
-		h.logger.info(h.Info.WorkflowExecution.ID, "release", "Lock released")
+		h.logger.info(h.Info.WorkflowExecution.ID, "release", "lock released")
 	}
 
 	return nil
@@ -209,7 +209,7 @@ func (h *Handler) Release(ctx workflow.Context) error {
 //		// handle error
 //	}
 func (h *Handler) Cleanup(ctx workflow.Context) error {
-	h.logger.info(h.Info.WorkflowExecution.ID, "cleanup", "Requesting cleanup")
+	h.logger.info(h.Info.WorkflowExecution.ID, "cleanup", "requesting cleanup")
 
 	shutdown := false
 
@@ -220,7 +220,7 @@ func (h *Handler) Cleanup(ctx workflow.Context) error {
 		return NewCleanupMutexError(h.ResourceID)
 	}
 
-	h.logger.info(h.Info.WorkflowExecution.ID, "cleanup", "Waiting for cleanup")
+	h.logger.info(h.Info.WorkflowExecution.ID, "cleanup", "waiting for cleanup")
 	workflow.GetSignalChannel(ctx, WorkflowSignalCleanupDone.String()).Receive(ctx, &shutdown)
 
 	if err := workflow.
@@ -231,9 +231,9 @@ func (h *Handler) Cleanup(ctx workflow.Context) error {
 	}
 
 	if shutdown {
-		h.logger.info(h.Info.WorkflowExecution.ID, "cleanup", "Cleanup done")
+		h.logger.info(h.Info.WorkflowExecution.ID, "cleanup", "cleanup done")
 	} else {
-		h.logger.warn(h.Info.WorkflowExecution.ID, "cleanup", "Unable to clean up, mutex in use", nil)
+		h.logger.warn(h.Info.WorkflowExecution.ID, "cleanup", "cleanup failed, mutex in use", nil)
 	}
 
 	return nil
@@ -302,7 +302,7 @@ func New(ctx workflow.Context, opts ...Option) Mutex {
 	h.Info = workflow.GetInfo(ctx)
 	h.logger = NewMutexHandlerLogger(ctx, h.ResourceID)
 
-	h.logger.info(h.Info.WorkflowExecution.ID, "create", "Creating new mutex")
+	h.logger.info(h.Info.WorkflowExecution.ID, "create", "creating new mutex")
 
 	return h
 }

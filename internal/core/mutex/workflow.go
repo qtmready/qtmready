@@ -99,7 +99,7 @@ func MutexWorkflow(ctx workflow.Context, state *MutexState) error {
 		}
 	}
 
-	_ = workflow.Sleep(ctx, 500*time.Millisecond)
+	_ = workflow.Sleep(ctx, 500*time.Millisecond) // NOTE: This is a hack to wait for the signal from the cleanup loop.
 
 	state.logger.info(state.Handler.Info.WorkflowExecution.ID, "shutdown", "shutdown!")
 
