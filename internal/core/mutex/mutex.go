@@ -98,6 +98,17 @@ type (
 	}
 )
 
+// Prepare prepares the mutex for use by executing the PrepareMutexActivity.
+// It validates the mutex configuration, sets up the activity options, and executes the activity.
+// If successful, it sets the Execution field of the Handler.
+//
+// Usage:
+//
+//	mutex := New(ctx, WithResourceID("resource-id"))
+//	err := mutex.Prepare(ctx)
+//	if err != nil {
+//		// handle error
+//	}
 func (h *Handler) Prepare(ctx workflow.Context) error {
 	if err := h.validate(); err != nil {
 		h.logger.error(h.Info.WorkflowExecution.ID, "prepare", "Unable to validate mutex", err)
@@ -122,6 +133,16 @@ func (h *Handler) Prepare(ctx workflow.Context) error {
 	return nil
 }
 
+// Acquire attempts to acquire the lock by signaling the mutex workflow.
+// It waits for the WorkflowSignalLocked signal to confirm acquisition.
+//
+// Usage:
+//
+//	err := mutex.Acquire(ctx)
+//	if err != nil {
+//		// handle error
+//	}
+//	// Critical section - mutex is acquired
 func (h *Handler) Acquire(ctx workflow.Context) error {
 	h.logger.info(h.Info.WorkflowExecution.ID, "acquire", "Requesting lock")
 
@@ -145,6 +166,15 @@ func (h *Handler) Acquire(ctx workflow.Context) error {
 	return NewAcquireLockError(h.ResourceID)
 }
 
+// Release signals the mutex workflow to release the lock.
+// It waits for the WorkflowSignalReleased signal to confirm the release.
+//
+// Usage:
+//
+//	err := mutex.Release(ctx)
+//	if err != nil {
+//		// handle error
+//	}
 func (h *Handler) Release(ctx workflow.Context) error {
 	h.logger.info(h.Info.WorkflowExecution.ID, "release", "Requesting release")
 
@@ -169,6 +199,15 @@ func (h *Handler) Release(ctx workflow.Context) error {
 	return nil
 }
 
+// Cleanup attempts to shut down the mutex workflow if it's no longer needed.
+// It signals the mutex workflow and waits for confirmation of cleanup.
+//
+// Usage:
+//
+//	err := mutex.Cleanup(ctx)
+//	if err != nil {
+//		// handle error
+//	}
 func (h *Handler) Cleanup(ctx workflow.Context) error {
 	h.logger.info(h.Info.WorkflowExecution.ID, "cleanup", "Requesting cleanup")
 
@@ -200,7 +239,9 @@ func (h *Handler) Cleanup(ctx workflow.Context) error {
 	return nil
 }
 
-// validate validates if the mutex is properly configured.
+// validate checks if the mutex is properly configured with a ResourceID and workflow Info.
+//
+// Usage: This method is called internally by other methods and typically doesn't need to be called directly.
 func (h *Handler) validate() error {
 	if h.ResourceID == "" {
 		return ErrNoResourceID

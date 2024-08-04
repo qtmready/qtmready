@@ -51,7 +51,7 @@ func main() {
 
 func configure(queue queue.Name) worker.Worker {
 	worker := shared.Temporal().Worker(queue)
-	worker.RegisterWorkflow(mutex.Workflow)
+	worker.RegisterWorkflow(mutex.MutexWorkflow)
 	worker.RegisterWorkflow(ParentWorkflow)
 	worker.RegisterWorkflow(ChildWorkflow)
 
@@ -65,7 +65,7 @@ func ParentWorkflow(ctx workflow.Context) error {
 	queue := make(Data, 0)
 	futures := make([]workflow.Future, 0)
 
-	for range 1 {
+	for range 50 {
 		workflow.SideEffect(ctx, func(workflow.Context) any {
 			n, _ := rand.Int(rand.Reader, big.NewInt(30))
 			wait := time.Duration(n.Int64()) * time.Second

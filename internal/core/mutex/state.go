@@ -36,7 +36,7 @@ const (
 
 // on_prepare handles the preparation of lock requests.
 // This signal originates from a client attempting to prepare for lock acquisition.
-func (s *MutexState) on_prepare(ctx workflow.Context) func(workflow.Context) {
+func (s *MutexState) on_prepare(_ workflow.Context) func(workflow.Context) {
 	return func(ctx workflow.Context) {
 		for {
 			rx := &Handler{}
@@ -82,7 +82,9 @@ func (s *MutexState) on_release(ctx workflow.Context) shared.ChannelHandler {
 			s.pool.remove(ctx, s.handler.Info.WorkflowExecution.ID)
 			s.to_released(ctx)
 
-			_ = workflow.SignalExternalWorkflow(ctx, s.handler.Info.WorkflowExecution.ID, "", WorkflowSignalReleased.String(), true).Get(ctx, nil)
+			_ = workflow.
+				SignalExternalWorkflow(ctx, s.handler.Info.WorkflowExecution.ID, "", WorkflowSignalReleased.String(), true).
+				Get(ctx, nil)
 
 			s.logger.info(rx.Info.WorkflowExecution.ID, "release", "done")
 		}
@@ -106,8 +108,9 @@ func (s *MutexState) on_abort(ctx workflow.Context) shared.FutureHandler {
 
 // on_cleanup handles the cleanup process.
 // This signal originates from an external system or administrator initiating a cleanup.
-func (s *MutexState) on_cleanup(ctx workflow.Context, fn workflow.Settable) func(workflow.Context) {
+func (s *MutexState) on_cleanup(_ workflow.Context, fn workflow.Settable) func(workflow.Context) {
 	shutdown := false
+
 	return func(ctx workflow.Context) {
 		for !shutdown {
 			rx := &Handler{}
@@ -125,7 +128,10 @@ func (s *MutexState) on_cleanup(ctx workflow.Context, fn workflow.Settable) func
 				s.logger.info(rx.Info.WorkflowExecution.ID, "cleanup", "abort", "pool_size", s.pool.size())
 			}
 
-			_ = workflow.SignalExternalWorkflow(ctx, rx.Info.WorkflowExecution.ID, "", WorkflowSignalCleanupDone.String(), false).Get(ctx, nil)
+			_ = workflow.
+				SignalExternalWorkflow(ctx, rx.Info.WorkflowExecution.ID, "", WorkflowSignalCleanupDone.String(), false).
+				Get(ctx, nil)
+
 			workflow.GetSignalChannel(ctx, WorkflowSignalCleanupDoneAck.String()).Receive(ctx, nil)
 		}
 	}
@@ -215,16 +221,14 @@ func (s *MutexState) stop_persisting(ctx workflow.Context) {
 }
 
 // NewMutexState creates a new MutexState instance.
-func NewMutexState(ctx workflow.Context, starter *Handler) *MutexState {
-	info := workflow.GetInfo(ctx)
-
+func NewMutexState(ctx workflow.Context, handler *Handler) *MutexState {
 	return &MutexState{
 		status:  MutexStatusAcquiring,
-		handler: starter,
+		handler: handler,
 		pool:    NewPool(ctx),
 		orphans: NewPool(ctx),
 		timeout: 0,
-		logger:  NewMutexControllerLogger(ctx, info.WorkflowExecution.ID),
+		logger:  NewMutexControllerLogger(ctx, handler.ResourceID),
 		persist: true,
 		mutex:   workflow.NewMutex(ctx),
 	}

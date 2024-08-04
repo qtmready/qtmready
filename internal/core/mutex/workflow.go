@@ -23,7 +23,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-// Workflow is the mutex workflow. It controls access to a resource.
+// MutexWorkflow is the mutex workflow. It controls access to a resource.
 //
 // IMPORTANT: Do not use this function directly. Instead, use mutex.New to create and interact with mutex instances.
 //
@@ -44,7 +44,7 @@ import (
 //   - WorkflowSignalAcquire: Attempts to acquire a lock.
 //   - WorkflowSignalRelease: Releases a held lock.
 //   - WorkflowSignalCleanup: Initiates the cleanup process.
-func Workflow(ctx workflow.Context, starter *Handler) error {
+func MutexWorkflow(ctx workflow.Context, starter *Handler) error {
 	state := NewMutexState(ctx, starter)
 
 	shutdown, shutdownfn := workflow.NewFuture(ctx)
