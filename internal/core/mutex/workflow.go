@@ -18,7 +18,6 @@
 package mutex
 
 import (
-	"log/slog"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -60,67 +59,62 @@ var (
 //   - WorkflowSignalRelease: Releases a held lock.
 //   - WorkflowSignalCleanup: Initiates the cleanup process.
 func Workflow(ctx workflow.Context, starter *Handler) error {
-	wfinfo(ctx, starter, "mutex: workflow started")
+	info := workflow.GetInfo(ctx)
+	logger := NewMutexControllerLogger(ctx, info.WorkflowExecution.ID)
+	logger.info(starter.Info.WorkflowExecution.ID, "start", "mutex: workflow started",
+		"resource_id", starter.ResourceID,
+		"mutex_id", info.WorkflowExecution.ID)
 
-	persist := true                // persist is used to keep the workflow running.
-	handler := &Handler{}          // handler is the active lock request.
-	status := MutexStatusAcquiring // status is the current status of the lock.
-	pool := NewPool(ctx)           // queue holds the lock requests.
-	orphans := NewPool(ctx)        // orphans holds the lock requests that have timed out.
+	handler := starter
+	status := MutexStatusAcquiring
+	pool := NewPool(ctx)
+	orphans := NewPool(ctx)
 	shutdown, shutdownfn := workflow.NewFuture(ctx)
 
-	// coroutines responsible for scheduling the lock request or scheduling a graceful shutdown of the mutex workflow.
-	workflow.Go(ctx, prepare(ctx, starter, pool, &persist))
-	workflow.Go(ctx, cleanup(ctx, starter, pool, shutdownfn))
+	workflow.Go(ctx, prepare(ctx, handler, pool, logger))
+	workflow.Go(ctx, cleanup(ctx, handler, pool, shutdownfn, logger))
 
-	// main loop to handle
-	//  - acquiring the lock
-	//  - garbage collection
-	//  - releasing the lock
-	//  - timeout
-	for persist {
-		wfinfo(ctx, starter, "mutex: waiting for lock request ...")
+	for {
+		logger.info(handler.Info.WorkflowExecution.ID, "main_loop", "mutex: waiting for lock request ...")
 
 		found := true
 		timeout := time.Duration(0)
 		acquirer := workflow.NewSelector(ctx)
 
-		acquirer.AddReceive(workflow.GetSignalChannel(ctx, WorkflowSignalAcquire.String()), acquire(ctx, handler, pool, &timeout, &found))
-		acquirer.AddFuture(shutdown, terminate(ctx, handler, &persist))
+		acquirer.AddReceive(workflow.GetSignalChannel(ctx, WorkflowSignalAcquire.String()), acquire(ctx, &handler, pool, &timeout, &found, logger))
+		acquirer.AddFuture(shutdown, terminate(ctx, handler, logger))
 
 		acquirer.Select(ctx)
 
-		// cleanup signal received and processed. queue is empty, so shutdown the workflow.
-		if !persist {
-			continue
+		if handler == nil {
+			break // Shutdown signal received
 		}
 
-		// lock found in queue, set the status to locked and continue to next step, else set the status to acquiring and restart the loop.
 		if !found {
-			wfinfo(ctx, handler, "mutex: lock not found in the pool, retrying ...")
+			logger.info(handler.Info.WorkflowExecution.ID, "main_loop", "mutex: lock not found in the pool, retrying ...")
 
 			status = MutexStatusAcquiring
 
 			continue
-		} else {
-			wfinfo(ctx, handler, "mutex: lock acquired!")
-
-			status = MutexStatusLocked
 		}
 
+		logger.info(handler.Info.WorkflowExecution.ID, "main_loop", "mutex: lock acquired!")
+
+		status = MutexStatusLocked
+
 		for {
-			wfinfo(ctx, handler, "mutex: waiting for release or timeout ...")
+			logger.info(handler.Info.WorkflowExecution.ID, "main_loop", "mutex: waiting for release or timeout ...")
+
 			releaser := workflow.NewSelector(ctx)
 
 			releaser.AddReceive(
 				workflow.GetSignalChannel(ctx, WorkflowSignalRelease.String()),
-				release(ctx, handler, &status, pool, orphans),
+				release(ctx, handler, &status, pool, orphans, logger),
 			)
-			releaser.AddFuture(workflow.NewTimer(ctx, timeout), abort(ctx, handler, &status, pool, orphans, timeout))
+			releaser.AddFuture(workflow.NewTimer(ctx, timeout), abort(ctx, handler, &status, pool, orphans, timeout, logger))
 
 			releaser.Select(ctx)
 
-			// if the lock is released or timed out, set the status to acquiring and break the loop.
 			if status == MutexStatusReleased || status == MutexStatusTimeout {
 				status = MutexStatusAcquiring
 				break
@@ -128,60 +122,60 @@ func Workflow(ctx workflow.Context, starter *Handler) error {
 		}
 	}
 
-	// FIXME - This waits for WorkflowSignalCleanupDone to be recieved at the caller's side. There must be a better way.
-	// Investigate selector.AddSend(ctx, valueptr, callback). I think that should do it.
 	_ = workflow.Sleep(ctx, 500*time.Millisecond)
 
-	wfinfo(ctx, starter, "mutex: shutdown!")
+	logger.info(info.WorkflowExecution.ID, "shutdown", "mutex: shutdown!")
 
 	return nil
 }
 
-// prepare is a coroutine that listens to the prepare signal and adds the lock request to the queue.
-func prepare(ctx workflow.Context, handler *Handler, pool *Pool, persist *bool) shared.CoroutineHandler {
-	wfinfo(ctx, handler, "mutex: setting up workflow to prepare signal ....")
-
+func prepare(ctx workflow.Context, handler *Handler, pool *Pool, logger *MutexLogger) func(workflow.Context) {
 	return func(ctx workflow.Context) {
-		for *persist {
+		for {
 			rx := &Handler{}
 			workflow.GetSignalChannel(ctx, WorkflowSignalPrepare.String()).Receive(ctx, rx)
 
-			wfinfo(ctx, rx, "mutex: prepare request received ...", slog.Int("pool_size", pool.size()))
-
+			logger.info(rx.Info.WorkflowExecution.ID, "prepare", "mutex: prepare request received ...",
+				"pool_size", pool.size(),
+				"mutex_id", handler.Info.WorkflowExecution.ID)
 			pool.add(ctx, rx.Info.WorkflowExecution.ID, rx.Timeout)
-
-			wfinfo(ctx, rx, "mutex: prepared!", slog.Int("pool_size", pool.size()))
+			logger.info(rx.Info.WorkflowExecution.ID, "prepare", "mutex: prepared!",
+				"pool_size", pool.size(),
+				"mutex_id", handler.Info.WorkflowExecution.ID)
 		}
 	}
 }
 
-// acquire is a channel handler that is called when the lock is to be acquired.
-func acquire(ctx workflow.Context, handler *Handler, pool *Pool, timeout *time.Duration, found *bool) shared.ChannelHandler {
+func acquire(ctx workflow.Context, handler **Handler, pool *Pool, timeout *time.Duration, found *bool, logger *MutexLogger) shared.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
 		rx := &Handler{}
 		channel.Receive(ctx, rx)
 
-		*handler = *rx
+		*handler = rx
 		*timeout, *found = pool.get(rx.Info.WorkflowExecution.ID)
 
-		wfinfo(ctx, handler, "mutex: lock request received ...", slog.String("requested_by", rx.Info.WorkflowExecution.ID))
+		logger.info(rx.Info.WorkflowExecution.ID, "acquire", "mutex: lock request received ...",
+			"requested_by", rx.Info.WorkflowExecution.ID,
+			"mutex_id", (*handler).Info.WorkflowExecution.ID)
 
 		if err := workflow.
 			SignalExternalWorkflow(ctx, rx.Info.WorkflowExecution.ID, "", WorkflowSignalLocked.String(), *found).
 			Get(ctx, nil); err != nil {
-			wfwarn(ctx, handler, "mutex: unable to acquire lock, retrying ...", err)
+			logger.warn(rx.Info.WorkflowExecution.ID, "acquire", "mutex: unable to acquire lock, retrying ...",
+				"error", err,
+				"mutex_id", (*handler).Info.WorkflowExecution.ID)
 		}
 	}
 }
 
-// release is a channel handler that is called when lock is to be released.
-// TODO - handle the case when the lock is found in the orphans pool.
-func release(ctx workflow.Context, handler *Handler, status *MutexStatus, pool, orphans *Pool) shared.ChannelHandler {
+func release(ctx workflow.Context, handler *Handler, status *MutexStatus, pool, orphans *Pool, logger *MutexLogger) shared.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
 		rx := &Handler{}
 		channel.Receive(ctx, rx)
 
-		wfinfo(ctx, handler, "mutex: releasing ...", slog.Int("pool_size", pool.size()))
+		logger.info(rx.Info.WorkflowExecution.ID, "release", "mutex: releasing ...",
+			"pool_size", pool.size(),
+			"mutex_id", handler.Info.WorkflowExecution.ID)
 
 		if rx.Info.WorkflowExecution.ID == handler.Info.WorkflowExecution.ID {
 			*status = MutexStatusReleasing
@@ -192,8 +186,9 @@ func release(ctx workflow.Context, handler *Handler, status *MutexStatus, pool, 
 				Get(ctx, nil)
 
 			if err != nil {
-				wfwarn(ctx, handler, "mutex: unable to release lock, retrying ...", err)
-
+				logger.warn(handler.Info.WorkflowExecution.ID, "release", "mutex: unable to release lock, retrying ...",
+					"error", err,
+					"mutex_id", handler.Info.WorkflowExecution.ID)
 				return
 			}
 
@@ -201,67 +196,69 @@ func release(ctx workflow.Context, handler *Handler, status *MutexStatus, pool, 
 
 			*status = MutexStatusReleased
 
-			wfinfo(ctx, handler, "mutex: release done!", slog.Int("pool_size", pool.size()))
+			logger.info(handler.Info.WorkflowExecution.ID, "release", "mutex: release done!",
+				"pool_size", pool.size(),
+				"mutex_id", handler.Info.WorkflowExecution.ID)
 		}
 	}
 }
 
-// abort is a future handler that is called when the lock has timed out.
-// TODO - what happens at the acquirer when the lock times out?
-func abort(ctx workflow.Context, handler *Handler, status *MutexStatus, pool, orphans *Pool, timeout time.Duration) shared.FutureHandler {
+func abort(ctx workflow.Context, handler *Handler, status *MutexStatus, pool, orphans *Pool, timeout time.Duration, logger *MutexLogger) shared.FutureHandler {
 	return func(future workflow.Future) {
 		if *status == MutexStatusLocked && *status != MutexStatusReleasing && timeout > 0 {
-			wfinfo(ctx, handler, "mutex: timeout reached, releasing ...", slog.Duration("timeout", timeout))
+			logger.info(handler.Info.WorkflowExecution.ID, "abort", "mutex: timeout reached, releasing ...",
+				"timeout", timeout,
+				"mutex_id", handler.Info.WorkflowExecution.ID)
 			pool.remove(ctx, handler.Info.WorkflowExecution.ID)
 			orphans.add(ctx, handler.Info.WorkflowExecution.ID, timeout)
 
 			*status = MutexStatusTimeout
 		}
 
-		wfwarn(ctx, handler, "mutex: ignoring timeout ...", nil)
+		logger.warn(handler.Info.WorkflowExecution.ID, "abort", "mutex: ignoring timeout ...",
+			"mutex_id", handler.Info.WorkflowExecution.ID)
 	}
 }
 
-// cleanup is a coroutine that listens to the cleanup signal and shuts down the workflow if the queue is empty.
-func cleanup(ctx workflow.Context, handler *Handler, pool *Pool, fn workflow.Settable) shared.CoroutineHandler {
-	wfinfo(ctx, handler, "mutex: setting up workflow for cleanup signals ....")
-
-	shutdown := false
-
+func cleanup(ctx workflow.Context, handler *Handler, pool *Pool, fn workflow.Settable, logger *MutexLogger) func(workflow.Context) {
 	return func(ctx workflow.Context) {
-		for !shutdown {
+		for {
 			rx := &Handler{}
 			workflow.GetSignalChannel(ctx, WorkflowSignalCleanup.String()).Receive(ctx, rx)
 
-			wfinfo(ctx, handler, "mutex: cleanup requested ...", slog.Int("pool_size", pool.size()))
+			logger.info(rx.Info.WorkflowExecution.ID, "cleanup", "mutex: cleanup requested ...",
+				"pool_size", pool.size(),
+				"mutex_id", handler.Info.WorkflowExecution.ID)
 
 			if pool.size() == 0 {
-				wfinfo(ctx, handler, "mutex: requesting shutdown ...", slog.Int("pool_size", pool.size()))
+				logger.info(rx.Info.WorkflowExecution.ID, "cleanup", "mutex: requesting shutdown ...",
+					"pool_size", pool.size(),
+					"mutex_id", handler.Info.WorkflowExecution.ID)
 				fn.Set(rx, nil)
-
-				shutdown = true
+				return
 			}
 
 			_ = workflow.
-				SignalExternalWorkflow(ctx, rx.Info.WorkflowExecution.ID, "", WorkflowSignalCleanupDone.String(), shutdown).
+				SignalExternalWorkflow(ctx, rx.Info.WorkflowExecution.ID, "", WorkflowSignalCleanupDone.String(), false).
 				Get(ctx, nil)
 
 			workflow.GetSignalChannel(ctx, WorkflowSignalCleanupDoneAck.String()).Receive(ctx, nil)
 
-			wfinfo(ctx, handler, "mutex: cleanup request processed!", slog.Int("pool_size", pool.size()))
+			logger.info(rx.Info.WorkflowExecution.ID, "cleanup", "mutex: cleanup request processed!",
+				"pool_size", pool.size(),
+				"mutex_id", handler.Info.WorkflowExecution.ID)
 		}
 	}
 }
 
-func terminate(ctx workflow.Context, handler *Handler, persist *bool) shared.FutureHandler {
+func terminate(ctx workflow.Context, handler *Handler, logger *MutexLogger) shared.FutureHandler {
 	return func(future workflow.Future) {
 		rx := &Handler{}
 		_ = future.Get(ctx, rx)
 
-		wfinfo(ctx, handler, "mutex: shutdown request recieved ...")
-
-		*persist = false
-
-		wfinfo(ctx, handler, "mutex: shutting down ...")
+		logger.info(rx.Info.WorkflowExecution.ID, "terminate", "mutex: shutdown request received ...",
+			"mutex_id", handler.Info.WorkflowExecution.ID)
+		logger.info(rx.Info.WorkflowExecution.ID, "terminate", "mutex: shutting down ...",
+			"mutex_id", handler.Info.WorkflowExecution.ID)
 	}
 }

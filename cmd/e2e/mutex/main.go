@@ -101,7 +101,11 @@ func ChildWorkflow(ctx workflow.Context, id uuid.UUID, timeout time.Duration) er
 	logger := workflow.GetLogger(ctx)
 	logger.Info("Starting child workflow", slog.String("id", id.String()), slog.String("timeout", timeout.String()))
 
-	lock := mutex.New(mutex.WithResourceID("repo.xyz"), mutex.WithTimeout(timeout+(10*time.Second)), mutex.WithHandler(ctx))
+	lock := mutex.New(
+		ctx,
+		mutex.WithResourceID("repo.xyz"),
+		mutex.WithTimeout(timeout+(10*time.Second)),
+	)
 
 	// Prepare the lock means that get the reference to running Mutex workflow and schedule a new lock on it. If there is no Mutex workflow
 	// running, then start a new Mutex workflow and schedule a lock on it.
