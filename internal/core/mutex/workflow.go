@@ -49,6 +49,8 @@ func MutexWorkflow(ctx workflow.Context, state *MutexState) error {
 
 	shutdown, shutdownfn := workflow.NewFuture(ctx)
 
+	_ = state.set_query_state(ctx)
+
 	workflow.Go(ctx, state.on_prepare(ctx))
 	workflow.Go(ctx, state.on_cleanup(ctx, shutdownfn))
 

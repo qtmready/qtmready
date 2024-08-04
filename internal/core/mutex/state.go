@@ -35,6 +35,16 @@ const (
 	MutexStatusTimeout   MutexStatus = "mutex__timeout"
 )
 
+const (
+	WorkflowQueryState shared.WorkflowSignal = "query__mutex__state"
+)
+
+func (s *MutexState) set_query_state(ctx workflow.Context) error {
+	return workflow.SetQueryHandler(ctx, WorkflowQueryState.String(), func() (*MutexState, error) {
+		return s, nil
+	})
+}
+
 // on_prepare handles the preparation of lock requests.
 // This signal originates from a client attempting to prepare for lock acquisition.
 func (s *MutexState) on_prepare(_ workflow.Context) func(workflow.Context) {
