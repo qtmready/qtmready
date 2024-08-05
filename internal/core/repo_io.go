@@ -67,6 +67,8 @@ type (
 
 		DetectChanges(ctx context.Context, payload *RepoIODetectChangesPayload) (*RepoIOChanges, error)
 
+		MergePR(ctx context.Context, payload *RepoIOMergePRPayload) error
+
 		// TokenizedCloneURL returns the url with oauth token in it.
 		//
 		// NOTE - Since the url contains oauth token, it is best not to call this as activity.
@@ -164,6 +166,14 @@ type (
 		Author    string        `json:"author"`
 		Timestamp time.Time     `json:"timestamp"`
 		Changes   RepoIOChanges `json:"changes"`
+	}
+
+	RepoIOMergePRPayload struct {
+		RepoName       string       `json:"repo_name"`
+		RepoOwner      string       `json:"owner"`
+		DefaultBranch  string       `json:"defualt_branch"`
+		TargetBranch   string       `json:"target_branch"`
+		InstallationID shared.Int64 `json:"installation_id"`
 	}
 
 	RepoIOCommits []RepoIOCommit
