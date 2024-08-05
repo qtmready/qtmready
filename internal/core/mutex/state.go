@@ -140,7 +140,7 @@ func (s *MutexState) on_cleanup(_ workflow.Context, fn workflow.Settable) func(w
 			}
 
 			_ = workflow.
-				SignalExternalWorkflow(ctx, rx.Info.WorkflowExecution.ID, "", WorkflowSignalCleanupDone.String(), false).
+				SignalExternalWorkflow(ctx, rx.Info.WorkflowExecution.ID, "", WorkflowSignalCleanupDone.String(), shutdown).
 				Get(ctx, nil)
 
 			workflow.GetSignalChannel(ctx, WorkflowSignalCleanupDoneAck.String()).Receive(ctx, nil)
