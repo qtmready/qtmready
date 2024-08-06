@@ -1,7 +1,6 @@
 package defs
 
 import (
-	"context"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -33,31 +32,6 @@ const (
 	PullRequestActionMerged        PullRequestAction = "merged"
 	PullRequestActionReviewRequest PullRequestAction = "review_request"
 	PullRequestActionApproved      PullRequestAction = "approved"
-)
-
-// RepoIO signal payloads.
-type (
-	// RepoIO is the interface that defines the operations that can be performed on a repository.
-	RepoIO interface {
-		// GetProviderInfo gets the name & default branch for the provider repo.
-		GetProviderInfo(ctx context.Context, id string) (*RepoIOProviderInfo, error)
-
-		// SetEarlyWarning sets the early warning flag for the provider repo.
-		SetEarlyWarning(ctx context.Context, id string, value bool) error
-
-		// GetAllBranches gets all the branches for the provider repo.
-		GetAllBranches(ctx context.Context, payload *RepoIOProviderInfo) ([]string, error)
-
-		DetectChanges(ctx context.Context, payload *RepoIODetectChangesPayload) (*RepoIOChanges, error)
-
-		MergePR(ctx context.Context, payload *RepoIOMergePRPayload) error
-
-		// TokenizedCloneURL returns the url with oauth token in it.
-		//
-		// NOTE - Since the url contains oauth token, it is best not to call this as activity.
-		// LINK - https://github.com/orgs/community/discussions/24575#discussioncomment-3244524
-		TokenizedCloneURL(ctx context.Context, payload *RepoIOProviderInfo) (string, error)
-	}
 )
 
 // signal payloads.

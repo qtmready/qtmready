@@ -1,20 +1,10 @@
 package defs
 
 import (
-	"context"
-
 	"go.breu.io/quantm/internal/shared"
 )
 
 type (
-
-	// MessageIO is the interface that defines the operations that can be performed on a message provider.
-	MessageIO interface {
-		SendStaleBranchMessage(ctx context.Context, payload *MessageIOStaleBranchPayload) error
-		SendNumberOfLinesExceedMessage(ctx context.Context, payload *MessageIOLineExeededPayload) error
-		SendMergeConflictsMessage(ctx context.Context, payload *MessageIOMergeConflictPayload) error
-	}
-
 	// NOTE - this base struct need for any type of message. getting from core repo.
 	MessageIOPayload struct {
 		WorkspaceID string `json:"workspace_id"`
