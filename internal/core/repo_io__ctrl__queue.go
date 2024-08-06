@@ -4,7 +4,10 @@ import (
 	"go.temporal.io/sdk/workflow"
 )
 
-// QueueCtrl is the main workflow for managing the queue.
+// QueueCtrl processes PRs sequentially, ensuring only one PR is handled at a time.
+//
+// Queue modifications (add, promote, demote) are handled concurrently via signals,
+// allowing for uninterrupted queue management during PR processing.
 func QueueCtrl(ctx workflow.Context, repo *Repo, branch string, queues *QueueCtrlSerializedState) error {
 	ctx, state := NewQueueCtrlState(ctx, repo, branch)
 

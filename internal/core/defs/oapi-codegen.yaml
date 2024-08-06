@@ -1,0 +1,11 @@
+package: defs
+generate:
+  models: true
+import-mapping:
+  "../../../shared/v1/schema.yaml": go.breu.io/quantm/internal/shared
+compatibility:
+  always-prefix-enum-values: true
+output: gen.go
+output-options:
+  skip-prune: true
+  user-templates-dir: ../../shared/templates
