@@ -33,10 +33,14 @@ type (
 
 // RepoIO signals.
 const (
-	RepoIOSignalPush           shared.WorkflowSignal = "repo_io__push"
-	RepoIOSignalCreateOrDelete shared.WorkflowSignal = "repo_io__create_or_delete"
-	RepoIOSignalRebase         shared.WorkflowSignal = "repo_io__rebase"
-	RepoIOSignalPullRequest    shared.WorkflowSignal = "repo_io__pull_request"
+	RepoIOSignalPush             shared.WorkflowSignal = "repo_io__push"
+	RepoIOSignalCreateOrDelete   shared.WorkflowSignal = "repo_io__create_or_delete"
+	RepoIOSignalRebase           shared.WorkflowSignal = "repo_io__rebase"
+	RepoIOSignalPullRequest      shared.WorkflowSignal = "repo_io__pull_request"
+	RepoIOSignalQueueAdd         shared.WorkflowSignal = "repo_io__queue__add"
+	RepoIOSignalQueueAddPriority shared.WorkflowSignal = "repo_io__queue__add__priority"
+	RepoIOSignalQueuePromote     shared.WorkflowSignal = "repo_io__queue__promote"
+	RepoIOSignalQueueDemote      shared.WorkflowSignal = "repo_io__queue__demote"
 )
 
 const (
@@ -62,6 +66,8 @@ type (
 		GetAllBranches(ctx context.Context, payload *RepoIOProviderInfo) ([]string, error)
 
 		DetectChanges(ctx context.Context, payload *RepoIODetectChangesPayload) (*RepoIOChanges, error)
+
+		MergePR(ctx context.Context, payload *RepoIOMergePRPayload) error
 
 		// TokenizedCloneURL returns the url with oauth token in it.
 		//
@@ -160,6 +166,14 @@ type (
 		Author    string        `json:"author"`
 		Timestamp time.Time     `json:"timestamp"`
 		Changes   RepoIOChanges `json:"changes"`
+	}
+
+	RepoIOMergePRPayload struct {
+		RepoName       string       `json:"repo_name"`
+		RepoOwner      string       `json:"owner"`
+		DefaultBranch  string       `json:"defualt_branch"`
+		TargetBranch   string       `json:"target_branch"`
+		InstallationID shared.Int64 `json:"installation_id"`
 	}
 
 	RepoIOCommits []RepoIOCommit

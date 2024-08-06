@@ -149,3 +149,67 @@ func (r *RepoIO) TokenizedCloneURL(ctx context.Context, payload *core.RepoIOProv
 
 	return fmt.Sprintf("https://git:%s@github.com/%s/%s.git", token, payload.RepoOwner, payload.RepoName), nil
 }
+
+// MergePR Branch in default repo branch.
+// TODO - need to refine.
+// NOTE - to optimze the logic need to make a logic like RebaseAtCommit for RebaseAtMerge.
+func (r *RepoIO) MergePR(ctx context.Context, payload *core.RepoIOMergePRPayload) error {
+	client, err := Instance().GetClientForInstallationID(payload.InstallationID)
+	if err != nil {
+		return err
+	}
+
+	// Create a copy branch name for the PR which will merge to main
+	copy_branch := payload.DefaultBranch + "-copy-for-" + payload.TargetBranch
+
+	// Get the latest commit SHA of the default branch
+	commits, _, err := client.Repositories.ListCommits(ctx, payload.RepoOwner, payload.RepoName, &gh.CommitsListOptions{
+		SHA: payload.DefaultBranch,
+	})
+	if err != nil {
+		return err
+	}
+
+	if len(commits) == 0 {
+		return fmt.Errorf("no commits found on branch %s", payload.DefaultBranch)
+	}
+
+	// get the latest sha
+	sha := *commits[0].SHA
+
+	// Create a new branch based on the latest commit
+	ref := &gh.Reference{
+		Ref: gh.String("refs/heads/" + copy_branch),
+		Object: &gh.GitObject{
+			SHA: &sha,
+		},
+	}
+
+	if _, _, err = client.Git.CreateRef(ctx, payload.RepoOwner, payload.RepoName, ref); err != nil {
+		return err
+	}
+
+	// Function to perform rebase
+	merge := func(base, head, message string) error {
+		req := &gh.RepositoryMergeRequest{
+			Base:          gh.String(base),
+			Head:          gh.String(head),
+			CommitMessage: gh.String(message),
+		}
+		_, _, err = client.Repositories.Merge(ctx, payload.RepoOwner, payload.RepoName, req)
+
+		return err
+	}
+
+	// merge target branch with the new branch
+	if err = merge(copy_branch, payload.TargetBranch, "Rebasing "+payload.TargetBranch+" with "+copy_branch); err != nil {
+		return err
+	}
+
+	// merge the new branch with the main branch
+	if err = merge(payload.DefaultBranch, copy_branch, "Rebasing "+copy_branch+" with "+payload.DefaultBranch); err != nil {
+		return err
+	}
+
+	return nil
+}

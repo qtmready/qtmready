@@ -30,10 +30,35 @@ type (
 		name     string
 		provider string
 	}
+
+	queueError struct {
+		pr   *RepoIOPullRequest
+		repo *Repo
+		code int
+	}
 )
 
 func (e *providerNotFoundError) Error() string {
 	return fmt.Sprintf("provider %s not found. please register your providers first.", e.name)
+}
+
+func (e *resourceNotFoundError) Error() string {
+	return fmt.Sprintf("resource %s not found. please register your resource with the provider %s first.", e.name, e.provider)
+}
+
+func (e *queueError) Error() string {
+	msg := ""
+
+	switch e.code {
+	case 10400:
+		msg = fmt.Sprintf("unable to schedule pr %d in repo %s", e.pr.Number, e.repo.Name)
+	case 10409:
+		msg = fmt.Sprintf("pr %d in repo %s is already scheduled", e.pr.Number, e.repo.Name)
+	default:
+		msg = fmt.Sprintf("unknown error for pr %d in repo %s", e.pr.Number, e.repo.Name)
+	}
+
+	return msg
 }
 
 func NewProviderNotFoundError(name string) error {
@@ -44,6 +69,10 @@ func NewResourceNotFoundError(name string, provider string) error {
 	return &resourceNotFoundError{name, provider}
 }
 
-func (e *resourceNotFoundError) Error() string {
-	return fmt.Sprintf("resource %s not found. please register your resource with the provider %s first.", e.name, e.provider)
+func NewQueueSchedulingError(pr *RepoIOPullRequest, repo *Repo) error {
+	return &queueError{pr, repo, 10400}
+}
+
+func NewQueueDuplicatedError(pr *RepoIOPullRequest, repo *Repo) error {
+	return &queueError{pr, repo, 10409}
 }

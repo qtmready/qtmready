@@ -69,6 +69,7 @@ func main() {
 	coreWrkr.RegisterWorkflow(core.RepoCtrl)
 	coreWrkr.RegisterWorkflow(core.TrunkCtrl)
 	coreWrkr.RegisterWorkflow(core.BranchCtrl)
+	coreWrkr.RegisterWorkflow(core.QueueCtrl)
 
 	// core activities
 	coreWrkr.RegisterActivity(&core.RepoActivities{})
