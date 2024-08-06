@@ -201,6 +201,107 @@ func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: exe.GetID(), Status: WorkflowStatusQueued})
 }
 
+// handlePullRequestReviewEvent handles GitHub pull request review event.
+func handlePullRequestReviewEvent(ctx echo.Context) error {
+	payload := &PullRequestReviewEvent{}
+	if err := ctx.Bind(payload); err != nil {
+		shared.Logger().Error("unable to bind payload ...", "error", err)
+		return err
+	}
+
+	shared.Logger().Info("pull request review event received ...", "action", payload.Action)
+
+	w := &Workflows{}
+	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
+	opts := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowOptions(
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
+			shared.WithWorkflowElement("repo"),
+			shared.WithWorkflowElementID(payload.Repository.ID.String()),
+			shared.WithWorkflowMod(WebhookEventPullRequestReview.String()),
+			shared.WithWorkflowModID(payload.PullRequest.Number.String()),
+			shared.WithWorkflowProp("action", payload.Action),
+			shared.WithWorkflowProp("id", delievery),
+		)
+
+	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPullRequestReviewEvent, payload)
+	if err != nil {
+		shared.Logger().Error("unable to signal OnPullRequestReviewEvent ...", "options", opts, "error", err)
+		return nil
+	}
+
+	return ctx.NoContent(http.StatusNoContent)
+}
+
+// handlePullRequestReviewCommentEvent handles GitHub pull request review comment event.
+func handlePullRequestReviewCommentEvent(ctx echo.Context) error {
+	payload := &PullRequestReviewCommentEvent{}
+	if err := ctx.Bind(payload); err != nil {
+		shared.Logger().Error("unable to bind payload ...", "error", err)
+		return err
+	}
+
+	shared.Logger().Info("pull request review comment event received ...", "action", payload.Action)
+
+	w := &Workflows{}
+	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
+	opts := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowOptions(
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
+			shared.WithWorkflowElement("repo"),
+			shared.WithWorkflowElementID(payload.Repository.ID.String()),
+			shared.WithWorkflowMod(WebhookEventPullRequestReview.String()),
+			shared.WithWorkflowModID(payload.PullRequest.Number.String()),
+			shared.WithWorkflowProp("action", payload.Action),
+			shared.WithWorkflowProp("id", delievery),
+		)
+
+	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPullRequestReviewCommentEvent, payload)
+	if err != nil {
+		shared.Logger().Error("unable to signal OnPullRequestReviewCommentEvent ...", "options", opts, "error", err)
+		return nil
+	}
+
+	return ctx.NoContent(http.StatusNoContent)
+}
+
+// handleLabelEvent handles GitHub repo label event event.
+func handleLabelEvent(ctx echo.Context) error {
+	payload := &LabelEvent{}
+	if err := ctx.Bind(payload); err != nil {
+		shared.Logger().Error("unable to bind payload ...", "error", err)
+		return err
+	}
+
+	shared.Logger().Info("label event received ...", "action", payload.Action)
+
+	w := &Workflows{}
+	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
+	opts := shared.Temporal().
+		Queue(shared.ProvidersQueue).
+		WorkflowOptions(
+			shared.WithWorkflowBlock("github"),
+			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
+			shared.WithWorkflowElement("repo"),
+			shared.WithWorkflowElementID(payload.Repository.ID.String()),
+			shared.WithWorkflowMod(WebhookEventLabel.String()),
+			shared.WithWorkflowProp("action", payload.Action),
+			shared.WithWorkflowProp("id", delievery),
+		)
+
+	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnLabelEvent, payload)
+	if err != nil {
+		shared.Logger().Error("unable to signal OnLabelEvent ...", "options", opts, "error", err)
+		return nil
+	}
+
+	return ctx.NoContent(http.StatusNoContent)
+}
+
 func handleWorkflowRunEvent(ctx echo.Context) error {
 	shared.Logger().Debug("workflow-run event received.")
 

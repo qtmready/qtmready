@@ -208,6 +208,35 @@ type (
 		RepoName       string
 		RepoOwner      string
 	}
+
+	PullRequestReviewEvent struct {
+		Action       string             `json:"action"`
+		Number       shared.Int64       `json:"number"`
+		Installation InstallationID     `json:"installation"`
+		Review       *PullRequestReview `json:"review"`
+		PullRequest  PullRequest        `json:"pull_request"`
+		Repository   RepositoryPR       `json:"repository"`
+		Sender       *User              `json:"sender"`
+	}
+
+	PullRequestReviewCommentEvent struct {
+		Action       string              `json:"action"`
+		Number       shared.Int64        `json:"number"`
+		Installation InstallationID      `json:"installation"`
+		Comment      *PullRequestComment `json:"comment"`
+		PullRequest  PullRequest         `json:"pull_request"`
+		Repository   RepositoryPR        `json:"repository"`
+		Sender       *User               `json:"sender"`
+	}
+
+	LabelEvent struct {
+		Action       string         `json:"action"`
+		Number       shared.Int64   `json:"number"`
+		Installation InstallationID `json:"installation"`
+		Label        *Label         `json:"label"`
+		Repository   RepositoryPR   `json:"repository"`
+		Sender       *User          `json:"sender"`
+	}
 )
 
 // Webhook event types. We get this from the header `X-Github-Event`.
@@ -330,5 +359,53 @@ func (p *CreateOrDeleteEvent) RepoName() string {
 }
 
 func (p *CreateOrDeleteEvent) SenderID() string {
+	return p.Sender.ID.String()
+}
+
+func (p *PullRequestReviewEvent) RepoID() shared.Int64 {
+	return p.Repository.ID
+}
+
+func (p *PullRequestReviewEvent) InstallationID() shared.Int64 {
+	return p.Installation.ID
+}
+
+func (p *PullRequestReviewEvent) RepoName() string {
+	return p.Repository.Name
+}
+
+func (p *PullRequestReviewEvent) SenderID() string {
+	return p.Sender.ID.String()
+}
+
+func (p *PullRequestReviewCommentEvent) RepoID() shared.Int64 {
+	return p.Repository.ID
+}
+
+func (p *PullRequestReviewCommentEvent) InstallationID() shared.Int64 {
+	return p.Installation.ID
+}
+
+func (p *PullRequestReviewCommentEvent) RepoName() string {
+	return p.Repository.Name
+}
+
+func (p *PullRequestReviewCommentEvent) SenderID() string {
+	return p.Sender.ID.String()
+}
+
+func (p *LabelEvent) RepoID() shared.Int64 {
+	return p.Repository.ID
+}
+
+func (p *LabelEvent) InstallationID() shared.Int64 {
+	return p.Installation.ID
+}
+
+func (p *LabelEvent) RepoName() string {
+	return p.Repository.Name
+}
+
+func (p *LabelEvent) SenderID() string {
 	return p.Sender.ID.String()
 }
