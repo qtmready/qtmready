@@ -432,7 +432,7 @@ func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRe
 		return err
 	}
 
-	payload := &core.RepoIOSignalPullRequestPayload{
+	payload := &defs.RepoIOSignalPullRequestPayload{
 		Action:         event.Action,
 		Number:         event.Number,
 		RepoName:       event.Repository.Name,
@@ -446,7 +446,7 @@ func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRe
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalPullRequest, payload).
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequest, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
 			"github/pull_request_review: error signaling repo ctrl ...",
@@ -476,7 +476,7 @@ func (w *Workflows) OnPullRequestReviewCommentEvent(ctx workflow.Context, event 
 		return err
 	}
 
-	payload := &core.RepoIOSignalPullRequestPayload{
+	payload := &defs.RepoIOSignalPullRequestPayload{
 		Action:         event.Action,
 		Number:         event.Number,
 		RepoName:       event.Repository.Name,
@@ -490,7 +490,7 @@ func (w *Workflows) OnPullRequestReviewCommentEvent(ctx workflow.Context, event 
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalPullRequest, payload).
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequest, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
 			"github/pull_request_review_comment: error signaling repo ctrl ...",
@@ -520,7 +520,7 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, event *LabelEvent) error 
 		return err
 	}
 
-	payload := &core.RepoIOSignalPullRequestPayload{
+	payload := &defs.RepoIOSignalPullRequestPayload{
 		Action:         event.Action,
 		Number:         event.Number,
 		RepoName:       event.Repository.Name,
@@ -534,7 +534,7 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, event *LabelEvent) error 
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalPullRequest, payload).
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequest, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
 			"github/label_event: error signaling repo ctrl ...",
