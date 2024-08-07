@@ -5,6 +5,11 @@ import (
 )
 
 type (
+	nilError struct {
+		name string
+		kind string
+	}
+
 	providerNotFoundError struct {
 		name string
 	}
@@ -27,6 +32,10 @@ func (e *providerNotFoundError) Error() string {
 
 func (e *resourceNotFoundError) Error() string {
 	return fmt.Sprintf("resource %s not found. please register your resource with the provider %s first.", e.name, e.provider)
+}
+
+func (e *nilError) Error() string {
+	return fmt.Sprintf("%s cannot be nil, cannot set %s", e.kind, e.name)
 }
 
 func (e *queueError) Error() string {
@@ -75,4 +84,8 @@ func NewQueueSchedulingError(pr *RepoIOPullRequest, repo *Repo) error {
 // the pull request is already scheduled for the given repository.
 func NewQueueDuplicatedError(pr *RepoIOPullRequest, repo *Repo) error {
 	return &queueError{pr, repo, 10409}
+}
+
+func NewNilError(name string, kind string) error {
+	return &nilError{name, kind}
 }

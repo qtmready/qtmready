@@ -26,7 +26,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/quantm/internal/auth"
-	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -279,7 +279,7 @@ const (
 
 type (
 	RepoEventState struct {
-		CoreRepo *core.Repo     `json:"core_repo"`
+		CoreRepo *defs.Repo     `json:"core_repo"`
 		Repo     *Repo          `json:"repo"`
 		User     *auth.TeamUser `json:"user"`
 	}

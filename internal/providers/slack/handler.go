@@ -26,7 +26,7 @@ import (
 	"github.com/slack-go/slack"
 
 	"go.breu.io/quantm/internal/auth"
-	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
@@ -127,7 +127,7 @@ func _user(ctx echo.Context, response *slack.OAuthV2Response) (*auth.MessageProv
 	return &userinfo, nil
 }
 
-func _bot(response *slack.OAuthV2Response) (*core.MessageProviderData, error) {
+func _bot(response *slack.OAuthV2Response) (*defs.MessageProviderData, error) {
 	// Generate a key for AES-256.
 	key := generateKey(response.Team.ID)
 
@@ -137,8 +137,8 @@ func _bot(response *slack.OAuthV2Response) (*core.MessageProviderData, error) {
 		return nil, err
 	}
 
-	resp := &core.MessageProviderData{
-		Slack: &core.MessageProviderSlackData{
+	resp := &defs.MessageProviderData{
+		Slack: &defs.MessageProviderSlackData{
 			ChannelID:     response.IncomingWebhook.ChannelID,
 			ChannelName:   response.IncomingWebhook.Channel,
 			WorkspaceName: response.Team.Name,

@@ -23,7 +23,7 @@ type (
 	// It provides common functionality for various repository control types.
 	BaseCtrl struct {
 		kind       string                   // kind identifies the type of control (e.g., "repo", "branch")
-		activities *RepoActivities          // activities holds the repository activities
+		activities *Activities              // activities holds the repository activities
 		repo       *defs.Repo               // repo is a reference to the repository
 		info       *defs.RepoIOProviderInfo // info stores provider-specific information
 		branches   []string                 // branches is a list of branches in the repository
@@ -250,7 +250,7 @@ func (base *BaseCtrl) call_async(ctx workflow.Context, action string, fn CallAsy
 func NewBaseCtrl(ctx workflow.Context, kind string, repo *defs.Repo) *BaseCtrl {
 	base := &BaseCtrl{
 		kind:       kind,
-		activities: &RepoActivities{},
+		activities: &Activities{},
 		info:       &defs.RepoIOProviderInfo{},
 		repo:       repo,
 		mutex:      workflow.NewMutex(ctx),

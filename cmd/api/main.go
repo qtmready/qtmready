@@ -30,7 +30,9 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 
 	"go.breu.io/quantm/internal/auth"
-	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/core/defs"
+	"go.breu.io/quantm/internal/core/kernel"
+	coreweb "go.breu.io/quantm/internal/core/web"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/providers/slack"
@@ -84,13 +86,13 @@ func main() {
 	web.GET("/healthx", healthz)
 
 	auth.RegisterHandlers(web, auth.NewServerHandler(auth.Middleware))
-	core.RegisterHandlers(web, core.NewServerHandler(auth.Middleware))
+	coreweb.RegisterHandlers(web, coreweb.NewServerHandler(auth.Middleware))
 	github.RegisterHandlers(web, github.NewServerHandler(auth.Middleware))
 	slack.RegisterHandlers(web, slack.NewServerHandler(auth.Middleware))
 
-	core.Instance(
-		core.WithRepoProvider(core.RepoProviderGithub, &github.RepoIO{}),
-		core.WithMessageProvider(core.MessageProviderSlack, &slack.Activities{}),
+	kernel.Instance(
+		kernel.WithRepoProvider(defs.RepoProviderGithub, &github.RepoIO{}),
+		kernel.WithMessageProvider(defs.MessageProviderSlack, &slack.Activities{}),
 	)
 
 	slog.Info("setting up metrics")

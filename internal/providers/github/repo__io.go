@@ -9,23 +9,23 @@ import (
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	gh "github.com/google/go-github/v62/github"
 
-	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/core/code"
+	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
 type (
-	// RepoIO conforms to core.RepoIO interface.
 	RepoIO struct{}
 )
 
-func (r *RepoIO) GetProviderInfo(ctx context.Context, id string) (*core.RepoIOProviderInfo, error) {
+func (r *RepoIO) GetProviderInfo(ctx context.Context, id string) (*defs.RepoIOProviderInfo, error) {
 	repo := &Repo{}
 	if err := db.Get(repo, db.QueryParams{"id": id}); err != nil {
 		return nil, err
 	}
 
-	data := &core.RepoIOProviderInfo{
+	data := &defs.RepoIOProviderInfo{
 		RepoName:       repo.Name,
 		DefaultBranch:  repo.DefaultBranch,
 		ProviderID:     repo.GithubID.String(),
@@ -51,7 +51,7 @@ func (r *RepoIO) SetEarlyWarning(ctx context.Context, id string, value bool) err
 	return nil
 }
 
-func (r *RepoIO) GetAllBranches(ctx context.Context, payload *core.RepoIOProviderInfo) ([]string, error) {
+func (r *RepoIO) GetAllBranches(ctx context.Context, payload *defs.RepoIOProviderInfo) ([]string, error) {
 	branches := make([]string, 0)
 	page := 1
 
@@ -75,7 +75,7 @@ func (r *RepoIO) GetAllBranches(ctx context.Context, payload *core.RepoIOProvide
 		}
 
 		for _, branch := range _branches {
-			branches = append(branches, core.BranchNameFromRef(*branch.Name))
+			branches = append(branches, code.BranchNameFromRef(*branch.Name))
 		}
 
 		if response.NextPage == 0 {
@@ -87,7 +87,7 @@ func (r *RepoIO) GetAllBranches(ctx context.Context, payload *core.RepoIOProvide
 }
 
 // DetectChanges detects changes in a repository.
-func (r *RepoIO) DetectChanges(ctx context.Context, payload *core.RepoIODetectChangesPayload) (*core.RepoIOChanges, error) {
+func (r *RepoIO) DetectChanges(ctx context.Context, payload *defs.RepoIODetectChangesPayload) (*defs.RepoIOChanges, error) {
 	client, err := Instance().GetClientForInstallationID(payload.InstallationID)
 	if err != nil {
 		return nil, err
@@ -119,7 +119,7 @@ func (r *RepoIO) DetectChanges(ctx context.Context, payload *core.RepoIODetectCh
 	}
 
 	// detect changes struct
-	dc := &core.RepoIOChanges{
+	dc := &defs.RepoIOChanges{
 		Added:      shared.Int64(additions),
 		Removed:    shared.Int64(deletions),
 		Modified:   files,
@@ -133,7 +133,7 @@ func (r *RepoIO) DetectChanges(ctx context.Context, payload *core.RepoIODetectCh
 
 // Clone shallow clones a repository at a sepcific commit.
 // see https://stackoverflow.com/a/76334845
-func (r *RepoIO) TokenizedCloneURL(ctx context.Context, payload *core.RepoIOProviderInfo) (string, error) {
+func (r *RepoIO) TokenizedCloneURL(ctx context.Context, payload *defs.RepoIOProviderInfo) (string, error) {
 	installation, err := ghinstallation.New(
 		http.DefaultTransport, Instance().AppID, payload.InstallationID.Int64(), []byte(Instance().PrivateKey),
 	)
@@ -153,7 +153,7 @@ func (r *RepoIO) TokenizedCloneURL(ctx context.Context, payload *core.RepoIOProv
 // MergePR Branch in default repo branch.
 // TODO - need to refine.
 // NOTE - to optimze the logic need to make a logic like RebaseAtCommit for RebaseAtMerge.
-func (r *RepoIO) MergePR(ctx context.Context, payload *core.RepoIOMergePRPayload) error {
+func (r *RepoIO) MergePR(ctx context.Context, payload *defs.RepoIOMergePRPayload) error {
 	client, err := Instance().GetClientForInstallationID(payload.InstallationID)
 	if err != nil {
 		return err

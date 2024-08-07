@@ -24,7 +24,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/auth"
-	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
@@ -49,7 +49,7 @@ type (
 	}
 )
 
-// OnInstallationEvent workflow is executed when we initiate the installation of GitHub core.
+// OnInstallationEvent workflow is executed when we initiate the installation of GitHub defs.
 //
 // In an ideal world, the complete installation request would hit the API after the installation event has hit the
 // webhook, however, there can be number of things that can go wrong, and we can receive the complete installation
@@ -248,7 +248,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 		return nil // TODO: faulty integration
 	}
 
-	payload := &core.RepoIOSignalPushPayload{
+	payload := &defs.RepoIOSignalPushPayload{
 		BranchRef:      event.Ref,
 		Before:         event.Before,
 		After:          event.After,
@@ -262,7 +262,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, event *PushEvent) error {
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalPush, payload).
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPush, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
 			"github/repo_event: signal error, retrying ...",
@@ -289,7 +289,7 @@ func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, event *CreateOrD
 		return nil // TODO: We should do some sort of notification because we have a faulty integration.
 	}
 
-	payload := &core.RepoIOSignalCreateOrDeletePayload{
+	payload := &defs.RepoIOSignalCreateOrDeletePayload{
 		IsCreated:      event.IsCreated,
 		Ref:            event.Ref,
 		RefType:        event.RefType,
@@ -303,7 +303,7 @@ func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, event *CreateOrD
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalCreateOrDelete, payload).
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalCreateOrDelete, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
 			"github/repo_event: signal error, retrying ...",
@@ -333,7 +333,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestE
 		return err
 	}
 
-	payload := &core.RepoIOSignalPullRequestPayload{
+	payload := &defs.RepoIOSignalPullRequestPayload{
 		Action:         event.Action,
 		Number:         event.Number,
 		RepoName:       event.Repository.Name,
@@ -347,7 +347,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestE
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, core.RepoIOSignalPullRequest, payload).
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequest, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
 			"github/pull_request: error signaling repo ctrl ...",

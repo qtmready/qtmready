@@ -14,10 +14,10 @@ import (
 )
 
 type (
-	RepoActivities struct{}
+	Activities struct{}
 )
 
-func (a *RepoActivities) SignalBranch(ctx context.Context, payload *defs.RepoIOSignalBranchCtrlPayload) error {
+func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSignalBranchCtrlPayload) error {
 	args := make([]any, 0)
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
 		shared.WithWorkflowBlock("repo"),
@@ -55,7 +55,7 @@ func (a *RepoActivities) SignalBranch(ctx context.Context, payload *defs.RepoIOS
 // CloneBranch clones a repository branch at the temporary location, as specified by the payload.
 // It uses the RepoIO interface to get the url with the oauth token in it.
 // If an error occurs retrieving the clone URL, it is returned.
-func (a *RepoActivities) CloneBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
+func (a *Activities) CloneBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
 	url, err := kernel.
 		Instance().
 		RepoIO(payload.Repo.Provider).
@@ -93,7 +93,7 @@ func (a *RepoActivities) CloneBranch(ctx context.Context, payload *defs.RepoIOCl
 
 // FetchBranch fetches the given branch from the origin.
 // TODO: right now this fetches the branch but we need to make it generic.
-func (a RepoActivities) FetchBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
+func (a Activities) FetchBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
 	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "fetch", "origin", payload.Repo.DefaultBranch) //nolint
 
 	_, err := cmd.CombinedOutput()
@@ -107,7 +107,7 @@ func (a RepoActivities) FetchBranch(ctx context.Context, payload *defs.RepoIOClo
 // RebaseAtCommit attempts to rebase the repository at the given commit.
 // If the rebase fails, it returns the SHA and error message of the failed commit.
 // If the rebase is in progress, it returns an InProgress flag.
-func (a *RepoActivities) RebaseAtCommit(ctx context.Context, payload *defs.RepoIOClonePayload) (*defs.RepoIORebaseAtCommitResponse, error) {
+func (a *Activities) RebaseAtCommit(ctx context.Context, payload *defs.RepoIOClonePayload) (*defs.RepoIORebaseAtCommitResponse, error) {
 	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "rebase", payload.Push.After) // nolint
 
 	var exerr *exec.ExitError
@@ -146,7 +146,7 @@ func (a *RepoActivities) RebaseAtCommit(ctx context.Context, payload *defs.RepoI
 
 // Push pushes the contents of the repository at the given path to the remote.
 // If force is true, the push will be forced (--force).
-func (a *RepoActivities) Push(ctx context.Context, payload *defs.RepoIOPushBranchPayload) error {
+func (a *Activities) Push(ctx context.Context, payload *defs.RepoIOPushBranchPayload) error {
 	args := []string{"-C", payload.Path, "push", "origin", payload.Branch}
 	if payload.Force {
 		args = append(args, "--force")
@@ -164,7 +164,7 @@ func (a *RepoActivities) Push(ctx context.Context, payload *defs.RepoIOPushBranc
 
 // RemoveClonedAtPath removes the repo that was cloned at the given path.
 // If the path does not exist, RemoveClonedAtPath will return a nil error.
-func (a *RepoActivities) RemoveClonedAtPath(ctx context.Context, path string) error {
+func (a *Activities) RemoveClonedAtPath(ctx context.Context, path string) error {
 	if err := os.RemoveAll(path); err != nil {
 		return err
 	}

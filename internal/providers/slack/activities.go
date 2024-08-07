@@ -22,7 +22,7 @@ import (
 
 	"go.temporal.io/sdk/activity"
 
-	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/core/defs"
 )
 
 type (
@@ -30,7 +30,7 @@ type (
 	Activities struct{}
 )
 
-func (a *Activities) SendStaleBranchMessage(ctx context.Context, payload *core.MessageIOStaleBranchPayload) error {
+func (a *Activities) SendStaleBranchMessage(ctx context.Context, payload *defs.MessageIOStaleBranchPayload) error {
 	logger := activity.GetLogger(ctx)
 
 	token, err := decodeAndDecryptToken(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)
@@ -58,7 +58,7 @@ func (a *Activities) SendStaleBranchMessage(ctx context.Context, payload *core.M
 	return nil
 }
 
-func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context, payload *core.MessageIOLineExeededPayload) error {
+func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context, payload *defs.MessageIOLineExeededPayload) error {
 	logger := activity.GetLogger(ctx)
 
 	token, err := decodeAndDecryptToken(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)
@@ -86,7 +86,7 @@ func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context, payload
 	return nil
 }
 
-func (a *Activities) SendMergeConflictsMessage(ctx context.Context, payload *core.MessageIOMergeConflictPayload) error {
+func (a *Activities) SendMergeConflictsMessage(ctx context.Context, payload *defs.MessageIOMergeConflictPayload) error {
 	logger := activity.GetLogger(ctx)
 
 	token, err := decodeAndDecryptToken(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)

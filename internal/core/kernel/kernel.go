@@ -58,6 +58,7 @@ import (
 	"sync"
 
 	"go.breu.io/quantm/internal/core/defs"
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -127,6 +128,8 @@ var (
 // RegisterRepoProvider registers a RepoIO for a given RepoProvider.
 func (k *_k) RegisterRepoProvider(provider defs.RepoProvider, io RepoIO) {
 	k.providers.repos[provider] = io
+
+	shared.Logger().Info("kernel: registered repo provider", "provider", provider)
 }
 
 // RepoIO retrieves the RepoIO for a given RepoProvider.
@@ -142,6 +145,8 @@ func (k *_k) RepoIO(provider defs.RepoProvider) RepoIO {
 // RegisterMessageProvider registers a MessageIO for a given MessageProvider.
 func (k *_k) RegisterMessageProvider(provider defs.MessageProvider, io MessageIO) {
 	k.providers.message[provider] = io
+
+	shared.Logger().Info("kernel: registered message provider", "provider", provider)
 }
 
 // MessageIO retrieves the MessageIO for a given MessageProvider.
@@ -197,6 +202,8 @@ func WithMessageProvider(provider defs.MessageProvider, io MessageIO) Option {
 // from anywhere in your application using kernel.Instance() without any arguments.
 func Instance(opts ...Option) Kernel {
 	once.Do(func() {
+		shared.Logger().Info("kernel: init ...")
+
 		instance = &_k{
 			providers: Providers{
 				repos:   make(map[defs.RepoProvider]RepoIO),
@@ -207,6 +214,8 @@ func Instance(opts ...Option) Kernel {
 		for _, opt := range opts {
 			opt(instance)
 		}
+
+		shared.Logger().Info("kernel: initialized")
 	})
 
 	return instance
