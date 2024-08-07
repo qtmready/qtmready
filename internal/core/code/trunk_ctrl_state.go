@@ -1,21 +1,22 @@
-package core
+package code
 
 import (
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/shared"
 )
 
 type (
 	TrunkState struct {
-		*base_ctrl
+		*BaseCtrl
 		active_branch string
 	}
 )
 
 func (state *TrunkState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		push := &RepoIOSignalPushPayload{}
+		push := &defs.RepoIOSignalPushPayload{}
 		state.rx(ctx, rx, push)
 
 		for _, branch := range state.branches {
@@ -23,14 +24,14 @@ func (state *TrunkState) on_push(ctx workflow.Context) shared.ChannelHandler {
 				continue
 			}
 
-			state.signal_branch(ctx, branch, RepoIOSignalRebase, push)
+			state.signal_branch(ctx, branch, defs.RepoIOSignalRebase, push)
 		}
 	}
 }
 
 func (state *TrunkState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		create_delete := &RepoIOSignalCreateOrDeletePayload{}
+		create_delete := &defs.RepoIOSignalCreateOrDeletePayload{}
 		state.rx(ctx, rx, create_delete)
 
 		if create_delete.ForBranch(ctx) {
@@ -43,9 +44,9 @@ func (state *TrunkState) on_create_delete(ctx workflow.Context) shared.ChannelHa
 	}
 }
 
-func NewTrunkState(ctx workflow.Context, repo *Repo) *TrunkState {
+func NewTrunkState(ctx workflow.Context, repo *defs.Repo) *TrunkState {
 	return &TrunkState{
-		base_ctrl:     NewBaseCtrl(ctx, "trunk_ctrl", repo),
+		BaseCtrl:      NewBaseCtrl(ctx, "trunk_ctrl", repo),
 		active_branch: repo.DefaultBranch,
 	}
 }

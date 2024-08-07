@@ -22,7 +22,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/core/code"
+	"go.breu.io/quantm/internal/core/defs"
+	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/core/mutex"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/providers/github"
@@ -41,9 +43,9 @@ func main() {
 	providerWrkr := shared.Temporal().Worker(shared.ProvidersQueue)
 	coreWrkr := shared.Temporal().Worker(shared.CoreQueue)
 
-	core.Instance(
-		core.WithRepoProvider(core.RepoProviderGithub, &github.RepoIO{}),
-		core.WithMessageProvider(core.MessageProviderSlack, &slack.Activities{}),
+	kernel.Instance(
+		kernel.WithRepoProvider(defs.RepoProviderGithub, &github.RepoIO{}),
+		kernel.WithMessageProvider(defs.MessageProviderSlack, &slack.Activities{}),
 	)
 
 	githubwfs := &github.Workflows{}
@@ -65,15 +67,16 @@ func main() {
 	coreWrkr.RegisterWorkflow(mutex.MutexWorkflow)
 	providerWrkr.RegisterWorkflow(mutex.MutexWorkflow)
 
-	// repo workflows
-	coreWrkr.RegisterWorkflow(core.RepoCtrl)
-	coreWrkr.RegisterWorkflow(core.TrunkCtrl)
-	coreWrkr.RegisterWorkflow(core.BranchCtrl)
-	coreWrkr.RegisterWorkflow(core.QueueCtrl)
+	// code workflows
+	coreWrkr.RegisterWorkflow(code.RepoCtrl)
+	coreWrkr.RegisterWorkflow(code.TrunkCtrl)
+	coreWrkr.RegisterWorkflow(code.BranchCtrl)
+	coreWrkr.RegisterWorkflow(code.QueueCtrl)
 
 	// core activities
-	coreWrkr.RegisterActivity(&core.RepoActivities{})
-	// RepoIO & CloudIO
+	coreWrkr.RegisterActivity(&code.Activities{})
+
+	// RepoIO & MessageIO
 	coreWrkr.RegisterActivity(&github.RepoIO{})
 	coreWrkr.RegisterActivity(&slack.Activities{})
 

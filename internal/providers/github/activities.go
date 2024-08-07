@@ -25,7 +25,8 @@ import (
 	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/quantm/internal/auth"
-	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/core/code"
+	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
@@ -204,8 +205,8 @@ func (a *Activities) GetGithubRepo(ctx context.Context, payload *Repo) (*Repo, e
 }
 
 // GetCoreRepo gets entity.Repo against given Repo.
-func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*core.Repo, error) {
-	r := &core.Repo{}
+func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*defs.Repo, error) {
+	r := &defs.Repo{}
 
 	// TODO: add provider name in query
 	params := db.QueryParams{
@@ -221,8 +222,8 @@ func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*core.Repo, e
 }
 
 func (a *Activities) GetRepoByProviderID(
-	ctx context.Context, payload *core.RepoIOGetRepoByProviderIDPayload,
-) (*core.RepoProviderData, error) {
+	ctx context.Context, payload *defs.RepoIOGetRepoByProviderIDPayload,
+) (*defs.RepoProviderData, error) {
 	repo := &Repo{}
 
 	// NOTE: these activities are used in api not in temporal workflow use shared.Logger()
@@ -233,7 +234,7 @@ func (a *Activities) GetRepoByProviderID(
 
 	shared.Logger().Info("Get Repo by Provider ID successfully")
 
-	data := &core.RepoProviderData{
+	data := &defs.RepoProviderData{
 		Name:          repo.Name,
 		DefaultBranch: repo.DefaultBranch,
 	}
@@ -241,7 +242,7 @@ func (a *Activities) GetRepoByProviderID(
 	return data, nil
 }
 
-func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *core.RepoIOGetRepoByProviderIDPayload) error {
+func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *defs.RepoIOGetRepoByProviderIDPayload) error {
 	repo := &Repo{}
 
 	if err := db.Get(repo, db.QueryParams{"id": payload.ProviderID}); err != nil {
@@ -334,7 +335,7 @@ func (a *Activities) SyncOrgUsersFromGithub(ctx context.Context, payload *SyncOr
 	return nil
 }
 
-// func (a *Activities) RefreshDefaultBranches(ctx context.Context, payload *core.RepoIORefreshDefaultBranchesPayload) error {
+// func (a *Activities) RefreshDefaultBranches(ctx context.Context, payload *defs.RepoIORefreshDefaultBranchesPayload) error {
 // 	logger := activity.GetLogger(ctx)
 
 // 	repos := make([]Repo, 0)
@@ -389,8 +390,8 @@ func (a *Activities) GetReposForInstallation(ctx context.Context, installationID
 }
 
 // GetCoreRepoByCtrlID retrieves a core repository given the db id of the github repository.
-func (a *Activities) GetCoreRepoByCtrlID(ctx context.Context, id string) (*core.Repo, error) {
-	repo := &core.Repo{}
+func (a *Activities) GetCoreRepoByCtrlID(ctx context.Context, id string) (*defs.Repo, error) {
+	repo := &defs.Repo{}
 	if err := db.Get(repo, db.QueryParams{"ctrl_id": id}); err != nil {
 		return nil, err
 	}
@@ -399,7 +400,7 @@ func (a *Activities) GetCoreRepoByCtrlID(ctx context.Context, id string) (*core.
 }
 
 // SignalCoreRepoCtrl signals the core repository control workflow with the given signal and payload.
-func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *core.Repo, signal shared.WorkflowSignal, payload any) error {
+func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *defs.Repo, signal shared.WorkflowSignal, payload any) error {
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
 		WorkflowOptions(
@@ -409,7 +410,7 @@ func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *core.Repo, si
 
 	_, err := shared.Temporal().
 		Client().
-		SignalWithStartWorkflow(context.Background(), opts.ID, signal.String(), payload, opts, core.RepoCtrl, repo)
+		SignalWithStartWorkflow(context.Background(), opts.ID, signal.String(), payload, opts, code.RepoCtrl, repo)
 
 	return err
 }

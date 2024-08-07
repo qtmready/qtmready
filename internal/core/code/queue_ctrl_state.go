@@ -1,15 +1,16 @@
-package core
+package code
 
 import (
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/shared"
 )
 
 type (
 	// Node represents a single node in the queue.
 	Node struct {
-		pr   *RepoIOPullRequest
+		pr   *defs.RepoIOPullRequest
 		prev *Node
 		next *Node
 	}
@@ -25,15 +26,15 @@ type (
 	// QueueCtrlState represents the state of the queue controller,
 	// managing both a primary and a priority queue.
 	QueueCtrlState struct {
-		*base_ctrl
+		*BaseCtrl
 		primary  Queue
 		priority Queue
 	}
 
 	// QueueMember represents a single item in the queue for frontend representation.
 	QueueMember struct {
-		PR       *RepoIOPullRequest `json:"pr"`
-		Position int                `json:"position"`
+		PR       *defs.RepoIOPullRequest `json:"pr"`
+		Position int                     `json:"position"`
 	}
 
 	// QueueMembers is a slice of QueueMember.
@@ -54,7 +55,7 @@ type (
 //	ctx := workflow.Context{}
 //	pr := RepoIOPullRequest{Number: 123}
 //	q.push(ctx, pr)
-func (q *Queue) push(ctx workflow.Context, pr *RepoIOPullRequest) {
+func (q *Queue) push(ctx workflow.Context, pr *defs.RepoIOPullRequest) {
 	_ = q.mutex.Lock(ctx)
 	defer q.mutex.Unlock()
 
@@ -82,7 +83,7 @@ func (q *Queue) push(ctx workflow.Context, pr *RepoIOPullRequest) {
 //	if pr != nil {
 //	    fmt.Printf("Popped PR number: %d\n", pr.Number)
 //	}
-func (q *Queue) pop(ctx workflow.Context) *RepoIOPullRequest {
+func (q *Queue) pop(ctx workflow.Context) *defs.RepoIOPullRequest {
 	_ = q.mutex.Lock(ctx)
 	defer q.mutex.Unlock()
 
@@ -126,7 +127,7 @@ func (q *Queue) peek() bool {
 //	ctx := workflow.Context{}
 //	pr := RepoIOPullRequest{Number: 123}
 //	q.reorder(ctx, pr, true) // Promote PR
-func (q *Queue) reorder(ctx workflow.Context, pr RepoIOPullRequest, promote bool) {
+func (q *Queue) reorder(ctx workflow.Context, pr defs.RepoIOPullRequest, promote bool) {
 	_ = q.mutex.Lock(ctx)
 	defer q.mutex.Unlock()
 
@@ -348,7 +349,7 @@ func (q *Queue) deserialize(ctx workflow.Context, members QueueMembers) {
 //	selector.AddReceive(add_channel, add_handler)
 func (s *QueueCtrlState) on_add(ctx workflow.Context) shared.ChannelHandler {
 	return func(c workflow.ReceiveChannel, more bool) {
-		payload := &RepoIOPullRequest{}
+		payload := &defs.RepoIOPullRequest{}
 
 		s.rx(ctx, c, payload)
 		s.push(ctx, payload, false)
@@ -364,7 +365,7 @@ func (s *QueueCtrlState) on_add(ctx workflow.Context) shared.ChannelHandler {
 //	selector.AddReceive(add_priority_channel, add_priority_handler)
 func (s *QueueCtrlState) on_add_priority(ctx workflow.Context) shared.ChannelHandler {
 	return func(c workflow.ReceiveChannel, more bool) {
-		payload := &RepoIOPullRequest{}
+		payload := &defs.RepoIOPullRequest{}
 
 		s.rx(ctx, c, payload)
 		s.push(ctx, payload, true)
@@ -380,7 +381,7 @@ func (s *QueueCtrlState) on_add_priority(ctx workflow.Context) shared.ChannelHan
 //	selector.AddReceive(promote_channel, promote_handler)
 func (s *QueueCtrlState) on_promote(ctx workflow.Context) shared.ChannelHandler {
 	return func(c workflow.ReceiveChannel, more bool) {
-		payload := &RepoIOPullRequest{}
+		payload := &defs.RepoIOPullRequest{}
 
 		s.rx(ctx, c, payload)
 		s.primary.reorder(ctx, *payload, true)
@@ -396,7 +397,7 @@ func (s *QueueCtrlState) on_promote(ctx workflow.Context) shared.ChannelHandler 
 //	selector.AddReceive(demote_channel, demote_handler)
 func (s *QueueCtrlState) on_demote(ctx workflow.Context) shared.ChannelHandler {
 	return func(c workflow.ReceiveChannel, more bool) {
-		payload := &RepoIOPullRequest{}
+		payload := &defs.RepoIOPullRequest{}
 
 		s.rx(ctx, c, payload)
 		s.primary.reorder(ctx, *payload, false)
@@ -415,7 +416,7 @@ func (s *QueueCtrlState) on_demote(ctx workflow.Context) shared.ChannelHandler {
 //	pr := RepoIOPullRequest{Number: 123}
 //	state.push(ctx, pr, false) // Add to primary queue
 //	state.push(ctx, pr, true)  // Add to priority queue
-func (s *QueueCtrlState) push(ctx workflow.Context, pr *RepoIOPullRequest, urgent bool) {
+func (s *QueueCtrlState) push(ctx workflow.Context, pr *defs.RepoIOPullRequest, urgent bool) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
 
@@ -450,7 +451,7 @@ func (s *QueueCtrlState) next(ctx workflow.Context) error {
 //	if pr != nil {
 //	    // Process the pull request
 //	}
-func (s *QueueCtrlState) pop(ctx workflow.Context) *RepoIOPullRequest {
+func (s *QueueCtrlState) pop(ctx workflow.Context) *defs.RepoIOPullRequest {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
 
@@ -462,7 +463,7 @@ func (s *QueueCtrlState) pop(ctx workflow.Context) *RepoIOPullRequest {
 }
 
 // process handles the processing of a pull request popped from the queue.
-func (s *QueueCtrlState) process(ctx workflow.Context, pr *RepoIOPullRequest) error {
+func (s *QueueCtrlState) process(ctx workflow.Context, pr *defs.RepoIOPullRequest) error {
 	if !s.can_process_pr(pr) {
 		return nil // TODO - return error
 	}
@@ -476,7 +477,7 @@ func (s *QueueCtrlState) process(ctx workflow.Context, pr *RepoIOPullRequest) er
 	return nil
 }
 
-func (s *QueueCtrlState) can_process_pr(pr *RepoIOPullRequest) bool {
+func (s *QueueCtrlState) can_process_pr(pr *defs.RepoIOPullRequest) bool {
 	// Add logic to check if the pull request can be processed
 	// For example, you can check if the pull request is open, not a draft, and not a work-in-progress
 	// Return true if the pull request can be processed, false otherwise
@@ -542,11 +543,11 @@ func NewQueue(ctx workflow.Context) Queue {
 //	repo := &Repo{}
 //	branch := "main"
 //	ctx, state := NewQueueCtrlState(ctx, repo, branch)
-func NewQueueCtrlState(ctx workflow.Context, repo *Repo, branch string) (workflow.Context, *QueueCtrlState) {
+func NewQueueCtrlState(ctx workflow.Context, repo *defs.Repo, branch string) (workflow.Context, *QueueCtrlState) {
 	ctrl := &QueueCtrlState{
-		base_ctrl: NewBaseCtrl(ctx, "queue_ctrl", repo),
-		primary:   NewQueue(ctx),
-		priority:  NewQueue(ctx),
+		BaseCtrl: NewBaseCtrl(ctx, "queue_ctrl", repo),
+		primary:  NewQueue(ctx),
+		priority: NewQueue(ctx),
 	}
 
 	return ctrl.set_branch(ctx, branch), ctrl

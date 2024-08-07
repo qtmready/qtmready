@@ -1,21 +1,4 @@
-// Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
-//
-// This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
-// found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
-// THE SOFTWARE, YOU AGREE TO THE TERMS OF THE LICENSE AGREEMENT.
-//
-// The above copyright notice and the subsequent license agreement shall be included in all copies or substantial
-// portions of the software.
-//
-// Breu, Inc. HEREBY DISCLAIMS ANY AND ALL WARRANTIES AND CONDITIONS, EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, AND
-// SPECIFICALLY DISCLAIMS ANY WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, WITH RESPECT TO THE
-// SOFTWARE.
-//
-// Breu, Inc. SHALL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND, INCLUDING BUT NOT LIMITED TO, LOST PROFITS OR ANY
-// CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
-
-package core
+package code
 
 import (
 	"context"
@@ -25,14 +8,16 @@ import (
 	"os/exec"
 	"regexp"
 
+	"go.breu.io/quantm/internal/core/defs"
+	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/shared"
 )
 
 type (
-	RepoActivities struct{}
+	Activities struct{}
 )
 
-func (a *RepoActivities) SignalBranch(ctx context.Context, payload *RepoIOSignalBranchCtrlPayload) error {
+func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSignalBranchCtrlPayload) error {
 	args := make([]any, 0)
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
 		shared.WithWorkflowBlock("repo"),
@@ -70,12 +55,13 @@ func (a *RepoActivities) SignalBranch(ctx context.Context, payload *RepoIOSignal
 // CloneBranch clones a repository branch at the temporary location, as specified by the payload.
 // It uses the RepoIO interface to get the url with the oauth token in it.
 // If an error occurs retrieving the clone URL, it is returned.
-func (a *RepoActivities) CloneBranch(ctx context.Context, payload *RepoIOClonePayload) error {
-	url, err := instance.
+func (a *Activities) CloneBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
+	url, err := kernel.
+		Instance().
 		RepoIO(payload.Repo.Provider).
 		TokenizedCloneURL(
 			ctx,
-			&RepoIOProviderInfo{
+			&defs.RepoIOProviderInfo{
 				InstallationID: payload.Push.InstallationID,
 				RepoName:       payload.Push.RepoName,
 				RepoOwner:      payload.Push.RepoOwner,
@@ -107,7 +93,7 @@ func (a *RepoActivities) CloneBranch(ctx context.Context, payload *RepoIOClonePa
 
 // FetchBranch fetches the given branch from the origin.
 // TODO: right now this fetches the branch but we need to make it generic.
-func (a RepoActivities) FetchBranch(ctx context.Context, payload *RepoIOClonePayload) error {
+func (a Activities) FetchBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
 	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "fetch", "origin", payload.Repo.DefaultBranch) //nolint
 
 	_, err := cmd.CombinedOutput()
@@ -121,7 +107,7 @@ func (a RepoActivities) FetchBranch(ctx context.Context, payload *RepoIOClonePay
 // RebaseAtCommit attempts to rebase the repository at the given commit.
 // If the rebase fails, it returns the SHA and error message of the failed commit.
 // If the rebase is in progress, it returns an InProgress flag.
-func (a *RepoActivities) RebaseAtCommit(ctx context.Context, payload RepoIOClonePayload) (*RepoIORebaseAtCommitResponse, error) {
+func (a *Activities) RebaseAtCommit(ctx context.Context, payload *defs.RepoIOClonePayload) (*defs.RepoIORebaseAtCommitResponse, error) {
 	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "rebase", payload.Push.After) // nolint
 
 	var exerr *exec.ExitError
@@ -143,10 +129,10 @@ func (a *RepoActivities) RebaseAtCommit(ctx context.Context, payload RepoIOClone
 				if len(matches) > 0 {
 					sha, msg := matches[0][1], matches[0][2]
 
-					return &RepoIORebaseAtCommitResponse{SHA: sha, Message: msg}, NewRepoIORebaseError(sha, msg)
+					return &defs.RepoIORebaseAtCommitResponse{SHA: sha, Message: msg}, NewRebaseError(sha, msg)
 				}
 			case 128:
-				return &RepoIORebaseAtCommitResponse{InProgress: true}, NewRepoIORebaseError("unknown", "unknown")
+				return &defs.RepoIORebaseAtCommitResponse{InProgress: true}, NewRebaseError("unknown", "unknown")
 			default:
 				return nil, err // retry
 			}
@@ -160,7 +146,7 @@ func (a *RepoActivities) RebaseAtCommit(ctx context.Context, payload RepoIOClone
 
 // Push pushes the contents of the repository at the given path to the remote.
 // If force is true, the push will be forced (--force).
-func (a *RepoActivities) Push(ctx context.Context, payload *RepoIOPushBranchPayload) error {
+func (a *Activities) Push(ctx context.Context, payload *defs.RepoIOPushBranchPayload) error {
 	args := []string{"-C", payload.Path, "push", "origin", payload.Branch}
 	if payload.Force {
 		args = append(args, "--force")
@@ -178,7 +164,7 @@ func (a *RepoActivities) Push(ctx context.Context, payload *RepoIOPushBranchPayl
 
 // RemoveClonedAtPath removes the repo that was cloned at the given path.
 // If the path does not exist, RemoveClonedAtPath will return a nil error.
-func (a *RepoActivities) RemoveClonedAtPath(ctx context.Context, path string) error {
+func (a *Activities) RemoveClonedAtPath(ctx context.Context, path string) error {
 	if err := os.RemoveAll(path); err != nil {
 		return err
 	}

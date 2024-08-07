@@ -25,7 +25,7 @@ import (
 
 	"github.com/slack-go/slack"
 
-	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/core/defs"
 )
 
 const (
@@ -33,7 +33,7 @@ const (
 	preview = "Message from Quantm" // This is a preview of the message content.
 )
 
-func formatLineThresholdExceededAttachment(payload *core.MessageIOLineExeededPayload) slack.Attachment {
+func formatLineThresholdExceededAttachment(payload *defs.MessageIOLineExeededPayload) slack.Attachment {
 	fields := []slack.AttachmentField{
 		createRepositoryField(payload.MessageIOPayload.RepoName, payload.DetectChanges.RepoUrl, true),
 		createBranchField(payload.MessageIOPayload.BranchName, payload.DetectChanges.CompareUrl, true),
@@ -81,7 +81,7 @@ func formatLineThresholdExceededAttachment(payload *core.MessageIOLineExeededPay
 	}
 }
 
-func formatMergeConflictAttachment(payload *core.MessageIOMergeConflictPayload) slack.Attachment {
+func formatMergeConflictAttachment(payload *defs.MessageIOMergeConflictPayload) slack.Attachment {
 	fields := []slack.AttachmentField{
 		{
 			Title: "*Commit SHA*",
@@ -109,7 +109,7 @@ func formatMergeConflictAttachment(payload *core.MessageIOMergeConflictPayload) 
 	}
 }
 
-func formatStaleBranchAttachment(payload *core.MessageIOStaleBranchPayload) slack.Attachment {
+func formatStaleBranchAttachment(payload *defs.MessageIOStaleBranchPayload) slack.Attachment {
 	return slack.Attachment{
 		Pretext: fmt.Sprintf("Stale branch <%s|%s> is detected on repository <%s|%s>. Please review and take necessary action.",
 			payload.CommitUrl, payload.MessageIOPayload.BranchName, payload.RepoUrl, payload.MessageIOPayload.RepoName),

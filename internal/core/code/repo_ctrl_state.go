@@ -1,8 +1,9 @@
-package core
+package code
 
 import (
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -10,7 +11,7 @@ import (
 // It embeds base_ctrl to inherit common functionality.
 type (
 	RepoCtrlState struct {
-		*base_ctrl
+		*BaseCtrl
 	}
 )
 
@@ -18,9 +19,9 @@ type (
 // It receives a RepoIOSignalPushPayload and signals the corresponding branch.
 func (state *RepoCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		push := &RepoIOSignalPushPayload{}
+		push := &defs.RepoIOSignalPushPayload{}
 		state.rx(ctx, rx, push)
-		state.signal_branch(ctx, BranchNameFromRef(push.BranchRef), RepoIOSignalPush, push)
+		state.signal_branch(ctx, BranchNameFromRef(push.BranchRef), defs.RepoIOSignalPush, push)
 	}
 }
 
@@ -29,11 +30,11 @@ func (state *RepoCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler 
 // and updates the branch list in the state.
 func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		create_delete := &RepoIOSignalCreateOrDeletePayload{}
+		create_delete := &defs.RepoIOSignalCreateOrDeletePayload{}
 		state.rx(ctx, rx, create_delete)
 
 		if create_delete.ForBranch(ctx) {
-			state.signal_branch(ctx, create_delete.Ref, RepoIOSignalCreateOrDelete, create_delete)
+			state.signal_branch(ctx, create_delete.Ref, defs.RepoIOSignalCreateOrDelete, create_delete)
 
 			if create_delete.IsCreated {
 				state.add_branch(ctx, create_delete.Ref)
@@ -48,16 +49,16 @@ func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.Channe
 // It receives a RepoIOSignalPullRequestPayload and signals the corresponding branch.
 func (state *RepoCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		pr := &RepoIOSignalPullRequestPayload{}
+		pr := &defs.RepoIOSignalPullRequestPayload{}
 		state.rx(ctx, rx, pr)
-		state.signal_branch(ctx, pr.HeadBranch, RepoIOSignalPullRequest, pr)
+		state.signal_branch(ctx, pr.HeadBranch, defs.RepoIOSignalPullRequest, pr)
 	}
 }
 
 // NewRepoCtrlState creates a new RepoCtrlState with the specified repo.
 // It initializes the embedded base_ctrl using NewBaseCtrl.
-func NewRepoCtrlState(ctx workflow.Context, repo *Repo) *RepoCtrlState {
+func NewRepoCtrlState(ctx workflow.Context, repo *defs.Repo) *RepoCtrlState {
 	return &RepoCtrlState{
-		base_ctrl: NewBaseCtrl(ctx, "repo_ctrl", repo),
+		BaseCtrl: NewBaseCtrl(ctx, "repo_ctrl", repo),
 	}
 }

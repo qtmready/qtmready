@@ -1,13 +1,15 @@
-package core
+package code
 
 import (
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"
+
+	"go.breu.io/quantm/internal/core/defs"
 )
 
 type (
 	RepoIOWorkflowLogger struct {
-		repo   *Repo
+		repo   *defs.Repo
 		kind   string
 		branch string
 		action string
@@ -17,7 +19,7 @@ type (
 	LogWriter func(msg string, keyvals ...any)
 )
 
-func NewRepoIOWorkflowLogger(ctx workflow.Context, repo *Repo, kind, branch, action string) *RepoIOWorkflowLogger {
+func NewRepoIOWorkflowLogger(ctx workflow.Context, repo *defs.Repo, kind, branch, action string) *RepoIOWorkflowLogger {
 	logger := workflow.GetLogger(ctx)
 
 	return &RepoIOWorkflowLogger{repo, kind, branch, action, logger}

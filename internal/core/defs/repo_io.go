@@ -1,24 +1,6 @@
-// Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
-//
-// This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
-// found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
-// THE SOFTWARE, YOU AGREE TO THE TERMS OF THE LICENSE AGREEMENT.
-//
-// The above copyright notice and the subsequent license agreement shall be included in all copies or substantial
-// portions of the software.
-//
-// Breu, Inc. HEREBY DISCLAIMS ANY AND ALL WARRANTIES AND CONDITIONS, EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, AND
-// SPECIFICALLY DISCLAIMS ANY WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, WITH RESPECT TO THE
-// SOFTWARE.
-//
-// Breu, Inc. SHALL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND, INCLUDING BUT NOT LIMITED TO, LOST PROFITS OR ANY
-// CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
-
-package core
+package defs
 
 import (
-	"context"
 	"time"
 
 	"go.temporal.io/sdk/workflow"
@@ -50,31 +32,6 @@ const (
 	PullRequestActionMerged        PullRequestAction = "merged"
 	PullRequestActionReviewRequest PullRequestAction = "review_request"
 	PullRequestActionApproved      PullRequestAction = "approved"
-)
-
-// RepoIO signal payloads.
-type (
-	// RepoIO is the interface that defines the operations that can be performed on a repository.
-	RepoIO interface {
-		// GetProviderInfo gets the name & default branch for the provider repo.
-		GetProviderInfo(ctx context.Context, id string) (*RepoIOProviderInfo, error)
-
-		// SetEarlyWarning sets the early warning flag for the provider repo.
-		SetEarlyWarning(ctx context.Context, id string, value bool) error
-
-		// GetAllBranches gets all the branches for the provider repo.
-		GetAllBranches(ctx context.Context, payload *RepoIOProviderInfo) ([]string, error)
-
-		DetectChanges(ctx context.Context, payload *RepoIODetectChangesPayload) (*RepoIOChanges, error)
-
-		MergePR(ctx context.Context, payload *RepoIOMergePRPayload) error
-
-		// TokenizedCloneURL returns the url with oauth token in it.
-		//
-		// NOTE - Since the url contains oauth token, it is best not to call this as activity.
-		// LINK - https://github.com/orgs/community/discussions/24575#discussioncomment-3244524
-		TokenizedCloneURL(ctx context.Context, payload *RepoIOProviderInfo) (string, error)
-	}
 )
 
 // signal payloads.

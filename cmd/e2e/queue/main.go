@@ -7,7 +7,8 @@ import (
 
 	"github.com/gocql/gocql"
 
-	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/core/code"
+	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -19,7 +20,7 @@ func main() {
 	slog.Info("starting merge queue ...")
 
 	worker := shared.Temporal().Worker(shared.CoreQueue)
-	worker.RegisterWorkflow(core.QueueCtrl)
+	worker.RegisterWorkflow(code.QueueCtrl)
 
 	if err := worker.Start(); err != nil {
 		slog.Error("unable to start worker", slog.String("error", err.Error()))
@@ -37,14 +38,14 @@ func main() {
 	// Wrap time.Duration into shared.Duration
 	stale := shared.NewDuration(duration)
 
-	repo := &core.Repo{
+	repo := &defs.Repo{
 		CtrlID:          uuid(),
 		DefaultBranch:   "main",
 		ID:              uuid(),
 		IsMonorepo:      true,
 		MessageProvider: "slack",
-		MessageProviderData: core.MessageProviderData{
-			Slack: &core.MessageProviderSlackData{
+		MessageProviderData: defs.MessageProviderData{
+			Slack: &defs.MessageProviderSlackData{
 				BotToken:      "5Ry5/wFMD6yUenY94DXKO8zJNIUIVXs4O8YtoiPtcgyOtvTBJXTJK5RD+gObrNJm7RJlF0vrrwm+1z4ceXhQ5X06L4afVV4=",
 				ChannelID:     "C06M7V3ADHV",
 				ChannelName:   "#quantm-test-channel",
@@ -70,7 +71,7 @@ func main() {
 	)
 	ctx := context.Background()
 
-	_, err = shared.Temporal().Client().ExecuteWorkflow(ctx, opts, core.QueueCtrl, repo, branch)
+	_, err = shared.Temporal().Client().ExecuteWorkflow(ctx, opts, code.QueueCtrl, repo, branch)
 	if err != nil {
 		slog.Error("workflow error", "error", err.Error())
 	}

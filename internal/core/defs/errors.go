@@ -1,27 +1,15 @@
-// Copyright © 2023, Breu, Inc. <info@breu.io>. All rights reserved.
-//
-// This software is made available by Breu, Inc., under the terms of the BREU COMMUNITY LICENSE AGREEMENT, Version 1.0,
-// found at https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF
-// THE SOFTWARE, YOU AGREE TO THE TERMS OF THE LICENSE AGREEMENT.
-//
-// The above copyright notice and the subsequent license agreement shall be included in all copies or substantial
-// portions of the software.
-//
-// Breu, Inc. HEREBY DISCLAIMS ANY AND ALL WARRANTIES AND CONDITIONS, EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE, AND
-// SPECIFICALLY DISCLAIMS ANY WARRANTY OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, WITH RESPECT TO THE
-// SOFTWARE.
-//
-// Breu, Inc. SHALL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND, INCLUDING BUT NOT LIMITED TO, LOST PROFITS OR ANY
-// CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT, OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-// ARISING OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED BY APPLICABLE LAW.
-
-package core
+package defs
 
 import (
 	"fmt"
 )
 
 type (
+	nilError struct {
+		name string
+		kind string
+	}
+
 	providerNotFoundError struct {
 		name string
 	}
@@ -46,6 +34,10 @@ func (e *resourceNotFoundError) Error() string {
 	return fmt.Sprintf("resource %s not found. please register your resource with the provider %s first.", e.name, e.provider)
 }
 
+func (e *nilError) Error() string {
+	return fmt.Sprintf("%s cannot be nil, cannot set %s", e.kind, e.name)
+}
+
 func (e *queueError) Error() string {
 	msg := ""
 
@@ -61,18 +53,39 @@ func (e *queueError) Error() string {
 	return msg
 }
 
+// NewProviderNotFoundError creates an error for when a provider is not found.
+//
+// It takes the name of the provider that wasn't found and returns an error
+// that can be used to inform the user about the missing provider.
 func NewProviderNotFoundError(name string) error {
 	return &providerNotFoundError{name}
 }
 
+// NewResourceNotFoundError creates an error for when a resource is not found.
+//
+// It takes the name of the resource and the provider it should be associated with.
+// The returned error can be used to inform the user about the missing resource
+// and which provider it should be registered with.
 func NewResourceNotFoundError(name string, provider string) error {
 	return &resourceNotFoundError{name, provider}
 }
 
+// NewQueueSchedulingError creates an error for when a pull request cannot be scheduled.
+//
+// It takes a RepoIOPullRequest and a Repo, returning an error that indicates
+// the pull request could not be scheduled for the given repository.
 func NewQueueSchedulingError(pr *RepoIOPullRequest, repo *Repo) error {
 	return &queueError{pr, repo, 10400}
 }
 
+// NewQueueDuplicatedError creates an error for when a pull request is already scheduled.
+//
+// It takes a RepoIOPullRequest and a Repo, returning an error that indicates
+// the pull request is already scheduled for the given repository.
 func NewQueueDuplicatedError(pr *RepoIOPullRequest, repo *Repo) error {
 	return &queueError{pr, repo, 10409}
+}
+
+func NewNilError(name string, kind string) error {
+	return &nilError{name, kind}
 }

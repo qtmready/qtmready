@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"go.breu.io/quantm/internal/core"
+	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
@@ -16,13 +16,13 @@ func main() {
 	team, _ := db.NewUUID()
 	provider, _ := db.NewUUID()
 
-	repo := &core.Repo{
+	repo := &defs.Repo{
 		DefaultBranch:       "main",
 		TeamID:              team,
 		Name:                "orm",
 		IsMonorepo:          false,
 		MessageProvider:     "github",
-		MessageProviderData: core.MessageProviderData{},
+		MessageProviderData: defs.MessageProviderData{},
 		Provider:            "github",
 		ProviderID:          provider.String(),
 		Threshold:           100,
@@ -38,9 +38,9 @@ func main() {
 		shared.Logger().Error("Error saving repo", "error", err)
 	}
 
-	repos := make([]core.Repo, 0)
+	repos := make([]defs.Repo, 0)
 
-	if err := db.Filter(&core.Repo{}, &repos, db.QueryParams{"is_monorepo": "true"}); err != nil {
+	if err := db.Filter(&defs.Repo{}, &repos, db.QueryParams{"is_monorepo": "true"}); err != nil {
 		shared.Logger().Error("Error filter repos", "error", err)
 	}
 

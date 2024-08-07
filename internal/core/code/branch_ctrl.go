@@ -1,7 +1,9 @@
-package core
+package code
 
 import (
 	"go.temporal.io/sdk/workflow"
+
+	"go.breu.io/quantm/internal/core/defs"
 )
 
 // BranchCtrl is the event loop to process events during the lifecycle of a branch.
@@ -12,7 +14,7 @@ import (
 //   - rebase
 //   - create_delete
 //   - pr
-func BranchCtrl(ctx workflow.Context, repo *Repo, branch string) error {
+func BranchCtrl(ctx workflow.Context, repo *defs.Repo, branch string) error {
 	selector := workflow.NewSelector(ctx)
 	ctx, state := NewBranchCtrlState(ctx, repo, branch)
 
@@ -23,21 +25,21 @@ func BranchCtrl(ctx workflow.Context, repo *Repo, branch string) error {
 
 	// push event signal.
 	// detect changes. if changes are greater than threshold, send early warning message.
-	push := workflow.GetSignalChannel(ctx, RepoIOSignalPush.String())
+	push := workflow.GetSignalChannel(ctx, defs.RepoIOSignalPush.String())
 	selector.AddReceive(push, state.on_push(ctx))
 
 	// rebase signal.
 	// attempts to rebase the branch with the base branch. if there are merge conflicts, sends message.
-	rebase := workflow.GetSignalChannel(ctx, RepoIOSignalRebase.String())
+	rebase := workflow.GetSignalChannel(ctx, defs.RepoIOSignalRebase.String())
 	selector.AddReceive(rebase, state.on_rebase(ctx))
 
 	// create_delete signal.
 	// creates or deletes the branch.
-	create_delete := workflow.GetSignalChannel(ctx, RepoIOSignalCreateOrDelete.String())
+	create_delete := workflow.GetSignalChannel(ctx, defs.RepoIOSignalCreateOrDelete.String())
 	selector.AddReceive(create_delete, state.on_create_delete(ctx))
 
 	// pr signal.
-	pr := workflow.GetSignalChannel(ctx, RepoIOSignalPullRequest.String())
+	pr := workflow.GetSignalChannel(ctx, defs.RepoIOSignalPullRequest.String())
 	selector.AddReceive(pr, state.on_pr(ctx))
 
 	// main event loop
