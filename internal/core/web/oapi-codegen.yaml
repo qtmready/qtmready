@@ -1,0 +1,13 @@
+package: web
+generate:
+  models: true
+  echo-server: true
+import-mapping:
+  "../../shared/v1/schema.yaml": go.breu.io/quantm/internal/shared
+  "./components.yaml": "go.breu.io/quantm/internal/core/defs"
+compatibility:
+  always-prefix-enum-values: true
+output: web.gen.go
+output-options:
+  skip-prune: true
+  user-templates-dir: ../../shared/templates
