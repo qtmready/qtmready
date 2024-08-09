@@ -414,3 +414,39 @@ func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *defs.Repo, si
 
 	return err
 }
+
+func (a *Activities) GithubWorkflowInfo(ctx context.Context, payload *defs.RepoIOWorkflowActionPayload) (*defs.RepoIOWorkflowInfo, error) {
+	client, err := Instance().GetClientForInstallationID(payload.InstallationID)
+	if err != nil {
+		return nil, err
+	}
+
+	// List repository workflows
+	workflows, _, err := client.Actions.ListWorkflows(ctx, payload.RepoOwner, payload.RepoName, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Initialize the result struct
+	winfo := &defs.RepoIOWorkflowInfo{
+		TotalCount: shared.Int64(workflows.GetTotalCount()),
+		Workflows:  make([]*defs.RepIOWorkflow, 0, workflows.GetTotalCount()),
+	}
+
+	// Iterate through each workflow
+	for _, workflow := range workflows.Workflows {
+		detail := &defs.RepIOWorkflow{
+			ID:      shared.Int64(*workflow.ID),
+			NodeID:  workflow.GetNodeID(),
+			Name:    workflow.GetName(),
+			Path:    workflow.GetPath(),
+			State:   workflow.GetState(),
+			HTMLURL: workflow.GetHTMLURL(),
+		}
+
+		// Add the workflow to the slice
+		winfo.Workflows = append(winfo.Workflows, detail)
+	}
+
+	return winfo, nil
+}

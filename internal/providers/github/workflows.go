@@ -406,14 +406,50 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 	return nil
 }
 
-func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, payload *GithubWorkflowRunEvent) error {
+func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, event *GithubWorkflowRunEvent) error {
 	logger := workflow.GetLogger(ctx)
+	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	_ctx := workflow.WithActivityOptions(ctx, activityOpts)
 
-	if actionWorkflowStatuses[payload.Repository.Name] != nil {
-		logger.Debug("Workflow action file:", "action", payload.Action)
-		logger.Debug("Workflow action file:", "file", payload.Workflow.Path)
-		actionWorkflowStatuses[payload.Repository.Name][payload.Workflow.Path] = payload.Action
+	state, err := getRepoEventState(ctx, event)
+	if err != nil {
+		logger.Error("github/workflow_run: error preparing ...", "error", err.Error())
+		return err
 	}
+
+	payload := &defs.RepoIOSignalWorkflowRunPayload{
+		Action:         event.Action,
+		RepoName:       event.Repository.Name,
+		RepoOwner:      event.Repository.Owner.Login,
+		CtrlID:         state.Repo.ID.String(),
+		InstallationID: event.Installation.ID,
+		ProviderID:     state.Repo.GithubID.String(),
+		User:           state.User,
+	}
+
+	p := &defs.RepoIOWorkflowActionPayload{
+		RepoName:       payload.RepoName,
+		RepoOwner:      payload.RepoOwner,
+		InstallationID: payload.InstallationID,
+	}
+
+	winfo := &defs.RepoIOWorkflowInfo{}
+	if err := workflow.ExecuteActivity(_ctx, activities.GithubWorkflowInfo, p).Get(ctx, winfo); err != nil {
+		logger.Error(
+			"github/workflow_run: error github workflow info...",
+			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+			slog.String("github_repo__id", state.CoreRepo.ID.String()),
+			slog.String("core_repo__id", state.CoreRepo.ID.String()),
+		)
+
+		return err
+	}
+
+	payload.WorkflowInfo = winfo
+	logger.Info("OnWorkflowRunEvent/payload", "info", payload)
+
+	// TODO - wrokflow logic
 
 	return nil
 }
@@ -432,7 +468,7 @@ func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRe
 		return err
 	}
 
-	payload := &defs.RepoIOSignalPullRequestPayload{
+	payload := &defs.RepoIOSignalPullRequestReviewPayload{
 		Action:         event.Action,
 		Number:         event.Number,
 		RepoName:       event.Repository.Name,
@@ -476,7 +512,7 @@ func (w *Workflows) OnPullRequestReviewCommentEvent(ctx workflow.Context, event 
 		return err
 	}
 
-	payload := &defs.RepoIOSignalPullRequestPayload{
+	payload := &defs.RepoIOSignalPullRequestReviewCommentPayload{
 		Action:         event.Action,
 		Number:         event.Number,
 		RepoName:       event.Repository.Name,
@@ -520,13 +556,11 @@ func (w *Workflows) OnLabelEvent(ctx workflow.Context, event *LabelEvent) error 
 		return err
 	}
 
-	payload := &defs.RepoIOSignalPullRequestPayload{
+	payload := &defs.RepoIOSignalLabelPayload{
 		Action:         event.Action,
 		Number:         event.Number,
 		RepoName:       event.Repository.Name,
 		RepoOwner:      event.Repository.Owner.Login,
-		BaseBranch:     "",
-		HeadBranch:     "",
 		CtrlID:         state.Repo.ID.String(),
 		InstallationID: event.Installation.ID,
 		ProviderID:     state.Repo.GithubID.String(),
