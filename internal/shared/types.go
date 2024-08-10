@@ -99,6 +99,7 @@ const (
 	CoreQueue      queue.Name = "core"      // core queue
 	ProvidersQueue queue.Name = "providers" // messaging related to providers
 	MutexQueue     queue.Name = "mutex"     // mutex workflow queue
+	WebSocketQueue queue.Name = "websocket" // websocket workflow queue
 )
 
 // workflow signal definitions.
