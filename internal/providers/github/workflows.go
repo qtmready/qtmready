@@ -641,8 +641,6 @@ func getRepoEventState(ctx workflow.Context, event RepoEvent) (*RepoEventState, 
 
 	state.Repo = &repos[0]
 
-	logger.Info("github/repo_event: repo?", slog.Any("repo", state.Repo))
-
 	if !state.Repo.IsActive {
 		logger.Warn(
 			"github/repo_event: repo is not active",
