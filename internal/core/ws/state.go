@@ -31,6 +31,10 @@ type (
 	FlushQueueSignal struct {
 		Queue string
 	}
+
+	WorkerAddedSignal struct {
+		Queue string
+	}
 )
 
 // GetQueueForUser returns the queue name for a given user ID.
@@ -232,6 +236,16 @@ func (con *Connections) on_flush(ctx workflow.Context) shared.ChannelHandler {
 		} else {
 			con.info("Flushed queue", "queue", signal.Queue)
 		}
+	}
+}
+
+func (con *Connections) on_worker_added(ctx workflow.Context) shared.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		var signal WorkerAddedSignal
+
+		rx.Receive(ctx, &signal)
+
+		con.info("Worker added", "queue", signal.Queue)
 	}
 }
 

@@ -9,17 +9,15 @@ import (
 )
 
 type (
-	Activities struct {
-		hub Hub
-	}
+	Activities struct{}
 )
 
-func NewActivities(hub Hub) *Activities {
-	return &Activities{hub: hub}
+func NewActivities() *Activities {
+	return &Activities{}
 }
 
 func (a *Activities) SendMessage(ctx context.Context, userID string, message []byte) error {
-	return a.hub.Send(ctx, userID, message)
+	return Instance().Send(ctx, userID, message)
 }
 
 func (a *Activities) GetTeamUsers(ctx context.Context, teamID string) ([]string, error) {

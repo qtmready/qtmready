@@ -9,9 +9,10 @@ import (
 )
 
 const (
-	WorkflowSignalAddUser    shared.WorkflowSignal = "orchestrate__add_user"
-	WorkflowSignalRemoveUser shared.WorkflowSignal = "orchestrate__remove_user"
-	WorkflowSignalFlushQueue shared.WorkflowSignal = "orchestrate__flush_queue"
+	WorkflowSignalAddUser     shared.WorkflowSignal = "orchestrate__add_user"
+	WorkflowSignalRemoveUser  shared.WorkflowSignal = "orchestrate__remove_user"
+	WorkflowSignalFlushQueue  shared.WorkflowSignal = "orchestrate__flush_queue"
+	WorkflowSignalWorkerAdded shared.WorkflowSignal = "orchestrate__worker_added"
 
 	GetUserQueue = "get_user_queue"
 )
@@ -24,10 +25,12 @@ func ConnectionsHandlerWorkflow(ctx workflow.Context, conns *Connections) error 
 	add := workflow.GetSignalChannel(ctx, WorkflowSignalAddUser.String())
 	remove := workflow.GetSignalChannel(ctx, WorkflowSignalRemoveUser.String())
 	flush := workflow.GetSignalChannel(ctx, WorkflowSignalFlushQueue.String())
+	worker_added := workflow.GetSignalChannel(ctx, WorkflowSignalWorkerAdded.String())
 
 	selector.AddReceive(add, conns.on_add(ctx))
 	selector.AddReceive(remove, conns.on_remove(ctx))
 	selector.AddReceive(flush, conns.on_flush(ctx))
+	selector.AddReceive(worker_added, conns.on_worker_added(ctx))
 
 	_ = workflow.SetQueryHandler(ctx, GetUserQueue, func(user_id string) (string, bool) {
 		return conns.GetQueueForUser(ctx, user_id)
