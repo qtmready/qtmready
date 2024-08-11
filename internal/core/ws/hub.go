@@ -86,22 +86,27 @@ func (h *hub) HandleWebSocket(ctx echo.Context) error {
 // It returns true if the message was sent successfully, false otherwise.
 // If the client's send buffer is full or the client is disconnected,
 // it removes the client from the hub.
-func (h *hub) send_local(client *client, message []byte) bool {
-	select {
-	case client.send <- message:
-		return true // Message sent locally
-	default:
-		// Client's send buffer is full or client is disconnected
-		h.mu.Lock()
-		defer h.mu.Unlock()
+func (h *hub) send_local(user_id string, message []byte) bool {
+	client, found := h.client(user_id)
+	if found {
+		select {
+		case client.send <- message:
+			return true
 
-		if _, connected := h.clients[client]; connected {
-			delete(h.clients, client)
-			close(client.send)
+		default:
+			h.mu.Lock()
+			defer h.mu.Unlock()
+
+			if _, connected := h.clients[client]; connected {
+				delete(h.clients, client)
+				close(client.send)
+			}
+
+			return false
 		}
-
-		return false
 	}
+
+	return false
 }
 
 // Send sends a message to a specific user.
@@ -117,9 +122,7 @@ func (h *hub) send_local(client *client, message []byte) bool {
 //	    log.Printf("Failed to send message: %v", err)
 //	}
 func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
-	client, found := h.client(user_id)
-
-	if found && h.send_local(client, message) {
+	if h.send_local(user_id, message) {
 		return nil
 	}
 
