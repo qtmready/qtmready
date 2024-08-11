@@ -18,7 +18,7 @@ import (
 type (
 	// Hub interface defines the methods for managing WebSocket connections and messaging.
 	Hub interface {
-		HandleWebSocket(c echo.Context) error
+		HandleWebSocket(ctx echo.Context) error
 		Send(ctx context.Context, user_id string, message []byte) error
 		Broadcast(ctx context.Context, team_id string, message []byte) error
 		Stop()
@@ -48,28 +48,159 @@ var (
 	once sync.Once
 )
 
-// worker sets up and manages the Temporal worker running against the queue,
-// for handling workflows and activities.
-func (h *hub) worker() {
-	worker := h.queue.Worker(shared.Temporal().Client())
+// Hub interface methods
 
-	// Register workflows
-	worker.RegisterWorkflow(SendMessageWorkflow)
-	worker.RegisterWorkflow(BroadcastMessageWorkflow)
-
-	// Register activities
-	worker.RegisterActivity(&Activities{})
-
-	if err := worker.Start(); err != nil {
-		shared.Logger().Error("Failed to start worker", "error", err)
-		panic(err)
+// HandleWebSocket upgrades an HTTP connection to a WebSocket connection and manages it.
+// It creates a new Client, registers it with the hub, and starts read and write pumps
+// to handle incoming and outgoing messages.
+//
+// Example:
+//
+//	e.GET("/ws/:id", ws.Instance().HandleWebSocket)
+func (h *hub) HandleWebSocket(ctx echo.Context) error {
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return true // You may want to implement a more secure check
+		},
 	}
 
-	<-h.stop
+	conn, err := upgrader.Upgrade(ctx.Response(), ctx.Request(), nil)
+	if err != nil {
+		return fmt.Errorf("failed to upgrade connection: %w", err)
+	}
 
-	// Graceful shutdown
-	worker.Stop()
+	user_id := ctx.Param("id")
+
+	c := &client{
+		user_id: user_id,
+		conn:    conn,
+		send:    make(chan []byte, 256),
+	}
+
+	h.register <- c
+
+	go h.read(c)
+	go h.write(c)
+
+	return nil
 }
+
+// send_local attempts to send a message to a client locally.
+// It returns true if the message was sent successfully, false otherwise.
+// If the client's send buffer is full or the client is disconnected,
+// it removes the client from the hub.
+func (h *hub) send_local(client *client, message []byte) bool {
+	select {
+	case client.send <- message:
+		return true // Message sent locally
+	default:
+		// Client's send buffer is full or client is disconnected
+		h.mu.Lock()
+		defer h.mu.Unlock()
+
+		if _, connected := h.clients[client]; connected {
+			delete(h.clients, client)
+			close(client.send)
+		}
+
+		return false
+	}
+}
+
+// Send sends a message to a specific user.
+// If the user is connected, it attempts to send the message directly.
+// If the user is not connected or the send fails, it starts a Temporal workflow
+// to handle the message delivery.
+//
+// Example:
+//
+//	ctx := context.Background()
+//	err := hub.Send(ctx, "user123", []byte("Hello, user!"))
+//	if err != nil {
+//	    log.Printf("Failed to send message: %v", err)
+//	}
+func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
+	client, found := h.client(user_id)
+
+	if found && h.send_local(client, message) {
+		return nil
+	}
+
+	// Query the ConnectionsHandlerWorkflow to get the user's queue
+	response, err := shared.Temporal().Client().QueryWorkflow(ctx, opts_hub().ID, "", QueryGetUserQueue, user_id)
+	if err != nil {
+		return NewHubError(ErrorTypeQueryFailed, "failed to query user queue", err)
+	}
+
+	var name string
+	if err := response.Get(&name); err != nil {
+		return NewHubError(ErrorTypeQueryFailed, "failed to decode user queue response", err)
+	}
+
+	if name == "" {
+		return NewHubError(ErrorTypeUserNotRegistered, "user not registered to any queue", nil)
+	}
+
+	// Use the retrieved queue name to create workflow options
+	opts := opts_send(queue.NewQueue(queue.WithName(queue.Name(name))), user_id)
+
+	_, err = shared.Temporal().Client().ExecuteWorkflow(ctx, opts, SendMessageWorkflow, user_id, message)
+	if err != nil {
+		return NewHubError(ErrorTypeWorkflowExecutionFailed, "failed to send message", err)
+	}
+
+	return nil
+}
+
+// Broadcast sends a message to all members of a team.
+// It starts a Temporal workflow to distribute the message to all team members,
+// which allows for reliable delivery even if some team members are offline.
+//
+// Example:
+//
+//	ctx := context.Background()
+//	err := hub.Broadcast(ctx, "team456", []byte("Team announcement"))
+//	if err != nil {
+//	    log.Printf("Failed to broadcast message: %v", err)
+//	}
+func (h *hub) Broadcast(ctx context.Context, team_id string, message []byte) error {
+	// Start a Temporal workflow to distribute the message to all team members
+	opts := h.queue.WorkflowOptions(
+		queue.WithWorkflowBlock("broadcast"),
+		queue.WithWorkflowBlockID(team_id),
+	)
+
+	_, err := shared.Temporal().Client().ExecuteWorkflow(ctx, opts, BroadcastMessageWorkflow, team_id, message)
+	if err != nil {
+		return NewHubError(ErrorTypeBroadcastFailed, "failed to start BroadcastMessageWorkflow", err)
+	}
+
+	return nil
+}
+
+// Stop gracefully shuts down the hub and closes all client connections.
+// It should be called when the application is shutting down to ensure
+// all resources are properly released and all connections are closed.
+//
+// Example:
+//
+//	hub := ws.Instance()
+//	// ... use hub
+//	defer hub.Stop() // Ensure hub is stopped when main function exits
+func (h *hub) Stop() {
+	h.stop <- true
+	h.mu.Lock()
+	for client := range h.clients {
+		close(client.send)
+		client.conn.Close()
+	}
+	h.mu.Unlock()
+	close(h.broadcast)
+	close(h.register)
+	close(h.unregister)
+}
+
+// Internal hub operations
 
 // run is the main loop that handles client registration, unregistration, and broadcasting.
 func (h *hub) run() {
@@ -103,45 +234,33 @@ func (h *hub) run() {
 	}
 }
 
-// HandleWebSocket upgrades an HTTP connection to a WebSocket connection and manages it.
-// It creates a new Client, registers it with the hub, and starts read and write pumps
-// to handle incoming and outgoing messages.
-//
-// Example:
-//
-//	e.GET("/ws/:id", func(c echo.Context) error {
-//	    return ws.Instance().HandleWebSocket(c)
-//	})
-func (h *hub) HandleWebSocket(c echo.Context) error {
-	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true // You may want to implement a more secure check
-		},
+// worker sets up and manages the Temporal worker running against the queue,
+// for handling workflows and activities.
+func (h *hub) worker() {
+	worker := h.queue.Worker(shared.Temporal().Client())
+
+	// Register workflows
+	worker.RegisterWorkflow(SendMessageWorkflow)
+	worker.RegisterWorkflow(BroadcastMessageWorkflow)
+
+	// Register activities
+	worker.RegisterActivity(&Activities{})
+
+	if err := worker.Start(); err != nil {
+		shared.Logger().Error("Failed to start worker", "error", err)
+		panic(err)
 	}
 
-	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	if err != nil {
-		return fmt.Errorf("failed to upgrade connection: %w", err)
-	}
+	<-h.stop
 
-	userID := c.Param("id")
-
-	client := &client{
-		user_id: userID,
-		conn:    conn,
-		send:    make(chan []byte, 256),
-	}
-
-	h.register <- client
-
-	go h.readPump(client)
-	go h.writePump(client)
-
-	return nil
+	// Graceful shutdown
+	worker.Stop()
 }
 
-// readPump reads messages from the WebSocket connection.
-func (h *hub) readPump(client *client) {
+// WebSocket connection handling
+
+// read reads messages from the WebSocket connection.
+func (h *hub) read(client *client) {
 	defer func() {
 		h.unregister <- client
 		client.conn.Close()
@@ -162,8 +281,8 @@ func (h *hub) readPump(client *client) {
 	}
 }
 
-// writePump writes messages to the WebSocket connection.
-func (h *hub) writePump(client *client) {
+// write writes messages to the WebSocket connection.
+func (h *hub) write(client *client) {
 	defer func() {
 		client.conn.Close()
 	}()
@@ -191,55 +310,13 @@ func (h *hub) writePump(client *client) {
 	}
 }
 
-// Send sends a message to a specific user.
-// If the user is connected, it attempts to send the message directly.
-// If the user is not connected or the send fails, it starts a Temporal workflow
-// to handle the message delivery.
-//
-// Example:
-//
-//	ctx := context.Background()
-//	err := hub.Send(ctx, "user123", []byte("Hello, user!"))
-//	if err != nil {
-//	    log.Printf("Failed to send message: %v", err)
-//	}
-func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
-	h.mu.RLock()
-	client, found := h.findClient(user_id)
-	h.mu.RUnlock()
+// Helper functions
 
-	if found {
-		select {
-		case client.send <- message:
-			return nil // Message sent locally
-		default:
-			// Client's send buffer is full or client is disconnected
-			h.mu.Lock()
-			if _, stillConnected := h.clients[client]; stillConnected {
-				delete(h.clients, client)
-				close(client.send)
-			}
-			h.mu.Unlock()
-		}
-	}
+// client searches for a client with the given user_id.
+func (h *hub) client(user_id string) (*client, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 
-	// If we couldn't send locally, start a Temporal workflow
-	opts := h.queue.WorkflowOptions(
-		queue.WithWorkflowBlock("send"),
-		queue.WithWorkflowBlockID(user_id),
-	)
-
-	_, err := shared.Temporal().Client().ExecuteWorkflow(ctx, opts, SendMessageWorkflow, user_id, message)
-	if err != nil {
-		shared.Logger().Error("Failed to start SendMessageWorkflow", "error", err)
-		return err
-	}
-
-	return nil
-}
-
-// findClient searches for a client with the given user_id.
-func (h *hub) findClient(user_id string) (*client, bool) {
 	for client := range h.clients {
 		if client.user_id == user_id {
 			return client, true
@@ -249,54 +326,7 @@ func (h *hub) findClient(user_id string) (*client, bool) {
 	return nil, false
 }
 
-// Broadcast sends a message to all members of a team.
-// It starts a Temporal workflow to distribute the message to all team members,
-// which allows for reliable delivery even if some team members are offline.
-//
-// Example:
-//
-//	ctx := context.Background()
-//	err := hub.Broadcast(ctx, "team456", []byte("Team announcement"))
-//	if err != nil {
-//	    log.Printf("Failed to broadcast message: %v", err)
-//	}
-func (h *hub) Broadcast(ctx context.Context, team_id string, message []byte) error {
-	// Start a Temporal workflow to distribute the message to all team members
-	opts := h.queue.WorkflowOptions(
-		queue.WithWorkflowBlock("broadcast"),
-		queue.WithWorkflowBlockID(team_id),
-	)
-
-	_, err := shared.Temporal().Client().ExecuteWorkflow(ctx, opts, BroadcastMessageWorkflow, team_id, message)
-	if err != nil {
-		shared.Logger().Error("Failed to start BroadcastMessageWorkflow", "error", err)
-		return err
-	}
-
-	return nil
-}
-
-// Stop gracefully shuts down the hub and closes all client connections.
-// It should be called when the application is shutting down to ensure
-// all resources are properly released and all connections are closed.
-//
-// Example:
-//
-//	hub := ws.Instance()
-//	// ... use hub
-//	defer hub.Stop() // Ensure hub is stopped when main function exits
-func (h *hub) Stop() {
-	h.stop <- true
-	h.mu.Lock()
-	for client := range h.clients {
-		close(client.send)
-		client.conn.Close()
-	}
-	h.mu.Unlock()
-	close(h.broadcast)
-	close(h.register)
-	close(h.unregister)
-}
+// Additional functions
 
 // ConnectionHandlerWorker creates and configures a Temporal worker for handling WebSocket connections.
 // It sets up a new queue with the WebSocketQueue name and registers the ConnectionsHandlerWorkflow.

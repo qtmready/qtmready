@@ -14,7 +14,7 @@ const (
 	WorkflowSignalFlushQueue  shared.WorkflowSignal = "orchestrate__flush_queue"
 	WorkflowSignalWorkerAdded shared.WorkflowSignal = "orchestrate__worker_added"
 
-	GetUserQueue = "get_user_queue"
+	QueryGetUserQueue = "get_user_queue"
 )
 
 func ConnectionsHandlerWorkflow(ctx workflow.Context, conns *Connections) error {
@@ -32,8 +32,14 @@ func ConnectionsHandlerWorkflow(ctx workflow.Context, conns *Connections) error 
 	selector.AddReceive(flush, conns.on_flush(ctx))
 	selector.AddReceive(worker_added, conns.on_worker_added(ctx))
 
-	_ = workflow.SetQueryHandler(ctx, GetUserQueue, func(user_id string) (string, bool) {
-		return conns.GetQueueForUser(ctx, user_id)
+	_ = workflow.SetQueryHandler(ctx, QueryGetUserQueue, func(user_id string) string {
+		q, ok := conns.GetQueueForUser(ctx, user_id)
+
+		if ok {
+			return q
+		}
+
+		return ""
 	})
 
 	for {

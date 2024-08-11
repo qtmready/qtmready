@@ -12,10 +12,6 @@ type (
 	Activities struct{}
 )
 
-func NewActivities() *Activities {
-	return &Activities{}
-}
-
 func (a *Activities) SendMessage(ctx context.Context, userID string, message []byte) error {
 	return Instance().Send(ctx, userID, message)
 }
