@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
 	"go.temporal.io/sdk/worker"
@@ -20,7 +19,6 @@ type (
 	Hub interface {
 		HandleWebSocket(ctx echo.Context) error
 		Send(ctx context.Context, user_id string, message []byte) error
-		Broadcast(ctx context.Context, team_id string, message []byte) error
 		Stop()
 	}
 
@@ -36,16 +34,15 @@ type (
 		clients    map[*client]bool
 		register   chan *client
 		unregister chan *client
-		broadcast  chan []byte
-		mu         sync.RWMutex
 		queue      queue.Queue
+		mu         sync.RWMutex
 		stop       chan bool
 	}
 )
 
 var (
-	_h   *hub
-	once sync.Once
+	instance *hub
+	once     sync.Once
 )
 
 // Hub interface methods
@@ -152,32 +149,6 @@ func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
 	return nil
 }
 
-// Broadcast sends a message to all members of a team.
-// It starts a Temporal workflow to distribute the message to all team members,
-// which allows for reliable delivery even if some team members are offline.
-//
-// Example:
-//
-//	ctx := context.Background()
-//	err := hub.Broadcast(ctx, "team456", []byte("Team announcement"))
-//	if err != nil {
-//	    log.Printf("Failed to broadcast message: %v", err)
-//	}
-func (h *hub) Broadcast(ctx context.Context, team_id string, message []byte) error {
-	// Start a Temporal workflow to distribute the message to all team members
-	opts := h.queue.WorkflowOptions(
-		queue.WithWorkflowBlock("broadcast"),
-		queue.WithWorkflowBlockID(team_id),
-	)
-
-	_, err := shared.Temporal().Client().ExecuteWorkflow(ctx, opts, BroadcastMessageWorkflow, team_id, message)
-	if err != nil {
-		return NewHubError(ErrorTypeBroadcastFailed, "failed to start BroadcastMessageWorkflow", err)
-	}
-
-	return nil
-}
-
 // Stop gracefully shuts down the hub and closes all client connections.
 // It should be called when the application is shutting down to ensure
 // all resources are properly released and all connections are closed.
@@ -190,12 +161,13 @@ func (h *hub) Broadcast(ctx context.Context, team_id string, message []byte) err
 func (h *hub) Stop() {
 	h.stop <- true
 	h.mu.Lock()
+	defer h.mu.Unlock()
+
 	for client := range h.clients {
 		close(client.send)
 		client.conn.Close()
 	}
-	h.mu.Unlock()
-	close(h.broadcast)
+
 	close(h.register)
 	close(h.unregister)
 }
@@ -208,26 +180,19 @@ func (h *hub) run() {
 		select {
 		case client := <-h.register:
 			h.mu.Lock()
+			defer h.mu.Unlock()
+
 			h.clients[client] = true
-			h.mu.Unlock()
+
 		case client := <-h.unregister:
 			h.mu.Lock()
+			defer h.mu.Unlock()
+
 			if _, ok := h.clients[client]; ok {
 				delete(h.clients, client)
 				close(client.send)
 			}
-			h.mu.Unlock()
-		case message := <-h.broadcast:
-			h.mu.RLock()
-			for client := range h.clients {
-				select {
-				case client.send <- message:
-				default:
-					close(client.send)
-					delete(h.clients, client)
-				}
-			}
-			h.mu.RUnlock()
+
 		case <-h.stop:
 			return
 		}
@@ -360,19 +325,17 @@ func ConnectionHandlerWorker() worker.Worker {
 //	// Use hub methods...
 func Instance() Hub {
 	once.Do(func() {
-		queueName := queue.Name(fmt.Sprintf("ws_%s", uuid.New().String()))
-		_h = &hub{
+		instance = &hub{
 			clients:    make(map[*client]bool),
 			register:   make(chan *client),
 			unregister: make(chan *client),
-			broadcast:  make(chan []byte),
-			queue:      queue.NewQueue(queue.WithName(queueName)),
+			queue:      queue.NewQueue(queue.WithName(queue_name())),
 			stop:       make(chan bool, 1),
 		}
 
-		go _h.worker()
-		go _h.run()
+		go instance.worker()
+		go instance.run()
 	})
 
-	return _h
+	return instance
 }
