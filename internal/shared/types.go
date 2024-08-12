@@ -116,6 +116,23 @@ const (
  */
 func (w WorkflowSignal) String() string { return string(w) }
 
+// MarshalJSON implements the json.Marshaler interface for WorkflowSignal.
+func (w WorkflowSignal) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(w))
+}
+
+// UnmarshalJSON implements the json.Unmarshaler interface for WorkflowSignal.
+func (w *WorkflowSignal) UnmarshalJSON(data []byte) error {
+	var signal string
+	if err := json.Unmarshal(data, &signal); err != nil {
+		return err
+	}
+
+	*w = WorkflowSignal(signal)
+
+	return nil
+}
+
 type (
 	// EchoValidator is a wrapper for the instantiated validator.
 	EchoValidator struct {

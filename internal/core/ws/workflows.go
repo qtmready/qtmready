@@ -17,7 +17,7 @@ const (
 	QueryGetUserQueue = "get_user_queue"
 )
 
-// ConnectionsHandlerWorkflow manages the state of WebSocket connections across multiple API containers in a Kubernetes cluster.
+// ConnectionsHubWorkflow manages the state of WebSocket connections across multiple API containers in a Kubernetes cluster.
 // It doesn't handle the actual WebSocket connections, but rather maintains a record of which users are connected to which containers.
 //
 // This workflow solves the challenge of routing WebSocket messages in a scalable API setup where:
@@ -36,7 +36,7 @@ const (
 //
 // Returns:
 //   - error: Any error that occurs during the workflow execution
-func ConnectionsHandlerWorkflow(ctx workflow.Context, conns *Connections) error {
+func ConnectionsHubWorkflow(ctx workflow.Context, conns *Connections) error {
 	conns.Restore(ctx)
 	selector := workflow.NewSelector(ctx)
 	info := workflow.GetInfo(ctx)
@@ -70,32 +70,35 @@ func ConnectionsHandlerWorkflow(ctx workflow.Context, conns *Connections) error 
 
 		// Check if a new workflow instance should be created
 		if info.GetContinueAsNewSuggested() {
-			return workflow.NewContinueAsNewError(ctx, ConnectionsHandlerWorkflow, conns)
+			return workflow.NewContinueAsNewError(ctx, ConnectionsHubWorkflow, conns)
 		}
 	}
 }
 
 func SendMessageWorkflow(ctx workflow.Context, user_id string, message []byte) error {
-	ao := workflow.ActivityOptions{
-		StartToCloseTimeout: time.Minute,
-	}
-	ctx = workflow.WithActivityOptions(ctx, ao)
-
 	activities := &Activities{}
+	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
+	sent := false
 
-	err := workflow.ExecuteActivity(ctx, activities.SendMessage, user_id, message).Get(ctx, nil)
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	err := workflow.ExecuteActivity(ctx, activities.SendMessage, user_id, message).Get(ctx, &sent)
 	if err != nil {
-		shared.Logger().Error("Failed to send message", "error", err)
+		shared.Logger().Error("Failed to execute SendMessage activity", "error", err)
 		return err
+	}
+
+	if !sent {
+		// The message couldn't be sent locally
+		// You can add logic here to handle this case
+		shared.Logger().Info("Message couldn't be sent locally", "user_id", user_id)
 	}
 
 	return nil
 }
 
 func BroadcastMessageWorkflow(ctx workflow.Context, team_id string, message []byte) error {
-	ao := workflow.ActivityOptions{
-		StartToCloseTimeout: time.Minute,
-	}
+	ao := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
 	activities := &Activities{}

@@ -17,8 +17,54 @@ import (
 type (
 	// Hub interface defines the methods for managing WebSocket connections and messaging.
 	Hub interface {
+		// HandleWebSocket upgrades an HTTP connection to a WebSocket connection and manages it.
+		// It creates a new Client, registers it with the hub, and starts read and write pumps.
+		//
+		// Example usage:
+		//     e.GET("/ws/:id", ws.Instance().HandleWebSocket)
 		HandleWebSocket(ctx echo.Context) error
+
+		// Send sends a message to a specific user.
+		// If the user is connected, it attempts to send the message directly.
+		// If the user is not connected or the send fails, it starts a Temporal workflow.
+		//
+		// Example usage:
+		//     ctx := context.Background()
+		//     err := hub.Send(ctx, "user123", []byte("Hello, user!"))
+		//     if err != nil {
+		//         log.Printf("Failed to send message: %v", err)
+		//     }
 		Send(ctx context.Context, user_id string, message []byte) error
+
+		// Send sends a message to a specific user.
+		// If the user is connected, it attempts to send the message directly.
+		// If the user is not connected or the send fails, it starts a Temporal workflow.
+		//
+		// Example usage:
+		//     ctx := context.Background()
+		//     err := hub.Send(ctx, "user123", []byte("Hello, user!"))
+		//     if err != nil {
+		//         log.Printf("Failed to send message: %v", err)
+		//     }
+		// Broadcast(ctx context.Context, team_id string, message []byte) error
+
+		// Signal is a shorthand for signaling the ConnectionsHubWorkflow.
+		// It takes a signal type and payload as parameters.
+		//
+		// Example usage:
+		//     ctx := context.Background()
+		//     err := hub.Signal(ctx, shared.WorkflowSignalStart, payload)
+		//     if err != nil {
+		//         log.Printf("Failed to send signal: %v", err)
+		//     }
+		Signal(ctx context.Context, signal shared.WorkflowSignal, payload any) error
+
+		// Stop gracefully shuts down the hub and closes all client connections.
+		// It should be called when the application is shutting down to ensure
+		// all resources are properly released and all connections are closed.
+		//
+		// Example usage:
+		//     hub.Stop()
 		Stop()
 	}
 
@@ -45,15 +91,7 @@ var (
 	once     sync.Once
 )
 
-// Hub interface methods
-
 // HandleWebSocket upgrades an HTTP connection to a WebSocket connection and manages it.
-// It creates a new Client, registers it with the hub, and starts read and write pumps
-// to handle incoming and outgoing messages.
-//
-// Example:
-//
-//	e.GET("/ws/:id", ws.Instance().HandleWebSocket)
 func (h *hub) HandleWebSocket(ctx echo.Context) error {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
@@ -74,15 +112,69 @@ func (h *hub) HandleWebSocket(ctx echo.Context) error {
 		send:    make(chan []byte, 256),
 	}
 
-	h.register <- c
-
 	go h.read(c)
 	go h.write(c)
 
 	return nil
 }
 
+// Send sends a message to a specific user.
+func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
+	if h.send_local(user_id, message) {
+		return nil
+	}
+
+	// Use the new queryUserQueue function to get the user's queue name
+	name, err := h.query(ctx, user_id)
+	if err != nil {
+		shared.Logger().Warn("ws: queue not found", "user_id", user_id, "err", err.Error())
+		return err
+	}
+
+	// Call send_global to send the message using the queue name
+	err = h.send_global(ctx, queue.Name(name), user_id, message)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Signal is a shorthand for signaling the ConnectionsHubWorkflow.
+// It takes a signal type and payload as parameters.
+func (h *hub) Signal(ctx context.Context, signal shared.WorkflowSignal, payload any) error {
+	opts := opts_hub()
+	_, err := shared.Temporal().
+		Client().
+		SignalWithStartWorkflow(
+			ctx, opts.ID, signal.String(), payload, opts, ConnectionsHubWorkflow, NewConnections(),
+		)
+
+	return err
+}
+
+// Stop gracefully shuts down the hub and closes all client connections.
+func (h *hub) Stop() {
+	h.stop <- true
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	for client := range h.clients {
+		close(client.send)
+		client.conn.Close()
+	}
+
+	// Signal to flush queues or perform any necessary cleanup
+	if err := h.Signal(context.Background(), WorkflowSignalFlushQueue, nil); err != nil {
+		shared.Logger().Warn("ws: failed to signal flush", "error", err.Error())
+	}
+
+	close(h.register)
+	close(h.unregister)
+}
+
 // send_local attempts to send a message to a client locally.
+//
 // It returns true if the message was sent successfully, false otherwise.
 // If the client's send buffer is full or the client is disconnected,
 // it removes the client from the hub.
@@ -109,42 +201,20 @@ func (h *hub) send_local(user_id string, message []byte) bool {
 	return false
 }
 
-// Send sends a message to a specific user.
-// If the user is connected, it attempts to send the message directly.
-// If the user is not connected or the send fails, it starts a Temporal workflow
-// to handle the message delivery.
+// send_global sends a message to a specific user using the provided queue name.
+// It returns an error if the workflow execution fails.
 //
-// Example:
+// Example usage:
+// err := h.send_global(ctx, queue.Name("userQueueName"), user_id, message)
 //
-//	ctx := context.Background()
-//	err := hub.Send(ctx, "user123", []byte("Hello, user!"))
 //	if err != nil {
-//	    log.Printf("Failed to send message: %v", err)
+//	    // handle error
 //	}
-func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
-	if h.send_local(user_id, message) {
-		return nil
-	}
-
-	// Query the ConnectionsHandlerWorkflow to get the user's queue
-	response, err := shared.Temporal().Client().QueryWorkflow(ctx, opts_hub().ID, "", QueryGetUserQueue, user_id)
-	if err != nil {
-		return NewHubError(ErrorTypeQueryFailed, "failed to query user queue", err)
-	}
-
-	var name string
-	if err := response.Get(&name); err != nil {
-		return NewHubError(ErrorTypeQueryFailed, "failed to decode user queue response", err)
-	}
-
-	if name == "" {
-		return NewHubError(ErrorTypeUserNotRegistered, "user not registered to any queue", nil)
-	}
-
+func (h *hub) send_global(ctx context.Context, q queue.Name, user_id string, message []byte) error {
 	// Use the retrieved queue name to create workflow options
-	opts := opts_send(queue.NewQueue(queue.WithName(queue.Name(name))), user_id)
+	opts := opts_send(queue.NewQueue(queue.WithName(q)), user_id)
 
-	_, err = shared.Temporal().Client().ExecuteWorkflow(ctx, opts, SendMessageWorkflow, user_id, message)
+	_, err := shared.Temporal().Client().ExecuteWorkflow(ctx, opts, SendMessageWorkflow, user_id, message)
 	if err != nil {
 		return NewHubError(ErrorTypeWorkflowExecutionFailed, "failed to send message", err)
 	}
@@ -152,30 +222,32 @@ func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
 	return nil
 }
 
-// Stop gracefully shuts down the hub and closes all client connections.
-// It should be called when the application is shutting down to ensure
-// all resources are properly released and all connections are closed.
+// query queries the ConnectionsHandlerWorkflow to get the user's queue name.
+// It returns the queue name and an error if the query fails.
 //
-// Example:
+// Example usage:
+// name, err := h.query(ctx, user_id)
 //
-//	hub := ws.Instance()
-//	// ... use hub
-//	defer hub.Stop() // Ensure hub is stopped when main function exits
-func (h *hub) Stop() {
-	h.stop <- true
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	for client := range h.clients {
-		close(client.send)
-		client.conn.Close()
+//	if err != nil {
+//	    // handle error
+//	}
+func (h *hub) query(ctx context.Context, user_id string) (string, error) {
+	response, err := shared.Temporal().Client().QueryWorkflow(ctx, opts_hub().ID, "", QueryGetUserQueue, user_id)
+	if err != nil {
+		return "", NewHubError(ErrorTypeQueryFailed, "failed to query user queue", err)
 	}
 
-	close(h.register)
-	close(h.unregister)
-}
+	var name string
+	if err := response.Get(&name); err != nil {
+		return "", NewHubError(ErrorTypeQueryFailed, "failed to decode user queue response", err)
+	}
 
-// Internal hub operations
+	if name == "" {
+		return "", NewHubError(ErrorTypeUserNotRegistered, "user not registered to any queue", nil)
+	}
+
+	return name, nil
+}
 
 // run is the main loop that handles client registration, unregistration, and broadcasting.
 func (h *hub) run() {
@@ -202,8 +274,8 @@ func (h *hub) run() {
 	}
 }
 
-// worker sets up and manages the Temporal worker running against the queue,
-// for handling workflows and activities.
+// worker sets up and run the temporal worker for handling the hub's queue.
+// on recieving the signal stop, stops the worker.
 func (h *hub) worker() {
 	worker := h.queue.Worker(shared.Temporal().Client())
 
@@ -225,20 +297,47 @@ func (h *hub) worker() {
 	worker.Stop()
 }
 
-// WebSocket connection handling
+// Helper functions
+
+// client searches for a client with the given user_id.
+func (h *hub) client(user_id string) (*client, bool) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	for client := range h.clients {
+		if client.user_id == user_id {
+			return client, true
+		}
+	}
+
+	return nil, false
+}
 
 // read reads messages from the WebSocket connection.
 func (h *hub) read(client *client) {
 	defer func() {
 		h.unregister <- client
 		client.conn.Close()
+
+		// Signal that a user has disconnected
+		if err := h.Signal(context.Background(), WorkflowSignalRemoveUser, client.user_id); err != nil {
+			shared.Logger().Warn("Failed to signal user disconnection", "user_id", client.user_id, "error", err)
+		}
 	}()
+
+	// Register the client
+	h.register <- client
+
+	// Signal that a user has connected
+	if err := h.Signal(context.Background(), WorkflowSignalAddUser, client.user_id); err != nil {
+		shared.Logger().Warn("Failed to signal user connection", "user_id", client.user_id, "error", err)
+	}
 
 	for {
 		_, message, err := client.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				shared.Logger().Error("Unexpected close error", "error", err)
+				shared.Logger().Warn("Unexpected close error", "error", err)
 			}
 
 			break
@@ -278,41 +377,25 @@ func (h *hub) write(client *client) {
 	}
 }
 
-// Helper functions
-
-// client searches for a client with the given user_id.
-func (h *hub) client(user_id string) (*client, bool) {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	for client := range h.clients {
-		if client.user_id == user_id {
-			return client, true
-		}
-	}
-
-	return nil, false
-}
-
 // Additional functions
 
-// ConnectionHandlerWorker creates and configures a Temporal worker for handling WebSocket connections.
+// ConnectionsHubWorker creates and configures a Temporal worker for handling WebSocket connections.
 // It sets up a new queue with the WebSocketQueue name and registers the ConnectionsHandlerWorkflow.
 //
-// Example:
+// Example usage:
 //
-//	worker := ws.ConnectionHandlerWorker()
+//	worker := ws.ConnectionsHubWorker()
 //	err := worker.Start()
 //	if err != nil {
 //	    log.Fatalf("Failed to start worker: %v", err)
 //	}
 //	defer worker.Stop()
-func ConnectionHandlerWorker() worker.Worker {
+func ConnectionsHubWorker() worker.Worker {
 	q := queue.NewQueue(queue.WithName(shared.WebSocketQueue))
 
 	worker := q.Worker(shared.Temporal().Client())
 
-	worker.RegisterWorkflow(ConnectionsHandlerWorkflow)
+	worker.RegisterWorkflow(ConnectionsHubWorkflow)
 
 	return worker
 }
@@ -322,7 +405,7 @@ func ConnectionHandlerWorker() worker.Worker {
 // channels, registering workflows and activities, and starting the worker and run loops.
 // This method ensures that only one hub instance is created and used throughout the application.
 //
-// Example:
+// Example usage:
 //
 //	hub := ws.Instance()
 //	// Use hub methods...
@@ -336,8 +419,8 @@ func Instance() Hub {
 			stop:       make(chan bool, 1),
 		}
 
-		go instance.worker()
 		go instance.run()
+		go instance.worker()
 	})
 
 	return instance

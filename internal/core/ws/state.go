@@ -19,20 +19,16 @@ type (
 		logger     log.Logger
 	}
 
-	AddUserSignal struct {
+	QueueUser struct {
 		UserID string
 		Queue  string
 	}
 
-	RemoveUserSignal struct {
+	User struct {
 		UserID string
 	}
 
-	FlushQueueSignal struct {
-		Queue string
-	}
-
-	WorkerAddedSignal struct {
+	RegisterOrFlush struct {
 		Queue string
 	}
 )
@@ -71,11 +67,11 @@ func (con *Connections) AddUserToQueue(ctx workflow.Context, user_id, queue stri
 	}
 	defer con.mu.Unlock()
 
-	if oldQueue, exists := con.UserQueue[user_id]; exists {
-		delete(con.QueueUsers[oldQueue], user_id)
+	if old, exists := con.UserQueue[user_id]; exists {
+		delete(con.QueueUsers[old], user_id)
 
-		if len(con.QueueUsers[oldQueue]) == 0 {
-			delete(con.QueueUsers, oldQueue)
+		if len(con.QueueUsers[old]) == 0 {
+			delete(con.QueueUsers, old)
 		}
 	}
 
@@ -103,12 +99,12 @@ func (con *Connections) RemoveUserFromQueue(ctx workflow.Context, user_id string
 	}
 	defer con.mu.Unlock()
 
-	if queueName, exists := con.UserQueue[user_id]; exists {
+	if q, exists := con.UserQueue[user_id]; exists {
 		delete(con.UserQueue, user_id)
-		delete(con.QueueUsers[queueName], user_id)
+		delete(con.QueueUsers[q], user_id)
 
-		if len(con.QueueUsers[queueName]) == 0 {
-			delete(con.QueueUsers, queueName)
+		if len(con.QueueUsers[q]) == 0 {
+			delete(con.QueueUsers, q)
 		}
 	}
 
@@ -139,15 +135,15 @@ func (con *Connections) GetUsersInQueue(ctx workflow.Context, queue string) ([]s
 	return users, nil
 }
 
-// ClearQueue removes all users from a specified queue.
+// Flush removes all users from a specified queue.
 //
 // Example:
 //
-//	err := connections.ClearQueue(ctx, "queue1")
+//	err := connections.Flush(ctx, "queue1")
 //	if err != nil {
 //	    log.Printf("Failed to clear queue: %v", err)
 //	}
-func (con *Connections) ClearQueue(ctx workflow.Context, queue string) error {
+func (con *Connections) Flush(ctx workflow.Context, queue string) error {
 	if err := con.mu.Lock(ctx); err != nil {
 		return err
 	}
@@ -199,7 +195,7 @@ func (con *Connections) error(msg string, keyvals ...any) {
 
 func (con *Connections) on_add(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		var signal AddUserSignal
+		var signal QueueUser
 
 		rx.Receive(ctx, &signal)
 
@@ -213,7 +209,7 @@ func (con *Connections) on_add(ctx workflow.Context) shared.ChannelHandler {
 
 func (con *Connections) on_remove(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		var signal RemoveUserSignal
+		var signal User
 
 		rx.Receive(ctx, &signal)
 
@@ -227,11 +223,11 @@ func (con *Connections) on_remove(ctx workflow.Context) shared.ChannelHandler {
 
 func (con *Connections) on_flush(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		var signal FlushQueueSignal
+		var signal RegisterOrFlush
 
 		rx.Receive(ctx, &signal)
 
-		if err := con.ClearQueue(ctx, signal.Queue); err != nil {
+		if err := con.Flush(ctx, signal.Queue); err != nil {
 			con.error("Failed to flush queue", "queue", signal.Queue, "error", err)
 		} else {
 			con.info("Flushed queue", "queue", signal.Queue)
@@ -241,7 +237,7 @@ func (con *Connections) on_flush(ctx workflow.Context) shared.ChannelHandler {
 
 func (con *Connections) on_worker_added(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		var signal WorkerAddedSignal
+		var signal RegisterOrFlush
 
 		rx.Receive(ctx, &signal)
 
@@ -253,13 +249,11 @@ func (con *Connections) on_worker_added(ctx workflow.Context) shared.ChannelHand
 //
 // Example:
 //
-//	connections := NewConnections(ctx)
-//	// Use the connections object to manage websocket connections
-func NewConnections(ctx workflow.Context) *Connections {
+//	connections := NewConnections()
+//	connections.Restore(ctx) // restore if using inside the workflow.
+func NewConnections() *Connections {
 	return &Connections{
 		UserQueue:  make(map[string]string),
 		QueueUsers: make(map[string]map[string]struct{}),
-		mu:         workflow.NewMutex(ctx),
-		logger:     workflow.GetLogger(ctx),
 	}
 }
