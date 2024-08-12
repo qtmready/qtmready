@@ -444,7 +444,6 @@ func (a *Activities) GithubWorkflowInfo(ctx context.Context, payload *defs.RepoI
 			HTMLURL: workflow.GetHTMLURL(),
 		}
 
-		// Add the workflow to the slice
 		winfo.Workflows = append(winfo.Workflows, w)
 	}
 
