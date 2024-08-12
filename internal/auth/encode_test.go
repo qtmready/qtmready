@@ -12,9 +12,11 @@ import (
 	"go.breu.io/quantm/internal/shared"
 )
 
-type EncodeTestSuite struct {
-	suite.Suite
-}
+type (
+	EncodeTestSuite struct {
+		suite.Suite
+	}
+)
 
 func (s *EncodeTestSuite) SetupSuite() {
 	shared.InitServiceForTest()
@@ -147,10 +149,11 @@ func (s *EncodeTestSuite) TestEncodeDecodeJWE_Smoke() {
 		switch expected := expectedValue.(type) {
 		case []string:
 			// Convert expected []string to []interface{} for comparison
-			expectedInterface := make([]interface{}, len(expected))
+			expectedInterface := make([]any, len(expected))
 			for i, v := range expected {
 				expectedInterface[i] = v
 			}
+
 			assert.Equal(s.T(), expectedInterface, decodedValue, "Mismatch for key: %s", key)
 		case int:
 			// Allow for int to be decoded as float64
