@@ -435,7 +435,7 @@ func (a *Activities) GithubWorkflowInfo(ctx context.Context, payload *defs.RepoI
 
 	// Iterate through each workflow
 	for _, workflow := range workflows.Workflows {
-		detail := &defs.RepIOWorkflow{
+		w := &defs.RepIOWorkflow{
 			ID:      shared.Int64(*workflow.ID),
 			NodeID:  workflow.GetNodeID(),
 			Name:    workflow.GetName(),
@@ -445,7 +445,7 @@ func (a *Activities) GithubWorkflowInfo(ctx context.Context, payload *defs.RepoI
 		}
 
 		// Add the workflow to the slice
-		winfo.Workflows = append(winfo.Workflows, detail)
+		winfo.Workflows = append(winfo.Workflows, w)
 	}
 
 	return winfo, nil
