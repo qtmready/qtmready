@@ -81,7 +81,12 @@ func (state *RepoIOBranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHa
 
 		switch pr.Action {
 		case "opened":
-			state.set_pr(ctx, &defs.RepoIOPullRequest{Number: pr.Number, HeadBranch: pr.HeadBranch, BaseBranch: pr.BaseBranch})
+			p := &defs.RepoIOPullRequest{Number: pr.Number, HeadBranch: pr.HeadBranch, BaseBranch: pr.BaseBranch}
+			state.set_pr(ctx, p)
+
+			if err := state.push_pr(ctx, p, false); err != nil {
+				// Handle the error
+			}
 		case "closed":
 			// when the pull request action is closed set it to nil.
 			state.set_pr(ctx, nil)
