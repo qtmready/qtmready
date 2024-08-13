@@ -165,7 +165,7 @@ func (h *hub) Stop() {
 	}
 
 	// Signal to flush queues or perform any necessary cleanup
-	if err := h.Signal(context.Background(), WorkflowSignalFlushQueue, nil); err != nil {
+	if err := h.Signal(context.Background(), WorkflowSignalFlushQueue, RegisterOrFlush{Queue: h.queue.Name()}); err != nil {
 		shared.Logger().Warn("ws: failed to signal flush", "error", err.Error())
 	}
 
@@ -320,8 +320,9 @@ func (h *hub) read(client *client) {
 		client.conn.Close()
 
 		// Signal that a user has disconnected
-		if err := h.Signal(context.Background(), WorkflowSignalRemoveUser, client.user_id); err != nil {
+		if err := h.Signal(context.Background(), WorkflowSignalRemoveUser, User{UserID: client.user_id}); err != nil {
 			shared.Logger().Warn("Failed to signal user disconnection", "user_id", client.user_id, "error", err)
+			return
 		}
 	}()
 
@@ -329,8 +330,9 @@ func (h *hub) read(client *client) {
 	h.register <- client
 
 	// Signal that a user has connected
-	if err := h.Signal(context.Background(), WorkflowSignalAddUser, client.user_id); err != nil {
+	if err := h.Signal(context.Background(), WorkflowSignalAddUser, QueueUser{UserID: client.user_id, Queue: h.queue.Name()}); err != nil {
 		shared.Logger().Warn("Failed to signal user connection", "user_id", client.user_id, "error", err)
+		return
 	}
 
 	for {
