@@ -2,6 +2,7 @@ package ws
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
@@ -24,9 +25,13 @@ type (
 		//     e.GET("/ws/:id", ws.Instance().HandleWebSocket)
 		HandleWebSocket(ctx echo.Context) error
 
-		// Send sends a message to a specific user.
-		// If the user is connected, it attempts to send the message directly.
-		// If the user is not connected or the send fails, it starts a Temporal workflow.
+		// Send sends a message to a specific user. It first checks if the user is local to the container.
+		// If the user is found, the message is sent directly. If the user is not local, it checks which
+		// queue the user is connected to. If the user is connected to a queue, the message is routed via
+		// that queue. If the user is not connected to any queue, the message is dropped, and an
+		// informational log is generated.
+		// The method returns nil if the message is dropped or sent loally.
+		// For all other errors, HubError is returned.
 		//
 		// Example usage:
 		//     ctx := context.Background()
@@ -36,20 +41,8 @@ type (
 		//     }
 		Send(ctx context.Context, user_id string, message []byte) error
 
-		// Send sends a message to a specific user.
-		// If the user is connected, it attempts to send the message directly.
-		// If the user is not connected or the send fails, it starts a Temporal workflow.
-		//
-		// Example usage:
-		//     ctx := context.Background()
-		//     err := hub.Send(ctx, "user123", []byte("Hello, user!"))
-		//     if err != nil {
-		//         log.Printf("Failed to send message: %v", err)
-		//     }
-		// Broadcast(ctx context.Context, team_id string, message []byte) error
-
-		// Signal is a shorthand for signaling the ConnectionsHubWorkflow.
-		// It takes a signal type and payload as parameters.
+		// Signal is a shorthand for signaling the ConnectionsHubWorkflow. It takes a signal type and
+		// payload as parameters.
 		//
 		// Example usage:
 		//     ctx := context.Background()
@@ -59,9 +52,9 @@ type (
 		//     }
 		Signal(ctx context.Context, signal shared.WorkflowSignal, payload any) error
 
-		// Stop gracefully shuts down the hub and closes all client connections.
-		// It should be called when the application is shutting down to ensure
-		// all resources are properly released and all connections are closed.
+		// Stop gracefully shuts down the hub and closes all client connections. It should be called
+		// when the application is shutting down to ensure all resources are properly released and
+		// all connections are closed.
 		//
 		// Example usage:
 		//     hub.Stop()
@@ -124,15 +117,19 @@ func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
 		return nil
 	}
 
-	// Use the new queryUserQueue function to get the user's queue name
 	name, err := h.query(ctx, user_id)
 	if err != nil {
-		shared.Logger().Warn("ws: queue not found", "user_id", user_id, "err", err.Error())
+		var hubErr *HubError
+		if errors.As(err, &hubErr) && hubErr.Code == ErrorCodeUserNotRegistered {
+			shared.Logger().Warn("ws: user not registered", "user_id", user_id)
+			return nil
+		}
+
 		return err
 	}
 
 	// Call send_global to send the message using the queue name
-	err = h.send_global(ctx, queue.Name(name), user_id, message)
+	err = h.route_message(ctx, queue.Name(name), user_id, message)
 	if err != nil {
 		return err
 	}
@@ -201,22 +198,22 @@ func (h *hub) send_local(user_id string, message []byte) bool {
 	return false
 }
 
-// send_global sends a message to a specific user using the provided queue name.
+// route_message sends a message to a specific user using the provided queue name.
 // It returns an error if the workflow execution fails.
 //
 // Example usage:
-// err := h.send_global(ctx, queue.Name("userQueueName"), user_id, message)
+// err := h.route_message(ctx, queue.Name("userQueueName"), user_id, message)
 //
 //	if err != nil {
 //	    // handle error
 //	}
-func (h *hub) send_global(ctx context.Context, q queue.Name, user_id string, message []byte) error {
+func (h *hub) route_message(ctx context.Context, q queue.Name, user_id string, message []byte) error {
 	// Use the retrieved queue name to create workflow options
 	opts := opts_send(queue.NewQueue(queue.WithName(q)), user_id)
 
 	_, err := shared.Temporal().Client().ExecuteWorkflow(ctx, opts, SendMessageWorkflow, user_id, message)
 	if err != nil {
-		return NewHubError(ErrorTypeWorkflowExecutionFailed, "failed to send message", err)
+		return NewHubError(ErrorCodeWorkflowExecutionFailed, "failed to send message", err)
 	}
 
 	return nil
@@ -234,16 +231,16 @@ func (h *hub) send_global(ctx context.Context, q queue.Name, user_id string, mes
 func (h *hub) query(ctx context.Context, user_id string) (string, error) {
 	response, err := shared.Temporal().Client().QueryWorkflow(ctx, opts_hub().ID, "", QueryGetUserQueue, user_id)
 	if err != nil {
-		return "", NewHubError(ErrorTypeQueryFailed, "failed to query user queue", err)
+		return "", NewHubError(ErrorCodeQueryFailed, "failed to query user queue", err)
 	}
 
 	var name string
 	if err := response.Get(&name); err != nil {
-		return "", NewHubError(ErrorTypeQueryFailed, "failed to decode user queue response", err)
+		return "", NewHubError(ErrorCodeQueryFailed, "failed to decode user queue response", err)
 	}
 
 	if name == "" {
-		return "", NewHubError(ErrorTypeUserNotRegistered, "user not registered to any queue", nil)
+		return "", NewHubError(ErrorCodeUserNotRegistered, "user not registered to any queue", nil)
 	}
 
 	return name, nil
@@ -274,8 +271,8 @@ func (h *hub) run() {
 	}
 }
 
-// worker sets up and run the temporal worker for handling the hub's queue.
-// on recieving the signal stop, stops the worker.
+// worker sets up and runs the temporal worker for handling the hub's queue.
+// On receiving the signal stop, it stops the worker.
 func (h *hub) worker() {
 	worker := h.queue.Worker(shared.Temporal().Client())
 
@@ -402,9 +399,8 @@ func ConnectionsHubWorker() worker.Worker {
 	return worker
 }
 
-// Instance returns a singleton instance of the Hub.
-// It initializes the hub if it hasn't been created yet, setting up necessary
-// channels, registering workflows and activities, and starting the worker and run loops.
+// Instance returns a singleton instance of the Hub. It initializes the hub if it hasn't been created yet,
+// setting up necessary channels, registering workflows and activities, and starting the worker and run loops.
 // This method ensures that only one hub instance is created and used throughout the application.
 //
 // Example usage:

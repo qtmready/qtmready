@@ -102,19 +102,18 @@ func BroadcastMessageWorkflow(ctx workflow.Context, team_id string, message []by
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
 	activities := &Activities{}
+	response := &TeamUsersReponse{IDs: make([]string, 0)}
 
-	var userIDs []string
-
-	err := workflow.ExecuteActivity(ctx, activities.GetTeamUsers, team_id).Get(ctx, &userIDs)
+	err := workflow.ExecuteActivity(ctx, activities.GetTeamUsers, team_id).Get(ctx, response)
 	if err != nil {
 		shared.Logger().Error("Failed to get team users", "error", err)
 		return err
 	}
 
-	for _, userID := range userIDs {
-		err := workflow.ExecuteActivity(ctx, activities.SendMessage, userID, message).Get(ctx, nil)
+	for _, id := range response.IDs {
+		err := workflow.ExecuteActivity(ctx, activities.RouteMessage, id, message).Get(ctx, nil)
 		if err != nil {
-			shared.Logger().Error("Failed to send message to user", "user_id", userID, "error", err)
+			shared.Logger().Error("Failed to send message to user", "user_id", id, "error", err)
 		}
 	}
 
