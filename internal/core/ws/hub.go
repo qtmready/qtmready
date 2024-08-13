@@ -121,7 +121,7 @@ func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
 	if err != nil {
 		var hubErr *HubError
 		if errors.As(err, &hubErr) && hubErr.Code == ErrorCodeUserNotRegistered {
-			shared.Logger().Warn("ws: user not registered", "user_id", user_id)
+			shared.Logger().Warn("ws/hub: user not registered", "user_id", user_id)
 			return nil
 		}
 
@@ -163,7 +163,7 @@ func (h *hub) Stop() {
 
 	// Signal to flush queues or perform any necessary cleanup
 	if err := h.Signal(context.Background(), WorkflowSignalFlushQueue, RegisterOrFlush{Queue: h.queue.Name()}); err != nil {
-		shared.Logger().Warn("ws: failed to signal flush", "error", err.Error())
+		shared.Logger().Warn("ws/hub: failed to signal flush", "error", err.Error())
 	}
 
 	close(h.register)
@@ -271,8 +271,9 @@ func (h *hub) run() {
 	}
 }
 
-// worker sets up and runs the temporal worker for handling the hub's queue.
-// On receiving the signal stop, it stops the worker.
+// worker sets up and runs the Temporal worker for handling the hub's queue.
+// It starts the worker, registers workflows and activities, and listens for the stop signal.
+// On receiving the stop signal, it gracefully shuts down the worker.
 func (h *hub) worker() {
 	worker := h.queue.Worker(shared.Temporal().Client())
 
@@ -284,8 +285,8 @@ func (h *hub) worker() {
 	worker.RegisterActivity(&Activities{})
 
 	if err := worker.Start(); err != nil {
-		shared.Logger().Error("Failed to start worker", "error", err)
-		panic(err)
+		shared.Logger().Error("ws/hub: unable to start worker for the queue, shutdown ..", "error", err)
+		h.stop <- true
 	}
 
 	<-h.stop
