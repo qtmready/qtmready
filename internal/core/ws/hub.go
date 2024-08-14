@@ -58,7 +58,7 @@ type (
 		//
 		// Example usage:
 		//     hub.Stop()
-		Stop()
+		Stop(ctx context.Context) error
 	}
 
 	// client represents a WebSocket client connection.
@@ -97,7 +97,7 @@ func (h *hub) HandleWebSocket(ctx echo.Context) error {
 		return fmt.Errorf("failed to upgrade connection: %w", err)
 	}
 
-	user_id := ctx.Param("id")
+	user_id := ctx.Param("token")
 
 	c := &client{
 		user_id: user_id,
@@ -151,7 +151,7 @@ func (h *hub) Signal(ctx context.Context, signal shared.WorkflowSignal, payload 
 }
 
 // Stop gracefully shuts down the hub and closes all client connections.
-func (h *hub) Stop() {
+func (h *hub) Stop(_ context.Context) error {
 	h.stop <- true
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -168,6 +168,8 @@ func (h *hub) Stop() {
 
 	close(h.register)
 	close(h.unregister)
+
+	return nil
 }
 
 // send_local attempts to send a message to a client locally.
@@ -275,6 +277,8 @@ func (h *hub) run() {
 // It starts the worker, registers workflows and activities, and listens for the stop signal.
 // On receiving the stop signal, it gracefully shuts down the worker.
 func (h *hub) worker() {
+	shared.Logger().Info("ws/queue: starting worker ...")
+
 	worker := h.queue.Worker(shared.Temporal().Client())
 
 	// Register workflows
@@ -285,7 +289,7 @@ func (h *hub) worker() {
 	worker.RegisterActivity(&Activities{})
 
 	if err := worker.Start(); err != nil {
-		shared.Logger().Error("ws/hub: unable to start worker for the queue, shutdown ..", "error", err)
+		shared.Logger().Error("ws/queue: unable to start worker for the queue, shutdown ..", "error", err)
 		h.stop <- true
 	}
 
@@ -319,7 +323,7 @@ func (h *hub) read(client *client) {
 
 		// Signal that a user has disconnected
 		if err := h.Signal(context.Background(), WorkflowSignalRemoveUser, User{UserID: client.user_id}); err != nil {
-			shared.Logger().Warn("Failed to signal user disconnection", "user_id", client.user_id, "error", err)
+			shared.Logger().Warn("ws/hub: failed to remove client", "user_id", client.user_id, "error", err)
 			return
 		}
 	}()
@@ -329,7 +333,7 @@ func (h *hub) read(client *client) {
 
 	// Signal that a user has connected
 	if err := h.Signal(context.Background(), WorkflowSignalAddUser, QueueUser{UserID: client.user_id, Queue: h.queue.Name()}); err != nil {
-		shared.Logger().Warn("Failed to signal user connection", "user_id", client.user_id, "error", err)
+		shared.Logger().Warn("ws/hub: failed to add client", "user_id", client.user_id, "error", err)
 		return
 	}
 
@@ -337,7 +341,7 @@ func (h *hub) read(client *client) {
 		_, message, err := client.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				shared.Logger().Warn("Unexpected close error", "error", err)
+				shared.Logger().Warn("ws/hub: websocket read error", "error", err)
 			}
 
 			break
@@ -391,8 +395,9 @@ func (h *hub) write(client *client) {
 //	}
 //	defer worker.Stop()
 func ConnectionsHubWorker() worker.Worker {
-	q := queue.NewQueue(queue.WithName(shared.WebSocketQueue))
+	shared.Logger().Info("ws/hub: starting worker ...")
 
+	q := queue.NewQueue(queue.WithName(shared.WebSocketQueue))
 	worker := q.Worker(shared.Temporal().Client())
 
 	worker.RegisterWorkflow(ConnectionsHubWorkflow)
