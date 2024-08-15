@@ -55,7 +55,7 @@ func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.Chann
 		state.rx(ctx, rx, push) // Using base_ctrl.rx
 
 		session := state.create_session(ctx)
-		defer workflow.CompleteSession(session)
+		defer state.finish_session(session)
 
 		cloned := state.clone_at_commit(session, push)
 		if cloned == nil {
@@ -65,11 +65,14 @@ func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.Chann
 		state.fetch_default_branch(session, cloned)
 
 		if err := state.rebase_at_commit(session, cloned); err != nil {
-			state.warn_conflict(ctx, push)
+			state.warn_conflict(session, push)
+			state.remove_cloned(session, cloned)
+
+			return
 		}
 
 		state.push_branch(session, cloned)
-		state.remove_cloned(ctx, cloned)
+		state.remove_cloned(session, cloned)
 	}
 }
 
@@ -162,10 +165,17 @@ func (state *RepoIOBranchCtrlState) check_stale(ctx workflow.Context) {
 
 // create_session creates a new workflow session for Git operations.
 func (state *RepoIOBranchCtrlState) create_session(ctx workflow.Context) workflow.Context {
-	opts := &workflow.SessionOptions{ExecutionTimeout: 60 * time.Minute, CreationTimeout: 60 * time.Minute}
-	ctx, _ = workflow.CreateSession(ctx, opts)
+	state.log(ctx, "session").Info("init")
 
-	return ctx
+	opts := &workflow.SessionOptions{ExecutionTimeout: 60 * time.Minute, CreationTimeout: 60 * time.Minute}
+	session, _ := workflow.CreateSession(ctx, opts)
+
+	return session
+}
+
+func (state *RepoIOBranchCtrlState) finish_session(ctx workflow.Context) {
+	workflow.CompleteSession(ctx)
+	state.log(ctx, "session").Info("completed")
 }
 
 // clone_at_commit clones the repository at a specific commit.
@@ -192,7 +202,7 @@ func (state *RepoIOBranchCtrlState) fetch_default_branch(ctx workflow.Context, c
 // rebase_at_commit rebases the branch at a specific commit.
 func (state *RepoIOBranchCtrlState) rebase_at_commit(ctx workflow.Context, cloned *defs.RepoIOClonePayload) error {
 	retry_policy := &temporal.RetryPolicy{NonRetryableErrorTypes: []string{"RepoIORebaseError"}}
-	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute, RetryPolicy: retry_policy}
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second, RetryPolicy: retry_policy}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	response := &defs.RepoIORebaseAtCommitResponse{}
@@ -200,7 +210,7 @@ func (state *RepoIOBranchCtrlState) rebase_at_commit(ctx workflow.Context, clone
 	if err := state.do(ctx, "rebase_at_commit", state.activities.RebaseAtCommit, cloned, response); err != nil {
 		var apperr *temporal.ApplicationError
 		if errors.As(err, &apperr) && apperr.Type() == "RepoIORebaseError" {
-			return NewRebaseError(cloned.Push.After, "fetch the commit message here")
+			return NewRebaseError(cloned.Push.After, "fetch the commit message here") // TODO: fill the right info
 		}
 
 		return nil

@@ -3,6 +3,7 @@ package code
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -132,7 +133,8 @@ func (a *Activities) RebaseAtCommit(ctx context.Context, payload *defs.RepoIOClo
 					return &defs.RepoIORebaseAtCommitResponse{SHA: sha, Message: msg}, NewRebaseError(sha, msg)
 				}
 			case 128:
-				return &defs.RepoIORebaseAtCommitResponse{InProgress: true}, NewRebaseError("unknown", "unknown")
+				msg := fmt.Sprintf("error rebasing branch %s", payload.Branch)
+				return &defs.RepoIORebaseAtCommitResponse{InProgress: true}, NewRebaseError("unknown", msg)
 			default:
 				return nil, err // retry
 			}
