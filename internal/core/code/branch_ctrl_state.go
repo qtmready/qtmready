@@ -201,7 +201,7 @@ func (state *RepoIOBranchCtrlState) fetch_default_branch(ctx workflow.Context, c
 
 // rebase_at_commit rebases the branch at a specific commit.
 func (state *RepoIOBranchCtrlState) rebase_at_commit(ctx workflow.Context, cloned *defs.RepoIOClonePayload) error {
-	retry_policy := &temporal.RetryPolicy{NonRetryableErrorTypes: []string{"RepoIORebaseError"}}
+	retry_policy := &temporal.RetryPolicy{NonRetryableErrorTypes: []string{"RebaseError"}}
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second, RetryPolicy: retry_policy}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
@@ -209,7 +209,7 @@ func (state *RepoIOBranchCtrlState) rebase_at_commit(ctx workflow.Context, clone
 
 	if err := state.do(ctx, "rebase_at_commit", state.activities.RebaseAtCommit, cloned, response); err != nil {
 		var apperr *temporal.ApplicationError
-		if errors.As(err, &apperr) && apperr.Type() == "RepoIORebaseError" {
+		if errors.As(err, &apperr) && apperr.Type() == "RebaseError" {
 			return NewRebaseError(cloned.Push.After, "fetch the commit message here") // TODO: fill the right info
 		}
 

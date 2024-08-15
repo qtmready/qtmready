@@ -93,7 +93,7 @@ func (a *Activities) CloneBranch(ctx context.Context, payload *defs.RepoIOCloneP
 }
 
 // FetchBranch fetches the given branch from the origin.
-// TODO: right now this fetches the branch but we need to make it generic.
+// TODO: right now this fetches the default branch but we need to make it generic.
 func (a Activities) FetchBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
 	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "fetch", "origin", payload.Repo.DefaultBranch) //nolint
 
