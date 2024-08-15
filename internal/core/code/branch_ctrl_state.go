@@ -66,6 +66,9 @@ func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.Chann
 
 		if err := state.rebase_at_commit(session, cloned); err != nil {
 			state.warn_conflict(session, push)
+			state.remove_cloned(session, cloned)
+
+			return
 		}
 
 		state.push_branch(session, cloned)
@@ -207,7 +210,7 @@ func (state *RepoIOBranchCtrlState) rebase_at_commit(ctx workflow.Context, clone
 	if err := state.do(ctx, "rebase_at_commit", state.activities.RebaseAtCommit, cloned, response); err != nil {
 		var apperr *temporal.ApplicationError
 		if errors.As(err, &apperr) && apperr.Type() == "RepoIORebaseError" {
-			return NewRebaseError(cloned.Push.After, "fetch the commit message here")
+			return NewRebaseError(cloned.Push.After, "fetch the commit message here") // TODO: fill the right info
 		}
 
 		return nil
