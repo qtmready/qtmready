@@ -65,11 +65,11 @@ func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.Chann
 		state.fetch_default_branch(session, cloned)
 
 		if err := state.rebase_at_commit(session, cloned); err != nil {
-			state.warn_conflict(ctx, push)
+			state.warn_conflict(session, push)
 		}
 
 		state.push_branch(session, cloned)
-		state.remove_cloned(ctx, cloned)
+		state.remove_cloned(session, cloned)
 	}
 }
 
@@ -163,9 +163,9 @@ func (state *RepoIOBranchCtrlState) check_stale(ctx workflow.Context) {
 // create_session creates a new workflow session for Git operations.
 func (state *RepoIOBranchCtrlState) create_session(ctx workflow.Context) workflow.Context {
 	opts := &workflow.SessionOptions{ExecutionTimeout: 60 * time.Minute, CreationTimeout: 60 * time.Minute}
-	ctx, _ = workflow.CreateSession(ctx, opts)
+	session, _ := workflow.CreateSession(ctx, opts)
 
-	return ctx
+	return session
 }
 
 // clone_at_commit clones the repository at a specific commit.
