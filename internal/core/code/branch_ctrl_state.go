@@ -55,7 +55,7 @@ func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.Chann
 		state.rx(ctx, rx, push) // Using base_ctrl.rx
 
 		session := state.create_session(ctx)
-		defer workflow.CompleteSession(session)
+		defer state.finish_session(session)
 
 		cloned := state.clone_at_commit(session, push)
 		if cloned == nil {
@@ -162,10 +162,17 @@ func (state *RepoIOBranchCtrlState) check_stale(ctx workflow.Context) {
 
 // create_session creates a new workflow session for Git operations.
 func (state *RepoIOBranchCtrlState) create_session(ctx workflow.Context) workflow.Context {
+	state.log(ctx, "session").Info("init")
+
 	opts := &workflow.SessionOptions{ExecutionTimeout: 60 * time.Minute, CreationTimeout: 60 * time.Minute}
 	session, _ := workflow.CreateSession(ctx, opts)
 
 	return session
+}
+
+func (state *RepoIOBranchCtrlState) finish_session(ctx workflow.Context) {
+	workflow.CompleteSession(ctx)
+	state.log(ctx, "session").Info("completed")
 }
 
 // clone_at_commit clones the repository at a specific commit.
