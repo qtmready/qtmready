@@ -199,7 +199,7 @@ func (state *RepoIOBranchCtrlState) fetch_default_branch(ctx workflow.Context, c
 // rebase_at_commit rebases the branch at a specific commit.
 func (state *RepoIOBranchCtrlState) rebase_at_commit(ctx workflow.Context, cloned *defs.RepoIOClonePayload) error {
 	retry_policy := &temporal.RetryPolicy{NonRetryableErrorTypes: []string{"RepoIORebaseError"}}
-	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute, RetryPolicy: retry_policy}
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second, RetryPolicy: retry_policy}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	response := &defs.RepoIORebaseAtCommitResponse{}
