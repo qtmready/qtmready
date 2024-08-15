@@ -125,6 +125,7 @@ func Temporal() temporal.Temporal {
 			temporal.WithQueue(CoreQueue),
 			temporal.WithQueue(ProvidersQueue),
 			temporal.WithQueue(MutexQueue), // FIXME: WithClientCreation needs to come before the queue.
+			temporal.WithQueue(WebSocketQueue),
 		)
 	})
 

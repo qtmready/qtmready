@@ -10,18 +10,18 @@ type (
 )
 
 const (
-	// ErrorTypeUnknown represents an unknown error.
-	ErrorTypeUnknown ErrorCode = iota
-	// ErrorTypeLocalSendFailed represents a failure to send a message locally.
-	ErrorTypeLocalSendFailed
-	// ErrorTypeQueryFailed represents a failure to query the user's queue.
-	ErrorTypeQueryFailed
-	// ErrorTypeUserNotRegistered represents an error when the user is not registered to any queue.
-	ErrorTypeUserNotRegistered
-	// ErrorTypeWorkflowExecutionFailed represents a failure to execute the Temporal workflow.
-	ErrorTypeWorkflowExecutionFailed
-	// ErrorTypeBroadcastFailed represents a failure to broadcast a message to a team.
-	ErrorTypeBroadcastFailed
+	// ErrorCodeUnknown represents an unknown error.
+	ErrorCodeUnknown ErrorCode = iota
+	// ErrorCodeLocalSendFailed represents a failure to send a message locally.
+	ErrorCodeLocalSendFailed
+	// ErrorCodeQueryFailed represents a failure to query the user's queue.
+	ErrorCodeQueryFailed
+	// ErrorCodeUserNotRegistered represents an error when the user is not registered to any queue.
+	ErrorCodeUserNotRegistered
+	// ErrorCodeWorkflowExecutionFailed represents a failure to execute the Temporal workflow.
+	ErrorCodeWorkflowExecutionFailed
+	// ErrorCodeBroadcastFailed represents a failure to broadcast a message to a team.
+	ErrorCodeBroadcastFailed
 )
 
 type (

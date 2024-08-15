@@ -135,15 +135,15 @@ func (con *Connections) GetUsersInQueue(ctx workflow.Context, queue string) ([]s
 	return users, nil
 }
 
-// Flush removes all users from a specified queue.
+// ClearQueue removes all users from a specified queue.
 //
 // Example:
 //
-//	err := connections.Flush(ctx, "queue1")
+//	err := connections.ClearQueue(ctx, "queue1")
 //	if err != nil {
 //	    log.Printf("Failed to clear queue: %v", err)
 //	}
-func (con *Connections) Flush(ctx workflow.Context, queue string) error {
+func (con *Connections) ClearQueue(ctx workflow.Context, queue string) error {
 	if err := con.mu.Lock(ctx); err != nil {
 		return err
 	}
@@ -227,7 +227,7 @@ func (con *Connections) on_flush(ctx workflow.Context) shared.ChannelHandler {
 
 		rx.Receive(ctx, &signal)
 
-		if err := con.Flush(ctx, signal.Queue); err != nil {
+		if err := con.ClearQueue(ctx, signal.Queue); err != nil {
 			con.error("Failed to flush queue", "queue", signal.Queue, "error", err)
 		} else {
 			con.info("Flushed queue", "queue", signal.Queue)
