@@ -99,6 +99,17 @@ func (state *RepoIOBranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHa
 	}
 }
 
+// TODO - refine the logic.
+// on_label handles pull request label events.
+func (state *RepoIOBranchCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		label := &defs.RepoIOSignalLabelPayload{}
+		state.rx(ctx, rx, label)
+
+		state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueAdd, label)
+	}
+}
+
 // on_create_delete handles branch creation and deletion events.
 func (state *RepoIOBranchCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {

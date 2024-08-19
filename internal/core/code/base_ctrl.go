@@ -143,6 +143,26 @@ func (base *BaseCtrl) signal_branch(ctx workflow.Context, branch string, signal 
 	)
 }
 
+// TODO - refine the logic.
+// signal_branch sends a signal to a specific branch.
+func (base *BaseCtrl) signal_queue(ctx workflow.Context, branch string, signal shared.WorkflowSignal, payload any) {
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	next := &defs.RepoIOSignalQueueCtrlPayload{
+		Repo:    base.repo,
+		Branch:  branch,
+		Signal:  signal,
+		Payload: payload,
+	}
+
+	_ = base.do(
+		ctx, "signal_queue_ctrl", base.activities.SignalQueue, next, nil,
+		slog.String("signal", signal.String()),
+		slog.String("branch", branch),
+	)
+}
+
 // rx receives a message from a channel and logs the event.
 func (base *BaseCtrl) rx(ctx workflow.Context, channel workflow.ReceiveChannel, target any) {
 	base.log(ctx, "rx").Info(channel.Name())

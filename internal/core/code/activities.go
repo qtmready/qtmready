@@ -52,6 +52,35 @@ func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSigna
 	return err
 }
 
+// TODO - refine the logic.
+func (a *Activities) SignalQueue(ctx context.Context, payload *defs.RepoIOSignalQueueCtrlPayload) error {
+	args := make([]any, 0)
+	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
+		shared.WithWorkflowBlock("queue"),
+		shared.WithWorkflowBlockID(payload.Repo.ID.String()),
+		shared.WithWorkflowElement("branch"),
+		shared.WithWorkflowElementID(payload.Branch),
+	)
+
+	queue := &QueueCtrlSerializedState{}
+
+	args = append(args, payload.Repo, queue)
+
+	_, err := shared.Temporal().
+		Client().
+		SignalWithStartWorkflow(
+			context.Background(),
+			opts.ID,
+			payload.Signal.String(),
+			payload.Payload,
+			opts,
+			QueueCtrl,
+			args...,
+		)
+
+	return err
+}
+
 // CloneBranch clones a repository branch at the temporary location, as specified by the payload.
 // It uses the RepoIO interface to get the url with the oauth token in it.
 // If an error occurs retrieving the clone URL, it is returned.

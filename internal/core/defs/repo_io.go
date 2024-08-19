@@ -19,6 +19,7 @@ const (
 	RepoIOSignalCreateOrDelete   shared.WorkflowSignal = "repo_io__create_or_delete"
 	RepoIOSignalRebase           shared.WorkflowSignal = "repo_io__rebase"
 	RepoIOSignalPullRequest      shared.WorkflowSignal = "repo_io__pull_request"
+	RepoIOSignalLabel            shared.WorkflowSignal = "repo_io__label"
 	RepoIOSignalQueueAdd         shared.WorkflowSignal = "repo_io__queue__add"
 	RepoIOSignalQueueAddPriority shared.WorkflowSignal = "repo_io__queue__add__priority"
 	RepoIOSignalQueuePromote     shared.WorkflowSignal = "repo_io__queue__promote"
@@ -64,6 +65,19 @@ type (
 	}
 
 	RepoIOSignalPullRequestPayload struct {
+		Action         string         `json:"action"`
+		Number         shared.Int64   `json:"number"`
+		RepoName       string         `json:"repo_name"`
+		RepoOwner      string         `json:"repo_owner"`
+		BaseBranch     string         `json:"base_branch"`
+		HeadBranch     string         `json:"head_branch"`
+		CtrlID         string         `json:"ctrl_id"`
+		InstallationID shared.Int64   `json:"installation_id"`
+		ProviderID     string         `json:"provider_id"`
+		User           *auth.TeamUser `json:"user"` // TODO: need to find more optimze way
+	}
+
+	RepoIOSignalLabelPayload struct {
 		Action         string         `json:"action"`
 		Number         shared.Int64   `json:"number"`
 		RepoName       string         `json:"repo_name"`
@@ -152,6 +166,13 @@ type (
 	}
 
 	RepoIOSignalBranchCtrlPayload struct {
+		Repo    *Repo                 `json:"repo"`    // Repo is the db record of the repo
+		Branch  string                `json:"branch"`  // Branch to signal
+		Signal  shared.WorkflowSignal `json:"signal"`  // Signal to send
+		Payload any                   `json:"payload"` // Payload to send
+	}
+
+	RepoIOSignalQueueCtrlPayload struct {
 		Repo    *Repo                 `json:"repo"`    // Repo is the db record of the repo
 		Branch  string                `json:"branch"`  // Branch to signal
 		Signal  shared.WorkflowSignal `json:"signal"`  // Signal to send

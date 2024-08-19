@@ -42,11 +42,16 @@ func BranchCtrl(ctx workflow.Context, repo *defs.Repo, branch string) error {
 	pr := workflow.GetSignalChannel(ctx, defs.RepoIOSignalPullRequest.String())
 	selector.AddReceive(pr, state.on_pr(ctx))
 
+	// label signal.
+	lebal := workflow.GetSignalChannel(ctx, defs.RepoIOSignalLabel.String())
+	selector.AddReceive(lebal, state.on_label(ctx))
+
 	// main event loop
 	for state.is_active() {
 		selector.Select(ctx)
 
 		// TODO - need to optimize
+		// TODO - remove
 		if state.pr != nil {
 			_ctx, q_state := NewQueueCtrlState(ctx, repo, branch)
 			q_state.push(_ctx, state.pr, false) // TODO - handle priority
