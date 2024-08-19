@@ -52,15 +52,6 @@ func (state *RepoCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 		pr := &defs.RepoIOSignalPullRequestPayload{}
 		state.rx(ctx, rx, pr)
 
-		// TODO - need discussion
-		p := &defs.RepoIOPullRequest{Number: pr.Number, HeadBranch: pr.HeadBranch, BaseBranch: pr.BaseBranch}
-
-		// TODO - handle queue part
-		err := state.push_pr(ctx, p, false)
-		if err != nil {
-
-		}
-
 		state.signal_branch(ctx, pr.HeadBranch, defs.RepoIOSignalPullRequest, pr)
 	}
 }

@@ -246,17 +246,6 @@ func (base *BaseCtrl) call_async(ctx workflow.Context, action string, fn CallAsy
 	return future
 }
 
-// TODO - push the pr to queue.
-// NOTE - find more optimize way.
-func (base *BaseCtrl) push_pr(ctx workflow.Context, pr *defs.RepoIOPullRequest, is_priority bool) error {
-	repo := &defs.Repo{}
-	_ctx, state := NewQueueCtrlState(ctx, repo, pr.HeadBranch)
-
-	state.push(_ctx, pr, is_priority)
-
-	return nil
-}
-
 // NewBaseCtrl creates a new base control instance and refreshes repository information and branches.
 func NewBaseCtrl(ctx workflow.Context, kind string, repo *defs.Repo) *BaseCtrl {
 	base := &BaseCtrl{
