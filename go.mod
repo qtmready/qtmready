@@ -1,6 +1,6 @@
 module go.breu.io/quantm
 
-go 1.22
+go 1.23
 
 require (
 	cloud.google.com/go/logging v1.11.0

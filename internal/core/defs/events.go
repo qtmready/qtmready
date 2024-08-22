@@ -11,52 +11,6 @@ import (
 )
 
 type (
-	EventScope   string
-	EventAction  string
-	EventVersion string
-
-	// EventContext is the context of an event.
-	EventContext[P MessageProvider | RepoProvider] struct {
-		ID        gocql.UUID  `json:"id"`
-		ParentID  gocql.UUID  `json:"parent_id"`
-		Provider  P           `json:"provider"`
-		Scope     EventScope  `json:"scope"`
-		Action    EventAction `json:"action"`
-		Source    string      `json:"source"`
-		Timestamp time.Time   `json:"timestamp"`
-	}
-
-	// EventSubject refers to the entity in quantm db that is the subject of an event.
-	// ID is the primary key of the entity in the database while name is the name of the entity (db table).
-	// For example, if the event is about a branch, since subject name represents the table, and since branch belong to repo,
-	// in our case, subject name will be repos, while subject id will be the id for the repo to which the branch belongs.
-	EventSubject struct {
-		ID   gocql.UUID `json:"id"`
-		Name string     `json:"name"`
-	}
-
-	Event[T any, P MessageProvider | RepoProvider] struct {
-		Version EventVersion    `json:"version"`
-		Context EventContext[P] `json:"context"`
-		Subject EventSubject    `json:"subject"`
-		Data    T               `json:"data"`
-	}
-
-	FlatEvent[P MessageProvider | RepoProvider] struct {
-		Version     EventVersion `json:"version" cql:"version"`
-		ID          gocql.UUID   `json:"id" cql:"id"`
-		ParentID    gocql.UUID   `json:"parent_id" cql:"parent_id"`
-		Provider    P            `json:"provider" cql:"provider"`
-		Scope       EventScope   `json:"scope" cql:"scope"`
-		Action      EventAction  `json:"action" cql:"action"`
-		Source      string       `json:"source" cql:"source"`
-		SubjectID   gocql.UUID   `json:"subject_id" cql:"subject_id"`
-		SubjectName string       `json:"subject_name" cql:"subject_name"`
-		Data        []byte       `json:"data" cql:"data"`
-		CreatedAt   time.Time    `json:"created_at" cql:"created_at"`
-		UpdatedAt   time.Time    `json:"updated_at" cql:"updated_at"`
-	}
-
 	BranchOrTag struct {
 		Ref           string `json:"ref"`
 		DefaultBranch string `json:"default_branch"`
@@ -116,6 +70,60 @@ type (
 		UpdatedAt         time.Time `json:"updated_at"`
 		PullRequestNumber int       `json:"pull_request_number"`
 	}
+
+	EventScope   string
+	EventAction  string
+	EventVersion string
+
+	EventProvider interface {
+		RepoProvider | MessageProvider
+	}
+
+	EventPayload interface {
+		BranchOrTag | PullRequest | Push | PullRequestReview | PullRequestLabel
+	}
+
+	// EventContext is the context of an event.
+	EventContext[P EventProvider] struct {
+		ID        gocql.UUID  `json:"id"`
+		ParentID  gocql.UUID  `json:"parent_id"`
+		Provider  P           `json:"provider"`
+		Scope     EventScope  `json:"scope"`
+		Action    EventAction `json:"action"`
+		Source    string      `json:"source"`
+		Timestamp time.Time   `json:"timestamp"`
+	}
+
+	// EventSubject refers to the entity in quantm db that is the subject of an event.
+	// ID is the primary key of the entity in the database while name is the name of the entity (db table).
+	// For example, if the event is about a branch, since subject name represents the table, and since branch belong to repo,
+	// in our case, subject name will be repos, while subject id will be the id for the repo to which the branch belongs.
+	EventSubject struct {
+		ID   gocql.UUID `json:"id"`
+		Name string     `json:"name"`
+	}
+
+	Event[T EventPayload, P EventProvider] struct {
+		Version EventVersion    `json:"version"`
+		Context EventContext[P] `json:"context"`
+		Subject EventSubject    `json:"subject"`
+		Data    T               `json:"data"`
+	}
+
+	FlatEvent[P EventProvider] struct {
+		Version     EventVersion `json:"version" cql:"version"`
+		ID          gocql.UUID   `json:"id" cql:"id"`
+		ParentID    gocql.UUID   `json:"parent_id" cql:"parent_id"`
+		Provider    P            `json:"provider" cql:"provider"`
+		Scope       EventScope   `json:"scope" cql:"scope"`
+		Action      EventAction  `json:"action" cql:"action"`
+		Source      string       `json:"source" cql:"source"`
+		SubjectID   gocql.UUID   `json:"subject_id" cql:"subject_id"`
+		SubjectName string       `json:"subject_name" cql:"subject_name"`
+		Data        []byte       `json:"data" cql:"data"`
+		CreatedAt   time.Time    `json:"created_at" cql:"created_at"`
+		UpdatedAt   time.Time    `json:"updated_at" cql:"updated_at"`
+	}
 )
 
 const (
@@ -128,15 +136,15 @@ const (
 	EventScopePullRequestLabel  EventScope = "pull_request_label"
 	EventScopePullRequestReview EventScope = "pull_request_review"
 
-	EventTypeCreated   EventAction = "created"
-	EventTypeDeleted   EventAction = "deleted"
-	EventTypeUpdated   EventAction = "updated"
-	EventTypeClosed    EventAction = "closed"
-	EventTypeMerged    EventAction = "merged"
-	EventTypeStarted   EventAction = "started"
-	EventTypeCompleted EventAction = "completed"
-	EventTypeAbandoned EventAction = "abandoned"
-	EventTypeAdded     EventAction = "added"
+	EventActionCreated   EventAction = "created"
+	EventActionDeleted   EventAction = "deleted"
+	EventActionUpdated   EventAction = "updated"
+	EventActionClosed    EventAction = "closed"
+	EventActionMerged    EventAction = "merged"
+	EventActionStarted   EventAction = "started"
+	EventActionCompleted EventAction = "completed"
+	EventActionAbandoned EventAction = "abandoned"
+	EventActionAdded     EventAction = "added"
 )
 
 var (
@@ -174,48 +182,61 @@ func (f *FlatEvent[P]) GetTable() itable.ITable {
 func (f *FlatEvent[P]) PreCreate() error { return nil }
 func (f *FlatEvent[P]) PreUpdate() error { return nil }
 
-func (f *FlatEvent[P]) ToEvent() (*Event[any, P], error) {
-	var payload any
+func (es EventScope) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(es))
+}
 
-	switch f.Scope {
-	case EventScopeBranch, EventScopeTag:
-		payload = new(BranchOrTag)
-	case EventScopePullRequest:
-		payload = new(PullRequest)
-	case EventScopePush:
-		payload = new(Push)
-	case EventScopePullRequestLabel:
-		payload = new(PullRequestLabel)
-	case EventScopePullRequestReview:
-		payload = new(PullRequestReview)
-	default:
-		return &Event[any, P]{}, fmt.Errorf("unsupported event scope: %s", f.Scope)
+func (es *EventScope) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
 	}
 
-	err := json.Unmarshal(f.Data, payload)
-	if err != nil {
-		return &Event[any, P]{}, err
+	*es = EventScope(s)
+
+	return nil
+}
+
+func (es EventScope) String() string {
+	return string(es)
+}
+
+func (ea EventAction) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(ea))
+}
+
+func (ea *EventAction) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
 	}
 
-	event := &Event[any, P]{
-		Version: f.Version,
-		Context: EventContext[P]{
-			ID:        f.ID,
-			ParentID:  f.ParentID,
-			Provider:  f.Provider,
-			Scope:     f.Scope,
-			Action:    f.Action,
-			Source:    f.Source,
-			Timestamp: f.CreatedAt,
-		},
-		Subject: EventSubject{
-			ID:   f.SubjectID,
-			Name: f.SubjectName,
-		},
-		Data: payload,
+	*ea = EventAction(s)
+
+	return nil
+}
+
+func (ev EventVersion) MarshalJSON() ([]byte, error) {
+	return json.Marshal(string(ev))
+}
+
+func (ev *EventVersion) UnmarshalJSON(data []byte) error {
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
 	}
 
-	return event, nil
+	*ev = EventVersion(s)
+
+	return nil
+}
+
+func (ev EventVersion) String() string {
+	return string(ev)
+}
+
+func (ea EventAction) String() string {
+	return string(ea)
 }
 
 // MarshalJSON customizes the JSON encoding for Event.
@@ -254,15 +275,15 @@ func (e *Event[T, P]) UnmarshalJSON(data []byte) error {
 
 	switch e.Context.Scope {
 	case EventScopeBranch, EventScopeTag:
-		payload = any(new(BranchOrTag)).(T)
+		payload = any(BranchOrTag{}).(T)
 	case EventScopePullRequest:
-		payload = any(new(PullRequest)).(T)
+		payload = any(PullRequest{}).(T)
 	case EventScopePush:
-		payload = any(new(Push)).(T)
+		payload = any(Push{}).(T)
 	case EventScopePullRequestLabel:
-		payload = any(new(PullRequestLabel)).(T)
+		payload = any(PullRequestLabel{}).(T)
 	case EventScopePullRequestReview:
-		payload = any(new(PullRequestReview)).(T)
+		payload = any(PullRequestReview{}).(T)
 	default:
 		return fmt.Errorf("unsupported event scope: %s", e.Context.Scope)
 	}
@@ -314,6 +335,36 @@ func (e *Event[T, P]) SetParentID(id gocql.UUID) {
 	e.Context.ParentID = id
 }
 
+// ToEvent converts a BranchOrTag struct to an Event struct.
+//
+// The provider parameter specifies the source of the event, such as "github" or "gitlab".
+// The subject parameter specifies the subject of the event, such as "branches" or "tags".
+// The action parameter specifies the type of the action, such as "created", "deleted", or "updated".
+//
+// The ID field of the EventContext is set to a new TimeUUID.
+// The Scope field of the EventContext is set to "branch" or "tag".
+// The Timestamp field of the EventContext is set to the current time.
+//
+// The method returns a pointer to the Event struct that is created.
+func (bt *BranchOrTag) ToEvent(
+	provider RepoProvider, subject EventSubject, action EventAction, scope EventScope,
+) *Event[BranchOrTag, RepoProvider] {
+	event := &Event[BranchOrTag, RepoProvider]{
+		Version: EventVersionV1,
+		Context: EventContext[RepoProvider]{
+			ID:        gocql.TimeUUID(),
+			Provider:  provider,
+			Scope:     scope,
+			Action:    action,
+			Timestamp: time.Now(),
+		},
+		Subject: subject,
+		Data:    *bt,
+	}
+
+	return event
+}
+
 // ToEvent converts a PullRequest struct to an Event struct.
 //
 // The provider parameter specifies the source of the event, such as "github" or "gitlab".
@@ -325,7 +376,9 @@ func (e *Event[T, P]) SetParentID(id gocql.UUID) {
 // The Timestamp field of the EventContext is set to the UpdatedAt field of the PullRequest struct.
 //
 // The method returns a pointer to the Event struct that is created.
-func (pr *PullRequest) ToEvent(provider RepoProvider, subject EventSubject, action EventAction) *Event[PullRequest, RepoProvider] {
+func (pr *PullRequest) ToEvent(
+	provider RepoProvider, subject EventSubject, action EventAction,
+) *Event[PullRequest, RepoProvider] {
 	event := &Event[PullRequest, RepoProvider]{
 		Version: EventVersionV1,
 		Context: EventContext[RepoProvider]{
@@ -340,4 +393,145 @@ func (pr *PullRequest) ToEvent(provider RepoProvider, subject EventSubject, acti
 	}
 
 	return event
+}
+
+// ToEvent converts a Push struct to an Event struct.
+//
+// The provider parameter specifies the source of the event, such as "github" or "gitlab".
+// The subject parameter specifies the subject of the event, such as "pushes".
+// The action parameter specifies the type of the action, such as "created" or "updated".
+//
+// The ID field of the EventContext is set to a new TimeUUID.
+// The Scope field of the EventContext is set to "push".
+// The Timestamp field of the EventContext is set to the Timestamp field of the Push struct.
+//
+// The method returns a pointer to the Event struct that is created.
+func (p *Push) ToEvent(provider RepoProvider, subject EventSubject, action EventAction) *Event[Push, RepoProvider] {
+	event := &Event[Push, RepoProvider]{
+		Version: EventVersionV1,
+		Context: EventContext[RepoProvider]{
+			ID:        gocql.TimeUUID(),
+			Provider:  provider,
+			Scope:     EventScopePush,
+			Action:    action,
+			Timestamp: p.Timestamp,
+		},
+		Subject: subject,
+		Data:    *p,
+	}
+
+	return event
+}
+
+// ToEvent converts a PullRequestReview struct to an Event struct.
+//
+// The provider parameter specifies the source of the event, such as "github" or "gitlab".
+// The subject parameter specifies the subject of the event, such as "pull_request_reviews".
+// The action parameter specifies the type of the action, such as "submitted" or "edited".
+//
+// The ID field of the EventContext is set to a new TimeUUID.
+// The Scope field of the EventContext is set to "pull_request_review".
+// The Timestamp field of the EventContext is set to the SubmittedAt field of the PullRequestReview struct.
+//
+// The method returns a pointer to the Event struct that is created.
+func (prr *PullRequestReview) ToEvent(
+	provider RepoProvider, subject EventSubject, action EventAction,
+) *Event[PullRequestReview, RepoProvider] {
+	event := &Event[PullRequestReview, RepoProvider]{
+		Version: EventVersionV1,
+		Context: EventContext[RepoProvider]{
+			ID:        gocql.TimeUUID(),
+			Provider:  provider,
+			Scope:     EventScopePullRequestReview,
+			Action:    action,
+			Timestamp: prr.SubmittedAt,
+		},
+		Subject: subject,
+		Data:    *prr,
+	}
+
+	return event
+}
+
+// ToEvent converts a PullRequestLabel struct to an Event struct.
+//
+// The provider parameter specifies the source of the event, such as "github" or "gitlab".
+// The subject parameter specifies the subject of the event, such as "pull_request_labels".
+// The action parameter specifies the type of the action, such as "added" or "removed".
+//
+// The ID field of the EventContext is set to a new TimeUUID.
+// The Scope field of the EventContext is set to "pull_request_label".
+// The Timestamp field of the EventContext is set to the UpdatedAt field of the PullRequestLabel struct.
+//
+// The method returns a pointer to the Event struct that is created.
+func (prl *PullRequestLabel) ToEvent(
+	provider RepoProvider, subject EventSubject, action EventAction,
+) *Event[PullRequestLabel, RepoProvider] {
+	event := &Event[PullRequestLabel, RepoProvider]{
+		Version: EventVersionV1,
+		Context: EventContext[RepoProvider]{
+			ID:        gocql.TimeUUID(),
+			Provider:  provider,
+			Scope:     EventScopePullRequestLabel,
+			Action:    action,
+			Timestamp: prl.UpdatedAt,
+		},
+		Subject: subject,
+		Data:    *prl,
+	}
+
+	return event
+}
+
+func Deflate[T EventPayload, P EventProvider](flat *FlatEvent[P], event *Event[T, P]) error {
+	valid := false
+
+	switch any(event).(type) {
+	case *Event[BranchOrTag, P]:
+		valid = flat.Scope == EventScopeBranch || flat.Scope == EventScopeTag
+
+	case *Event[PullRequest, P]:
+		valid = flat.Scope == EventScopePullRequest
+
+	case *Event[Push, P]:
+		valid = flat.Scope == EventScopePush
+
+	case *Event[PullRequestLabel, P]:
+		valid = flat.Scope == EventScopePullRequestLabel
+
+	case *Event[PullRequestReview, P]:
+		valid = flat.Scope == EventScopePullRequestReview
+
+	default:
+		return fmt.Errorf("unsupported event type: %T", event)
+	}
+
+	if !valid {
+		return fmt.Errorf("mismatch between event type and scope: %T and scope %s", event, flat.Scope)
+	}
+
+	var payload T
+
+	err := json.Unmarshal(flat.Data, &payload)
+	if err != nil {
+		return fmt.Errorf("failed to unmarshal data: %w", err)
+	}
+
+	event.Version = flat.Version
+	event.Context = EventContext[P]{
+		ID:        flat.ID,
+		ParentID:  flat.ParentID,
+		Provider:  flat.Provider,
+		Scope:     flat.Scope,
+		Action:    flat.Action,
+		Source:    flat.Source,
+		Timestamp: flat.CreatedAt,
+	}
+	event.Subject = EventSubject{
+		ID:   flat.SubjectID,
+		Name: flat.SubjectName,
+	}
+	event.Data = payload
+
+	return nil
 }
