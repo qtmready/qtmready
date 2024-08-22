@@ -64,7 +64,7 @@ func (a *Activities) SignalQueue(ctx context.Context, payload *defs.RepoIOSignal
 
 	queue := &QueueCtrlSerializedState{}
 
-	args = append(args, payload.Repo, queue)
+	args = append(args, payload.Repo, payload.Branch, queue)
 
 	_, err := shared.Temporal().
 		Client().

@@ -15,15 +15,18 @@ type (
 
 // RepoIO signals.
 const (
-	RepoIOSignalPush             shared.WorkflowSignal = "repo_io__push"
-	RepoIOSignalCreateOrDelete   shared.WorkflowSignal = "repo_io__create_or_delete"
-	RepoIOSignalRebase           shared.WorkflowSignal = "repo_io__rebase"
-	RepoIOSignalPullRequest      shared.WorkflowSignal = "repo_io__pull_request"
-	RepoIOSignalLabel            shared.WorkflowSignal = "repo_io__label"
-	RepoIOSignalQueueAdd         shared.WorkflowSignal = "repo_io__queue__add"
-	RepoIOSignalQueueAddPriority shared.WorkflowSignal = "repo_io__queue__add__priority"
-	RepoIOSignalQueuePromote     shared.WorkflowSignal = "repo_io__queue__promote"
-	RepoIOSignalQueueDemote      shared.WorkflowSignal = "repo_io__queue__demote"
+	RepoIOSignalPush                                shared.WorkflowSignal = "repo_io__push"
+	RepoIOSignalCreateOrDelete                      shared.WorkflowSignal = "repo_io__create_or_delete"
+	RepoIOSignalRebase                              shared.WorkflowSignal = "repo_io__rebase"
+	RepoIOSignalPullRequestOpenedOrClosedOrReopened shared.WorkflowSignal = "repo_io__pull_request_opened_or_closed_or_reopened"
+	RepoIOSignalPullRequestLabeledOrUnlabeled       shared.WorkflowSignal = "repo_io__pull_request_labeled_or_unlabeled"
+	RepoIOSignalPullRequestReviewComment            shared.WorkflowSignal = "repo_io__pull_request_review_comment"
+	RepoIOSignalPullRequestReview                   shared.WorkflowSignal = "repo_io__pull_request_review"
+	RepoIOSignalQueueAdd                            shared.WorkflowSignal = "repo_io__queue__add"
+	RepoIOSignalQueueRemove                         shared.WorkflowSignal = "repo_io__queue__remove"
+	RepoIOSignalQueueAddPriority                    shared.WorkflowSignal = "repo_io__queue__add__priority"
+	RepoIOSignalQueuePromote                        shared.WorkflowSignal = "repo_io__queue__promote"
+	RepoIOSignalQueueDemote                         shared.WorkflowSignal = "repo_io__queue__demote"
 )
 
 const (
@@ -65,19 +68,6 @@ type (
 	}
 
 	RepoIOSignalPullRequestPayload struct {
-		Action         string         `json:"action"`
-		Number         shared.Int64   `json:"number"`
-		RepoName       string         `json:"repo_name"`
-		RepoOwner      string         `json:"repo_owner"`
-		BaseBranch     string         `json:"base_branch"`
-		HeadBranch     string         `json:"head_branch"`
-		CtrlID         string         `json:"ctrl_id"`
-		InstallationID shared.Int64   `json:"installation_id"`
-		ProviderID     string         `json:"provider_id"`
-		User           *auth.TeamUser `json:"user"` // TODO: need to find more optimze way
-	}
-
-	RepoIOSignalLabelPayload struct {
 		Action         string         `json:"action"`
 		Number         shared.Int64   `json:"number"`
 		RepoName       string         `json:"repo_name"`

@@ -103,10 +103,17 @@ func (state *RepoIOBranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHa
 // on_label handles pull request label events.
 func (state *RepoIOBranchCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		label := &defs.RepoIOSignalLabelPayload{}
+		label := &defs.RepoIOSignalPullRequestPayload{}
 		state.rx(ctx, rx, label)
 
-		state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueAdd, label)
+		switch label.Action {
+		case "labeled":
+			state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueAdd, label)
+		case "unlabeled":
+			state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueRemove, label)
+		default:
+			return
+		}
 	}
 }
 
