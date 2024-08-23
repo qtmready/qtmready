@@ -99,8 +99,9 @@ type (
 	// For example, if the event is about a branch, since subject name represents the table, and since branch belong to repo,
 	// in our case, subject name will be repos, while subject id will be the id for the repo to which the branch belongs.
 	EventSubject struct {
-		ID   gocql.UUID `json:"id"`
-		Name string     `json:"name"`
+		ID     gocql.UUID `json:"id"`
+		Name   string     `json:"name"`
+		TeamID gocql.UUID `json:"team_id"`
 	}
 
 	Event[T EventPayload, P EventProvider] struct {
@@ -121,6 +122,7 @@ type (
 		SubjectID   gocql.UUID   `json:"subject_id" cql:"subject_id"`
 		SubjectName string       `json:"subject_name" cql:"subject_name"`
 		Data        []byte       `json:"data" cql:"data"`
+		TeamID      gocql.UUID   `json:"team_id" cql:"team_id"`
 		CreatedAt   time.Time    `json:"created_at" cql:"created_at"`
 		UpdatedAt   time.Time    `json:"updated_at" cql:"updated_at"`
 	}
@@ -245,12 +247,12 @@ func (e Event[T, P]) MarshalJSON() ([]byte, error) {
 		Version EventVersion    `json:"version"`
 		Context EventContext[P] `json:"context"`
 		Subject EventSubject    `json:"subject"`
-		Payload T               `json:"payload"`
+		Data    T               `json:"data"`
 	}{
 		Version: e.Version,
 		Context: e.Context,
 		Subject: e.Subject,
-		Payload: e.Data,
+		Data:    e.Data,
 	})
 }
 
@@ -260,7 +262,7 @@ func (e *Event[T, P]) UnmarshalJSON(data []byte) error {
 		Version EventVersion    `json:"version"`
 		Context EventContext[P] `json:"context"`
 		Subject EventSubject    `json:"subject"`
-		Payload json.RawMessage `json:"payload"`
+		Data    json.RawMessage `json:"data"`
 	}{}
 
 	if err := json.Unmarshal(data, &aux); err != nil {
@@ -271,34 +273,34 @@ func (e *Event[T, P]) UnmarshalJSON(data []byte) error {
 	e.Context = aux.Context
 	e.Subject = aux.Subject
 
-	var payload T
+	var data_ T
 
 	switch e.Context.Scope {
 	case EventScopeBranch, EventScopeTag:
-		payload = any(BranchOrTag{}).(T)
+		data_ = any(BranchOrTag{}).(T)
 	case EventScopePullRequest:
-		payload = any(PullRequest{}).(T)
+		data_ = any(PullRequest{}).(T)
 	case EventScopePush:
-		payload = any(Push{}).(T)
+		data_ = any(Push{}).(T)
 	case EventScopePullRequestLabel:
-		payload = any(PullRequestLabel{}).(T)
+		data_ = any(PullRequestLabel{}).(T)
 	case EventScopePullRequestReview:
-		payload = any(PullRequestReview{}).(T)
+		data_ = any(PullRequestReview{}).(T)
 	default:
 		return fmt.Errorf("unsupported event scope: %s", e.Context.Scope)
 	}
 
-	if err := json.Unmarshal(aux.Payload, &payload); err != nil {
+	if err := json.Unmarshal(aux.Data, &data_); err != nil {
 		return err
 	}
 
-	e.Data = payload
+	e.Data = data_
 
 	return nil
 }
 
 func (e *Event[T, P]) Flatten() (*FlatEvent[P], error) {
-	payload, err := json.Marshal(e.Data)
+	data, err := json.Marshal(e.Data)
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +315,8 @@ func (e *Event[T, P]) Flatten() (*FlatEvent[P], error) {
 		Source:      e.Context.Source,
 		SubjectID:   e.Subject.ID,
 		SubjectName: e.Subject.Name,
-		Data:        payload,
+		Data:        data,
+		TeamID:      e.Subject.TeamID,
 		CreatedAt:   e.Context.Timestamp,
 		UpdatedAt:   e.Context.Timestamp,
 	}
@@ -328,10 +331,10 @@ func (e *Event[T, P]) SetSource(src string) {
 	e.Context.Source = src
 }
 
-// SetParentID sets the parentID field of the EventContext for the Event struct.
+// SetParent sets the parentID field of the EventContext for the Event struct.
 //
 // The id parameter specifies the parent ID of the event, which can be used to trace the event chain.
-func (e *Event[T, P]) SetParentID(id gocql.UUID) {
+func (e *Event[T, P]) SetParent(id gocql.UUID) {
 	e.Context.ParentID = id
 }
 
@@ -528,8 +531,9 @@ func Deflate[T EventPayload, P EventProvider](flat *FlatEvent[P], event *Event[T
 		Timestamp: flat.CreatedAt,
 	}
 	event.Subject = EventSubject{
-		ID:   flat.SubjectID,
-		Name: flat.SubjectName,
+		ID:     flat.SubjectID,
+		Name:   flat.SubjectName,
+		TeamID: flat.TeamID,
 	}
 	event.Data = payload
 
