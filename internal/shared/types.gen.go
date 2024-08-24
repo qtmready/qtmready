@@ -12,10 +12,10 @@ import (
 
 // APIError defines the structure of an API error response
 type APIError struct {
-	Code     int         `json:"code"`
-	Errors   *ErrorMap   `json:"errors,omitempty"`
-	Internal error       `json:"-"`
-	Message  interface{} `json:"message"`
+	Code     int       `json:"code"`
+	Errors   *ErrorMap `json:"errors,omitempty"`
+	Internal error     `json:"-"`
+	Message  error     `json:"message"`
 }
 
 // BadRequest defines the structure of an API error response
