@@ -183,7 +183,7 @@ func (base *BaseCtrl) log(ctx workflow.Context, action string) *RepoIOWorkflowLo
 	return NewRepoIOWorkflowLogger(ctx, base.repo, base.kind, base.branch(ctx), action)
 }
 
-// do executes an activity and logs the result.
+// do is helper is an activity executor. It logs the activity execution and increments the operation counter.
 func (base *BaseCtrl) do(ctx workflow.Context, action string, activity, payload, result any, keyvals ...any) error {
 	logger := base.log(ctx, action)
 	logger.Info("init", keyvals...)
@@ -195,7 +195,7 @@ func (base *BaseCtrl) do(ctx workflow.Context, action string, activity, payload,
 
 	logger.Info("success", keyvals...)
 
-	base.increment(ctx, 3)
+	base.increment(ctx, 10)
 
 	return nil
 }

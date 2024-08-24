@@ -116,7 +116,6 @@ func (state *RepoIOBranchCtrlState) set_created_at(ctx workflow.Context, t time.
 	defer state.mutex.Unlock()
 
 	state.created_at = t
-	state.increment(ctx, 1)
 }
 
 // set_commit updates the last commit of the branch.
@@ -124,8 +123,6 @@ func (state *RepoIOBranchCtrlState) set_commit(ctx workflow.Context, commit *def
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 	state.last_commit = commit
-
-	state.increment(ctx, 1)
 }
 
 // set_pr sets the pull request associated with the branch.
@@ -133,8 +130,6 @@ func (state *RepoIOBranchCtrlState) set_pr(ctx workflow.Context, pr *defs.RepoIO
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 	state.pr = pr
-
-	state.increment(ctx, 1)
 }
 
 // has_pr checks if the branch has an associated pull request.
