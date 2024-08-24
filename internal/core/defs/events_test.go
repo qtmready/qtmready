@@ -675,6 +675,180 @@ func (s *EventTestSuite) Test_Push_Create_SetParent() {
 	s.Equal(s.parent, event.Context.ParentID, "Parent ID should be set correctly")
 }
 
+func (s *EventTestSuite) Test_PullRequest_Create_MarshalJSON() {
+	pr := &defs.PullRequest{
+		Number:         1,
+		Title:          "Test Pull Request",
+		Body:           "This is a test pull request",
+		State:          "open",
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+		ClosedAt:       time.Time{},
+		MergedAt:       time.Time{},
+		MergeCommitSHA: "a1b2c3d4e5f678901234567890abcdef12345678", // Valid Git hash
+		Author:         "testuser",
+		HeadBranch:     "test-branch",
+		BaseBranch:     "main",
+	}
+
+	event := pr.ToEvent(defs.RepoProviderGithub, s.subject, defs.EventActionCreated)
+	event.SetSource("test/test")
+
+	expected := fmt.Sprintf(`{
+  "version": "v1",
+  "context": {
+    "id": "%s",
+    "parent_id": "00000000-0000-0000-0000-000000000000",
+    "provider": "github",
+    "scope": "pull_request",
+    "action": "created",
+    "source": "test/test",
+    "timestamp": "%s"
+  },
+  "subject": {
+    "id": "%s",
+    "name": "%s",
+    "team_id": "%s"
+  },
+  "data": {
+    "number": 1,
+    "title": "Test Pull Request",
+    "body": "This is a test pull request",
+    "state": "open",
+    "created_at": "%s",
+    "updated_at": "%s",
+    "closed_at": "0001-01-01T00:00:00Z",
+    "merged_at": "0001-01-01T00:00:00Z",
+    "merge_commit_sha": "a1b2c3d4e5f678901234567890abcdef12345678",
+    "author": "testuser",
+    "head_branch": "test-branch",
+    "base_branch": "main"
+  }
+}`,
+		event.Context.ID,
+		event.Context.Timestamp.Format(time.RFC3339Nano),
+		s.subject.ID,
+		s.subject.Name,
+		s.subject.TeamID,
+		pr.CreatedAt.Format(time.RFC3339Nano),
+		pr.UpdatedAt.Format(time.RFC3339Nano),
+	)
+
+	// Test Marshal to JSON
+	marshal, err := json.MarshalIndent(event, "", "  ")
+	if s.NoError(err) {
+		s.T().Log(string(marshal))
+		s.Equal(defs.EventVersionV1, event.Version)
+		s.Equal(uuid.Nil.String(), event.Context.ParentID.String())
+		s.Equal(expected, string(marshal))
+	}
+}
+
+func (s *EventTestSuite) Test_PullRequest_Create_UnmarshalJSON() {
+	pr := &defs.PullRequest{
+		Number:         1,
+		Title:          "Test Pull Request",
+		Body:           "This is a test pull request",
+		State:          "open",
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+		ClosedAt:       time.Time{},
+		MergedAt:       time.Time{},
+		MergeCommitSHA: "a1b2c3d4e5f678901234567890abcdef12345678", // Valid Git hash
+		Author:         "testuser",
+		HeadBranch:     "test-branch",
+		BaseBranch:     "main",
+	}
+
+	event := pr.ToEvent(defs.RepoProviderGithub, s.subject, defs.EventActionCreated)
+	event.SetSource("test/test")
+
+	marshal, err := json.Marshal(event)
+	s.Require().NoError(err)
+
+	// Test Unmarshal from JSON
+	var unmarshal defs.Event[defs.PullRequest, defs.RepoProvider]
+	err = json.Unmarshal(marshal, &unmarshal)
+
+	if s.NoError(err) {
+		s.Equal(event.Version, unmarshal.Version)
+		s.Equal(event.Context.ID, unmarshal.Context.ID)
+		s.Equal(event.Context.ParentID, unmarshal.Context.ParentID)
+		s.Equal(event.Context.Provider, unmarshal.Context.Provider)
+		s.Equal(event.Context.Scope, unmarshal.Context.Scope)
+		s.Equal(event.Context.Action, unmarshal.Context.Action)
+		s.Equal(event.Context.Source, unmarshal.Context.Source)
+		s.WithinDuration(event.Context.Timestamp, unmarshal.Context.Timestamp, time.Second)
+		s.Equal(event.Subject.ID, unmarshal.Subject.ID)
+		s.Equal(event.Subject.Name, unmarshal.Subject.Name)
+		s.Equal(event.Subject.TeamID, unmarshal.Subject.TeamID)
+		s.Equal(event.Data.Number, unmarshal.Data.Number)
+		s.Equal(event.Data.Title, unmarshal.Data.Title)
+		s.Equal(event.Data.Body, unmarshal.Data.Body)
+		s.Equal(event.Data.State, unmarshal.Data.State)
+		s.WithinDuration(event.Data.CreatedAt, unmarshal.Data.CreatedAt, time.Second)
+		s.WithinDuration(event.Data.UpdatedAt, unmarshal.Data.UpdatedAt, time.Second)
+		s.Equal(event.Data.ClosedAt.Unix(), unmarshal.Data.ClosedAt.Unix())
+		s.Equal(event.Data.MergedAt.Unix(), unmarshal.Data.MergedAt.Unix())
+		s.Equal(event.Data.MergeCommitSHA, unmarshal.Data.MergeCommitSHA)
+		s.Equal(event.Data.Author, unmarshal.Data.Author)
+		s.Equal(event.Data.HeadBranch, unmarshal.Data.HeadBranch)
+		s.Equal(event.Data.BaseBranch, unmarshal.Data.BaseBranch)
+	}
+}
+
+func (s *EventTestSuite) Test_PullRequest_Create_Deflate() {
+	pr := &defs.PullRequest{
+		Number:         1,
+		Title:          "Test Pull Request",
+		Body:           "This is a test pull request",
+		State:          "open",
+		CreatedAt:      time.Now(),
+		UpdatedAt:      time.Now(),
+		ClosedAt:       time.Time{},
+		MergedAt:       time.Time{},
+		MergeCommitSHA: "a1b2c3d4e5f678901234567890abcdef12345678", // Valid Git hash
+		Author:         "testuser",
+		HeadBranch:     "test-branch",
+		BaseBranch:     "main",
+	}
+
+	event := pr.ToEvent(defs.RepoProviderGithub, s.subject, defs.EventActionCreated)
+	event.SetSource("test/test")
+
+	flat, err := event.Flatten()
+	s.Require().NoError(err)
+
+	var deflate defs.Event[defs.PullRequest, defs.RepoProvider]
+
+	err = defs.Deflate(flat, &deflate)
+	if s.NoError(err) {
+		s.Equal(event.Version, deflate.Version)
+		s.Equal(event.Context.ID, deflate.Context.ID)
+		s.Equal(event.Context.ParentID, deflate.Context.ParentID)
+		s.Equal(event.Context.Provider, deflate.Context.Provider)
+		s.Equal(event.Context.Scope, deflate.Context.Scope)
+		s.Equal(event.Context.Action, deflate.Context.Action)
+		s.Equal(event.Context.Source, deflate.Context.Source)
+		s.WithinDuration(event.Context.Timestamp, deflate.Context.Timestamp, time.Second)
+		s.Equal(event.Subject.ID, deflate.Subject.ID)
+		s.Equal(event.Subject.Name, deflate.Subject.Name)
+		s.Equal(event.Subject.TeamID, deflate.Subject.TeamID)
+		s.Equal(event.Data.Number, deflate.Data.Number)
+		s.Equal(event.Data.Title, deflate.Data.Title)
+		s.Equal(event.Data.Body, deflate.Data.Body)
+		s.Equal(event.Data.State, deflate.Data.State)
+		s.WithinDuration(event.Data.CreatedAt, deflate.Data.CreatedAt, time.Second)
+		s.WithinDuration(event.Data.UpdatedAt, deflate.Data.UpdatedAt, time.Second)
+		s.Equal(event.Data.ClosedAt.Unix(), deflate.Data.ClosedAt.Unix())
+		s.Equal(event.Data.MergedAt.Unix(), deflate.Data.MergedAt.Unix())
+		s.Equal(event.Data.MergeCommitSHA, deflate.Data.MergeCommitSHA)
+		s.Equal(event.Data.Author, deflate.Data.Author)
+		s.Equal(event.Data.HeadBranch, deflate.Data.HeadBranch)
+		s.Equal(event.Data.BaseBranch, deflate.Data.BaseBranch)
+	}
+}
+
 func TestEventTestSuite(t *testing.T) {
 	suite.Run(t, new(EventTestSuite))
 }
