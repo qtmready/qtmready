@@ -372,6 +372,8 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestE
 				Get(_ctx, nil)
 		},
 		"labeled": func() error {
+			payload.LabelName = &event.Label.Name
+
 			return workflow.
 				ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestLabeledOrUnlabeled, payload).
 				Get(_ctx, nil)

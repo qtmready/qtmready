@@ -78,6 +78,7 @@ type (
 		InstallationID shared.Int64   `json:"installation_id"`
 		ProviderID     string         `json:"provider_id"`
 		User           *auth.TeamUser `json:"user"` // TODO: need to find more optimze way
+		LabelName      *string        `json:"label_name"`
 	}
 )
 

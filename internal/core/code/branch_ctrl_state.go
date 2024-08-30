@@ -108,7 +108,17 @@ func (state *RepoIOBranchCtrlState) on_label(ctx workflow.Context) shared.Channe
 
 		switch label.Action {
 		case "labeled":
-			state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueAdd, label)
+			// TODO - need to finalize the Lable Names and logic.
+			switch *label.LabelName {
+			case "qmerge":
+				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueAdd, label)
+			case "priority-qmerge":
+				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueAddPriority, label)
+			case "remove":
+				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueRemove, label)
+			default:
+				return
+			}
 		case "unlabeled":
 			state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueRemove, label)
 		default:
