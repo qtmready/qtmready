@@ -84,10 +84,46 @@ func (state *RepoIOBranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHa
 
 		switch pr.Action {
 		case "opened":
-			state.set_pr(ctx, &defs.RepoIOPullRequest{Number: pr.Number, HeadBranch: pr.HeadBranch, BaseBranch: pr.BaseBranch})
+			p := &defs.RepoIOPullRequest{Number: pr.Number, HeadBranch: pr.HeadBranch, BaseBranch: pr.BaseBranch}
+			state.set_pr(ctx, p)
+
+			state.increment(ctx, 1)
 		case "closed":
 			// when the pull request action is closed set it to nil.
 			state.set_pr(ctx, nil)
+		case "reopened":
+			p := &defs.RepoIOPullRequest{Number: pr.Number, HeadBranch: pr.HeadBranch, BaseBranch: pr.BaseBranch}
+			state.set_pr(ctx, p)
+
+			state.increment(ctx, 1)
+		default:
+			return
+		}
+	}
+}
+
+// TODO - refine the logic.
+// on_label handles pull request label events.
+func (state *RepoIOBranchCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		label := &defs.RepoIOSignalPullRequestPayload{}
+		state.rx(ctx, rx, label)
+
+		switch label.Action {
+		case "labeled":
+			// TODO - need to finalize the Lable Names and logic.
+			switch *label.LabelName {
+			case "qmerge":
+				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueAdd, label)
+			case "priority-qmerge":
+				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueAddPriority, label)
+			case "remove":
+				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueRemove, label)
+			default:
+				return
+			}
+		case "unlabeled":
+			state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueRemove, label)
 		default:
 			return
 		}

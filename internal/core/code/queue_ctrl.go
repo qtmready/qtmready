@@ -26,6 +26,12 @@ func QueueCtrl(ctx workflow.Context, repo *defs.Repo, branch string, queues *Que
 		add := workflow.GetSignalChannel(ctx, defs.RepoIOSignalQueueAdd.String())
 		selector.AddReceive(add, state.on_add(ctx))
 
+		priority := workflow.GetSignalChannel(ctx, defs.RepoIOSignalQueueAddPriority.String())
+		selector.AddReceive(priority, state.on_add_priority(ctx))
+
+		remove := workflow.GetSignalChannel(ctx, defs.RepoIOSignalQueueRemove.String())
+		selector.AddReceive(remove, state.on_remove(ctx))
+
 		// setting up add_priority signal for adding prs to the priority queue
 		add_priority := workflow.GetSignalChannel(ctx, defs.RepoIOSignalQueueAddPriority.String())
 		selector.AddReceive(add_priority, state.on_add_priority(ctx))

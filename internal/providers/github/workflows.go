@@ -333,6 +333,8 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestE
 		return err
 	}
 
+	// TODO - handle the extra object like label etc (related to action)
+	// e.g. add the label related information when the pull request action is labeled
 	payload := &defs.RepoIOSignalPullRequestPayload{
 		Action:         event.Action,
 		Number:         event.Number,
@@ -346,18 +348,60 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestE
 		User:           state.User,
 	}
 
-	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequest, payload).
-		Get(_ctx, nil); err != nil {
-		logger.Warn(
-			"github/pull_request: error signaling repo ctrl ...",
-			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
-			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-			slog.String("github_repo__id", state.CoreRepo.ID.String()),
-			slog.String("core_repo__id", state.CoreRepo.ID.String()),
-		)
+	// TODO - need to refine
+	evntactions := map[string]func() error{
+		"opened": func() error {
+			return workflow.
+				ExecuteActivity(
+					_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestOpenedOrClosedOrReopened, payload,
+				).
+				Get(_ctx, nil)
+		},
+		"closed": func() error {
+			return workflow.
+				ExecuteActivity(
+					_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestOpenedOrClosedOrReopened, payload,
+				).
+				Get(_ctx, nil)
+		},
+		"reopened": func() error {
+			return workflow.
+				ExecuteActivity(
+					_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestOpenedOrClosedOrReopened, payload,
+				).
+				Get(_ctx, nil)
+		},
+		"labeled": func() error {
+			payload.LabelName = &event.Label.Name
 
-		return err
+			return workflow.
+				ExecuteActivity(
+					_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestLabeledOrUnlabeled, payload,
+				).
+				Get(_ctx, nil)
+		},
+		"unlabeled": func() error {
+			return workflow.
+				ExecuteActivity(
+					_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestLabeledOrUnlabeled, payload,
+				).
+				Get(_ctx, nil)
+		},
+	}
+
+	if action, exists := evntactions[payload.Action]; exists {
+		if err := action(); err != nil {
+			logger.Warn(
+				"github/pull_request: error signaling repo ctrl ...",
+				slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
+				slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
+				slog.String("github_repo__id_action", event.Action),
+				slog.String("github_repo__id", state.CoreRepo.ID.String()),
+				slog.String("core_repo__id", state.CoreRepo.ID.String()),
+			)
+
+			return err
+		}
 	}
 
 	return nil
@@ -446,7 +490,7 @@ func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRe
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequest, payload).
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestReview, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
 			"github/pull_request_review: error signaling repo ctrl ...",
@@ -490,54 +534,10 @@ func (w *Workflows) OnPullRequestReviewCommentEvent(ctx workflow.Context, event 
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequest, payload).
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestReviewComment, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
 			"github/pull_request_review_comment: error signaling repo ctrl ...",
-			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
-			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
-			slog.String("github_repo__id", state.CoreRepo.ID.String()),
-			slog.String("core_repo__id", state.CoreRepo.ID.String()),
-		)
-
-		return err
-	}
-
-	return nil
-}
-
-// OnLabelEvent normalize the label event and then signal the core repo.
-func (w *Workflows) OnLabelEvent(ctx workflow.Context, event *LabelEvent) error {
-	logger := workflow.GetLogger(ctx)
-	logger.Info("github/label_event: preparing ...")
-
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	_ctx := workflow.WithActivityOptions(ctx, opts)
-
-	state, err := getRepoEventState(ctx, event)
-	if err != nil {
-		logger.Error("github/label_event: error preparing ...", "error", err.Error())
-		return err
-	}
-
-	payload := &defs.RepoIOSignalPullRequestPayload{
-		Action:         event.Action,
-		Number:         event.Number,
-		RepoName:       event.Repository.Name,
-		RepoOwner:      event.Repository.Owner.Login,
-		BaseBranch:     "",
-		HeadBranch:     "",
-		CtrlID:         state.Repo.ID.String(),
-		InstallationID: event.Installation.ID,
-		ProviderID:     state.Repo.GithubID.String(),
-		User:           state.User,
-	}
-
-	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequest, payload).
-		Get(_ctx, nil); err != nil {
-		logger.Warn(
-			"github/label_event: error signaling repo ctrl ...",
 			slog.Int64("github_repo__installation_id", event.Installation.ID.Int64()),
 			slog.Int64("github_repo__github_id", event.Repository.ID.Int64()),
 			slog.String("github_repo__id", state.CoreRepo.ID.String()),

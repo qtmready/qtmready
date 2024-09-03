@@ -39,12 +39,23 @@ func BranchCtrl(ctx workflow.Context, repo *defs.Repo, branch string) error {
 	selector.AddReceive(create_delete, state.on_create_delete(ctx))
 
 	// pr signal.
-	pr := workflow.GetSignalChannel(ctx, defs.RepoIOSignalPullRequest.String())
+	pr := workflow.GetSignalChannel(ctx, defs.RepoIOSignalPullRequestOpenedOrClosedOrReopened.String())
 	selector.AddReceive(pr, state.on_pr(ctx))
+
+	// label signal.
+	lebal := workflow.GetSignalChannel(ctx, defs.RepoIOSignalPullRequestLabeledOrUnlabeled.String())
+	selector.AddReceive(lebal, state.on_label(ctx))
 
 	// main event loop
 	for state.is_active() {
 		selector.Select(ctx)
+
+		// TODO - need to optimize
+		// TODO - remove
+		if state.pr != nil {
+			_ctx, q_state := NewQueueCtrlState(ctx, repo, branch)
+			q_state.push(_ctx, state.pr, false) // TODO - handle priority
+		}
 
 		if state.needs_reset() {
 			return state.as_new(ctx, "event history exceeded threshold", BranchCtrl, repo, branch)

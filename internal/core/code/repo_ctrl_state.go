@@ -51,7 +51,17 @@ func (state *RepoCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		pr := &defs.RepoIOSignalPullRequestPayload{}
 		state.rx(ctx, rx, pr)
-		state.signal_branch(ctx, pr.HeadBranch, defs.RepoIOSignalPullRequest, pr)
+
+		state.signal_branch(ctx, pr.HeadBranch, defs.RepoIOSignalPullRequestOpenedOrClosedOrReopened, pr)
+	}
+}
+
+func (state *RepoCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		label := &defs.RepoIOSignalPullRequestPayload{}
+		state.rx(ctx, rx, label)
+
+		state.signal_branch(ctx, label.HeadBranch, defs.RepoIOSignalPullRequestLabeledOrUnlabeled, label)
 	}
 }
 
