@@ -80,6 +80,55 @@ type (
 		User           *auth.TeamUser `json:"user"` // TODO: need to find more optimze way
 		LabelName      *string        `json:"label_name"`
 	}
+
+	RepoIOSignalPullRequestReviewPayload struct {
+		Action         string         `json:"action"`
+		Number         shared.Int64   `json:"number"`
+		RepoName       string         `json:"repo_name"`
+		RepoOwner      string         `json:"repo_owner"`
+		BaseBranch     string         `json:"base_branch"`
+		HeadBranch     string         `json:"head_branch"`
+		CtrlID         string         `json:"ctrl_id"`
+		InstallationID shared.Int64   `json:"installation_id"`
+		ProviderID     string         `json:"provider_id"`
+		User           *auth.TeamUser `json:"user"`
+	}
+
+	RepoIOSignalPullRequestReviewCommentPayload struct {
+		Action         string         `json:"action"`
+		Number         shared.Int64   `json:"number"`
+		RepoName       string         `json:"repo_name"`
+		RepoOwner      string         `json:"repo_owner"`
+		BaseBranch     string         `json:"base_branch"`
+		HeadBranch     string         `json:"head_branch"`
+		CtrlID         string         `json:"ctrl_id"`
+		InstallationID shared.Int64   `json:"installation_id"`
+		ProviderID     string         `json:"provider_id"`
+		User           *auth.TeamUser `json:"user"`
+	}
+
+	RepoIOSignalLabelPayload struct {
+		Action         string         `json:"action"`
+		Number         shared.Int64   `json:"number"`
+		RepoName       string         `json:"repo_name"`
+		RepoOwner      string         `json:"repo_owner"`
+		CtrlID         string         `json:"ctrl_id"`
+		InstallationID shared.Int64   `json:"installation_id"`
+		ProviderID     string         `json:"provider_id"`
+		User           *auth.TeamUser `json:"user"`
+	}
+
+	RepoIOSignalWorkflowRunPayload struct {
+		Action         string              `json:"action"`
+		Number         shared.Int64        `json:"number"`
+		RepoName       string              `json:"repo_name"`
+		RepoOwner      string              `json:"repo_owner"`
+		CtrlID         string              `json:"ctrl_id"`
+		InstallationID shared.Int64        `json:"installation_id"`
+		ProviderID     string              `json:"provider_id"`
+		WorkflowInfo   *RepoIOWorkflowInfo `json:"workflow_info"`
+		User           *auth.TeamUser      `json:"user"`
+	}
 )
 
 // RepoIO types.
@@ -136,6 +185,26 @@ type (
 		DefaultBranch  string       `json:"defualt_branch"`
 		TargetBranch   string       `json:"target_branch"`
 		InstallationID shared.Int64 `json:"installation_id"`
+	}
+
+	RepoIOWorkflowActionPayload struct {
+		RepoName       string       `json:"repo_name"`
+		RepoOwner      string       `json:"owner"`
+		InstallationID shared.Int64 `json:"installation_id"`
+	}
+
+	RepoIOWorkflowInfo struct {
+		TotalCount shared.Int64     `json:"total_count"`
+		Workflows  []*RepIOWorkflow `json:"workflows"`
+	}
+
+	RepIOWorkflow struct {
+		ID      shared.Int64 `json:"id"`
+		NodeID  string       `json:"node_id"`
+		Name    string       `json:"name"`
+		Path    string       `json:"path"`
+		State   string       `json:"state"`
+		HTMLURL string       `json:"html_url"`
 	}
 
 	RepoIOCommits []RepoIOCommit

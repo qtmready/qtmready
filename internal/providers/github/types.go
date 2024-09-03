@@ -384,3 +384,19 @@ func (p *PullRequestReviewCommentEvent) RepoName() string {
 func (p *PullRequestReviewCommentEvent) SenderID() string {
 	return p.Sender.ID.String()
 }
+
+func (p *GithubWorkflowRunEvent) RepoID() shared.Int64 {
+	return p.Repository.ID
+}
+
+func (p *GithubWorkflowRunEvent) InstallationID() shared.Int64 {
+	return p.Installation.ID
+}
+
+func (p *GithubWorkflowRunEvent) RepoName() string {
+	return p.Repository.Name
+}
+
+func (p *GithubWorkflowRunEvent) SenderID() string {
+	return p.Sender.ID.String()
+}
