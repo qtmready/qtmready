@@ -3,6 +3,7 @@ package code
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/exec"
@@ -52,6 +53,35 @@ func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSigna
 	return err
 }
 
+// TODO - refine the logic.
+func (a *Activities) SignalQueue(ctx context.Context, payload *defs.RepoIOSignalQueueCtrlPayload) error {
+	args := make([]any, 0)
+	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
+		shared.WithWorkflowBlock("queue"),
+		shared.WithWorkflowBlockID(payload.Repo.ID.String()),
+		shared.WithWorkflowElement("branch"),
+		shared.WithWorkflowElementID(payload.Branch),
+	)
+
+	queue := &QueueCtrlSerializedState{}
+
+	args = append(args, payload.Repo, payload.Branch, queue)
+
+	_, err := shared.Temporal().
+		Client().
+		SignalWithStartWorkflow(
+			context.Background(),
+			opts.ID,
+			payload.Signal.String(),
+			payload.Payload,
+			opts,
+			QueueCtrl,
+			args...,
+		)
+
+	return err
+}
+
 // CloneBranch clones a repository branch at the temporary location, as specified by the payload.
 // It uses the RepoIO interface to get the url with the oauth token in it.
 // If an error occurs retrieving the clone URL, it is returned.
@@ -92,7 +122,7 @@ func (a *Activities) CloneBranch(ctx context.Context, payload *defs.RepoIOCloneP
 }
 
 // FetchBranch fetches the given branch from the origin.
-// TODO: right now this fetches the branch but we need to make it generic.
+// TODO: right now this fetches the default branch but we need to make it generic.
 func (a Activities) FetchBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
 	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "fetch", "origin", payload.Repo.DefaultBranch) //nolint
 
@@ -132,7 +162,8 @@ func (a *Activities) RebaseAtCommit(ctx context.Context, payload *defs.RepoIOClo
 					return &defs.RepoIORebaseAtCommitResponse{SHA: sha, Message: msg}, NewRebaseError(sha, msg)
 				}
 			case 128:
-				return &defs.RepoIORebaseAtCommitResponse{InProgress: true}, NewRebaseError("unknown", "unknown")
+				msg := fmt.Sprintf("error rebasing branch %s", payload.Branch)
+				return &defs.RepoIORebaseAtCommitResponse{InProgress: true}, NewRebaseError("unknown", msg)
 			default:
 				return nil, err // retry
 			}

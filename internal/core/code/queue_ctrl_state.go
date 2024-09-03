@@ -356,6 +356,16 @@ func (s *QueueCtrlState) on_add(ctx workflow.Context) shared.ChannelHandler {
 	}
 }
 
+// TODO - chnage the logic for on remove.
+func (s *QueueCtrlState) on_remove(ctx workflow.Context) shared.ChannelHandler {
+	return func(c workflow.ReceiveChannel, more bool) {
+		payload := &defs.RepoIOPullRequest{}
+
+		s.rx(ctx, c, payload)
+		s.pop(ctx)
+	}
+}
+
 // on_add_priority handles the addition of a new pull request to the priority queue.
 //
 // Usage:

@@ -55,7 +55,7 @@ func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.Chann
 		state.rx(ctx, rx, push) // Using base_ctrl.rx
 
 		session := state.create_session(ctx)
-		defer workflow.CompleteSession(session)
+		defer state.finish_session(session)
 
 		cloned := state.clone_at_commit(session, push)
 		if cloned == nil {
@@ -65,11 +65,14 @@ func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.Chann
 		state.fetch_default_branch(session, cloned)
 
 		if err := state.rebase_at_commit(session, cloned); err != nil {
-			state.warn_conflict(ctx, push)
+			state.warn_conflict(session, push)
+			state.remove_cloned(session, cloned)
+
+			return
 		}
 
 		state.push_branch(session, cloned)
-		state.remove_cloned(ctx, cloned)
+		state.remove_cloned(session, cloned)
 	}
 }
 
@@ -81,10 +84,46 @@ func (state *RepoIOBranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHa
 
 		switch pr.Action {
 		case "opened":
-			state.set_pr(ctx, &defs.RepoIOPullRequest{Number: pr.Number, HeadBranch: pr.HeadBranch, BaseBranch: pr.BaseBranch})
+			p := &defs.RepoIOPullRequest{Number: pr.Number, HeadBranch: pr.HeadBranch, BaseBranch: pr.BaseBranch}
+			state.set_pr(ctx, p)
+
+			state.increment(ctx, 1)
 		case "closed":
 			// when the pull request action is closed set it to nil.
 			state.set_pr(ctx, nil)
+		case "reopened":
+			p := &defs.RepoIOPullRequest{Number: pr.Number, HeadBranch: pr.HeadBranch, BaseBranch: pr.BaseBranch}
+			state.set_pr(ctx, p)
+
+			state.increment(ctx, 1)
+		default:
+			return
+		}
+	}
+}
+
+// TODO - refine the logic.
+// on_label handles pull request label events.
+func (state *RepoIOBranchCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		label := &defs.RepoIOSignalPullRequestPayload{}
+		state.rx(ctx, rx, label)
+
+		switch label.Action {
+		case "labeled":
+			// TODO - need to finalize the Lable Names and logic.
+			switch *label.LabelName {
+			case "qmerge":
+				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueAdd, label)
+			case "priority-qmerge":
+				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueAddPriority, label)
+			case "remove":
+				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueRemove, label)
+			default:
+				return
+			}
+		case "unlabeled":
+			state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueRemove, label)
 		default:
 			return
 		}
@@ -113,7 +152,6 @@ func (state *RepoIOBranchCtrlState) set_created_at(ctx workflow.Context, t time.
 	defer state.mutex.Unlock()
 
 	state.created_at = t
-	state.increment(ctx, 1)
 }
 
 // set_commit updates the last commit of the branch.
@@ -121,8 +159,6 @@ func (state *RepoIOBranchCtrlState) set_commit(ctx workflow.Context, commit *def
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 	state.last_commit = commit
-
-	state.increment(ctx, 1)
 }
 
 // set_pr sets the pull request associated with the branch.
@@ -130,8 +166,6 @@ func (state *RepoIOBranchCtrlState) set_pr(ctx workflow.Context, pr *defs.RepoIO
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 	state.pr = pr
-
-	state.increment(ctx, 1)
 }
 
 // has_pr checks if the branch has an associated pull request.
@@ -162,10 +196,17 @@ func (state *RepoIOBranchCtrlState) check_stale(ctx workflow.Context) {
 
 // create_session creates a new workflow session for Git operations.
 func (state *RepoIOBranchCtrlState) create_session(ctx workflow.Context) workflow.Context {
-	opts := &workflow.SessionOptions{ExecutionTimeout: 60 * time.Minute, CreationTimeout: 60 * time.Minute}
-	ctx, _ = workflow.CreateSession(ctx, opts)
+	state.log(ctx, "session").Info("init")
 
-	return ctx
+	opts := &workflow.SessionOptions{ExecutionTimeout: 60 * time.Minute, CreationTimeout: 60 * time.Minute}
+	session, _ := workflow.CreateSession(ctx, opts)
+
+	return session
+}
+
+func (state *RepoIOBranchCtrlState) finish_session(ctx workflow.Context) {
+	workflow.CompleteSession(ctx)
+	state.log(ctx, "session").Info("completed")
 }
 
 // clone_at_commit clones the repository at a specific commit.
@@ -191,16 +232,16 @@ func (state *RepoIOBranchCtrlState) fetch_default_branch(ctx workflow.Context, c
 
 // rebase_at_commit rebases the branch at a specific commit.
 func (state *RepoIOBranchCtrlState) rebase_at_commit(ctx workflow.Context, cloned *defs.RepoIOClonePayload) error {
-	retry_policy := &temporal.RetryPolicy{NonRetryableErrorTypes: []string{"RepoIORebaseError"}}
-	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute, RetryPolicy: retry_policy}
+	retry_policy := &temporal.RetryPolicy{NonRetryableErrorTypes: []string{"RebaseError"}}
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second, RetryPolicy: retry_policy}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
 	response := &defs.RepoIORebaseAtCommitResponse{}
 
 	if err := state.do(ctx, "rebase_at_commit", state.activities.RebaseAtCommit, cloned, response); err != nil {
 		var apperr *temporal.ApplicationError
-		if errors.As(err, &apperr) && apperr.Type() == "RepoIORebaseError" {
-			return NewRebaseError(cloned.Push.After, "fetch the commit message here")
+		if errors.As(err, &apperr) && apperr.Type() == "RebaseError" {
+			return NewRebaseError(cloned.Push.After, "fetch the commit message here") // TODO: fill the right info
 		}
 
 		return nil

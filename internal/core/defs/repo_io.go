@@ -15,14 +15,18 @@ type (
 
 // RepoIO signals.
 const (
-	RepoIOSignalPush             shared.WorkflowSignal = "repo_io__push"
-	RepoIOSignalCreateOrDelete   shared.WorkflowSignal = "repo_io__create_or_delete"
-	RepoIOSignalRebase           shared.WorkflowSignal = "repo_io__rebase"
-	RepoIOSignalPullRequest      shared.WorkflowSignal = "repo_io__pull_request"
-	RepoIOSignalQueueAdd         shared.WorkflowSignal = "repo_io__queue__add"
-	RepoIOSignalQueueAddPriority shared.WorkflowSignal = "repo_io__queue__add__priority"
-	RepoIOSignalQueuePromote     shared.WorkflowSignal = "repo_io__queue__promote"
-	RepoIOSignalQueueDemote      shared.WorkflowSignal = "repo_io__queue__demote"
+	RepoIOSignalPush                                shared.WorkflowSignal = "repo_io__push"
+	RepoIOSignalCreateOrDelete                      shared.WorkflowSignal = "repo_io__create_or_delete"
+	RepoIOSignalRebase                              shared.WorkflowSignal = "repo_io__rebase"
+	RepoIOSignalPullRequestOpenedOrClosedOrReopened shared.WorkflowSignal = "repo_io__pull_request_opened_or_closed_or_reopened"
+	RepoIOSignalPullRequestLabeledOrUnlabeled       shared.WorkflowSignal = "repo_io__pull_request_labeled_or_unlabeled"
+	RepoIOSignalPullRequestReviewComment            shared.WorkflowSignal = "repo_io__pull_request_review_comment"
+	RepoIOSignalPullRequestReview                   shared.WorkflowSignal = "repo_io__pull_request_review"
+	RepoIOSignalQueueAdd                            shared.WorkflowSignal = "repo_io__queue__add"
+	RepoIOSignalQueueRemove                         shared.WorkflowSignal = "repo_io__queue__remove"
+	RepoIOSignalQueueAddPriority                    shared.WorkflowSignal = "repo_io__queue__add__priority"
+	RepoIOSignalQueuePromote                        shared.WorkflowSignal = "repo_io__queue__promote"
+	RepoIOSignalQueueDemote                         shared.WorkflowSignal = "repo_io__queue__demote"
 )
 
 const (
@@ -74,6 +78,7 @@ type (
 		InstallationID shared.Int64   `json:"installation_id"`
 		ProviderID     string         `json:"provider_id"`
 		User           *auth.TeamUser `json:"user"` // TODO: need to find more optimze way
+		LabelName      *string        `json:"label_name"`
 	}
 
 	RepoIOSignalPullRequestReviewPayload struct {
@@ -221,6 +226,13 @@ type (
 	}
 
 	RepoIOSignalBranchCtrlPayload struct {
+		Repo    *Repo                 `json:"repo"`    // Repo is the db record of the repo
+		Branch  string                `json:"branch"`  // Branch to signal
+		Signal  shared.WorkflowSignal `json:"signal"`  // Signal to send
+		Payload any                   `json:"payload"` // Payload to send
+	}
+
+	RepoIOSignalQueueCtrlPayload struct {
 		Repo    *Repo                 `json:"repo"`    // Repo is the db record of the repo
 		Branch  string                `json:"branch"`  // Branch to signal
 		Signal  shared.WorkflowSignal `json:"signal"`  // Signal to send

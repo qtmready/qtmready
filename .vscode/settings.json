@@ -14,5 +14,6 @@
     "generateTestForPackage": true
   },
   "cassandraWorkbench.activeClusterName": "ScyllaDB (Docker)",
-  "cassandraWorkbench.activeKeyspace": [["ScyllaDB (Docker)", "ctrlplane"]]
+  "cassandraWorkbench.activeKeyspace": [["ScyllaDB (Docker)", "ctrlplane"]],
+  "makefile.configureOnOpen": false
 }

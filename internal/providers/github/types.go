@@ -228,15 +228,6 @@ type (
 		Repository   RepositoryPR        `json:"repository"`
 		Sender       *User               `json:"sender"`
 	}
-
-	LabelEvent struct {
-		Action       string         `json:"action"`
-		Number       shared.Int64   `json:"number"`
-		Installation InstallationID `json:"installation"`
-		Label        *Label         `json:"label"`
-		Repository   RepositoryPR   `json:"repository"`
-		Sender       *User          `json:"sender"`
-	}
 )
 
 // Webhook event types. We get this from the header `X-Github-Event`.
@@ -391,22 +382,6 @@ func (p *PullRequestReviewCommentEvent) RepoName() string {
 }
 
 func (p *PullRequestReviewCommentEvent) SenderID() string {
-	return p.Sender.ID.String()
-}
-
-func (p *LabelEvent) RepoID() shared.Int64 {
-	return p.Repository.ID
-}
-
-func (p *LabelEvent) InstallationID() shared.Int64 {
-	return p.Installation.ID
-}
-
-func (p *LabelEvent) RepoName() string {
-	return p.Repository.Name
-}
-
-func (p *LabelEvent) SenderID() string {
 	return p.Sender.ID.String()
 }
 

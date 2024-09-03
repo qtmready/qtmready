@@ -143,6 +143,26 @@ func (base *BaseCtrl) signal_branch(ctx workflow.Context, branch string, signal 
 	)
 }
 
+// TODO - refine the logic.
+// signal_branch sends a signal to a specific branch.
+func (base *BaseCtrl) signal_queue(ctx workflow.Context, branch string, signal shared.WorkflowSignal, payload any) {
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	next := &defs.RepoIOSignalQueueCtrlPayload{
+		Repo:    base.repo,
+		Branch:  branch,
+		Signal:  signal,
+		Payload: payload,
+	}
+
+	_ = base.do(
+		ctx, "signal_queue_ctrl", base.activities.SignalQueue, next, nil,
+		slog.String("signal", signal.String()),
+		slog.String("branch", branch),
+	)
+}
+
 // rx receives a message from a channel and logs the event.
 func (base *BaseCtrl) rx(ctx workflow.Context, channel workflow.ReceiveChannel, target any) {
 	base.log(ctx, "rx").Info(channel.Name())
@@ -183,7 +203,7 @@ func (base *BaseCtrl) log(ctx workflow.Context, action string) *RepoIOWorkflowLo
 	return NewRepoIOWorkflowLogger(ctx, base.repo, base.kind, base.branch(ctx), action)
 }
 
-// do executes an activity and logs the result.
+// do is helper is an activity executor. It logs the activity execution and increments the operation counter.
 func (base *BaseCtrl) do(ctx workflow.Context, action string, activity, payload, result any, keyvals ...any) error {
 	logger := base.log(ctx, action)
 	logger.Info("init", keyvals...)
@@ -195,7 +215,7 @@ func (base *BaseCtrl) do(ctx workflow.Context, action string, activity, payload,
 
 	logger.Info("success", keyvals...)
 
-	base.increment(ctx, 3)
+	base.increment(ctx, 10)
 
 	return nil
 }

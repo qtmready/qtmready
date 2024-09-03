@@ -120,7 +120,7 @@ func (t *Config) Client() client.Client {
 func WithQueue(name queue.Name) ConfigOption {
 	return func(t *Config) {
 		options := worker.Options{
-			OnFatalError:        func(err error) { t.logger.Error("Fatal error during worker execution %v", err) },
+			OnFatalError:        func(err error) { t.logger.Error("Fatal error during worker execution", "error", err.Error()) },
 			EnableSessionWorker: true,
 		}
 

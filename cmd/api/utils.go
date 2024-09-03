@@ -23,6 +23,8 @@ import (
 	"os"
 
 	"github.com/labstack/echo/v4"
+
+	"go.breu.io/quantm/internal/core/ws"
 )
 
 // _run runs a function in a goroutine.
@@ -35,6 +37,12 @@ func _run(fn func() error, ch chan error) {
 // _serve starts the echo server in a goroutine.
 func _serve(e *echo.Echo, port string) func() error {
 	return func() error { return e.Start(":" + port) }
+}
+
+func _hub() error {
+	worker := ws.ConnectionsHubWorker()
+
+	return worker.Start()
 }
 
 // _graceful shuts down each goroutine gracefully.

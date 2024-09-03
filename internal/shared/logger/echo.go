@@ -22,19 +22,15 @@ import (
 	"fmt"
 	"log/slog"
 	"regexp"
+	"runtime/debug"
 
 	"cloud.google.com/go/compute/metadata"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/pkg/errors"
 )
 
 type (
 	CloudTraceContextKey string
-
-	ErrorStackTracer interface {
-		StackTrace() errors.StackTrace
-	}
 )
 
 const (
@@ -112,14 +108,14 @@ func EchoRequestLogger(ctx echo.Context, values middleware.RequestLoggerValues) 
 	if values.Error != nil {
 		level = slog.LevelError
 
-		// These are the errors that are caused by the user, not the system.
+		// known errors: logged as warning without stack trace
+		// system or unhandled error: logged as error with stack trace
 		if values.Status <= 499 && values.Status > 399 {
 			level = slog.LevelWarn
-		}
-
-		err, ok := errors.Cause(values.Error).(ErrorStackTracer)
-		if ok {
-			attrs = append(attrs, slog.Any("stack_trace", err.StackTrace()))
+		} else {
+			var stack []byte
+			stack = debug.Stack()
+			attrs = append(attrs, slog.String("stack_trace", string(stack)))
 		}
 
 		slog.Default().LogAttrs(ctx.Request().Context(), level, values.Error.Error(), attrs...)
