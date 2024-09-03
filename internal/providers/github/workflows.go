@@ -375,12 +375,16 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, event *PullRequestE
 			payload.LabelName = &event.Label.Name
 
 			return workflow.
-				ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestLabeledOrUnlabeled, payload).
+				ExecuteActivity(
+					_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestLabeledOrUnlabeled, payload,
+				).
 				Get(_ctx, nil)
 		},
 		"unlabeled": func() error {
 			return workflow.
-				ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestLabeledOrUnlabeled, payload).
+				ExecuteActivity(
+					_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestLabeledOrUnlabeled, payload,
+				).
 				Get(_ctx, nil)
 		},
 	}
