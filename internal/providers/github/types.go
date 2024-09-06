@@ -27,9 +27,11 @@ import (
 
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/gommon/log"
 
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -142,7 +144,7 @@ type (
 		BaseRef      *string        `json:"base_ref"`
 		Compare      string         `json:"compare"`
 		Commits      []Commit       `json:"commits"`
-		HeadCommit   HeadCommit     `json:"head_commit"`
+		HeadCommit   Commit         `json:"head_commit"`
 		Repository   Repository     `json:"repository"`
 		Pusher       Pusher         `json:"pusher"`
 		Sender       User           `json:"sender"`
@@ -402,4 +404,303 @@ func (p *GithubWorkflowRunEvent) RepoName() string {
 
 func (p *GithubWorkflowRunEvent) SenderID() string {
 	return p.Sender.ID.String()
+}
+
+// prelude is a helper function to create a base event structure with common fields.
+//
+// It takes a `defs.Repo` pointer and returns a `gocql.UUID`, `defs.EventVersion`, `defs.EventContext`, and `defs.EventSubject`
+// that can be used to construct a `defs.Event`.
+func prelude(repo *defs.Repo) (gocql.UUID, defs.EventVersion, defs.EventContext[defs.RepoProvider], defs.EventSubject) {
+	id, _ := db.NewUUID()
+	version := defs.EventVersionDefault
+
+	ctx := defs.EventContext[defs.RepoProvider]{
+		Provider:  repo.Provider,
+		Timestamp: time.Now(),
+	}
+
+	sub := defs.EventSubject{
+		ID:     repo.ID,
+		Name:   "repos",
+		TeamID: repo.TeamID,
+	}
+
+	return id, version, ctx, sub
+}
+
+// payload converts the CreateOrDeleteEvent struct to the relevant EventPayload.
+//
+// It returns a `BranchOrTag` struct containing the `ref` and `default_branch` fields.
+func (coe *CreateOrDeleteEvent) payload() defs.BranchOrTag {
+	return defs.BranchOrTag{
+		Ref:           coe.Ref,
+		DefaultBranch: *coe.MasterBranch,
+	}
+}
+
+// normalize converts the CreateOrDeleteEvent struct to an Event struct.
+//
+// It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject.
+// The action is set to either "created" or "deleted" based on the `IsCreated` flag.
+func (coe *CreateOrDeleteEvent) normalize(repo *defs.Repo) *defs.Event[defs.BranchOrTag, defs.RepoProvider] {
+	id, version, ctx, sub := prelude(repo)
+	event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{
+		ID:      id,
+		Version: version,
+		Context: ctx,
+		Subject: sub,
+		Payload: coe.payload(),
+	}
+
+	event.SetActionCreated()
+	event.SetScopeBranch()
+
+	if !coe.IsCreated {
+		event.SetActionDeleted()
+	}
+
+	if coe.RefType != "branch" {
+		event.SetScopeTag()
+	}
+
+	return event
+}
+
+// payload converts the PushEvent struct to the relevant EventPayload.
+//
+// It returns a `defs.Push` struct containing the relevant information for a push event.
+func (pe PushEvent) payload() defs.Push {
+	commits := make(defs.Commits, len(pe.Commits))
+	for i, c := range pe.Commits {
+		commits[i] = c.normalize()
+	}
+
+	return defs.Push{
+		Ref:        pe.Ref,
+		Before:     pe.Before,
+		After:      pe.After,
+		Repository: pe.Repository.Name,
+		Pusher:     pe.Pusher.Name,
+		Commits:    commits,
+		Timestamp:  pe.HeadCommit.Timestamp.Time(),
+	}
+}
+
+// normalize converts the PushEvent struct to an Event struct.
+//
+// It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject.
+func (pe PushEvent) normalize(repo *defs.Repo) *defs.Event[defs.Push, defs.RepoProvider] {
+	id, version, ctx, sub := prelude(repo)
+	event := &defs.Event[defs.Push, defs.RepoProvider]{
+		ID:      id,
+		Version: version,
+		Context: ctx,
+		Subject: sub,
+		Payload: pe.payload(),
+	}
+
+	event.SetScopePush()
+	event.SetActionCreated()
+
+	return event
+}
+
+// payload converts the PullRequestEvent struct to the relevant EventPayload.
+//
+// It returns a `defs.PullRequest` struct containing the relevant information for a pull request event.
+func (pre PullRequestEvent) payload() defs.PullRequest {
+	return defs.PullRequest{
+		Number:         pre.Number,
+		Title:          pre.PullRequest.Title,
+		Body:           pre.PullRequest.Body,
+		State:          pre.PullRequest.State,
+		MergeCommitSHA: pre.PullRequest.MergeCommitSha,
+		Author:         pre.PullRequest.User.Login,
+		HeadBranch:     pre.PullRequest.Head.Ref,
+		BaseBranch:     pre.PullRequest.Base.Ref,
+		Timestamp:      pre.PullRequest.UpdatedAt,
+	}
+}
+
+// normalize converts the PullRequestEvent struct to an Event struct.
+//
+// It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject.
+// The action is set based on the `Action` field of the PullRequestEvent struct and whether MergedCommitSHA is set.
+func (pre PullRequestEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequest, defs.RepoProvider] {
+	id, version, ctx, sub := prelude(repo)
+	event := &defs.Event[defs.PullRequest, defs.RepoProvider]{
+		ID:      id,
+		Version: version,
+		Context: ctx,
+		Subject: sub,
+		Payload: pre.payload(),
+	}
+
+	event.SetScopePullRequest()
+
+	switch pre.Action {
+	case "opened":
+		event.SetActionCreated()
+	case "reopened":
+		event.SetActionCreated()
+	case "closed":
+		event.SetActionClosed()
+	case "edited": //nolint
+		event.SetActionUpdated()
+	case "assigned":
+		event.SetActionUpdated()
+	case "unassigned":
+		event.SetActionUpdated()
+	case "review_requested":
+		event.SetActionUpdated()
+	case "review_request_removed":
+		event.SetActionUpdated()
+	case "labeled":
+		event.SetActionAdded()
+	case "unlabeled":
+		event.SetActionDeleted()
+	case "synchronized":
+		event.SetActionUpdated()
+	default:
+		return nil
+	}
+
+	// Determine "merged" action based on MergedCommitSHA
+	if pre.PullRequest.MergeCommitSha != nil {
+		event.SetActionMerged()
+	}
+
+	return event
+}
+
+// payload converts the PullRequestReviewEvent struct to the relevant EventPayload.
+//
+// It returns a `defs.PullRequestReview` struct containing the relevant information for a pull request review event.
+func (pre PullRequestReviewEvent) payload() defs.PullRequestReview {
+	return defs.PullRequestReview{
+		ID:                pre.Review.ID,
+		State:             pre.Review.State,
+		Author:            pre.Review.User.Login,
+		PullRequestNumber: pre.Number,
+		Timestamp:         pre.Review.SubmittedAt.Time(),
+	}
+}
+
+// normalize converts the PullRequestReviewEvent struct to an Event struct.
+//
+// It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject.
+// The action is set based on the `Action` field of the PullRequestReviewEvent struct.
+func (pre PullRequestReviewEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequestReview, defs.RepoProvider] {
+	id, version, ctx, sub := prelude(repo)
+	event := &defs.Event[defs.PullRequestReview, defs.RepoProvider]{
+		ID:      id,
+		Version: version,
+		Context: ctx,
+		Subject: sub,
+		Payload: pre.payload(),
+	}
+
+	event.SetScopePullRequestReview()
+
+	switch pre.Action {
+	case "submitted":
+		event.SetActionCreated()
+	case "edited":
+		event.SetActionUpdated()
+	case "dismissed":
+		event.SetActionDismissed()
+	default:
+		log.Warnf("unknown pull request review event action: %s", pre.Action)
+		return nil
+	}
+
+	return event
+}
+
+// payload converts the PullRequestReviewCommentEvent struct to the relevant EventPayload.
+//
+// It returns a `defs.PullRequestComment` struct containing the relevant information for a pull request review comment event.
+func (pre PullRequestReviewCommentEvent) payload() defs.PullRequestComment {
+	return defs.PullRequestComment{
+		ID:                pre.Comment.ID,
+		PullRequestNumber: pre.Number,
+		ReviewID:          pre.Comment.PullRequestReviewID,
+		InReplyTo:         pre.Comment.InReplyTo,
+		CommitSHA:         pre.Comment.CommitID,
+		Path:              pre.Comment.Path,
+		Position:          pre.Comment.Position,
+		Author:            pre.Comment.User.Login,
+		Timestamp:         pre.Comment.UpdatedAt.Time(),
+	}
+}
+
+// normalize converts the PullRequestReviewCommentEvent struct to an Event struct.
+//
+// It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject.
+// The action is set based on the `Action` field of the PullRequestReviewCommentEvent struct.
+func (pre PullRequestReviewCommentEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequestComment, defs.RepoProvider] {
+	id, version, ctx, sub := prelude(repo)
+	event := &defs.Event[defs.PullRequestComment, defs.RepoProvider]{
+		ID:      id,
+		Version: version,
+		Context: ctx,
+		Subject: sub,
+		Payload: pre.payload(),
+	}
+
+	event.SetScopePullRequestComment()
+
+	switch pre.Action {
+	case "created":
+		event.SetActionCreated()
+	case "edited":
+		event.SetActionUpdated()
+	case "deleted": //nolint
+		event.SetActionDeleted()
+	default:
+		return nil
+	}
+
+	return event
+}
+
+// payload converts the LabelEvent struct to the relevant EventPayload.
+//
+// It returns a `defs.PullRequestLabel` struct containing the relevant information for a pull request label event.
+func (pre LabelEvent) payload() defs.PullRequestLabel {
+	return defs.PullRequestLabel{
+		Name:              pre.Label.Name,
+		Color:             pre.Label.Color,
+		Description:       pre.Label.Description,
+		PullRequestNumber: pre.Number,
+		Timestamp:         time.Now(),
+	}
+}
+
+// normalize converts the LabelEvent struct to an Event struct.
+//
+// It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject.
+// The action is set based on the `Action` field of the LabelEvent struct.
+func (pre LabelEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequestLabel, defs.RepoProvider] {
+	id, version, ctx, sub := prelude(repo)
+	event := &defs.Event[defs.PullRequestLabel, defs.RepoProvider]{
+		ID:      id,
+		Version: version,
+		Context: ctx,
+		Subject: sub,
+		Payload: pre.payload(),
+	}
+
+	event.SetScopePullRequestLabel()
+
+	switch pre.Action {
+	case "labeled":
+		event.SetActionAdded()
+	case "unlabeled":
+		event.SetActionDeleted()
+	default:
+		return nil
+	}
+
+	return event
 }

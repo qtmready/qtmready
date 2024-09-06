@@ -33,31 +33,32 @@ type (
 	}
 )
 
+// on_push handles push events for the trunk.
 func (state *TrunkState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		push := &defs.RepoIOSignalPushPayload{}
+		push := &defs.Event[defs.Push, defs.RepoProvider]{} // Use Event type
 		state.rx(ctx, rx, push)
 
 		for _, branch := range state.branches {
-			if branch == BranchNameFromRef(push.BranchRef) {
+			if branch == BranchNameFromRef(push.Payload.Ref) {
 				continue
 			}
 
-			state.signal_branch(ctx, branch, defs.RepoIOSignalRebase, push)
+			state.signal_branch(ctx, branch, defs.RepoIOSignalRebase, push) // TODO: Fix the signal type
 		}
 	}
 }
 
 func (state *TrunkState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		create_delete := &defs.RepoIOSignalCreateOrDeletePayload{}
-		state.rx(ctx, rx, create_delete)
+		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
+		state.rx(ctx, rx, event)
 
-		if create_delete.ForBranch(ctx) {
-			if create_delete.IsCreated {
-				state.add_branch(ctx, create_delete.Ref)
-			} else {
-				state.remove_branch(ctx, create_delete.Ref)
+		if event.Context.Scope == defs.EventScopeBranch {
+			if event.Context.Action == defs.EventActionCreated {
+				state.add_branch(ctx, event.Payload.Ref)
+			} else if event.Context.Action == defs.EventActionDeleted {
+				state.remove_branch(ctx, event.Payload.Ref)
 			}
 		}
 	}

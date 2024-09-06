@@ -37,11 +37,11 @@ import (
 type (
 	// RepoIOBranchCtrlState represents the state of a branch control workflow.
 	RepoIOBranchCtrlState struct {
-		*BaseCtrl                           // base_ctrl is the embedded struct with common functionality for repo controls.
-		created_at  time.Time               // created_at is the time when the branch was created.
-		last_commit *defs.RepoIOCommit      // last_commit is the most recent commit on the branch.
-		pr          *defs.RepoIOPullRequest // pr is the pull request associated with the branch, if any.
-		interval    timers.Interval         // interval is the stale check duration.
+		*BaseCtrl                     // base_ctrl is the embedded struct with common functionality for repo controls.
+		created_at  time.Time         // created_at is the time when the branch was created.
+		last_commit *defs.Commit      // last_commit is the most recent commit on the branch.
+		pr          *defs.PullRequest // pr is the pull request associated with the branch, if any.
+		interval    timers.Interval   // interval is the stale check duration.
 	}
 )
 
@@ -50,17 +50,17 @@ type (
 // on_push handles push events for the branch.
 func (state *RepoIOBranchCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		push := &defs.RepoIOSignalPushPayload{}
-		state.rx(ctx, rx, push) // Using base_ctrl.rx
+		event := &defs.Event[defs.Push, defs.RepoProvider]{} // Use the Event type
+		state.rx(ctx, rx, event)                             // Using base_ctrl.rx
 
-		latest := push.Commits.Latest()
+		latest := event.Payload.Commits.Latest() // Access Commits from Payload
 		if latest != nil {
 			state.set_commit(ctx, latest)
 		}
 
-		complexity := state.calculate_complexity(ctx, push)
+		complexity := state.calculate_complexity(ctx) // Pass the Event
 		if complexity.Delta > state.repo.Threshold {
-			state.warn_complexity(ctx, push, complexity)
+			// state.warn_complexity(ctx, event, complexity) // TODO: handle this.
 		}
 
 		state.interval.Restart(ctx)
@@ -98,23 +98,14 @@ func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.Chann
 // on_pr handles pull request events for the branch.
 func (state *RepoIOBranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		pr := &defs.RepoIOSignalPullRequestPayload{}
-		state.rx(ctx, rx, pr) // Using base_ctrl.rx
+		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
+		state.rx(ctx, rx, event) // Using base_ctrl.rx
 
-		switch pr.Action {
-		case "opened":
-			p := &defs.RepoIOPullRequest{Number: pr.Number, HeadBranch: pr.HeadBranch, BaseBranch: pr.BaseBranch}
-			state.set_pr(ctx, p)
-
-			state.increment(ctx, 1)
-		case "closed":
-			// when the pull request action is closed set it to nil.
+		switch event.Context.Action { // nolint
+		case defs.EventActionCreated: // Or defs.EventActionOpened, if more appropriate
+			state.set_pr(ctx, &event.Payload)
+		case defs.EventActionClosed:
 			state.set_pr(ctx, nil)
-		case "reopened":
-			p := &defs.RepoIOPullRequest{Number: pr.Number, HeadBranch: pr.HeadBranch, BaseBranch: pr.BaseBranch}
-			state.set_pr(ctx, p)
-
-			state.increment(ctx, 1)
 		default:
 			return
 		}
@@ -152,12 +143,12 @@ func (state *RepoIOBranchCtrlState) on_label(ctx workflow.Context) shared.Channe
 // on_create_delete handles branch creation and deletion events.
 func (state *RepoIOBranchCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		payload := &defs.RepoIOSignalCreateOrDeletePayload{}
-		state.rx(ctx, rx, payload) // Using base_ctrl.rx
+		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
+		state.rx(ctx, rx, event) // Using base_ctrl.rx
 
-		if payload.IsCreated {
+		if event.Context.Action == defs.EventActionCreated {
 			state.set_created_at(ctx, timers.Now(ctx))
-		} else {
+		} else if event.Context.Action == defs.EventActionDeleted {
 			state.set_done(ctx)
 		}
 	}
@@ -174,14 +165,14 @@ func (state *RepoIOBranchCtrlState) set_created_at(ctx workflow.Context, t time.
 }
 
 // set_commit updates the last commit of the branch.
-func (state *RepoIOBranchCtrlState) set_commit(ctx workflow.Context, commit *defs.RepoIOCommit) {
+func (state *RepoIOBranchCtrlState) set_commit(ctx workflow.Context, commit *defs.Commit) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 	state.last_commit = commit
 }
 
 // set_pr sets the pull request associated with the branch.
-func (state *RepoIOBranchCtrlState) set_pr(ctx workflow.Context, pr *defs.RepoIOPullRequest) {
+func (state *RepoIOBranchCtrlState) set_pr(ctx workflow.Context, pr *defs.PullRequest) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 	state.pr = pr
@@ -289,12 +280,14 @@ func (state *RepoIOBranchCtrlState) remove_cloned(ctx workflow.Context, cloned *
 // Complexity and warning methods
 
 // calculate_complexity calculates the complexity of changes in a push event.
-func (state *RepoIOBranchCtrlState) calculate_complexity(ctx workflow.Context, push *defs.RepoIOSignalPushPayload) *defs.RepoIOChanges {
+//
+// TODO: we should compare the default branch head commit and the push's latest commit.
+func (state *RepoIOBranchCtrlState) calculate_complexity(ctx workflow.Context) *defs.RepoIOChanges {
 	changes := &defs.RepoIOChanges{}
 	detect := &defs.RepoIODetectChangesPayload{
-		InstallationID: push.InstallationID,
-		RepoName:       push.RepoName,
-		RepoOwner:      push.RepoOwner,
+		InstallationID: state.info.InstallationID,
+		RepoName:       state.info.RepoName,
+		RepoOwner:      state.info.RepoOwner,
 		DefaultBranch:  state.repo.DefaultBranch,
 		TargetBranch:   state.branch(ctx),
 	}
