@@ -575,7 +575,9 @@ func (pre PullRequestEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequ
 	return event
 }
 
-func (pre PullRequestEvent) as_label(event *defs.Event[defs.PullRequest, defs.RepoProvider]) *defs.Event[defs.PullRequestLabel, defs.RepoProvider] {
+func (pre PullRequestEvent) as_label(
+	event *defs.Event[defs.PullRequest, defs.RepoProvider],
+) *defs.Event[defs.PullRequestLabel, defs.RepoProvider] {
 	if pre.Label == nil {
 		return nil
 	}
