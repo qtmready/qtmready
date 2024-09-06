@@ -555,12 +555,14 @@ func (pre PullRequestEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequ
 		event.SetActionUpdated()
 	case "review_request_removed":
 		event.SetActionUpdated()
-	case "labeled":
-		event.SetActionAdded()
-	case "unlabeled":
-		event.SetActionDeleted()
 	case "synchronized":
 		event.SetActionUpdated()
+	case "labeled":
+		event.SetActionAdded()
+		event.SetScopePullRequestLabel()
+	case "unlabeled":
+		event.SetActionDeleted()
+		event.SetScopePullRequestLabel()
 	default:
 		return nil
 	}
@@ -571,6 +573,27 @@ func (pre PullRequestEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequ
 	}
 
 	return event
+}
+
+func (pre PullRequestEvent) as_label(event *defs.Event[defs.PullRequest, defs.RepoProvider]) *defs.Event[defs.PullRequestLabel, defs.RepoProvider] {
+	if pre.Label == nil {
+		return nil
+	}
+
+	label := defs.PullRequestLabel{
+		Name:              pre.Label.Name,
+		PullRequestNumber: pre.Number,
+		Branch:            pre.PullRequest.Head.Ref,
+		Timestamp:         pre.PullRequest.UpdatedAt,
+	}
+
+	return &defs.Event[defs.PullRequestLabel, defs.RepoProvider]{
+		ID:      event.ID,
+		Version: event.Version,
+		Context: event.Context,
+		Subject: event.Subject,
+		Payload: label,
+	}
 }
 
 // payload converts the PullRequestReviewEvent struct to the relevant EventPayload.
@@ -656,47 +679,6 @@ func (pre PullRequestReviewCommentEvent) normalize(repo *defs.Repo) *defs.Event[
 	case "edited":
 		event.SetActionUpdated()
 	case "deleted": //nolint
-		event.SetActionDeleted()
-	default:
-		return nil
-	}
-
-	return event
-}
-
-// payload converts the LabelEvent struct to the relevant EventPayload.
-//
-// It returns a `defs.PullRequestLabel` struct containing the relevant information for a pull request label event.
-func (pre LabelEvent) payload() defs.PullRequestLabel {
-	return defs.PullRequestLabel{
-		Name:              pre.Label.Name,
-		Color:             pre.Label.Color,
-		Description:       pre.Label.Description,
-		PullRequestNumber: pre.Number,
-		Timestamp:         time.Now(),
-	}
-}
-
-// normalize converts the LabelEvent struct to an Event struct.
-//
-// It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject.
-// The action is set based on the `Action` field of the LabelEvent struct.
-func (pre LabelEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequestLabel, defs.RepoProvider] {
-	id, version, ctx, sub := prelude(repo)
-	event := &defs.Event[defs.PullRequestLabel, defs.RepoProvider]{
-		ID:      id,
-		Version: version,
-		Context: ctx,
-		Subject: sub,
-		Payload: pre.payload(),
-	}
-
-	event.SetScopePullRequestLabel()
-
-	switch pre.Action {
-	case "labeled":
-		event.SetActionAdded()
-	case "unlabeled":
 		event.SetActionDeleted()
 	default:
 		return nil

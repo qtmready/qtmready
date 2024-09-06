@@ -81,18 +81,18 @@ type (
 	// PullRequestReview represents a pull request review.
 	PullRequestReview struct {
 		ID                shared.Int64 `json:"id"`                  // ID is the pull request review ID.
+		PullRequestNumber shared.Int64 `json:"pull_request_number"` // PullRequestNumber is the pull request number.
+		Branch            string       `json:"branch"`              // Branch is the branch the review belongs to.
 		State             string       `json:"state"`               // State is the pull request review state.
 		Author            string       `json:"author"`              // Author is the author of the review.
-		PullRequestNumber shared.Int64 `json:"pull_request_number"` // PullRequestNumber is the pull request number.
 		Timestamp         time.Time    `json:"submitted_at"`        // SubmittedAt is the timestamp when the review was submitted.
 	}
 
 	// PullRequestLabel represents a pull request label.
 	PullRequestLabel struct {
 		Name              string       `json:"name"`                // Name is the pull request label name.
-		Color             string       `json:"color"`               // Color is the pull request label color.
-		Description       string       `json:"description"`         // Description is the pull request label description.
 		PullRequestNumber shared.Int64 `json:"pull_request_number"` // PullRequestNumber is the pull request number.
+		Branch            string       `json:"branch"`              // Branch is the branch the label belongs to.
 		Timestamp         time.Time    `json:"timestamp"`           // Timestamp is the timestamp of the label.
 	}
 
@@ -100,6 +100,7 @@ type (
 	PullRequestComment struct {
 		ID                shared.Int64  `json:"id"`                    // ID is the pull request review comment ID.
 		PullRequestNumber shared.Int64  `json:"pull_request_number"`   // PullRequestNumber is the pull request number.
+		Branch            string        `json:"branch"`                // Branch is the branch the comment belongs to.
 		ReviewID          shared.Int64  `json:"review_id"`             // ReviewID is the ID of the pull request review the comment belongs.
 		InReplyTo         *shared.Int64 `json:"in_reply_to,omitempty"` // InReplyTo is the ID of the parent comment.
 		CommitSHA         string        `json:"commit_sha"`            // CommitSHA is the SHA of the commit associated with the comment.

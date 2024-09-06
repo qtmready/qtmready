@@ -29,7 +29,7 @@ import (
 type (
 	// Node represents a single node in the queue.
 	Node struct {
-		pr   *defs.RepoIOPullRequest
+		pr   *defs.PullRequest
 		prev *Node
 		next *Node
 	}
@@ -52,8 +52,8 @@ type (
 
 	// QueueMember represents a single item in the queue for frontend representation.
 	QueueMember struct {
-		PR       *defs.RepoIOPullRequest `json:"pr"`
-		Position int                     `json:"position"`
+		PR       *defs.PullRequest `json:"pr"`
+		Position int               `json:"position"`
 	}
 
 	// QueueMembers is a slice of QueueMember.
@@ -72,9 +72,9 @@ type (
 //
 //	q := NewQueue()
 //	ctx := workflow.Context{}
-//	pr := RepoIOPullRequest{Number: 123}
+//	pr := PullRequest{Number: 123}
 //	q.push(ctx, pr)
-func (q *Queue) push(ctx workflow.Context, pr *defs.RepoIOPullRequest) {
+func (q *Queue) push(ctx workflow.Context, pr *defs.PullRequest) {
 	_ = q.mutex.Lock(ctx)
 	defer q.mutex.Unlock()
 
@@ -102,7 +102,7 @@ func (q *Queue) push(ctx workflow.Context, pr *defs.RepoIOPullRequest) {
 //	if pr != nil {
 //	    fmt.Printf("Popped PR number: %d\n", pr.Number)
 //	}
-func (q *Queue) pop(ctx workflow.Context) *defs.RepoIOPullRequest {
+func (q *Queue) pop(ctx workflow.Context) *defs.PullRequest {
 	_ = q.mutex.Lock(ctx)
 	defer q.mutex.Unlock()
 
@@ -144,9 +144,9 @@ func (q *Queue) peek() bool {
 //
 //	q := NewQueue()
 //	ctx := workflow.Context{}
-//	pr := RepoIOPullRequest{Number: 123}
+//	pr := PullRequest{Number: 123}
 //	q.reorder(ctx, pr, true) // Promote PR
-func (q *Queue) reorder(ctx workflow.Context, pr defs.RepoIOPullRequest, promote bool) {
+func (q *Queue) reorder(ctx workflow.Context, pr defs.PullRequest, promote bool) {
 	_ = q.mutex.Lock(ctx)
 	defer q.mutex.Unlock()
 
@@ -170,10 +170,10 @@ func (q *Queue) reorder(ctx workflow.Context, pr defs.RepoIOPullRequest, promote
 //
 //	q := NewQueue()
 //	ctx := workflow.Context{}
-//	a := RepoIOPullRequest{Number: 1}
-//	b := RepoIOPullRequest{Number: 2}
-//	c := RepoIOPullRequest{Number: 3}
-//	d := RepoIOPullRequest{Number: 4}
+//	a := PullRequest{Number: 1}
+//	b := PullRequest{Number: 2}
+//	c := PullRequest{Number: 3}
+//	d := PullRequest{Number: 4}
 //
 //	q.push(ctx, a)
 //	q.push(ctx, b)
@@ -215,10 +215,10 @@ func (q *Queue) promote(node *Node) {
 //
 //	q := NewQueue()
 //	ctx := workflow.Context{}
-//	a := RepoIOPullRequest{Number: 1}
-//	b := RepoIOPullRequest{Number: 2}
-//	c := RepoIOPullRequest{Number: 3}
-//	d := RepoIOPullRequest{Number: 4}
+//	a := PullRequest{Number: 1}
+//	b := PullRequest{Number: 2}
+//	c := PullRequest{Number: 3}
+//	d := PullRequest{Number: 4}
 //
 //	q.push(ctx, a)
 //	q.push(ctx, b)
@@ -292,8 +292,8 @@ func (q *Queue) remove(ctx workflow.Context, prNumber int64) {
 // Example:
 //
 //	q := NewQueue(ctx)
-//	pr1 := RepoIOPullRequest{Number: 123}
-//	pr2 := RepoIOPullRequest{Number: 456}
+//	pr1 := PullRequest{Number: 123}
+//	pr2 := PullRequest{Number: 456}
 //	q.push(ctx, &pr1)
 //	q.push(ctx, &pr2)
 //	serialized := q.serialize(ctx)
@@ -322,8 +322,8 @@ func (q *Queue) serialize(ctx workflow.Context) QueueMembers {
 //
 //	q := NewQueue(ctx)
 //	members := QueueMembers{
-//	    {PR: &RepoIOPullRequest{Number: 123}, Position: 1},
-//	    {PR: &RepoIOPullRequest{Number: 456}, Position: 2},
+//	    {PR: &PullRequest{Number: 123}, Position: 1},
+//	    {PR: &PullRequest{Number: 456}, Position: 2},
 //	}
 //	q.deserialize(ctx, members)
 //	// Queue is now reconstructed from the serialized data
@@ -368,7 +368,7 @@ func (q *Queue) deserialize(ctx workflow.Context, members QueueMembers) {
 //	selector.AddReceive(add_channel, add_handler)
 func (s *QueueCtrlState) on_add(ctx workflow.Context) shared.ChannelHandler {
 	return func(c workflow.ReceiveChannel, more bool) {
-		payload := &defs.RepoIOPullRequest{}
+		payload := &defs.PullRequest{}
 
 		s.rx(ctx, c, payload)
 		s.push(ctx, payload, false)
@@ -378,7 +378,7 @@ func (s *QueueCtrlState) on_add(ctx workflow.Context) shared.ChannelHandler {
 // TODO - chnage the logic for on remove.
 func (s *QueueCtrlState) on_remove(ctx workflow.Context) shared.ChannelHandler {
 	return func(c workflow.ReceiveChannel, more bool) {
-		payload := &defs.RepoIOPullRequest{}
+		payload := &defs.PullRequest{}
 
 		s.rx(ctx, c, payload)
 		s.pop(ctx)
@@ -394,7 +394,7 @@ func (s *QueueCtrlState) on_remove(ctx workflow.Context) shared.ChannelHandler {
 //	selector.AddReceive(add_priority_channel, add_priority_handler)
 func (s *QueueCtrlState) on_add_priority(ctx workflow.Context) shared.ChannelHandler {
 	return func(c workflow.ReceiveChannel, more bool) {
-		payload := &defs.RepoIOPullRequest{}
+		payload := &defs.PullRequest{}
 
 		s.rx(ctx, c, payload)
 		s.push(ctx, payload, true)
@@ -410,7 +410,7 @@ func (s *QueueCtrlState) on_add_priority(ctx workflow.Context) shared.ChannelHan
 //	selector.AddReceive(promote_channel, promote_handler)
 func (s *QueueCtrlState) on_promote(ctx workflow.Context) shared.ChannelHandler {
 	return func(c workflow.ReceiveChannel, more bool) {
-		payload := &defs.RepoIOPullRequest{}
+		payload := &defs.PullRequest{}
 
 		s.rx(ctx, c, payload)
 		s.primary.reorder(ctx, *payload, true)
@@ -426,7 +426,7 @@ func (s *QueueCtrlState) on_promote(ctx workflow.Context) shared.ChannelHandler 
 //	selector.AddReceive(demote_channel, demote_handler)
 func (s *QueueCtrlState) on_demote(ctx workflow.Context) shared.ChannelHandler {
 	return func(c workflow.ReceiveChannel, more bool) {
-		payload := &defs.RepoIOPullRequest{}
+		payload := &defs.PullRequest{}
 
 		s.rx(ctx, c, payload)
 		s.primary.reorder(ctx, *payload, false)
@@ -442,10 +442,10 @@ func (s *QueueCtrlState) on_demote(ctx workflow.Context) shared.ChannelHandler {
 // Example:
 //
 //	state := NewQueueCtrlState(ctx, repo, branch)
-//	pr := RepoIOPullRequest{Number: 123}
+//	pr := PullRequest{Number: 123}
 //	state.push(ctx, pr, false) // Add to primary queue
 //	state.push(ctx, pr, true)  // Add to priority queue
-func (s *QueueCtrlState) push(ctx workflow.Context, pr *defs.RepoIOPullRequest, urgent bool) {
+func (s *QueueCtrlState) push(ctx workflow.Context, pr *defs.PullRequest, urgent bool) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
 
@@ -480,7 +480,7 @@ func (s *QueueCtrlState) next(ctx workflow.Context) error {
 //	if pr != nil {
 //	    // Process the pull request
 //	}
-func (s *QueueCtrlState) pop(ctx workflow.Context) *defs.RepoIOPullRequest {
+func (s *QueueCtrlState) pop(ctx workflow.Context) *defs.PullRequest {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
 
@@ -492,7 +492,7 @@ func (s *QueueCtrlState) pop(ctx workflow.Context) *defs.RepoIOPullRequest {
 }
 
 // process handles the processing of a pull request popped from the queue.
-func (s *QueueCtrlState) process(ctx workflow.Context, pr *defs.RepoIOPullRequest) error {
+func (s *QueueCtrlState) process(ctx workflow.Context, pr *defs.PullRequest) error {
 	if !s.can_process_pr(pr) {
 		return nil // TODO - return error
 	}
@@ -506,7 +506,7 @@ func (s *QueueCtrlState) process(ctx workflow.Context, pr *defs.RepoIOPullReques
 	return nil
 }
 
-func (s *QueueCtrlState) can_process_pr(pr *defs.RepoIOPullRequest) bool {
+func (s *QueueCtrlState) can_process_pr(pr *defs.PullRequest) bool {
 	// Add logic to check if the pull request can be processed
 	// For example, you can check if the pull request is open, not a draft, and not a work-in-progress
 	// Return true if the pull request can be processed, false otherwise
@@ -520,8 +520,8 @@ func (s *QueueCtrlState) can_process_pr(pr *defs.RepoIOPullRequest) bool {
 // Example:
 //
 //	ctx, state := NewQueueCtrlState(ctx, repo, branch)
-//	pr1 := RepoIOPullRequest{Number: 123}
-//	pr2 := RepoIOPullRequest{Number: 456}
+//	pr1 := PullRequest{Number: 123}
+//	pr2 := PullRequest{Number: 456}
 //	state.push(ctx, &pr1, false)
 //	state.push(ctx, &pr2, true)
 //	serialized := state.serialize(ctx)
@@ -539,8 +539,8 @@ func (s *QueueCtrlState) serialize(ctx workflow.Context) *QueueCtrlSerializedSta
 //
 //	ctx, state := NewQueueCtrlState(ctx, repo, branch)
 //	serialized := QueueCtrlSerializedState{
-//	    Primary:  QueueMembers{{PR: &RepoIOPullRequest{Number: 123}, Position: 1}},
-//	    Priority: QueueMembers{{PR: &RepoIOPullRequest{Number: 456}, Position: 1}},
+//	    Primary:  QueueMembers{{PR: &PullRequest{Number: 123}, Position: 1}},
+//	    Priority: QueueMembers{{PR: &PullRequest{Number: 456}, Position: 1}},
 //	}
 //	state.deserialize(ctx, serialized)
 //	// QueueCtrlState is now reconstructed from the serialized data
