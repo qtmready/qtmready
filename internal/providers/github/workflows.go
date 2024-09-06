@@ -314,24 +314,18 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 		return err
 	}
 
-	payload__pr := payload.normalize(state.CoreRepo)
-	payload__label := payload.as_label(payload__pr) // this will be nil if scope is label
+	event_pr := payload.normalize(state.CoreRepo)
+	event_label := payload.as_label(event_pr) // this will be nil if scope is label
 
 	fn := func() workflow.Future {
-		if payload__label == nil {
+		if event_label == nil {
 			return workflow.
-				ExecuteActivity(
-					_ctx,
-					activities.SignalCoreRepoCtrl,
-					state.CoreRepo,
-					defs.RepoIOSignalPullRequestOpenedOrClosedOrReopened,
-					payload__pr,
-				)
+				ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequest, event_pr)
 		}
 
 		return workflow.
 			ExecuteActivity(
-				_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestLabeledOrUnlabeled, payload__label,
+				_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestLabel, event_label,
 			)
 	}
 
@@ -343,6 +337,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 			slog.String("github_repo__id", state.Repo.ID.String()),
 			slog.String("core_repo__id", state.Repo.ID.String()),
 		)
+
 		return err
 	}
 
@@ -421,7 +416,7 @@ func (w *Workflows) OnPullRequestReviewCommentEvent(ctx workflow.Context, event 
 	}
 
 	if err := workflow.
-		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestReviewComment, payload).
+		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestComment, payload).
 		Get(_ctx, nil); err != nil {
 		logger.Warn(
 			"github/pull_request_review_comment: error signaling repo ctrl ...",

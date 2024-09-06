@@ -50,11 +50,11 @@ func RepoCtrl(ctx workflow.Context, repo *defs.Repo) error {
 	selector.AddReceive(create_delete, state.on_create_delete(ctx))
 
 	// pull request event
-	pr := workflow.GetSignalChannel(ctx, defs.RepoIOSignalPullRequestOpenedOrClosedOrReopened.String())
+	pr := workflow.GetSignalChannel(ctx, defs.RepoIOSignalPullRequest.String())
 	selector.AddReceive(pr, state.on_pr(ctx))
 
 	// label event
-	label := workflow.GetSignalChannel(ctx, defs.RepoIOSignalPullRequestLabeledOrUnlabeled.String())
+	label := workflow.GetSignalChannel(ctx, defs.RepoIOSignalPullRequestLabel.String())
 	selector.AddReceive(label, state.on_label(ctx))
 
 	// main event loop
