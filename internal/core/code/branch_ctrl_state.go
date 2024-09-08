@@ -86,7 +86,7 @@ func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.Chann
 		state.fetch_default_branch(session, cloned)
 
 		if err := state.rebase_at_commit(session, cloned); err != nil {
-			state.warn_conflict(session, &event.Payload)
+			state.warn_conflict(session, event)
 			state.remove_cloned(session, cloned)
 
 			return
@@ -204,6 +204,27 @@ func (state *RepoIOBranchCtrlState) check_stale(ctx workflow.Context) {
 			state.warn_stale(ctx)
 		}
 	})
+}
+
+func (state *RepoIOBranchCtrlState) has_author() bool {
+	return state.author != nil
+}
+
+func (state *RepoIOBranchCtrlState) set_author(ctx workflow.Context, owner *auth.TeamUser) {
+	_ = state.mutex.Lock(ctx)
+	defer state.mutex.Unlock()
+
+	state.author = owner
+}
+
+func (state *RepoIOBranchCtrlState) refresh_author(ctx workflow.Context, id shared.Int64) {
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	io := &auth.Activities{}
+	user := &auth.TeamUser{}
+
+	_ = state.do(ctx, "refresh_author", io.GetTeamUser, id, user)
 }
 
 // Git operations
@@ -329,32 +350,14 @@ func (state *RepoIOBranchCtrlState) warn_stale(ctx workflow.Context) {
 }
 
 // warn_conflict sends a warning message if there's a merge conflict during rebase.
-func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, push *defs.Push) {
+func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider]) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
-	// for_user := push.User != nil && push.User.IsMessageProviderLinked
-	// msg := comm.NewMergeConflictMessage(push, state.repo, state.branch(ctx), for_user)
-	// io := kernel.Instance().MessageIO(state.repo.MessageProvider)
+	msg := comm.NewMergeConflictMessage(event, state.repo, state.author, state.branch(ctx))
+	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
 
-	// _ = state.do(ctx, "warn_merge_conflict", io.SendMergeConflictsMessage, msg, nil)
-}
-
-func (state *RepoIOBranchCtrlState) set_author(ctx workflow.Context, owner *auth.TeamUser) {
-	_ = state.mutex.Lock(ctx)
-	defer state.mutex.Unlock()
-
-	state.author = owner
-}
-
-func (state *RepoIOBranchCtrlState) refresh_author(ctx workflow.Context, id shared.Int64) {
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
-
-	io := &auth.Activities{}
-	user := &auth.TeamUser{}
-
-	_ = state.do(ctx, "refresh_author", io.GetTeamUser, id, user)
+	_ = state.do(ctx, "warn_merge_conflict", io.SendMergeConflictsMessage, msg, nil)
 }
 
 // NewBranchCtrlState creates a new RepoIOBranchCtrlState instance.

@@ -89,7 +89,7 @@ func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context, payload
 	return nil
 }
 
-func (a *Activities) SendMergeConflictsMessage(ctx context.Context, payload *defs.MessageIOMergeConflictPayload) error {
+func (a *Activities) SendMergeConflictsMessage(ctx context.Context, payload *defs.MergeConflictMessage) error {
 	logger := activity.GetLogger(ctx)
 
 	token, err := decodeAndDecryptToken(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)

@@ -22,6 +22,7 @@ package comm
 import (
 	"fmt"
 
+	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
 )
 
@@ -34,40 +35,40 @@ import (
 //
 // FIXME: this is generic to github. If we are using generic, should we create the url's depending upon the provider?
 func NewMergeConflictMessage(
-	payload *defs.RepoIOSignalPushPayload,
+	event *defs.Event[defs.Push, defs.RepoProvider],
 	repo *defs.Repo,
+	author *auth.TeamUser,
 	branch string,
-	for_user bool,
-) *defs.MessageIOMergeConflictPayload {
-	msg := &defs.MessageIOMergeConflictPayload{
-		RepoUrl:   fmt.Sprintf("https://github.com/%s/%s", payload.RepoOwner, payload.RepoName),
-		SHA:       payload.After,
-		CommitUrl: fmt.Sprintf("https://github.com/%s/%s/commits/%s", payload.RepoOwner, payload.RepoName, payload.After),
+) *defs.MergeConflictMessage {
+	msg := &defs.MergeConflictMessage{
+		RepoUrl:   event.Context.Source,
+		SHA:       event.Payload.After,
+		CommitUrl: fmt.Sprintf("%s/commits/%s", event.Context.Source, event.Payload.After),
 	}
 
 	// set the payload for user message provider
-	if for_user {
-		msg.MessageIOPayload = &defs.MessageIOPayload{
-			WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
-			ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
-			BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
-			RepoName:    repo.Name,
-			BranchName:  branch,
-			IsChannel:   false,
-		}
-	} else {
-		// set the payload for channel message provider
-		msg.MessageIOPayload = &defs.MessageIOPayload{
-			WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
-			ChannelID:   repo.MessageProviderData.Slack.ChannelID,
-			BotToken:    repo.MessageProviderData.Slack.BotToken,
-			Author:      payload.Author,
-			AuthorUrl:   fmt.Sprintf("https://github.com/%s", payload.Author),
-			RepoName:    repo.Name,
-			BranchName:  branch,
-			IsChannel:   true,
-		}
-	}
+	// if for_user {
+	// 	msg.MessageIOPayload = &defs.MessageIOPayload{
+	// 		WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
+	// 		ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
+	// 		BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
+	// 		RepoName:    repo.Name,
+	// 		BranchName:  branch,
+	// 		IsChannel:   false,
+	// 	}
+	// } else {
+	// 	// set the payload for channel message provider
+	// 	msg.MessageIOPayload = &defs.MessageIOPayload{
+	// 		WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
+	// 		ChannelID:   repo.MessageProviderData.Slack.ChannelID,
+	// 		BotToken:    repo.MessageProviderData.Slack.BotToken,
+	// 		Author:      payload.Author,
+	// 		AuthorUrl:   fmt.Sprintf("https://github.com/%s", payload.Author),
+	// 		RepoName:    repo.Name,
+	// 		BranchName:  branch,
+	// 		IsChannel:   true,
+	// 	}
+	// }
 
 	return msg
 }
@@ -106,8 +107,8 @@ func NewNumberOfLinesExceedMessage(
 			WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
 			ChannelID:   repo.MessageProviderData.Slack.ChannelID,
 			BotToken:    repo.MessageProviderData.Slack.BotToken,
-			Author:      payload.Author,
-			AuthorUrl:   fmt.Sprintf("https://github.com/%s", payload.Author),
+			Sender:      payload.Author,
+			SenderURL:   fmt.Sprintf("https://github.com/%s", payload.Author),
 			RepoName:    repo.Name,
 			BranchName:  branch,
 			IsChannel:   true,

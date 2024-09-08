@@ -35,6 +35,6 @@ type (
 		SendNumberOfLinesExceedMessage(ctx context.Context, payload *defs.MessageIOLineExeededPayload) error
 
 		// SendMergeConflictsMessage sends a message indicating merge conflicts.
-		SendMergeConflictsMessage(ctx context.Context, payload *defs.MessageIOMergeConflictPayload) error
+		SendMergeConflictsMessage(ctx context.Context, payload *defs.MergeConflictMessage) error
 	}
 )

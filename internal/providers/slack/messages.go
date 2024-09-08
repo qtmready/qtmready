@@ -68,7 +68,7 @@ func formatLineThresholdExceededAttachment(payload *defs.MessageIOLineExeededPay
 	}
 
 	if payload.MessageIOPayload.IsChannel {
-		fields = append(fields, createPushedByField(payload.MessageIOPayload.Author, payload.MessageIOPayload.AuthorUrl, true))
+		fields = append(fields, createPushedByField(payload.MessageIOPayload.Sender, payload.MessageIOPayload.SenderURL, true))
 	}
 
 	return slack.Attachment{
@@ -83,7 +83,7 @@ func formatLineThresholdExceededAttachment(payload *defs.MessageIOLineExeededPay
 	}
 }
 
-func formatMergeConflictAttachment(payload *defs.MessageIOMergeConflictPayload) slack.Attachment {
+func formatMergeConflictAttachment(payload *defs.MergeConflictMessage) slack.Attachment {
 	fields := []slack.AttachmentField{
 		{
 			Title: "*Commit SHA*",
@@ -95,7 +95,7 @@ func formatMergeConflictAttachment(payload *defs.MessageIOMergeConflictPayload) 
 	}
 
 	if payload.MessageIOPayload.IsChannel {
-		fields = append(fields, createPushedByField(payload.MessageIOPayload.Author, payload.MessageIOPayload.AuthorUrl, true))
+		fields = append(fields, createPushedByField(payload.MessageIOPayload.Sender, payload.MessageIOPayload.SenderURL, true))
 	}
 
 	return slack.Attachment{

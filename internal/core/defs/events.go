@@ -41,15 +41,15 @@ type (
 
 	// Commit represents a git commit.
 	Commit struct {
-		SHA       string    `json:"sha"`          // SHA is the SHA of the commit.
-		Message   string    `json:"message"`      // Message is the commit message.
-		URL       string    `json:"url"`          // URL is the URL of the commit.
-		Added     []string  `json:"added"`        // Added is a list of files added in the commit.
-		Removed   []string  `json:"removed"`      // Removed is a list of files removed in the commit.
-		Modified  []string  `json:"modified"`     // Modified is a list of files modified in the commit.
-		Author    string    `json:"author"`       // Author is the author of the commit.
-		Committer string    `json:"committer_id"` // Committer is the committer of the commit.
-		Timestamp time.Time `json:"timestamp"`    // Timestamp is the timestamp of the commit.
+		SHA         string    `json:"sha"`          // SHA is the SHA of the commit.
+		Message     string    `json:"message"`      // Message is the commit message.
+		URL         string    `json:"url"`          // URL is the URL of the commit.
+		Added       []string  `json:"added"`        // Added is a list of files added in the commit.
+		Removed     []string  `json:"removed"`      // Removed is a list of files removed in the commit.
+		Modified    []string  `json:"modified"`     // Modified is a list of files modified in the commit.
+		Author      string    `json:"author"`       // Author is the author of the commit.
+		CommitterID string    `json:"committer_id"` // Committer is the committer of the commit.
+		Timestamp   time.Time `json:"timestamp"`    // Timestamp is the timestamp of the commit.
 	}
 
 	Commits []Commit
@@ -118,9 +118,23 @@ type (
 		Timestamp         time.Time      `json:"timestamp"`           // Timestamp is the timestamp of the thread.
 	}
 
+	// MergeConflict represents a git merge conflict.
+	MergeConflict struct {
+		HeadBranch string    `json:"head_branch"` // HeadBranch is the name of the head branch.
+		HeadCommit Commit    `json:"head_commit"` // HeadCommit is the last commit on the head branch before rebasing.
+		AuthorID   int64     `json:"author_id"`   // AuthorID is the author of the last commit on the head branch.
+		BaseBranch string    `json:"base_branch"` // BaseBranch is the name of the base branch.
+		BaseCommit Commit    `json:"base_commit"` // BaseCommit is the last commit on the base branch before rebasing.
+		Files      []string  `json:"files"`       // Files is the list of files with conflicts.
+		Timestamp  time.Time `json:"timestamp"`   // Timestamp is the timestamp of the merge conflict.
+	}
+
 	// EventPayload represents all available event payloads.
 	EventPayload interface {
-		BranchOrTag | Push | PullRequest | PullRequestReview | PullRequestLabel | PullRequestComment | PullRequestThread
+		BranchOrTag |
+			Push |
+			PullRequest | PullRequestReview | PullRequestLabel | PullRequestComment | PullRequestThread |
+			MergeConflict
 	}
 )
 
@@ -158,8 +172,9 @@ type (
 	//     of events.
 	EventSubject struct {
 		ID     gocql.UUID `json:"id"`      // ID is the ID of the subject.
-		Name   string     `json:"name"`    // Name is the name of the subject.
+		Name   string     `json:"name"`    // Name of the database table.
 		TeamID gocql.UUID `json:"team_id"` // TeamID is the ID of the team that the subject belongs to.
+		UserID gocql.UUID `json:"user_id"` // UserID is the ID of the user that the subject belongs to. It can be null uuid.
 	}
 )
 
@@ -186,6 +201,7 @@ type (
 		SubjectName string       `json:"subject_name" cql:"subject_name"` // SubjectName is the name of the subject.
 		Payload     []byte       `json:"payload" cql:"payload"`           // Payload is the payload of the event.
 		TeamID      gocql.UUID   `json:"team_id" cql:"team_id"`           // TeamID is the ID of the team that the subject belongs to.
+		UserID      gocql.UUID   `json:"user_id" cql:"user_id"`           // UserID is the ID of the user that the subject belongs to.
 		CreatedAt   time.Time    `json:"created_at" cql:"created_at"`     // CreatedAt is the timestamp when the event was created.
 		UpdatedAt   time.Time    `json:"updated_at" cql:"updated_at"`     // UpdatedAt is the timestamp when the event was last updated.
 	}
@@ -204,6 +220,7 @@ const (
 	EventScopePullRequestReview  EventScope = "pull_request_review"  // EventScopePullRequestReview scopes PR review event.
 	EventScopePullRequestComment EventScope = "pull_request_comment" // EventScopePullRequestReviewComment scopes PR comment event.
 	EventScopePullRequestThread  EventScope = "pull_request_thread"  // EventScopePullRequestThread scopes PR thread event.
+	EventScopeMergeConflict      EventScope = "merge_conflict"       // EventScopeMergeCommit scopes merge commit event.
 )
 
 const (
@@ -375,6 +392,8 @@ func (e *Event[T, P]) UnmarshalJSON(data []byte) error {
 		payload = any(PullRequestComment{}).(T)
 	case EventScopePullRequestThread:
 		payload = any(PullRequestThread{}).(T)
+	case EventScopeMergeConflict:
+		payload = any(MergeConflict{}).(T)
 	default:
 		return fmt.Errorf("unsupported event scope: %s", e.Context.Scope)
 	}
@@ -407,6 +426,7 @@ func (e *Event[T, P]) Flatten() (*FlatEvent[P], error) {
 		SubjectName: e.Subject.Name,
 		Payload:     payload,
 		TeamID:      e.Subject.TeamID,
+		UserID:      e.Subject.UserID,
 		CreatedAt:   e.Context.Timestamp,
 		UpdatedAt:   e.Context.Timestamp,
 	}
@@ -936,6 +956,7 @@ func Deflate[T EventPayload, P EventProvider](flat *FlatEvent[P], event *Event[T
 		ID:     flat.SubjectID,
 		Name:   flat.SubjectName,
 		TeamID: flat.TeamID,
+		UserID: flat.UserID,
 	}
 	event.Payload = payload
 

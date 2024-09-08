@@ -31,8 +31,8 @@ type (
 		BotToken    string `json:"bot_token"`
 		RepoName    string `json:"repo_name"`
 		BranchName  string `json:"branch_name"`
-		Author      string `json:"author"`
-		AuthorUrl   string `json:"author_url"`
+		Sender      string `json:"author"`
+		SenderURL   string `json:"author_url"`
 		IsChannel   bool   `json:"is_channel"`
 	}
 
@@ -44,7 +44,7 @@ type (
 	}
 
 	// TODO: need to refine.
-	MessageIOMergeConflictPayload struct {
+	MergeConflictMessage struct {
 		MessageIOPayload *MessageIOPayload `json:"message_io_payload"`
 		CommitUrl        string            `json:"commit_url"`
 		RepoUrl          string            `json:"repo_url"`
