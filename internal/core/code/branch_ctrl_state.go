@@ -43,7 +43,7 @@ type (
 		last_commit *defs.Commit      // last_commit is the most recent commit on the branch.
 		pr          *defs.PullRequest // pr is the pull request associated with the branch, if any.
 		interval    timers.Interval   // interval is the stale check duration.
-		owners      []auth.TeamUser   // owners are the branch owners, or the pr owner.
+		author      *auth.TeamUser    // owner is owner of the pull request.
 	}
 )
 
@@ -104,10 +104,12 @@ func (state *RepoIOBranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHa
 		state.rx(ctx, rx, event) // Using base_ctrl.rx
 
 		switch event.Context.Action { // nolint
-		case defs.EventActionCreated: // Or defs.EventActionOpened, if more appropriate
+		case defs.EventActionCreated, defs.EventActionReopened: // Or defs.EventActionOpened, if more appropriate
 			state.set_pr(ctx, &event.Payload)
+			state.refresh_author(ctx, event.Payload.AuthorID)
 		case defs.EventActionClosed:
 			state.set_pr(ctx, nil)
+			state.set_author(ctx, nil)
 		default:
 			return
 		}
@@ -336,6 +338,23 @@ func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, push *de
 	// io := kernel.Instance().MessageIO(state.repo.MessageProvider)
 
 	// _ = state.do(ctx, "warn_merge_conflict", io.SendMergeConflictsMessage, msg, nil)
+}
+
+func (state *RepoIOBranchCtrlState) set_author(ctx workflow.Context, owner *auth.TeamUser) {
+	_ = state.mutex.Lock(ctx)
+	defer state.mutex.Unlock()
+
+	state.author = owner
+}
+
+func (state *RepoIOBranchCtrlState) refresh_author(ctx workflow.Context, id shared.Int64) {
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	io := &auth.Activities{}
+	user := &auth.TeamUser{}
+
+	_ = state.do(ctx, "refresh_author", io.GetTeamUser, id, user)
 }
 
 // NewBranchCtrlState creates a new RepoIOBranchCtrlState instance.

@@ -481,7 +481,7 @@ func (pe PushEvent) payload() defs.Push {
 		Before:     pe.Before,
 		After:      pe.After,
 		Repository: pe.Repository.Name,
-		Pusher:     pe.Pusher.Name,
+		SenderID:   pe.Sender.ID,
 		Commits:    commits,
 		Timestamp:  pe.HeadCommit.Timestamp.Time(),
 	}
@@ -517,7 +517,7 @@ func (pre PullRequestEvent) payload() defs.PullRequest {
 		Body:           pre.PullRequest.Body,
 		State:          pre.PullRequest.State,
 		MergeCommitSHA: pre.PullRequest.MergeCommitSha,
-		Author:         pre.PullRequest.User.Login,
+		AuthorID:       pre.PullRequest.User.ID,
 		HeadBranch:     pre.PullRequest.Head.Ref,
 		BaseBranch:     pre.PullRequest.Base.Ref,
 		Timestamp:      pre.PullRequest.UpdatedAt,
@@ -608,7 +608,7 @@ func (pre PullRequestReviewEvent) payload() defs.PullRequestReview {
 	return defs.PullRequestReview{
 		ID:                pre.Review.ID,
 		State:             pre.Review.State,
-		Author:            pre.Review.User.Login,
+		AuthorID:          pre.Review.User.ID,
 		PullRequestNumber: pre.Number,
 		Timestamp:         pre.Review.SubmittedAt.Time(),
 	}
@@ -658,7 +658,7 @@ func (pre PullRequestReviewCommentEvent) payload() defs.PullRequestComment {
 		CommitSHA:         pre.Comment.CommitID,
 		Path:              pre.Comment.Path,
 		Position:          pre.Comment.Position,
-		Author:            pre.Comment.User.Login,
+		AuthorID:          pre.Comment.User.ID,
 		Timestamp:         pre.Comment.UpdatedAt.Time(),
 	}
 }

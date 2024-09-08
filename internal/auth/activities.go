@@ -104,10 +104,10 @@ func (a *Activities) CreateOrUpdateTeamUser(ctx context.Context, payload *TeamUs
 }
 
 // Get team user by login.
-func (a *Activities) GetTeamUser(ctx context.Context, loginID string) (*TeamUser, error) {
+func (a *Activities) GetTeamUser(ctx context.Context, id string) (*TeamUser, error) {
 	temp := &TeamUser{}
 
-	if err := db.Get(temp, db.QueryParams{"user_login_id": loginID}); err != nil {
+	if err := db.Get(temp, db.QueryParams{"user_login_id": id}); err != nil {
 		return nil, err
 	}
 

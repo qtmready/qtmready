@@ -518,7 +518,7 @@ func (s *EventTestSuite) Test_PullRequest_Create_MarshalJSON() {
 		Body:           "This is a test pull request",
 		State:          "open",
 		MergeCommitSHA: &s.sha,
-		Author:         "testuser",
+		AuthorID:       12,
 		HeadBranch:     "test-branch",
 		BaseBranch:     "main",
 		Timestamp:      time.Now(),
@@ -549,7 +549,7 @@ func (s *EventTestSuite) Test_PullRequest_Create_MarshalJSON() {
     "body": "This is a test pull request",
     "state": "open",
     "merge_commit_sha": "a1b2c3d4e5f678901234567890abcdef12345678",
-    "author": "testuser",
+    "author_id": 12,
     "head_branch": "test-branch",
     "base_branch": "main",
     "timestamp": "%s"
@@ -580,7 +580,7 @@ func (s *EventTestSuite) Test_PullRequest_Create_UnmarshalJSON() {
 		Body:           "This is a test pull request",
 		State:          "open",
 		MergeCommitSHA: &s.sha,
-		Author:         "testuser",
+		AuthorID:       12,
 		HeadBranch:     "test-branch",
 		BaseBranch:     "main",
 		Timestamp:      time.Now(),
@@ -614,7 +614,7 @@ func (s *EventTestSuite) Test_PullRequest_Create_UnmarshalJSON() {
 		s.Equal(event.Payload.State, unmarshal.Payload.State)
 		s.WithinDuration(event.Payload.Timestamp, unmarshal.Payload.Timestamp, time.Second)
 		s.Equal(event.Payload.MergeCommitSHA, unmarshal.Payload.MergeCommitSHA)
-		s.Equal(event.Payload.Author, unmarshal.Payload.Author)
+		s.Equal(event.Payload.AuthorID, unmarshal.Payload.AuthorID)
 		s.Equal(event.Payload.HeadBranch, unmarshal.Payload.HeadBranch)
 		s.Equal(event.Payload.BaseBranch, unmarshal.Payload.BaseBranch)
 	}
@@ -627,7 +627,7 @@ func (s *EventTestSuite) Test_PullRequest_Create_Deflate() {
 		Body:           "This is a test pull request",
 		State:          "open",
 		MergeCommitSHA: &s.sha,
-		Author:         "testuser",
+		AuthorID:       12,
 		HeadBranch:     "test-branch",
 		BaseBranch:     "main",
 		Timestamp:      time.Now(),
@@ -660,7 +660,7 @@ func (s *EventTestSuite) Test_PullRequest_Create_Deflate() {
 		s.Equal(event.Payload.State, deflate.Payload.State)
 		s.WithinDuration(event.Payload.Timestamp, deflate.Payload.Timestamp, time.Second)
 		s.Equal(event.Payload.MergeCommitSHA, deflate.Payload.MergeCommitSHA)
-		s.Equal(event.Payload.Author, deflate.Payload.Author)
+		s.Equal(event.Payload.AuthorID, deflate.Payload.AuthorID)
 		s.Equal(event.Payload.HeadBranch, deflate.Payload.HeadBranch)
 		s.Equal(event.Payload.BaseBranch, deflate.Payload.BaseBranch)
 	}
@@ -766,7 +766,7 @@ func (s *EventTestSuite) Test_PullRequestReview_Create_MarshalJSON() {
 	review := &defs.PullRequestReview{
 		ID:                1,
 		State:             "approved",
-		Author:            "testuser",
+		AuthorID:          12,
 		PullRequestNumber: 123,
 		Branch:            "main",
 		Timestamp:         time.Now(),
@@ -796,7 +796,7 @@ func (s *EventTestSuite) Test_PullRequestReview_Create_MarshalJSON() {
     "pull_request_number": 123,
     "branch": "main",
     "state": "approved",
-    "author": "testuser",
+    "author_id": 12,
     "submitted_at": "%s"
   }
 }`,
@@ -822,7 +822,7 @@ func (s *EventTestSuite) Test_PullRequestReview_Create_UnmarshalJSON() {
 	review := &defs.PullRequestReview{
 		ID:                1,
 		State:             "approved",
-		Author:            "testuser",
+		AuthorID:          12,
 		PullRequestNumber: 123,
 		Timestamp:         time.Now(),
 	}
@@ -851,7 +851,7 @@ func (s *EventTestSuite) Test_PullRequestReview_Create_UnmarshalJSON() {
 		s.Equal(event.Subject.TeamID, unmarshal.Subject.TeamID)
 		s.Equal(event.Payload.ID, unmarshal.Payload.ID)
 		s.Equal(event.Payload.State, unmarshal.Payload.State)
-		s.Equal(event.Payload.Author, unmarshal.Payload.Author)
+		s.Equal(event.Payload.AuthorID, unmarshal.Payload.AuthorID)
 		s.Equal(event.Payload.PullRequestNumber, unmarshal.Payload.PullRequestNumber)
 		s.WithinDuration(event.Payload.Timestamp, unmarshal.Payload.Timestamp, time.Second)
 	}
@@ -861,7 +861,7 @@ func (s *EventTestSuite) Test_PullRequestReview_Create_Flatten() {
 	review := &defs.PullRequestReview{
 		ID:                1,
 		State:             "approved",
-		Author:            "testuser",
+		AuthorID:          12,
 		PullRequestNumber: 123,
 		Timestamp:         time.Now(),
 	}
@@ -892,7 +892,7 @@ func (s *EventTestSuite) Test_PullRequestReview_Create_Deflate() {
 	review := &defs.PullRequestReview{
 		ID:                1,
 		State:             "approved",
-		Author:            "testuser",
+		AuthorID:          12,
 		PullRequestNumber: 123,
 		Timestamp:         time.Now(),
 	}
@@ -917,22 +917,6 @@ func (s *EventTestSuite) Test_PullRequestReview_Create_Deflate() {
 		s.Equal(event.Context.Timestamp.Unix(), deflate.Context.Timestamp.Unix())
 		s.Equal(event.Subject, deflate.Subject)
 	}
-}
-
-func (s *EventTestSuite) Test_PullRequestReview_Create_SetParent() {
-	review := &defs.PullRequestReview{
-		ID:                1,
-		State:             "approved",
-		Author:            "testuser",
-		PullRequestNumber: 123,
-		Timestamp:         time.Now(),
-	}
-
-	event := review.ToEvent(defs.RepoProviderGithub, s.subject, defs.EventActionCreated)
-
-	// Test setting the parent ID
-	event.SetParent(s.parent)
-	s.Equal(s.parent, event.Context.ParentID, "Parent ID should be set correctly")
 }
 
 func (s *EventTestSuite) Test_PullRequestLabel_Create_MarshalJSON() {
@@ -986,7 +970,6 @@ func (s *EventTestSuite) Test_PullRequestLabel_Create_MarshalJSON() {
 		s.Equal(expected, string(marshal))
 	}
 }
-
 func TestEventTestSuite(t *testing.T) {
 	suite.Run(t, new(EventTestSuite))
 }

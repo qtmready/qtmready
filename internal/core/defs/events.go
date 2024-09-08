@@ -41,28 +41,28 @@ type (
 
 	// Commit represents a git commit.
 	Commit struct {
-		SHA       string    `json:"sha"`       // SHA is the SHA of the commit.
-		Message   string    `json:"message"`   // Message is the commit message.
-		URL       string    `json:"url"`       // URL is the URL of the commit.
-		Added     []string  `json:"added"`     // Added is a list of files added in the commit.
-		Removed   []string  `json:"removed"`   // Removed is a list of files removed in the commit.
-		Modified  []string  `json:"modified"`  // Modified is a list of files modified in the commit.
-		Author    string    `json:"author"`    // Author is the author of the commit.
-		Committer string    `json:"committer"` // Committer is the committer of the commit.
-		Timestamp time.Time `json:"timestamp"` // Timestamp is the timestamp of the commit.
+		SHA       string    `json:"sha"`          // SHA is the SHA of the commit.
+		Message   string    `json:"message"`      // Message is the commit message.
+		URL       string    `json:"url"`          // URL is the URL of the commit.
+		Added     []string  `json:"added"`        // Added is a list of files added in the commit.
+		Removed   []string  `json:"removed"`      // Removed is a list of files removed in the commit.
+		Modified  []string  `json:"modified"`     // Modified is a list of files modified in the commit.
+		Author    string    `json:"author"`       // Author is the author of the commit.
+		Committer string    `json:"committer_id"` // Committer is the committer of the commit.
+		Timestamp time.Time `json:"timestamp"`    // Timestamp is the timestamp of the commit.
 	}
 
 	Commits []Commit
 
 	// Push represents a git push.
 	Push struct {
-		Ref        string    `json:"ref"`        // Ref is the ref that was pushed to.
-		Before     string    `json:"before"`     // Before is the SHA of the commit before the push.
-		After      string    `json:"after"`      // After is the SHA of the commit after the push.
-		Repository string    `json:"repository"` // Repository is the repository that was pushed to.
-		Pusher     string    `json:"pusher"`     // Pusher is the user who pushed the changes.
-		Commits    Commits   `json:"commits"`    // Commits is a list of commits that were pushed.
-		Timestamp  time.Time `json:"timestamp"`  // Timestamp is the timestamp of the push.
+		Ref        string       `json:"ref"`        // Ref is the ref that was pushed to.
+		Before     string       `json:"before"`     // Before is the SHA of the commit before the push.
+		After      string       `json:"after"`      // After is the SHA of the commit after the push.
+		Repository string       `json:"repository"` // Repository is the repository that was pushed to.
+		SenderID   shared.Int64 `json:"sender_id"`  // SenderID is the id of the user who pushed the changes.
+		Commits    Commits      `json:"commits"`    // Commits is a list of commits that were pushed.
+		Timestamp  time.Time    `json:"timestamp"`  // Timestamp is the timestamp of the push.
 	}
 
 	// PullRequest represents a pull request.
@@ -72,7 +72,7 @@ type (
 		Body           string       `json:"body"`                       // Body is the pull request body.
 		State          string       `json:"state"`                      // State is the pull request state.
 		MergeCommitSHA *string      `json:"merge_commit_sha,omitempty"` // MergeCommitSHA is the SHA of the merge commit.
-		Author         string       `json:"author"`                     // Author is the author of the pull request.
+		AuthorID       shared.Int64 `json:"author_id"`                  // AuthorID is the author_id of the pull request.
 		HeadBranch     string       `json:"head_branch"`                // HeadBranch is the head branch of the pull request.
 		BaseBranch     string       `json:"base_branch"`                // BaseBranch is the base branch of the pull request.
 		Timestamp      time.Time    `json:"timestamp"`                  // Timestamp is the timestamp when the pull request was created.
@@ -84,7 +84,7 @@ type (
 		PullRequestNumber shared.Int64 `json:"pull_request_number"` // PullRequestNumber is the pull request number.
 		Branch            string       `json:"branch"`              // Branch is the branch the review belongs to.
 		State             string       `json:"state"`               // State is the pull request review state.
-		Author            string       `json:"author"`              // Author is the author of the review.
+		AuthorID          shared.Int64 `json:"author_id"`           // AuthorID is the author of the review.
 		Timestamp         time.Time    `json:"submitted_at"`        // SubmittedAt is the timestamp when the review was submitted.
 	}
 
@@ -106,7 +106,7 @@ type (
 		CommitSHA         string        `json:"commit_sha"`            // CommitSHA is the SHA of the commit associated with the comment.
 		Path              string        `json:"path"`                  // Path is the path to the file where the comment was made.
 		Position          shared.Int64  `json:"position"`              // Position is the line number where the comment was made.
-		Author            string        `json:"author"`                // Author is the author of the comment.
+		AuthorID          shared.Int64  `json:"author_id"`             // AuthorID is the author_id of the comment.
 		Timestamp         time.Time     `json:"timestamp"`             // Timestamp is the timestamp of the comment.
 	}
 
@@ -210,6 +210,8 @@ const (
 	EventActionCreated   EventAction = "created"   // EventActionCreated is the action of a created event.
 	EventActionDeleted   EventAction = "deleted"   // EventActionDeleted is the action of a deleted event.
 	EventActionUpdated   EventAction = "updated"   // EventActionUpdated is the action of an updated event.
+	EventActionForced    EventAction = "forced"    // EventActionForced is the action of a forced event.
+	EventActionReopened  EventAction = "reopened"  // EventActionReopened is the action of a reopened event.
 	EventActionClosed    EventAction = "closed"    // EventActionClosed is the action of a closed event.
 	EventActionMerged    EventAction = "merged"    // EventActionMerged is the action of a merged event.
 	EventActionStarted   EventAction = "started"   // EventActionStarted is the action of a started event.
@@ -223,7 +225,7 @@ var (
 	// Metadata for FlatEvent table.
 	flatEventMeta = itable.Metadata{
 		M: &table.Metadata{
-			Name: "flat_events__v_0_1",
+			Name: "flat_events__v_0_1", // see readme for naming convention
 			Columns: []string{"version",
 				"id",
 				"parent_id",
