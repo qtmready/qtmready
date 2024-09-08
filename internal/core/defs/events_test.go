@@ -50,8 +50,9 @@ func (s *EventTestSuite) SetupSuite() {
 	s.sha = "a1b2c3d4e5f678901234567890abcdef12345678"
 	s.subject = defs.EventSubject{
 		ID:     gocql.MustRandomUUID(),
-		TeamID: gocql.MustRandomUUID(),
 		Name:   "repos",
+		TeamID: gocql.MustRandomUUID(),
+		UserID: gocql.MustRandomUUID(),
 	}
 }
 
@@ -83,7 +84,8 @@ func (s *EventTestSuite) Test_Branch_Create_MarshalJSON() {
   "subject": {
     "id": "%s",
     "name": "%s",
-    "team_id": "%s"
+    "team_id": "%s",
+    "user_id": "%s"
   },
   "payload": {
     "ref": "test-branch",
@@ -95,6 +97,7 @@ func (s *EventTestSuite) Test_Branch_Create_MarshalJSON() {
 		s.subject.ID,
 		s.subject.Name,
 		s.subject.TeamID,
+		s.subject.UserID,
 	)
 
 	// Test Marshal to JSON
@@ -235,7 +238,8 @@ func (s *EventTestSuite) Test_Branch_Delete_MarshalJSON() {
   "subject": {
     "id": "%s",
     "name": "%s",
-    "team_id": "%s"
+    "team_id": "%s",
+    "user_id": "%s"
   },
   "payload": {
     "ref": "test-branch",
@@ -247,6 +251,7 @@ func (s *EventTestSuite) Test_Branch_Delete_MarshalJSON() {
 		s.subject.ID,
 		s.subject.Name,
 		s.subject.TeamID,
+		s.subject.UserID,
 	)
 
 	// Test Marshal to JSON
@@ -387,7 +392,8 @@ func (s *EventTestSuite) Test_Tag_Create_MarshalJSON() {
   "subject": {
     "id": "%s",
     "name": "%s",
-    "team_id": "%s"
+    "team_id": "%s",
+    "user_id": "%s"
   },
   "payload": {
     "ref": "v1.0.0",
@@ -399,6 +405,7 @@ func (s *EventTestSuite) Test_Tag_Create_MarshalJSON() {
 		s.subject.ID,
 		s.subject.Name,
 		s.subject.TeamID,
+		s.subject.UserID,
 	)
 
 	// Test Marshal to JSON
@@ -541,7 +548,8 @@ func (s *EventTestSuite) Test_PullRequest_Create_MarshalJSON() {
   "subject": {
     "id": "%s",
     "name": "%s",
-    "team_id": "%s"
+    "team_id": "%s",
+    "user_id": "%s"
   },
   "payload": {
     "number": 1,
@@ -560,6 +568,7 @@ func (s *EventTestSuite) Test_PullRequest_Create_MarshalJSON() {
 		s.subject.ID,
 		s.subject.Name,
 		s.subject.TeamID,
+		s.subject.UserID,
 		pr.Timestamp.Format(time.RFC3339Nano),
 	)
 
@@ -789,7 +798,8 @@ func (s *EventTestSuite) Test_PullRequestReview_Create_MarshalJSON() {
   "subject": {
     "id": "%s",
     "name": "%s",
-    "team_id": "%s"
+    "team_id": "%s",
+    "user_id": "%s"
   },
   "payload": {
     "id": 1,
@@ -805,6 +815,7 @@ func (s *EventTestSuite) Test_PullRequestReview_Create_MarshalJSON() {
 		s.subject.ID,
 		s.subject.Name,
 		s.subject.TeamID,
+		s.subject.UserID,
 		review.Timestamp.Format(time.RFC3339Nano),
 	)
 
@@ -944,7 +955,8 @@ func (s *EventTestSuite) Test_PullRequestLabel_Create_MarshalJSON() {
   "subject": {
     "id": "%s",
     "name": "%s",
-    "team_id": "%s"
+    "team_id": "%s",
+    "user_id": "%s"
   },
   "payload": {
     "name": "bug",
@@ -958,6 +970,7 @@ func (s *EventTestSuite) Test_PullRequestLabel_Create_MarshalJSON() {
 		s.subject.ID,
 		s.subject.Name,
 		s.subject.TeamID,
+		s.subject.UserID,
 		label.Timestamp.Format(time.RFC3339Nano),
 	)
 
