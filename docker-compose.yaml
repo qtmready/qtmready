@@ -2,7 +2,7 @@ services:
   # common
   database:
     container_name: database
-    image: scylladb/scylla:6.0.1
+    image: scylladb/scylla:6.1.1
     ports:
       - "9042:9042"
     volumes:
@@ -79,7 +79,7 @@ services:
     container_name: ctrlplane-job-migrate
     image: cosmtrek/air:v1.52.3
     environment:
-      SERVICE_NAME: job::migrate
+      SERVICE_NAME: migrate
       CASSANDRA_MIGRATION_SOURCE_URL: file:///migrate/internal/db/migrations
     env_file:
       - ./.env
@@ -100,8 +100,7 @@ services:
     image: cosmtrek/air:v1.52.3
     environment:
       GOTOOLCHAIN: auto
-      SERVICE_NAME: migrate
-      DEBUG: true
+      SERVICE_NAME: api
     env_file:
       - ./.env
     ports:
@@ -123,8 +122,7 @@ services:
     image: cosmtrek/air:v1.52.3
     environment:
       GOTOOLCHAIN: auto
-      SERVICE_NAME: mothership::worker
-      DEBUG: true
+      SERVICE_NAME: mothership
       LOG_SKIPPER: 2
     env_file:
       - ./.env

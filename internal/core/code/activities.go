@@ -105,17 +105,7 @@ func (a *Activities) SignalQueue(ctx context.Context, payload *defs.RepoIOSignal
 // It uses the RepoIO interface to get the url with the oauth token in it.
 // If an error occurs retrieving the clone URL, it is returned.
 func (a *Activities) CloneBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
-	url, err := kernel.
-		Instance().
-		RepoIO(payload.Repo.Provider).
-		TokenizedCloneURL(
-			ctx,
-			&defs.RepoIOProviderInfo{
-				InstallationID: payload.Push.InstallationID,
-				RepoName:       payload.Push.RepoName,
-				RepoOwner:      payload.Push.RepoOwner,
-			},
-		)
+	url, err := kernel.Instance().RepoIO(payload.Repo.Provider).TokenizedCloneURL(ctx, payload.Info)
 	if err != nil {
 		return err
 	}

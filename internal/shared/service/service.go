@@ -35,7 +35,7 @@ type (
 	config struct {
 		Name            string `env:"SERVICE_NAME" env-default:"service"`
 		Debug           bool   `env:"DEBUG" env-default:"false"`
-		Secret          string `env:"SECRET" env-default:""`
+		Secret          string `env:"SECRET" env-default:"replace"`
 		Version         string `env:"VERSION" env-default:"dev"`
 		LogSkipper      int    `env:"LOG_SKIPPER" env-default:"1"`
 		CloudRunService string `env:"K_SERVICE" env-default:"unset"`

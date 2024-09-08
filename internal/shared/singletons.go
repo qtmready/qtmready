@@ -137,11 +137,14 @@ func Temporal() temporal.Temporal {
 
 // InitServiceForTest initializes the global service instance for testing.
 func InitServiceForTest() {
-	svc = service.New(
-		service.WithName("test"),
-		service.WithDebug(true),
-		service.WithSecret(password.MustGenerate(32, 8, 0, false, false)),
-	)
+	svcOnce.Do(func() {
+		secret := password.MustGenerate(32, 8, 0, false, false)[0:32]
+		svc = service.New(
+			service.WithName("test"),
+			service.WithDebug(true),
+			service.WithSecret(secret),
+		)
+	})
 }
 
 func CLI() cli.Cli {

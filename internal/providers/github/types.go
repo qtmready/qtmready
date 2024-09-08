@@ -452,6 +452,7 @@ func (coe *CreateOrDeleteEvent) normalize(repo *defs.Repo) *defs.Event[defs.Bran
 		Payload: coe.payload(),
 	}
 
+	event.SetSource(coe.Repository.URL)
 	event.SetActionCreated()
 	event.SetScopeBranch()
 
@@ -499,6 +500,7 @@ func (pe PushEvent) normalize(repo *defs.Repo) *defs.Event[defs.Push, defs.RepoP
 		Payload: pe.payload(),
 	}
 
+	event.SetSource(pe.Repository.URL)
 	event.SetScopePush()
 	event.SetActionCreated()
 
@@ -536,6 +538,7 @@ func (pre PullRequestEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequ
 		Payload: pre.payload(),
 	}
 
+	event.SetSource(pre.Repository.URL)
 	event.SetScopePullRequest()
 
 	switch pre.Action {
@@ -625,6 +628,7 @@ func (pre PullRequestReviewEvent) normalize(repo *defs.Repo) *defs.Event[defs.Pu
 		Payload: pre.payload(),
 	}
 
+	event.SetSource(pre.Repository.URL)
 	event.SetScopePullRequestReview()
 
 	switch pre.Action {
@@ -673,6 +677,7 @@ func (pre PullRequestReviewCommentEvent) normalize(repo *defs.Repo) *defs.Event[
 		Payload: pre.payload(),
 	}
 
+	event.SetSource(pre.Repository.URL)
 	event.SetScopePullRequestComment()
 
 	switch pre.Action {

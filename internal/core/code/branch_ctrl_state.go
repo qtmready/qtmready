@@ -27,6 +27,7 @@ import (
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/comm"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
@@ -42,6 +43,7 @@ type (
 		last_commit *defs.Commit      // last_commit is the most recent commit on the branch.
 		pr          *defs.PullRequest // pr is the pull request associated with the branch, if any.
 		interval    timers.Interval   // interval is the stale check duration.
+		owners      []auth.TeamUser   // owners are the branch owners, or the pr owner.
 	}
 )
 
@@ -70,13 +72,13 @@ func (state *RepoIOBranchCtrlState) on_push(ctx workflow.Context) shared.Channel
 // on_rebase handles rebase events for the branch.
 func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		push := &defs.RepoIOSignalPushPayload{}
-		state.rx(ctx, rx, push) // Using base_ctrl.rx
+		event := &defs.Event[defs.Push, defs.RepoProvider]{} // Use the Event type
+		state.rx(ctx, rx, event)                             // Using base_ctrl.rx
 
 		session := state.create_session(ctx)
 		defer state.finish_session(session)
 
-		cloned := state.clone_at_commit(session, push)
+		cloned := state.clone_at_commit(session, &event.Payload)
 		if cloned == nil {
 			return
 		}
@@ -84,7 +86,7 @@ func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.Chann
 		state.fetch_default_branch(session, cloned)
 
 		if err := state.rebase_at_commit(session, cloned); err != nil {
-			state.warn_conflict(session, push)
+			state.warn_conflict(session, &event.Payload)
 			state.remove_cloned(session, cloned)
 
 			return
@@ -220,11 +222,11 @@ func (state *RepoIOBranchCtrlState) finish_session(ctx workflow.Context) {
 }
 
 // clone_at_commit clones the repository at a specific commit.
-func (state *RepoIOBranchCtrlState) clone_at_commit(ctx workflow.Context, push *defs.RepoIOSignalPushPayload) *defs.RepoIOClonePayload {
+func (state *RepoIOBranchCtrlState) clone_at_commit(ctx workflow.Context, push *defs.Push) *defs.RepoIOClonePayload {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
-	cloned := &defs.RepoIOClonePayload{Repo: state.repo, Push: push, Branch: state.branch(ctx)}
+	cloned := &defs.RepoIOClonePayload{Repo: state.repo, Push: push, Info: state.info, Branch: state.branch(ctx)}
 	_ = workflow.SideEffect(ctx, func(ctx workflow.Context) any { return "/tmp/" + uuid.New().String() }).Get(&cloned.Path)
 
 	_ = state.do(ctx, "clone_at_commit", state.activities.CloneBranch, cloned, nil)
@@ -325,15 +327,15 @@ func (state *RepoIOBranchCtrlState) warn_stale(ctx workflow.Context) {
 }
 
 // warn_conflict sends a warning message if there's a merge conflict during rebase.
-func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, push *defs.RepoIOSignalPushPayload) {
+func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, push *defs.Push) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
-	for_user := push.User != nil && push.User.IsMessageProviderLinked
-	msg := comm.NewMergeConflictMessage(push, state.repo, state.branch(ctx), for_user)
-	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
+	// for_user := push.User != nil && push.User.IsMessageProviderLinked
+	// msg := comm.NewMergeConflictMessage(push, state.repo, state.branch(ctx), for_user)
+	// io := kernel.Instance().MessageIO(state.repo.MessageProvider)
 
-	_ = state.do(ctx, "warn_merge_conflict", io.SendMergeConflictsMessage, msg, nil)
+	// _ = state.do(ctx, "warn_merge_conflict", io.SendMergeConflictsMessage, msg, nil)
 }
 
 // NewBranchCtrlState creates a new RepoIOBranchCtrlState instance.

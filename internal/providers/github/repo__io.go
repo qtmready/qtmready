@@ -153,9 +153,8 @@ func (r *RepoIO) DetectChanges(ctx context.Context, payload *defs.RepoIODetectCh
 // Clone shallow clones a repository at a sepcific commit.
 // see https://stackoverflow.com/a/76334845
 func (r *RepoIO) TokenizedCloneURL(ctx context.Context, payload *defs.RepoIOProviderInfo) (string, error) {
-	installation, err := ghinstallation.New(
-		http.DefaultTransport, Instance().AppID, payload.InstallationID.Int64(), []byte(Instance().PrivateKey),
-	)
+	installation, err := ghinstallation.
+		New(http.DefaultTransport, Instance().AppID, payload.InstallationID.Int64(), []byte(Instance().PrivateKey))
 
 	if err != nil {
 		return "", err

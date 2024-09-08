@@ -152,10 +152,11 @@ type (
 	}
 
 	RepoIOClonePayload struct {
-		Repo   *Repo                    `json:"repo"`   // Repo is the db record of the repo
-		Push   *RepoIOSignalPushPayload `json:"push"`   // Push event payload
-		Branch string                   `json:"branch"` // Branch to clone
-		Path   string                   `json:"path"`   // Path to clone to
+		Repo   *Repo               `json:"repo"`   // Repo is the db record of the repo
+		Push   *Push               `json:"push"`   // Push event payload
+		Info   *RepoIOProviderInfo `json:"info"`   // Info is the repo info
+		Branch string              `json:"branch"` // Branch to clone
+		Path   string              `json:"path"`   // Path to clone to
 	}
 
 	RepoIOPushBranchPayload struct {

@@ -261,7 +261,9 @@ func (team *Team) GetTable() itable.ITable {
 	return teamTable
 }
 
-// TeamUser defines model for TeamUser.
+// TeamUser defines the user in a team and the role they have in the team.
+// Please not that auth.User is our source of truth for the user,
+// so we should only use this to get to the user..
 type TeamUser struct {
 	CreatedAt               time.Time               `cql:"created_at" json:"created_at"`
 	ID                      gocql.UUID              `cql:"id" json:"id"`

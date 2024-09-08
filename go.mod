@@ -1,8 +1,6 @@
 module go.breu.io/quantm
 
-go 1.22.0
-
-toolchain go1.23.1
+go 1.23
 
 require (
 	cloud.google.com/go/logging v1.11.0
@@ -110,7 +108,7 @@ require (
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/klauspost/compress v1.17.4 // indirect
-	github.com/labstack/gommon v0.4.2 // indirect
+	github.com/labstack/gommon v0.4.2
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
