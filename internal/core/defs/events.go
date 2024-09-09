@@ -41,15 +41,15 @@ type (
 
 	// Commit represents a git commit.
 	Commit struct {
-		SHA         string    `json:"sha"`          // SHA is the SHA of the commit.
-		Message     string    `json:"message"`      // Message is the commit message.
-		URL         string    `json:"url"`          // URL is the URL of the commit.
-		Added       []string  `json:"added"`        // Added is a list of files added in the commit.
-		Removed     []string  `json:"removed"`      // Removed is a list of files removed in the commit.
-		Modified    []string  `json:"modified"`     // Modified is a list of files modified in the commit.
-		Author      string    `json:"author"`       // Author is the author of the commit.
-		CommitterID string    `json:"committer_id"` // Committer is the committer of the commit.
-		Timestamp   time.Time `json:"timestamp"`    // Timestamp is the timestamp of the commit.
+		SHA       string    `json:"sha"`       // SHA is the SHA of the commit.
+		Message   string    `json:"message"`   // Message is the commit message.
+		URL       string    `json:"url"`       // URL is the URL of the commit.
+		Added     []string  `json:"added"`     // Added is a list of files added in the commit.
+		Removed   []string  `json:"removed"`   // Removed is a list of files removed in the commit.
+		Modified  []string  `json:"modified"`  // Modified is a list of files modified in the commit.
+		Author    string    `json:"author"`    // Author is the author of the commit.
+		Committer string    `json:"committer"` // Committer is the committer of the commit.
+		Timestamp time.Time `json:"timestamp"` // Timestamp is the timestamp of the commit.
 	}
 
 	Commits []Commit

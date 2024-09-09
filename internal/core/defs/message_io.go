@@ -31,8 +31,8 @@ type (
 		BotToken    string `json:"bot_token"`
 		RepoName    string `json:"repo_name"`
 		BranchName  string `json:"branch_name"`
-		Sender      string `json:"author"`
-		SenderURL   string `json:"author_url"`
+		Author      string `json:"author"`
+		AuthorURL   string `json:"author_url"`
 		IsChannel   bool   `json:"is_channel"`
 	}
 

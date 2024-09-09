@@ -68,7 +68,7 @@ func formatLineThresholdExceededAttachment(payload *defs.MessageIOLineExeededPay
 	}
 
 	if payload.MessageIOPayload.IsChannel {
-		fields = append(fields, createPushedByField(payload.MessageIOPayload.Sender, payload.MessageIOPayload.SenderURL, true))
+		fields = append(fields, createPushedByField(payload.MessageIOPayload.Author, payload.MessageIOPayload.AuthorURL, true))
 	}
 
 	return slack.Attachment{
@@ -95,7 +95,7 @@ func formatMergeConflictAttachment(payload *defs.MergeConflictMessage) slack.Att
 	}
 
 	if payload.MessageIOPayload.IsChannel {
-		fields = append(fields, createPushedByField(payload.MessageIOPayload.Sender, payload.MessageIOPayload.SenderURL, true))
+		fields = append(fields, createPushedByField(payload.MessageIOPayload.Author, payload.MessageIOPayload.AuthorURL, true))
 	}
 
 	return slack.Attachment{

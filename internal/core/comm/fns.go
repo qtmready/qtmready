@@ -46,29 +46,27 @@ func NewMergeConflictMessage(
 		CommitUrl: fmt.Sprintf("%s/commits/%s", event.Context.Source, event.Payload.After),
 	}
 
-	// set the payload for user message provider
-	// if for_user {
-	// 	msg.MessageIOPayload = &defs.MessageIOPayload{
-	// 		WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
-	// 		ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
-	// 		BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
-	// 		RepoName:    repo.Name,
-	// 		BranchName:  branch,
-	// 		IsChannel:   false,
-	// 	}
-	// } else {
-	// 	// set the payload for channel message provider
-	// 	msg.MessageIOPayload = &defs.MessageIOPayload{
-	// 		WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
-	// 		ChannelID:   repo.MessageProviderData.Slack.ChannelID,
-	// 		BotToken:    repo.MessageProviderData.Slack.BotToken,
-	// 		Author:      payload.Author,
-	// 		AuthorUrl:   fmt.Sprintf("https://github.com/%s", payload.Author),
-	// 		RepoName:    repo.Name,
-	// 		BranchName:  branch,
-	// 		IsChannel:   true,
-	// 	}
-	// }
+	msg.MessageIOPayload = &defs.MessageIOPayload{
+		WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
+		ChannelID:   repo.MessageProviderData.Slack.ChannelID,
+		BotToken:    repo.MessageProviderData.Slack.BotToken,
+		Author:      event.Payload.Commits.Latest().Author,
+		AuthorURL:   fmt.Sprintf("https://github.com/%s", event.Payload.Commits.Latest().Author),
+		RepoName:    repo.Name,
+		BranchName:  branch,
+		IsChannel:   false,
+	}
+
+	if author != nil {
+		msg.MessageIOPayload = &defs.MessageIOPayload{
+			WorkspaceID: author.MessageProviderUserInfo.Slack.ProviderTeamID,
+			ChannelID:   author.MessageProviderUserInfo.Slack.ProviderUserID,
+			BotToken:    author.MessageProviderUserInfo.Slack.BotToken,
+			RepoName:    repo.Name,
+			BranchName:  branch,
+			IsChannel:   false,
+		}
+	}
 
 	return msg
 }
@@ -107,8 +105,8 @@ func NewNumberOfLinesExceedMessage(
 			WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
 			ChannelID:   repo.MessageProviderData.Slack.ChannelID,
 			BotToken:    repo.MessageProviderData.Slack.BotToken,
-			Sender:      payload.Author,
-			SenderURL:   fmt.Sprintf("https://github.com/%s", payload.Author),
+			Author:      payload.Author,
+			AuthorURL:   fmt.Sprintf("https://github.com/%s", payload.Author),
 			RepoName:    repo.Name,
 			BranchName:  branch,
 			IsChannel:   true,

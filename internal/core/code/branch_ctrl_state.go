@@ -357,6 +357,8 @@ func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, event *d
 	msg := comm.NewMergeConflictMessage(event, state.repo, state.author, state.branch(ctx))
 	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
 
+	state.log(ctx, "warn_conflict").Info("message", "payload", msg, "event", event)
+
 	_ = state.do(ctx, "warn_merge_conflict", io.SendMergeConflictsMessage, msg, nil)
 }
 

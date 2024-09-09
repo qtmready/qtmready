@@ -501,14 +501,14 @@ type (
 // Author, Committer, Timestamp, Added, Removed, and Modified.
 func (c Commit) normalize() defs.Commit {
 	return defs.Commit{
-		SHA:         c.ID,
-		Message:     c.Message,
-		URL:         c.URL,
-		Author:      c.Author.Username,
-		CommitterID: c.Committer.Username,
-		Timestamp:   c.Timestamp.Time(),
-		Added:       c.Added,
-		Removed:     c.Removed,
-		Modified:    c.Modified,
+		SHA:       c.ID,
+		Message:   c.Message,
+		URL:       c.URL,
+		Author:    c.Author.Username,
+		Committer: c.Committer.Username,
+		Timestamp: c.Timestamp.Time(),
+		Added:     c.Added,
+		Removed:   c.Removed,
+		Modified:  c.Modified,
 	}
 }

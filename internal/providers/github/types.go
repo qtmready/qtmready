@@ -410,7 +410,7 @@ func (p *GithubWorkflowRunEvent) SenderID() string {
 //
 // It takes a `defs.Repo` pointer and returns a `gocql.UUID`, `defs.EventVersion`, `defs.EventContext`, and `defs.EventSubject`
 // that can be used to construct a `defs.Event`.
-func prelude(repo *defs.Repo) (gocql.UUID, defs.EventVersion, defs.EventContext[defs.RepoProvider], defs.EventSubject) {
+func prelude(repo *defs.Repo, user *auth.TeamUser) (gocql.UUID, defs.EventVersion, defs.EventContext[defs.RepoProvider], defs.EventSubject) {
 	id, _ := db.NewUUID()
 	version := defs.EventVersionDefault
 
@@ -423,6 +423,7 @@ func prelude(repo *defs.Repo) (gocql.UUID, defs.EventVersion, defs.EventContext[
 		ID:     repo.ID,
 		Name:   "repos",
 		TeamID: repo.TeamID,
+		UserID: user.UserID,
 	}
 
 	return id, version, ctx, sub
@@ -442,8 +443,8 @@ func (coe *CreateOrDeleteEvent) payload() defs.BranchOrTag {
 //
 // It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject.
 // The action is set to either "created" or "deleted" based on the `IsCreated` flag.
-func (coe *CreateOrDeleteEvent) normalize(repo *defs.Repo) *defs.Event[defs.BranchOrTag, defs.RepoProvider] {
-	id, version, ctx, sub := prelude(repo)
+func (coe *CreateOrDeleteEvent) normalize(repo *defs.Repo, user *auth.TeamUser) *defs.Event[defs.BranchOrTag, defs.RepoProvider] {
+	id, version, ctx, sub := prelude(repo, user)
 	event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{
 		ID:      id,
 		Version: version,
@@ -490,8 +491,8 @@ func (pe PushEvent) payload() defs.Push {
 // normalize converts the PushEvent struct to an Event struct.
 //
 // It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject.
-func (pe PushEvent) normalize(repo *defs.Repo) *defs.Event[defs.Push, defs.RepoProvider] {
-	id, version, ctx, sub := prelude(repo)
+func (pe PushEvent) normalize(repo *defs.Repo, user *auth.TeamUser) *defs.Event[defs.Push, defs.RepoProvider] {
+	id, version, ctx, sub := prelude(repo, user)
 	event := &defs.Event[defs.Push, defs.RepoProvider]{
 		ID:      id,
 		Version: version,
@@ -528,8 +529,8 @@ func (pre PullRequestEvent) payload() defs.PullRequest {
 //
 // It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject.
 // The action is set based on the `Action` field of the PullRequestEvent struct and whether MergedCommitSHA is set.
-func (pre PullRequestEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequest, defs.RepoProvider] {
-	id, version, ctx, sub := prelude(repo)
+func (pre PullRequestEvent) normalize(repo *defs.Repo, user *auth.TeamUser) *defs.Event[defs.PullRequest, defs.RepoProvider] {
+	id, version, ctx, sub := prelude(repo, user)
 	event := &defs.Event[defs.PullRequest, defs.RepoProvider]{
 		ID:      id,
 		Version: version,
@@ -618,8 +619,8 @@ func (pre PullRequestReviewEvent) payload() defs.PullRequestReview {
 //
 // It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject.
 // The action is set based on the `Action` field of the PullRequestReviewEvent struct.
-func (pre PullRequestReviewEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequestReview, defs.RepoProvider] {
-	id, version, ctx, sub := prelude(repo)
+func (pre PullRequestReviewEvent) normalize(repo *defs.Repo, user *auth.TeamUser) *defs.Event[defs.PullRequestReview, defs.RepoProvider] {
+	id, version, ctx, sub := prelude(repo, user)
 	event := &defs.Event[defs.PullRequestReview, defs.RepoProvider]{
 		ID:      id,
 		Version: version,
@@ -667,8 +668,8 @@ func (pre PullRequestReviewCommentEvent) payload() defs.PullRequestComment {
 //
 // It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject.
 // The action is set based on the `Action` field of the PullRequestReviewCommentEvent struct.
-func (pre PullRequestReviewCommentEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequestComment, defs.RepoProvider] {
-	id, version, ctx, sub := prelude(repo)
+func (pre PullRequestReviewCommentEvent) normalize(repo *defs.Repo, user *auth.TeamUser) *defs.Event[defs.PullRequestComment, defs.RepoProvider] {
+	id, version, ctx, sub := prelude(repo, user)
 	event := &defs.Event[defs.PullRequestComment, defs.RepoProvider]{
 		ID:      id,
 		Version: version,
