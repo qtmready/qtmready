@@ -83,8 +83,8 @@ func (t *Config) Client() client.Client {
 			t.logger.Info("temporal instantiating ....")
 
 			logger := log.NewStructuredLogger(t.logger)
-
 			options := client.Options{HostPort: t.GetConnectionString(), Logger: logger}
+
 			retryTemporal := func() error {
 				clt, err := client.Dial(options)
 				if err != nil {
@@ -148,7 +148,9 @@ func WithClientCreation() ConfigOption {
 	return func(t *Config) {
 		t.logger.Info("temporal: connecting ...", "host", t.ServerHost, "port", t.ServerPort)
 
-		options := client.Options{HostPort: t.GetConnectionString(), Logger: t.logger}
+		logger := log.NewStructuredLogger(t.logger)
+		options := client.Options{HostPort: t.GetConnectionString(), Logger: logger}
+
 		retryTemporal := func() error {
 			clt, err := client.Dial(options)
 			if err != nil {
