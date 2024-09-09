@@ -122,7 +122,6 @@ type (
 	MergeConflict struct {
 		HeadBranch string    `json:"head_branch"` // HeadBranch is the name of the head branch.
 		HeadCommit Commit    `json:"head_commit"` // HeadCommit is the last commit on the head branch before rebasing.
-		AuthorID   int64     `json:"author_id"`   // AuthorID is the author of the last commit on the head branch.
 		BaseBranch string    `json:"base_branch"` // BaseBranch is the name of the base branch.
 		BaseCommit Commit    `json:"base_commit"` // BaseCommit is the last commit on the base branch before rebasing.
 		Files      []string  `json:"files"`       // Files is the list of files with conflicts.
@@ -454,6 +453,8 @@ func (e *Event[T, P]) SetSource(src string) { e.Context.Source = src }
 //	event.SetParent(gocql.TimeUUID())
 func (e *Event[T, P]) SetParent(id gocql.UUID) { e.Context.ParentID = id }
 
+func (e *Event[T, P]) SetTimestamp(t time.Time) { e.Context.Timestamp = t }
+
 // SetActionCreated sets the action of the Event to EventActionCreated.
 func (e *Event[T, P]) SetActionCreated() {
 	e.Context.Action = EventActionCreated
@@ -542,6 +543,10 @@ func (e *Event[T, P]) SetScopePullRequestComment() {
 // SetScopePullRequestThread sets the scope of the Event to EventScopePullRequestThread.
 func (e *Event[T, P]) SetScopePullRequestThread() {
 	e.Context.Scope = EventScopePullRequestThread
+}
+
+func (e *Event[T, P]) SetScopeMergeConflict() {
+	e.Context.Scope = EventScopeMergeConflict
 }
 
 // Latest returns the latest commit based on the timestamp. It iterates through the Commits slice and returns the commit with the latest

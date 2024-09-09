@@ -21,10 +21,47 @@ package comm
 
 import (
 	"fmt"
+	"time"
 
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
+	"go.breu.io/quantm/internal/db"
 )
+
+// NewMergeConflictEvent creates a new defs.Event instance for a merge conflict.
+func NewMergeConflictEvent(
+	event *defs.Event[defs.Push, defs.RepoProvider], head, base string, base_commit *defs.Commit,
+) *defs.Event[defs.MergeConflict, defs.RepoProvider] {
+	id, _ := db.NewUUID()
+	now := time.Now()
+
+	// creating payload
+	conflict := defs.MergeConflict{
+		HeadBranch: head,
+		HeadCommit: *event.Payload.Commits.Latest(),
+		BaseBranch: base,
+		BaseCommit: *base_commit,
+		Files:      make([]string, 0),
+		Timestamp:  now,
+	}
+
+	// creating new event
+	reply := &defs.Event[defs.MergeConflict, defs.RepoProvider]{
+		Version: event.Version,
+		ID:      id,
+		Context: event.Context,
+		Subject: event.Subject,
+		Payload: conflict,
+	}
+
+	// updating event
+	reply.SetParent(event.ID)
+	reply.SetScopeMergeConflict()
+	reply.SetActionCreated()
+	reply.SetTimestamp(now)
+
+	return reply
+}
 
 // NewMergeConflictMessage creates a new MessageIOMergeConflictPayload instance.
 //

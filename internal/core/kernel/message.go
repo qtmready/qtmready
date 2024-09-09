@@ -36,5 +36,7 @@ type (
 
 		// SendMergeConflictsMessage sends a message indicating merge conflicts.
 		SendMergeConflictsMessage(ctx context.Context, payload *defs.MergeConflictMessage) error
+
+		NotifyMergeConflict(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) error
 	}
 )

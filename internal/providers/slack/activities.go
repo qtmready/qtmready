@@ -116,3 +116,7 @@ func (a *Activities) SendMergeConflictsMessage(ctx context.Context, payload *def
 
 	return nil
 }
+
+func (a *Activities) NotifyMergeConflict(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) error {
+	return nil
+}
