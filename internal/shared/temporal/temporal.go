@@ -25,8 +25,8 @@ import (
 
 	"github.com/avast/retry-go/v4"
 	"github.com/ilyakaznacheev/cleanenv"
-	"go.breu.io/slog-utils/calldepth"
 	"go.temporal.io/sdk/client"
+	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/worker"
 
 	"go.breu.io/quantm/internal/shared/queue"
@@ -81,10 +81,8 @@ func (t *Config) Client() client.Client {
 	if t.client == nil {
 		once.Do(func() {
 			t.logger.Info("temporal instantiating ....")
-			logger := calldepth.New(
-				calldepth.WithLogger(t.logger),
-				calldepth.WithCallDepth(6), // exactly pin points from where the task was called.
-			).WithGroup("temporal")
+
+			logger := log.NewStructuredLogger(t.logger)
 
 			options := client.Options{HostPort: t.GetConnectionString(), Logger: logger}
 			retryTemporal := func() error {
