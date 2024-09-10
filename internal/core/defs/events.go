@@ -455,6 +455,8 @@ func (e *Event[T, P]) SetParent(id gocql.UUID) { e.Context.ParentID = id }
 
 func (e *Event[T, P]) SetTimestamp(t time.Time) { e.Context.Timestamp = t }
 
+func (e *Event[T, P]) SetUserID(id gocql.UUID) { e.Subject.UserID = id }
+
 // SetActionCreated sets the action of the Event to EventActionCreated.
 func (e *Event[T, P]) SetActionCreated() {
 	e.Context.Action = EventActionCreated

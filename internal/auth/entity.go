@@ -74,6 +74,17 @@ func (u *User) SendEmail() error {
 	return nil
 }
 
+// TeamUser returns the team user for the given user.
+func (u *User) TeamUser(id gocql.UUID) *TeamUser {
+	tu := &TeamUser{}
+
+	if err := db.Get(tu, db.QueryParams{"user_id": u.ID.String(), "team_id": id.String()}); err != nil {
+		return nil
+	}
+
+	return tu
+}
+
 func (mp MessageProviderUserInfo) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
 	return json.Marshal(mp)
 }
