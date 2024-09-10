@@ -39,86 +39,86 @@ jobs:
         id: vars
         run: echo "short_sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
 
-      - name: Authenticate with GCP
-        id: auth
-        uses: "google-github-actions/auth@v2"
-        with:
-          token_format: access_token
-          credentials_json: ${{ secrets.GCP_JSON_KEY }}
-          access_token_lifetime: 600s
+      # - name: Authenticate with GCP
+      #   id: auth
+      #   uses: "google-github-actions/auth@v2"
+      #   with:
+      #     token_format: access_token
+      #     credentials_json: ${{ secrets.GCP_JSON_KEY }}
+      #     access_token_lifetime: 600s
 
-      - name: Login into Google Artifact Registry
-        id: auth-gcp-artifact-registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
-          username: oauth2accesstoken
-          password: ${{ steps.auth.outputs.access_token }}
+      # - name: Login into Google Artifact Registry
+      #   id: auth-gcp-artifact-registry
+      #   uses: docker/login-action@v3
+      #   with:
+      #     registry: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
+      #     username: oauth2accesstoken
+      #     password: ${{ steps.auth.outputs.access_token }}
 
-      - name: Set up GKE credentials
-        uses: google-github-actions/get-gke-credentials@v2
-        with:
-          cluster_name: ${{ vars.GKE_CLUSTER }}
-          location: ${{ vars.GKE_CLUSTER_ZONE }}
+      # - name: Set up GKE credentials
+      #   uses: google-github-actions/get-gke-credentials@v2
+      #   with:
+      #     cluster_name: ${{ vars.GKE_CLUSTER }}
+      #     location: ${{ vars.GKE_CLUSTER_ZONE }}
 
-      - name: Go Cache for Docker
-        id: go-cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            go-mod-cache
-            go-build-cache
-          key: ${{ runner.os }}-go-cache-${{ hashFiles('**/go.sum') }}
+      # - name: Go Cache for Docker
+      #   id: go-cache
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: |
+      #       go-mod-cache
+      #       go-build-cache
+      #     key: ${{ runner.os }}-go-cache-${{ hashFiles('**/go.sum') }}
 
-      - name: Inject go-cache into Docker
-        uses: reproducible-containers/buildkit-cache-dance@v3.1.0
-        with:
-          cache-map: |
-            {
-              "go-mod-cache": "/root/go/pkg/mod",
-              "go-build-cache": "/root/.cache/go-build"
-            }
-          skip-extraction: ${{ steps.go-cache.outputs.cache-hit }}
+      # - name: Inject go-cache into Docker
+      #   uses: reproducible-containers/buildkit-cache-dance@v3.1.0
+      #   with:
+      #     cache-map: |
+      #       {
+      #         "go-mod-cache": "/root/go/pkg/mod",
+      #         "go-build-cache": "/root/.cache/go-build"
+      #       }
+      #     skip-extraction: ${{ steps.go-cache.outputs.cache-hit }}
 
-      - name: Build & Push Docker Image - API
-        id: build-api
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          target: api
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          push: true
-          tags: |
-            ${{ vars.GCP_ARTIFACT_REPOSITORY }}/api:latest
-            ${{ vars.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
+      # - name: Build & Push Docker Image - API
+      #   id: build-api
+      #   uses: docker/build-push-action@v5
+      #   with:
+      #     context: .
+      #     target: api
+      #     cache-from: type=gha
+      #     cache-to: type=gha,mode=max
+      #     push: true
+      #     tags: |
+      #       ${{ vars.GCP_ARTIFACT_REPOSITORY }}/api:latest
+      #       ${{ vars.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
 
-      - name: Build & Push Docker Image - Mothership
-        id: build-mothership
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          target: mothership
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          push: true
-          tags: |
-            ${{ vars.GCP_ARTIFACT_REPOSITORY }}/mothership:latest
-            ${{ vars.GCP_ARTIFACT_REPOSITORY }}/mothership:${{ steps.vars.outputs.short_sha }}
+      # - name: Build & Push Docker Image - Mothership
+      #   id: build-mothership
+      #   uses: docker/build-push-action@v5
+      #   with:
+      #     context: .
+      #     target: mothership
+      #     cache-from: type=gha
+      #     cache-to: type=gha,mode=max
+      #     push: true
+      #     tags: |
+      #       ${{ vars.GCP_ARTIFACT_REPOSITORY }}/mothership:latest
+      #       ${{ vars.GCP_ARTIFACT_REPOSITORY }}/mothership:${{ steps.vars.outputs.short_sha }}
 
-      - name: Build & Push Docker Image - Migrate
-        id: build-migrate
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          target: migrate
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          push: true
-          tags: |
-            ${{ vars.GCP_ARTIFACT_REPOSITORY }}/migrate:latest
-            ${{ vars.GCP_ARTIFACT_REPOSITORY }}/migrate:${{ steps.vars.outputs.short_sha }}
+      # - name: Build & Push Docker Image - Migrate
+      #   id: build-migrate
+      #   uses: docker/build-push-action@v5
+      #   with:
+      #     context: .
+      #     target: migrate
+      #     cache-from: type=gha
+      #     cache-to: type=gha,mode=max
+      #     push: true
+      #     tags: |
+      #       ${{ vars.GCP_ARTIFACT_REPOSITORY }}/migrate:latest
+      #       ${{ vars.GCP_ARTIFACT_REPOSITORY }}/migrate:${{ steps.vars.outputs.short_sha }}
 
-      - name: kustomize
-        id: kustomize
-        run: kustomize --help
+      # - name: kustomize
+      #   id: kustomize
+      #   run: kustomize --help
