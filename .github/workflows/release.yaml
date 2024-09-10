@@ -1,0 +1,83 @@
+name: release
+on:
+  # push:
+  #   branches:
+  #     - main
+  workflow_run:
+    workflows: [build]
+    types:
+      - completed
+
+jobs:
+  release:
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Short SHA for Tags
+        id: short
+        run: |
+          calculated=$(git rev-parse --short ${{ github.sha }})
+          echo "short_sha=$calculated" >> $GITHUB_OUTPUT
+
+      - name: Checkout Infra
+        id: checkout-infra
+        uses: actions/checkout@v4
+        with:
+          repository: quantmhq/infra
+          path: infra
+          token: ${{ secrets.CLONE_TOKEN }}
+
+      - name: Check Checkout
+        run: ls -la infra/k8s/0008-quantm/kustomize/overlays/gitops
+
+      - name: GCP Auth
+        id: auth
+        uses: "google-github-actions/auth@v2"
+        with:
+          token_format: access_token
+          credentials_json: ${{ secrets.GCP_JSON_KEY }}
+          access_token_lifetime: 600s
+
+      - name: GCP Artifact Registry Auth
+        id: auth-gcp-artifact-registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - name: GCP Kubernetes Engine Auth
+        id: auth-gcp-k8s
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ vars.GKE_CLUSTER }}
+          location: ${{ vars.GKE_CLUSTER_ZONE }}
+
+      - name: Kustomize edit
+        id: kustomize
+        working-directory: infra/k8s/0008-quantm/kustomize/overlays/gitops
+        run: |
+          kustomize edit set image ${{ vars.GCP_ARTIFACT_REPOSITORY }}/mothership=${{ vars.GCP_ARTIFACT_REPOSITORY }}/mothership:${{ steps.short.outputs.short_sha }}
+          kustomize edit set image ${{ vars.GCP_ARTIFACT_REPOSITORY }}/migrate=${{ vars.GCP_ARTIFACT_REPOSITORY }}/migrate:${{ steps.short.outputs.short_sha }}
+
+      - name: Kustomize Build
+        id: kustomize-build
+        working-directory: infra/k8s/0008-quantm/kustomize/overlays/gitops
+        run: kustomize build .
+
+      - name: Release Mothership
+        id: deploy-mothership
+        working-directory: infra/k8s/0008-quantm/kustomize/overlays/gitops
+        run: kubectl apply -k .
+
+      - name: Release API
+        id: deploy-api
+        uses: google-github-actions/deploy-cloudrun@v2
+        with:
+          service: ${{ vars.CLOUDRUN_SERVICE }}
+          image: ${{ vars.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.short.outputs.short_sha }}
