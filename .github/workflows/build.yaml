@@ -1,4 +1,4 @@
-name: release
+name: build
 on:
   pull_request:
     # For the develop branch only.
@@ -10,12 +10,12 @@ on:
     branches:
       - kustomize
 
-env:
-  GCP_PROJECT: quantm-live
-  GCP_ARTIFACT_REPOSITORY: us-docker.pkg.dev/quantm-live/default-live-v1
-  GKE_CLUSTER: alpha-live-v1
-  GKE_CLUSTER_ZONE: us-central1
-  GCR_SERVICE: quantm-api-live-v1
+# env:
+#   GCP_PROJECT: quantm-live
+#   GCP_ARTIFACT_REPOSITORY: us-docker.pkg.dev/quantm-live/default-live-v1
+#   GKE_CLUSTER: alpha-live-v1
+#   GKE_CLUSTER_ZONE: us-central1
+#   GCR_SERVICE: quantm-api-live-v1
 
 jobs:
   build:
@@ -51,15 +51,15 @@ jobs:
         id: auth-gcp-artifact-registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.GCP_ARTIFACT_REPOSITORY }}
+          registry: ${{ vars.GCP_ARTIFACT_REPOSITORY }}
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
 
       - name: Set up GKE credentials
         uses: google-github-actions/get-gke-credentials@v2
         with:
-          cluster_name: ${{ env.GKE_CLUSTER }}
-          location: ${{ env.GKE_CLUSTER_ZONE }}
+          cluster_name: ${{ vars.GKE_CLUSTER }}
+          location: ${{ vars.GKE_CLUSTER_ZONE }}
 
       - name: Go Cache for Docker
         id: go-cache
@@ -90,8 +90,8 @@ jobs:
           cache-to: type=gha,mode=max
           push: true
           tags: |
-            ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:latest
-            ${{ env.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
+            ${{ vars.GCP_ARTIFACT_REPOSITORY }}/api:latest
+            ${{ vars.GCP_ARTIFACT_REPOSITORY }}/api:${{ steps.vars.outputs.short_sha }}
 
       - name: Build & Push Docker Image - Mothership
         id: build-mothership
@@ -103,8 +103,8 @@ jobs:
           cache-to: type=gha,mode=max
           push: true
           tags: |
-            ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:latest
-            ${{ env.GCP_ARTIFACT_REPOSITORY }}/mothership:${{ steps.vars.outputs.short_sha }}
+            ${{ vars.GCP_ARTIFACT_REPOSITORY }}/mothership:latest
+            ${{ vars.GCP_ARTIFACT_REPOSITORY }}/mothership:${{ steps.vars.outputs.short_sha }}
 
       - name: Build & Push Docker Image - Migrate
         id: build-migrate
@@ -116,8 +116,8 @@ jobs:
           cache-to: type=gha,mode=max
           push: true
           tags: |
-            ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:latest
-            ${{ env.GCP_ARTIFACT_REPOSITORY }}/migrate:${{ steps.vars.outputs.short_sha }}
+            ${{ vars.GCP_ARTIFACT_REPOSITORY }}/migrate:latest
+            ${{ vars.GCP_ARTIFACT_REPOSITORY }}/migrate:${{ steps.vars.outputs.short_sha }}
 
       - name: kustomize
         id: kustomize

@@ -1,0 +1,21 @@
+name: release
+on:
+  workflow_run:
+    workflows:
+      - build
+    branches:
+      - kustomize
+    types:
+      - completed
+
+jobs:
+  release:
+    runs-on: ubuntu-20.04
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: quantmHQ/infra
