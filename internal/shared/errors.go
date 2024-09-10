@@ -103,6 +103,10 @@ func tag_msg(tag string) string {
 	}
 }
 
+func format_echo_error(err *echo.HTTPError) error {
+	return fmt.Errorf("%v", err.Message)
+}
+
 // handle_validation handles validation errors from validator.
 func handle_validation(apiErr *APIError) *APIError {
 	if validerr, ok := apiErr.Message.(validator.ValidationErrors); ok {
@@ -120,12 +124,27 @@ func handle_validation(apiErr *APIError) *APIError {
 
 // to_api_error converts any error to an APIError.
 func to_api_error(err error) *APIError {
-	if apiErr, ok := err.(*APIError); ok {
-		return apiErr
+	if apierr, ok := err.(*APIError); ok {
+		return apierr // Return the existing APIError
 	}
 
-	// We should never reach this point because all errors are wrapped in APIError
-	panic("Unexpected error type: " + err.Error())
+	if httpErr, ok := err.(*echo.HTTPError); ok {
+		// Create a new APIError based on the echo.HTTPError
+		return NewAPIError(httpErr.Code, format_echo_error(httpErr)).WithInternal(httpErr.Internal)
+	}
+
+	if validerr, ok := err.(validator.ValidationErrors); ok {
+		// Handle validation errors directly
+		errs := ErrorMap{}
+		for _, fe := range validerr {
+			errs[fe.Field()] = tag_msg(fe.Tag())
+		}
+
+		return NewAPIError(http.StatusBadRequest, ErrValidation).WithErrors(&errs)
+	}
+
+	// Wrap any other error type in an APIError
+	return NewAPIError(http.StatusInternalServerError, err)
 }
 
 // Public methods
@@ -141,9 +160,6 @@ func EchoAPIErrorHandler(err error, ctx echo.Context) {
 	// Convert to APIError
 	apierr := to_api_error(err)
 
-	// Handle validation errors
-	apierr = handle_validation(apierr)
-
 	// Refactored response handling
 	if err_ := respond(ctx, apierr); err_ != nil {
 		ctx.Logger().Error(err_)
@@ -156,7 +172,7 @@ func respond(ctx echo.Context, err *APIError) error {
 		return ctx.NoContent(err.Code)
 	}
 
-	return ctx.JSON(err.Code, err)
+	return ctx.JSON(err.Code, err.format()) // Format the APIError before sending
 }
 
 // NewAPIError creates a new APIError instance.
