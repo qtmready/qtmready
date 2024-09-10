@@ -1,3 +1,20 @@
+# Copyright © 2022, 2024, Breu, Inc. <info@breu.io>
+#
+# We hereby irrevocably grant you an additional license to use the Software under the Apache License, Version 2.0 that
+# is effective on the second anniversary of the date we make the Software available. On or after that date, you may use
+# the Software under the Apache License, Version 2.0, in which case the following will apply:
+#
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+# the License.
+#
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+# an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+# specific language governing permissions and limitations under the License.
+
 excludes:
   - .*\.(json|xml|csv|tsv|log|ini|conf|cfg|toml|env|yaml)
   - .*\.(md|rst|txt)
@@ -17,16 +34,16 @@ excludes:
   - .*\.gen.go
   - .*\.pb.go
   - .*\.puml
-  - api/*
+  - ^api/*
 authors:
   - name: Breu, Inc.
     email: info@breu.io
 licenses:
   - files: any
-    year: 2023
     authors:
     - name: Breu, Inc.
       email: info@breu.io
+    use_dynamic_year_ranges: true
     ident: FSL-1.1-MIT
     template: |
       Copyright © [year], [name of author]

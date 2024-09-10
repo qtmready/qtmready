@@ -1,4 +1,4 @@
-// Copyright © 2023, Breu, Inc. <info@breu.io>
+// Copyright © 2024, Breu, Inc. <info@breu.io>
 //
 // We hereby irrevocably grant you an additional license to use the Software under the Apache License, Version 2.0 that
 // is effective on the second anniversary of the date we make the Software available. On or after that date, you may use
