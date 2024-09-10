@@ -71,10 +71,10 @@ func decrypt(ciphertext []byte, key []byte) ([]byte, error) {
 	return ciphertext, nil
 }
 
-// generateKey creates a 32-byte key for AES-256 encryption.
+// generate creates a 32-byte key for AES-256 encryption.
 // It uses a SHA-512 hash of the provided workspaceID,
 // and then takes the first 32 bytes of the hash as the key.
-func generateKey(workspaceID string) []byte {
+func generate(workspaceID string) []byte {
 	h := sha512.New()
 	h.Write([]byte(shared.Service().GetSecret() + workspaceID))
 

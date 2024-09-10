@@ -65,10 +65,10 @@ func connect(c *config) *integration {
 	}
 }
 
-func (i *integration) GetSlackClient(accessToken string) (*slack.Client, error) {
+func (i *integration) GetSlackClient(token string) (*slack.Client, error) {
 	lgr := &logger{shared.Logger().WithGroup("slack")}
 	client := slack.New(
-		accessToken,
+		token,
 		slack.OptionDebug(shared.Service().GetDebug()),
 		slack.OptionLog(lgr),
 	)

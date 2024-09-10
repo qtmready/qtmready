@@ -30,6 +30,7 @@ import (
 
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -210,4 +211,15 @@ func (a *Activities) RemoveClonedAtPath(ctx context.Context, path string) error 
 	}
 
 	return nil
+}
+
+// GetCoreRepoByID gets entity.Repo against given Repo.
+func (a *Activities) GetCoreRepoByID(ctx context.Context, id string) (*defs.Repo, error) {
+	r := &defs.Repo{}
+
+	if err := db.Get(r, db.QueryParams{"id": id}); err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }

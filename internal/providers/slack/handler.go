@@ -95,7 +95,7 @@ func _user(ctx echo.Context, response *slack.OAuthV2Response) (*auth.MessageProv
 	}
 
 	// Generate a key for AES-256.
-	key := generateKey(response.Team.ID)
+	key := generate(response.Team.ID)
 
 	// Encrypt the user access token.
 	encryptedUserToken, err := encrypt([]byte(response.AuthedUser.AccessToken), key)
@@ -131,7 +131,7 @@ func _user(ctx echo.Context, response *slack.OAuthV2Response) (*auth.MessageProv
 
 func _bot(response *slack.OAuthV2Response) (*defs.MessageProviderData, error) {
 	// Generate a key for AES-256.
-	key := generateKey(response.Team.ID)
+	key := generate(response.Team.ID)
 
 	// Encrypt the access token.
 	encryptedToken, err := encrypt([]byte(response.AccessToken), key)

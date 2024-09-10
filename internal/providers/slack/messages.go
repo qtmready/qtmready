@@ -111,6 +111,14 @@ func formatMergeConflictAttachment(payload *defs.MergeConflictMessage) slack.Att
 	}
 }
 
+func compose_merge_conflict(event *defs.Event[defs.MergeConflict, defs.RepoProvider]) slack.Attachment {
+	return slack.Attachment{
+		Color:  "warning",
+		Footer: footer,
+		Ts:     json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
+	}
+}
+
 func formatStaleBranchAttachment(payload *defs.MessageIOStaleBranchPayload) slack.Attachment {
 	return slack.Attachment{
 		Pretext: fmt.Sprintf("Stale branch <%s|%s> is detected on repository <%s|%s>. Please review and take necessary action.",

@@ -354,12 +354,19 @@ func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, event *d
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
-	msg := comm.NewMergeConflictMessage(event, state.repo, state.author, state.branch(ctx))
+	// msg := comm.NewMergeConflictMessage(event, state.repo, state.author, state.branch(ctx))
+
+	conflict := comm.NewMergeConflictEvent(event, state.pr.HeadBranch, state.pr.BaseBranch, state.last_commit)
+
+	// TODO - set the user_id
+	conflict.SetUserID(state.author.ID)
+	// conflict.SetUserID(state.pr.AuthorID) // NOTE - discuss this
+
 	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
 
-	state.log(ctx, "warn_conflict").Info("message", "payload", msg, "event", event)
+	state.log(ctx, "warn_conflict").Info("message", "payload", conflict, "event", event)
 
-	_ = state.do(ctx, "warn_merge_conflict", io.SendMergeConflictsMessage, msg, nil)
+	_ = state.do(ctx, "warn_merge_conflict", io.NotifyMergeConflict, conflict, nil)
 }
 
 // NewBranchCtrlState creates a new RepoIOBranchCtrlState instance.

@@ -25,7 +25,9 @@ import (
 
 	"go.temporal.io/sdk/activity"
 
+	"go.breu.io/quantm/internal/core/code"
 	"go.breu.io/quantm/internal/core/defs"
+	"go.breu.io/quantm/internal/providers/github"
 )
 
 type (
@@ -33,12 +35,17 @@ type (
 	Activities struct{}
 )
 
+var (
+	coreacts   *code.Activities
+	githubacts *github.Activities
+)
+
 func (a *Activities) SendStaleBranchMessage(ctx context.Context, payload *defs.MessageIOStaleBranchPayload) error {
 	logger := activity.GetLogger(ctx)
 
-	token, err := decodeAndDecryptToken(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)
+	token, err := reveal(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)
 	if err != nil {
-		logger.Error("Error in decodeAndDecryptToken", "Error", err)
+		logger.Error("Error in reveal", "Error", err)
 		return err
 	}
 
@@ -64,9 +71,9 @@ func (a *Activities) SendStaleBranchMessage(ctx context.Context, payload *defs.M
 func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context, payload *defs.MessageIOLineExeededPayload) error {
 	logger := activity.GetLogger(ctx)
 
-	token, err := decodeAndDecryptToken(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)
+	token, err := reveal(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)
 	if err != nil {
-		logger.Error("Error in decodeAndDecryptToken", "Error", err)
+		logger.Error("Error in reveal", "Error", err)
 		return err
 	}
 
@@ -92,9 +99,9 @@ func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context, payload
 func (a *Activities) SendMergeConflictsMessage(ctx context.Context, payload *defs.MergeConflictMessage) error {
 	logger := activity.GetLogger(ctx)
 
-	token, err := decodeAndDecryptToken(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)
+	token, err := reveal(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)
 	if err != nil {
-		logger.Error("Error in decodeAndDecryptToken", "Error", err)
+		logger.Error("Error in reveal", "Error", err)
 		return err
 	}
 
@@ -117,6 +124,31 @@ func (a *Activities) SendMergeConflictsMessage(ctx context.Context, payload *def
 	return nil
 }
 
+// TODO - move the uint functions.
 func (a *Activities) NotifyMergeConflict(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) error {
+	logger := activity.GetLogger(ctx)
+
+	token, channelID, err := derive(ctx, event)
+	if err != nil {
+		logger.Error("Error in getTokenAndChannelID", "Error", err)
+		return err
+	}
+
+	client, err := instance.GetSlackClient(token)
+	if err != nil {
+		logger.Error("Error in GetSlackClient", "Error", err)
+		return err
+	}
+
+	attachment := compose_merge_conflict(event)
+
+	// call blockset to send the message to slack channel or sepecific workspace.
+	if err := notify(client, channelID, attachment); err != nil {
+		logger.Error("Failed to post message to channel", "Error", err)
+		return err
+	}
+
+	logger.Info("Slack notification sent successfully")
+
 	return nil
 }
