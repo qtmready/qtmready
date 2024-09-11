@@ -26,6 +26,7 @@ import (
 	"log/slog"
 
 	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/core/code"
 	"go.breu.io/quantm/internal/core/defs"
 )
 
@@ -78,7 +79,7 @@ func user_data(tuser *auth.TeamUser) (string, string, error) {
 
 // repo_data extracts token and channel ID from repo-specific message provider data.
 func repo_data(ctx context.Context, repoID string) (string, string, error) {
-	repo, err := coreacts.GetCoreRepoByID(ctx, repoID)
+	repo, err := code.RepoIO().GetByID(ctx, repoID)
 	if err != nil {
 		return "", "", err
 	}

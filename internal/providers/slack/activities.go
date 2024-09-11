@@ -134,9 +134,8 @@ func (a *Activities) SendMergeConflictsMessage(ctx context.Context, payload *def
 // TODO - move the uint functions.
 func (a *Activities) NotifyMergeConflict(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) error {
 	logger := activity.GetLogger(ctx)
-	codeacts := &code.Activities{}
 
-	repo, err := codeacts.GetCoreRepoByID(ctx, event.Subject.ID.String()) // FIXME: we should directly get the token and channel id.
+	repo, err := code.RepoIO().GetByID(ctx, event.Subject.ID.String())
 	if err != nil {
 		return err
 	}
