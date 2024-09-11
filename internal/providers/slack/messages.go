@@ -111,7 +111,7 @@ func formatMergeConflictAttachment(payload *defs.MergeConflictMessage) slack.Att
 	}
 }
 
-func compose_merge_conflict(event *defs.Event[defs.MergeConflict, defs.RepoProvider]) slack.Attachment {
+func fields_conflict(event *defs.Event[defs.MergeConflict, defs.RepoProvider]) slack.Attachment {
 	return slack.Attachment{
 		Color:  "warning",
 		Footer: footer,

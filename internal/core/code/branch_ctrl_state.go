@@ -357,10 +357,7 @@ func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, event *d
 	// msg := comm.NewMergeConflictMessage(event, state.repo, state.author, state.branch(ctx))
 
 	conflict := comm.NewMergeConflictEvent(event, state.pr.HeadBranch, state.pr.BaseBranch, state.last_commit)
-
-	// TODO - set the user_id
 	conflict.SetUserID(state.author.ID)
-	// conflict.SetUserID(state.pr.AuthorID) // NOTE - discuss this
 
 	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
 

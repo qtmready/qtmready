@@ -79,6 +79,7 @@ services:
     container_name: ctrlplane-job-migrate
     image: cosmtrek/air:v1.52.3
     environment:
+      GOTOOLCHAIN: auto
       SERVICE_NAME: migrate
       CASSANDRA_MIGRATION_SOURCE_URL: file:///migrate/internal/db/migrations
     env_file:
