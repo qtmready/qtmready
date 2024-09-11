@@ -89,11 +89,11 @@ func (a *Activities) GetTeam(ctx context.Context, params db.QueryParams) (*Team,
 // If the TeamUser does not exist, it creates a new one.
 // The function returns the updated or created TeamUser, and any error that occurred.
 func (a *Activities) CreateOrUpdateTeamUser(ctx context.Context, payload *TeamUser) (*TeamUser, error) {
-	temp := &TeamUser{}
+	fetched := &TeamUser{}
 
-	if err := db.Get(temp, db.QueryParams{"team_id": payload.TeamID.String(), "user_id": payload.UserID.String()}); err == nil {
-		payload.ID = temp.ID
-		payload.CreatedAt = temp.CreatedAt
+	if err := db.Get(fetched, db.QueryParams{"team_id": payload.TeamID.String(), "user_id": payload.UserID.String()}); err == nil {
+		payload.ID = fetched.ID
+		payload.CreatedAt = fetched.CreatedAt
 	}
 
 	if err := db.Save(payload); err != nil {

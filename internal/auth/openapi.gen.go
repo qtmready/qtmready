@@ -215,8 +215,8 @@ type MessageProviderSlackUserInfo struct {
 	UserToken      string `json:"user_token"`
 }
 
-// MessageProviderUserInfo defines model for MessageProviderUserInfo.
-type MessageProviderUserInfo struct {
+// MessageProviderInfo defines model for MessageProviderInfo.
+type MessageProviderInfo struct {
 	Slack *MessageProviderSlackUserInfo `json:"slack,omitempty"`
 }
 
@@ -271,7 +271,7 @@ type TeamUser struct {
 	IsAdmin                 bool                    `cql:"is_admin" json:"is_admin"`
 	IsMessageProviderLinked bool                    `cql:"is_message_provider_linked" json:"is_message_provider_linked"`
 	MessageProvider         MessageProvider         `cql:"message_provider" json:"message_provider"`
-	MessageProviderUserInfo MessageProviderUserInfo `cql:"message_provider_user_info" json:"message_provider_user_info"`
+	MessageProviderUserInfo MessageProviderInfo `cql:"message_provider_user_info" json:"message_provider_user_info"`
 	Role                    string                  `cql:"role" json:"role"`
 	TeamID                  gocql.UUID              `cql:"team_id" json:"team_id"`
 	UpdatedAt               time.Time               `cql:"updated_at" json:"updated_at"`

@@ -85,13 +85,13 @@ func (u *User) TeamUser(id gocql.UUID) *TeamUser {
 	return tu
 }
 
-func (mp MessageProviderUserInfo) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
+func (mp MessageProviderInfo) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
 	return json.Marshal(mp)
 }
 
-func (mp *MessageProviderUserInfo) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
+func (mp *MessageProviderInfo) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
 	if len(data) == 0 {
-		*mp = MessageProviderUserInfo{}
+		*mp = MessageProviderInfo{}
 		return nil
 	}
 
