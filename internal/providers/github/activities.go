@@ -39,10 +39,6 @@ type (
 	Activities struct{}
 )
 
-var (
-	authacts *auth.Activities
-)
-
 // GetUserByID retrieves a user from the database by their ID.
 // The context.Context parameter is used for cancellation and timeouts.
 // The id parameter is the unique identifier of the user to retrieve.
@@ -50,17 +46,17 @@ var (
 func (a *Activities) GetUserByID(ctx context.Context, id string) (*auth.User, error) {
 	params := db.QueryParams{"id": id}
 
-	return authacts.GetUser(ctx, params)
+	return auth.UserIO().Get(ctx, params)
 }
 
 // SaveUser saves the provided user to the authentication provider.
 func (a *Activities) SaveUser(ctx context.Context, user *auth.User) (*auth.User, error) {
-	return authacts.SaveUser(ctx, user)
+	return auth.UserIO().Save(ctx, user)
 }
 
 // CreateTeam creates a new team in the authentication provider.
 func (a *Activities) CreateTeam(ctx context.Context, team *auth.Team) (*auth.Team, error) {
-	return authacts.CreateTeam(ctx, team)
+	return auth.TeamIO().Save(ctx, team)
 }
 
 // GetTeamByID retrieves a team by its ID.
@@ -68,9 +64,7 @@ func (a *Activities) CreateTeam(ctx context.Context, team *auth.Team) (*auth.Tea
 // id is the ID of the team to retrieve.
 // Returns the retrieved team, or an error if the team could not be found or retrieved.
 func (a *Activities) GetTeamByID(ctx context.Context, id string) (*auth.Team, error) {
-	params := db.QueryParams{"id": id}
-
-	return authacts.GetTeam(ctx, params)
+	return auth.TeamIO().GetByID(ctx, id)
 }
 
 // GetTeamByID retrieves a user by github user id.
@@ -78,7 +72,7 @@ func (a *Activities) GetTeamByID(ctx context.Context, id string) (*auth.Team, er
 // id is the ID of the login id provided by github.
 // Returns the retrieved team user with message provider data if user not exist return the error and team_user both nil.
 func (a *Activities) GetTeamUserByLoginID(ctx context.Context, loginID string) (*auth.TeamUser, error) {
-	teamuser, err := authacts.GetTeamUser(ctx, loginID)
+	teamuser, err := auth.TeamUserIO().GetByLogin(ctx, loginID)
 
 	if err != nil {
 		// Check if the error message is "not found" and handle accordingly
@@ -108,7 +102,7 @@ func (a *Activities) CreateMemberships(ctx context.Context, payload *CreateMembe
 		UserLoginId:             payload.GithubUserID,
 	}
 
-	if _, err := authacts.CreateOrUpdateTeamUser(ctx, teamuser); err != nil {
+	if _, err := auth.TeamUserIO().Save(ctx, teamuser); err != nil {
 		return err
 	}
 

@@ -134,7 +134,6 @@ func (a *Activities) SendMergeConflictsMessage(ctx context.Context, payload *def
 // TODO - move the uint functions.
 func (a *Activities) NotifyMergeConflict(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) error {
 	logger := activity.GetLogger(ctx)
-	authacts := &auth.Activities{}
 	codeacts := &code.Activities{}
 
 	repo, err := codeacts.GetCoreRepoByID(ctx, event.Subject.ID.String()) // FIXME: we should directly get the token and channel id.
@@ -152,7 +151,8 @@ func (a *Activities) NotifyMergeConflict(ctx context.Context, event *defs.Event[
 	fields := a.conflict_fields(event)
 
 	if event.Subject.UserID.String() != db.NullUUID {
-		user, err := authacts.GetTeamUser(ctx, event.Subject.UserID.String())
+		// user, err := authacts.GetTeamUser(ctx, event.Subject.UserID.String())
+		user, err := auth.TeamUserIO().Get(ctx, event.Subject.UserID.String(), event.Subject.TeamID.String())
 		if user == nil || err != nil { // This should never error out.
 			return err
 		}

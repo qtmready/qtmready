@@ -221,10 +221,9 @@ func (state *RepoIOBranchCtrlState) refresh_author(ctx workflow.Context, id shar
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
-	io := &auth.Activities{}
 	user := &auth.TeamUser{}
 
-	_ = state.do(ctx, "refresh_author", io.GetTeamUser, id, user)
+	_ = state.do(ctx, "refresh_author", auth.TeamUserIO().GetByLogin, id.String(), user)
 }
 
 // Git operations
