@@ -135,25 +135,27 @@ func (a *Activities) SendMergeConflictsMessage(ctx context.Context, payload *def
 func (a *Activities) NotifyMergeConflict(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) error {
 	logger := activity.GetLogger(ctx)
 	authacts := &auth.Activities{}
-	// codeacts := &code.Activities{}
+	codeacts := &code.Activities{}
 
-	// repo, err := codeacts.GetCoreRepoByID(ctx, event.Subject.ID.String()) // FIXME: we should directly get the token and channel id.
-	// if err != nil {
-	// 	return err
-	// }
+	repo, err := codeacts.GetCoreRepoByID(ctx, event.Subject.ID.String()) // FIXME: we should directly get the token and channel id.
+	if err != nil {
+		return err
+	}
 
-	fields := a.conflict_fields(ctx, event)
+	target := repo.MessageProviderData.Slack.WorkspaceID
+
+	token, err := reveal(repo.MessageProviderData.Slack.BotToken, target)
+	if err != nil {
+		return err
+	}
+
+	fields := a.conflict_fields(event)
 
 	if event.Subject.UserID.String() != db.NullUUID {
 		user, err := authacts.GetTeamUser(ctx, event.Subject.UserID.String())
 		if user == nil || err != nil { // This should never error out.
 			return err
 		}
-	}
-
-	token, target, err := a.team_tokens(ctx, event)
-	if err != nil {
-		return err
 	}
 
 	// by default we send the message to the channel, but if the user is a member of the team, we send the message to the user.
@@ -194,7 +196,7 @@ func (a *Activities) NotifyMergeConflict(ctx context.Context, event *defs.Event[
 	return notify(client, target, attachment)
 }
 
-func (a *Activities) conflict_fields(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) []slack.AttachmentField {
+func (a *Activities) conflict_fields(event *defs.Event[defs.MergeConflict, defs.RepoProvider]) []slack.AttachmentField {
 	fields := []slack.AttachmentField{
 		{
 			Title: "*Branch*",
@@ -227,19 +229,13 @@ func (a *Activities) user_tokens(ctx context.Context, event *defs.Event[defs.Mer
 	}
 
 	token, err := reveal(tuser.MessageProviderUserInfo.Slack.BotToken, tuser.MessageProviderUserInfo.Slack.ProviderTeamID)
+	if err != nil {
+		return "", "", err
+	}
 
 	return token, tuser.MessageProviderUserInfo.Slack.ProviderUserID, nil
 }
 
 func (a *Activities) team_tokens(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) (string, string, error) {
 	return "", "", nil
-}
-
-func (a *Activities) get_repo(ctx context.Context, id string) (*defs.Repo, error) {
-	repo := &defs.Repo{}
-	if err := db.Get(repo, db.QueryParams{"id": id}); err != nil {
-		return nil, err
-	}
-
-	return repo, nil
 }
