@@ -52,15 +52,15 @@ type (
 // on_push handles push events for the branch.
 func (state *RepoIOBranchCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		event := &defs.Event[defs.Push, defs.RepoProvider]{} // Use the Event type
-		state.rx(ctx, rx, event)                             // Using base_ctrl.rx
+		event := &defs.Event[defs.Push, defs.RepoProvider]{}
+		state.rx(ctx, rx, event)
 
-		latest := event.Payload.Commits.Latest() // Access Commits from Payload
+		latest := event.Payload.Commits.Latest()
 		if latest != nil {
 			state.set_commit(ctx, latest)
 		}
 
-		complexity := state.calculate_complexity(ctx) // Pass the Event
+		complexity := state.calculate_complexity(ctx)
 		if complexity.Delta > state.repo.Threshold {
 			// state.warn_complexity(ctx, event, complexity) // TODO: handle this.
 		}
@@ -72,8 +72,10 @@ func (state *RepoIOBranchCtrlState) on_push(ctx workflow.Context) shared.Channel
 // on_rebase handles rebase events for the branch.
 func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		event := &defs.Event[defs.Push, defs.RepoProvider]{} // Use the Event type
-		state.rx(ctx, rx, event)                             // Using base_ctrl.rx
+		event := &defs.Event[defs.Push, defs.RepoProvider]{}
+		state.rx(ctx, rx, event)
+
+		ctx = shared.WithDefaultActivityContext(ctx)
 
 		session := state.create_session(ctx)
 		defer state.finish_session(session)
@@ -101,7 +103,7 @@ func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.Chann
 func (state *RepoIOBranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
-		state.rx(ctx, rx, event) // Using base_ctrl.rx
+		state.rx(ctx, rx, event)
 
 		switch event.Context.Action { // nolint
 		case defs.EventActionCreated, defs.EventActionReopened: // Or defs.EventActionOpened, if more appropriate
@@ -148,7 +150,7 @@ func (state *RepoIOBranchCtrlState) on_label(ctx workflow.Context) shared.Channe
 func (state *RepoIOBranchCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
-		state.rx(ctx, rx, event) // Using base_ctrl.rx
+		state.rx(ctx, rx, event)
 
 		if event.Context.Action == defs.EventActionCreated {
 			state.set_created_at(ctx, timers.Now(ctx))
@@ -218,8 +220,7 @@ func (state *RepoIOBranchCtrlState) set_author(ctx workflow.Context, owner *auth
 }
 
 func (state *RepoIOBranchCtrlState) refresh_author(ctx workflow.Context, id shared.Int64) {
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = shared.WithDefaultActivityContext(ctx)
 
 	user := &auth.TeamUser{}
 
@@ -245,8 +246,7 @@ func (state *RepoIOBranchCtrlState) finish_session(ctx workflow.Context) {
 
 // clone_at_commit clones the repository at a specific commit.
 func (state *RepoIOBranchCtrlState) clone_at_commit(ctx workflow.Context, push *defs.Push) *defs.RepoIOClonePayload {
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = shared.WithDefaultActivityContext(ctx)
 
 	cloned := &defs.RepoIOClonePayload{Repo: state.repo, Push: push, Info: state.info, Branch: state.branch(ctx)}
 	_ = workflow.SideEffect(ctx, func(ctx workflow.Context) any { return "/tmp/" + uuid.New().String() }).Get(&cloned.Path)
@@ -258,17 +258,14 @@ func (state *RepoIOBranchCtrlState) clone_at_commit(ctx workflow.Context, push *
 
 // fetch_default_branch fetches the default branch for the cloned repository.
 func (state *RepoIOBranchCtrlState) fetch_default_branch(ctx workflow.Context, cloned *defs.RepoIOClonePayload) {
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = shared.WithDefaultActivityContext(ctx)
 
 	_ = state.do(ctx, "fetch_branch", state.activities.FetchBranch, cloned, nil)
 }
 
 // rebase_at_commit rebases the branch at a specific commit.
 func (state *RepoIOBranchCtrlState) rebase_at_commit(ctx workflow.Context, cloned *defs.RepoIOClonePayload) error {
-	retry_policy := &temporal.RetryPolicy{NonRetryableErrorTypes: []string{"RebaseError"}}
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second, RetryPolicy: retry_policy}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = shared.WithIgnoredErrorsContext(ctx, "RebaseError")
 
 	response := &defs.RepoIORebaseAtCommitResponse{}
 
@@ -286,8 +283,7 @@ func (state *RepoIOBranchCtrlState) rebase_at_commit(ctx workflow.Context, clone
 
 // push_branch pushes the rebased branch to the remote repository.
 func (state *RepoIOBranchCtrlState) push_branch(ctx workflow.Context, cloned *defs.RepoIOClonePayload) {
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = shared.WithDefaultActivityContext(ctx)
 	payload := &defs.RepoIOPushBranchPayload{Branch: cloned.Branch, Path: cloned.Path, Force: true}
 
 	_ = state.do(ctx, "push_branch", state.activities.Push, payload, nil)
@@ -295,8 +291,7 @@ func (state *RepoIOBranchCtrlState) push_branch(ctx workflow.Context, cloned *de
 
 // remove_cloned removes the cloned repository from the local filesystem.
 func (state *RepoIOBranchCtrlState) remove_cloned(ctx workflow.Context, cloned *defs.RepoIOClonePayload) {
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = shared.WithDefaultActivityContext(ctx)
 
 	_ = state.do(ctx, "remove_cloned", state.activities.RemoveClonedAtPath, cloned.Path, nil)
 }
@@ -316,8 +311,7 @@ func (state *RepoIOBranchCtrlState) calculate_complexity(ctx workflow.Context) *
 		TargetBranch:   state.branch(ctx),
 	}
 
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = shared.WithDefaultActivityContext(ctx)
 
 	_ = state.do(ctx, "calculate_complexity", kernel.Instance().RepoIO(state.repo.Provider).DetectChanges, detect, changes)
 
@@ -331,8 +325,7 @@ func (state *RepoIOBranchCtrlState) warn_complexity(
 	for_user := push.User != nil && push.User.IsMessageProviderLinked
 	msg := comm.NewNumberOfLinesExceedMessage(push, state.repo, state.branch(ctx), complexity, for_user)
 	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = shared.WithDefaultActivityContext(ctx)
 
 	_ = state.do(ctx, "warn_complexity", io.SendNumberOfLinesExceedMessage, msg, nil)
 }
@@ -342,16 +335,14 @@ func (state *RepoIOBranchCtrlState) warn_stale(ctx workflow.Context) {
 	msg := comm.NewStaleBranchMessage(state.info, state.repo, state.branch(ctx))
 	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
 
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = shared.WithDefaultActivityContext(ctx)
 
 	_ = state.do(ctx, "warn_stale", io.SendStaleBranchMessage, msg, nil)
 }
 
 // warn_conflict sends a warning message if there's a merge conflict during rebase.
 func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider]) {
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = shared.WithDefaultActivityContext(ctx)
 
 	// msg := comm.NewMergeConflictMessage(event, state.repo, state.author, state.branch(ctx))
 
