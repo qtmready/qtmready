@@ -410,7 +410,9 @@ func (p *GithubWorkflowRunEvent) SenderID() string {
 //
 // It takes a `defs.Repo` pointer and returns a `gocql.UUID`, `defs.EventVersion`, `defs.EventContext`, and `defs.EventSubject`
 // that can be used to construct a `defs.Event`.
-func prelude(repo *defs.Repo, user *auth.TeamUser) (gocql.UUID, defs.EventVersion, defs.EventContext[defs.RepoProvider], defs.EventSubject) {
+func prelude(
+	repo *defs.Repo, user *auth.TeamUser,
+) (gocql.UUID, defs.EventVersion, defs.EventContext[defs.RepoProvider], defs.EventSubject) {
 	id, _ := db.NewUUID()
 	version := defs.EventVersionDefault
 
@@ -668,7 +670,9 @@ func (pre PullRequestReviewCommentEvent) payload() defs.PullRequestComment {
 //
 // It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject.
 // The action is set based on the `Action` field of the PullRequestReviewCommentEvent struct.
-func (pre PullRequestReviewCommentEvent) normalize(repo *defs.Repo, user *auth.TeamUser) *defs.Event[defs.PullRequestComment, defs.RepoProvider] {
+func (pre PullRequestReviewCommentEvent) normalize(
+	repo *defs.Repo, user *auth.TeamUser,
+) *defs.Event[defs.PullRequestComment, defs.RepoProvider] {
 	id, version, ctx, sub := prelude(repo, user)
 	event := &defs.Event[defs.PullRequestComment, defs.RepoProvider]{
 		ID:      id,

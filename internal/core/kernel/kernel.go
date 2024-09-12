@@ -44,7 +44,7 @@
 //
 // Usage:
 //
-// 1. Initialize the Kernel with providers:
+// Initialize the Kernel with providers:
 //
 //	gitRepoIO := &GitRepoIO{}
 //	slackMessageIO := &SlackMessageIO{}
@@ -54,21 +54,21 @@
 //		kernel.WithMessageProvider(defs.SlackMessageProvider, slackMessageIO),
 //	)
 //
-// 2. Retrieve a RepoIO:
+// Retrieve a RepoIO:
 //
 //	gitIO := k.RepoIO(defs.GitRepoProvider)
 //	// Use gitIO to interact with Git repositories
 //
-// 3. Retrieve a MessageIO:
+// Retrieve a MessageIO:
 //
 //	slackIO := k.MessageIO(defs.SlackMessageProvider)
 //	// Use slackIO to send messages via Slack
 //
-// 4. Register a new provider after initialization:
+// Register a new provider after initialization:
 //
 //	k.RegisterRepoProvider(defs.SVNRepoProvider, &SVNRepoIO{})
 //
-// 5. Access the Kernel instance from anywhere in the application:
+// Access the Kernel instance from anywhere in the application:
 //
 //	k := kernel.Instance()
 //	// Use k to access registered providers

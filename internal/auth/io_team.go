@@ -26,8 +26,8 @@ import (
 )
 
 type (
-	// teamio represents the activities for the team.
-	teamio struct{}
+	// TeamService represents the activities for the team.
+	TeamService struct{}
 )
 
 // TeamIO creates and returns a new TeamIO object.
@@ -35,8 +35,8 @@ type (
 // Example:
 //
 //	team_io := auth.TeamIO()
-func TeamIO() *teamio {
-	return &teamio{}
+func TeamIO() *TeamService {
+	return &TeamService{}
 }
 
 // Get retrieves a team from the database based on the provided parameters.
@@ -44,7 +44,7 @@ func TeamIO() *teamio {
 // Example:
 //
 //	team, err := auth.TeamIO().Get(ctx, db.QueryParams{"id": team_id})
-func (a *teamio) Get(ctx context.Context, params db.QueryParams) (*Team, error) {
+func (a *TeamService) Get(ctx context.Context, params db.QueryParams) (*Team, error) {
 	team := &Team{}
 
 	return team, db.Get(team, params)
@@ -55,7 +55,7 @@ func (a *teamio) Get(ctx context.Context, params db.QueryParams) (*Team, error) 
 // Example:
 //
 //	team, err := auth.TeamIO().GetByID(ctx, team_id)
-func (a *teamio) GetByID(ctx context.Context, id string) (*Team, error) {
+func (a *TeamService) GetByID(ctx context.Context, id string) (*Team, error) {
 	team := &Team{}
 
 	return team, db.Get(team, db.QueryParams{"id": id})
@@ -66,7 +66,7 @@ func (a *teamio) GetByID(ctx context.Context, id string) (*Team, error) {
 // Example:
 //
 //	team, err := auth.TeamIO().GetByName(ctx, "My Team")
-func (a *teamio) GetByName(ctx context.Context, name string) (*Team, error) {
+func (a *TeamService) GetByName(ctx context.Context, name string) (*Team, error) {
 	team := &Team{}
 
 	return team, db.Get(team, db.QueryParams{"name": name})
@@ -77,7 +77,7 @@ func (a *teamio) GetByName(ctx context.Context, name string) (*Team, error) {
 // Example:
 //
 //	users, err := auth.TeamIO().GetUsers(ctx, team)
-func (a *teamio) GetUsers(ctx context.Context, team *Team) ([]User, error) {
+func (a *TeamService) GetUsers(ctx context.Context, team *Team) ([]User, error) {
 	entity := &User{}
 	users := make([]User, 0)
 	ids := make([]string, 0)
@@ -112,6 +112,6 @@ func (a *teamio) GetUsers(ctx context.Context, team *Team) ([]User, error) {
 // Example:
 //
 //	team, err := auth.TeamIO().Save(ctx, team)
-func (a *teamio) Save(ctx context.Context, team *Team) (*Team, error) {
+func (a *TeamService) Save(ctx context.Context, team *Team) (*Team, error) {
 	return team, db.Save(team)
 }
