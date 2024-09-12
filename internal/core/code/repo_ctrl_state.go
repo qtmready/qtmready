@@ -31,6 +31,7 @@ import (
 type (
 	RepoCtrlState struct {
 		*BaseCtrl
+		triggers BranchTriggers
 	}
 )
 
@@ -40,6 +41,14 @@ func (state *RepoCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler 
 	return func(rx workflow.ReceiveChannel, more bool) {
 		push := &defs.Event[defs.Push, defs.RepoProvider]{}
 		state.rx(ctx, rx, push)
+
+		id, ok := state.triggers.get(push.Payload.Ref)
+		if ok {
+			push.SetParent(id)
+		} else {
+			state.log(ctx, "on_push").Warn("unable to set parent id.")
+		}
+
 		state.signal_branch(ctx, BranchNameFromRef(push.Payload.Ref), defs.RepoIOSignalPush, push)
 	}
 }
@@ -58,8 +67,10 @@ func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.Channe
 
 			if event.Context.Action == defs.EventActionCreated {
 				state.add_branch(ctx, event.Payload.Ref)
+				state.triggers.add(event.Payload.Ref, event.ID)
 			} else if event.Context.Action == defs.EventActionDeleted {
 				state.remove_branch(ctx, event.Payload.Ref)
+				state.triggers.del(event.Payload.Ref)
 			}
 		}
 	}
@@ -71,6 +82,14 @@ func (state *RepoCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
+
+		id, ok := state.triggers.get(event.Payload.HeadBranch)
+		if ok {
+			event.SetParent(id)
+		} else {
+			state.log(ctx, "on_pr").Warn("unable to set parent id.")
+		}
+
 		state.signal_branch(ctx, event.Payload.HeadBranch, defs.RepoIOSignalPullRequest, event)
 	}
 }
@@ -79,6 +98,13 @@ func (state *RepoCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler
 	return func(rx workflow.ReceiveChannel, more bool) {
 		label := &defs.Event[defs.PullRequestLabel, defs.RepoProvider]{}
 		state.rx(ctx, rx, label)
+
+		id, ok := state.triggers.get(label.Payload.Branch)
+		if ok {
+			label.SetParent(id)
+		} else {
+			state.log(ctx, "on_label").Warn("unable to set parent id.")
+		}
 
 		state.signal_branch(ctx, label.Payload.Branch, defs.RepoIOSignalPullRequestLabel, label)
 	}
@@ -89,5 +115,6 @@ func (state *RepoCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler
 func NewRepoCtrlState(ctx workflow.Context, repo *defs.Repo) *RepoCtrlState {
 	return &RepoCtrlState{
 		BaseCtrl: NewBaseCtrl(ctx, "repo_ctrl", repo),
+		triggers: make(BranchTriggers),
 	}
 }

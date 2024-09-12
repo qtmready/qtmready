@@ -5,32 +5,32 @@ import (
 )
 
 type (
-	// BranchRootEvents maintains a mapping of branch names to the event IDs that triggered their creation.
+	// BranchTriggers maintains a mapping of branch names to the event IDs that triggered their creation.
 	// This data structure allows us to determine the root event for any given branch, enabling event
 	// lineage tracing.
 	//
 	// Example:
-	//   events := make(BranchRootEvents)
+	//   events := make(BranchTriggers)
 	//   events.Add("branch", event.ID)
-	BranchRootEvents map[string]gocql.UUID
+	BranchTriggers map[string]gocql.UUID
 )
 
-// Add associates a new branch with its corresponding event ID.
-func (b BranchRootEvents) Add(branch string, id gocql.UUID) {
+// add associates a new branch with its corresponding event ID.
+func (b BranchTriggers) add(branch string, id gocql.UUID) {
 	b[branch] = id
 }
 
-// Remove disassociates a branch from its stored event ID.
-func (b BranchRootEvents) Remove(branch string) {
+// del disassociates a branch from its stored event ID.
+func (b BranchTriggers) del(branch string) {
 	delete(b, branch)
 }
 
-// Get retrieves the event ID associated with the specified branch.
+// get retrieves the event ID associated with the specified branch.
 //
 // Example:
 //
-//	branch, ok := events.Get("branch")
-func (b BranchRootEvents) Get(branch string) (gocql.UUID, bool) {
+//	branch, ok := events.get("branch")
+func (b BranchTriggers) get(branch string) (gocql.UUID, bool) {
 	id, ok := b[branch]
 
 	return id, ok
