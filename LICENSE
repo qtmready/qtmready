@@ -1,139 +1,105 @@
-Breu Community License Agreement
-Version 1.0
+# Functional Source License, Version 1.1, Apache 2.0 Future License
 
-This BREU COMMUNITY LICENSE AGREEMENT (the "BCL Agreement"), version 1.0, sets
-forth the terms on which Breu, Inc. (“Breu”) makes available certain
-software made available by Breu under this Agreement (the “Software”). BY
-INSTALLING, DOWNLOADING, ACCESSING, USING OR DISTRIBUTING ANY OF THE SOFTWARE,
-YOU AGREE TO THE TERMS AND CONDITIONS OF THIS AGREEMENT. IF YOU DO NOT AGREE TO
-SUCH TERMS AND CONDITIONS, YOU MUST NOT USE THE SOFTWARE. IF YOU ARE RECEIVING
-THE SOFTWARE ON BEHALF OF A LEGAL ENTITY, YOU REPRESENT AND WARRANT THAT YOU
-HAVE THE ACTUAL AUTHORITY TO AGREE TO THE TERMS AND CONDITIONS OF THIS
-AGREEMENT ON BEHALF OF SUCH ENTITY. “Licensee” means you, an individual, or
-the entity on whose behalf you are receiving the Software.
+## Abbreviation
 
-1.  LICENSE GRANT AND CONDITIONS.
+FSL-1.1-Apache-2.0
 
-    1.1 License.
+## Notice
 
-    Subject to the terms and conditions of this Agreement, Breu hereby grants
-    to Licensee a non-exclusive, royalty-free, worldwide, non-transferable,
-    non sub-license-able license during the term of this Agreement to:
+Copyright ${year} ${licensor name}
 
-        (a) use the Software;
+## Terms and Conditions
 
-        (b) prepare modifications and derivative works of the Software;
+### Licensor ("We")
 
-        (c) distribute the Software (including without limitation in source code
-        or object code form);
+The party offering the Software under these Terms and Conditions.
 
-        (d) reproduce copies of the Software (the “License”).
+### The Software
 
-    Licensee is not granted the right to, and Licensee shall not, exercise the
-    License for an Excluded Purpose. For purposes of this Agreement,
-    “Excluded Purpose” means making available any software-as-a-service,
-    platform-as-a-service, infrastructure-as-a-service or other similar online
-    services that competes with Breu products or services that provide the
-    Software.
+The "Software" is each version of the software that we make available under
+these Terms and Conditions, as indicated by our inclusion of these Terms and
+Conditions with the Software.
 
-    1.2. Conditions.
+### License Grant
 
-    In consideration of the License, Licensee’s distribution of the Software is
-    subject to the following conditions:
+Subject to your compliance with this License Grant and the Patents,
+Redistribution and Trademark clauses below, we hereby grant you the right to
+use, copy, modify, create derivative works, publicly perform, publicly display
+and redistribute the Software for any Permitted Purpose identified below.
 
-        (a) Licensee must cause any Software modified by Licensee to carry
-        prominent notices stating that Licensee modified the Software.
+### Permitted Purpose
 
-        (b) On each Software copy, Licensee shall reproduce and not remove or
-        alter all Breu or third party copyright or other proprietary
-        notices contained in the Software, and Licensee must provide the
-        notice below with each copy.
+A Permitted Purpose is any purpose other than a Competing Use. A Competing Use
+means making the Software available to others in a commercial product or
+service that:
 
-            "This software is made available by Breu, Inc., under the terms of the
-            BREU COMMUNITY LICENSE AGREEMENT, Version 1.0, found at
-            https://www.breu.io/license/community. BY INSTALLING, DOWNLOADING,
-            ACCESSING, USING OR DISTRIBUTING ANY OF THE SOFTWARE, YOU AGREE TO
-            THE TERMS OF THE LICENSE AGREEMENT."
+1. substitutes for the Software;
 
-    1.3. Licensee Modifications.
+2. substitutes for any other product or service we offer using the Software
+   that exists as of the date we make the Software available; or
 
-    Licensee may add its own copyright notices to modifications made by Licensee
-    and may provide additional or different license terms and conditions for use,
-    reproduction, or distribution of Licensee’s modifications. While
-    redistributing the Software or modifications thereof, Licensee may choose to
-    offer, for a fee or free of charge, support, warranty, indemnity, or other
-    obligations. Licensee, and not Breu, will be responsible for any such
-    obligations.
+3. offers the same or substantially similar functionality as the Software.
 
-    1.4. No Sub-licensing.
+Permitted Purposes specifically include using the Software:
 
-    The License does not include the right to sublicense the Software, however,
-    each recipient to which Licensee provides the Software may exercise the
-    Licenses so long as such recipient agrees to the terms and conditions of
-    this Agreement.
+1. for your internal use and access;
 
-2.  TERM AND TERMINATION.
+2. for non-commercial education;
 
-    This Agreement will continue unless and until earlier terminated as set
-    forth herein. If Licensee breaches any of its conditions or obligations
-    under this Agreement, this Agreement will terminate automatically and the
-    License will terminate automatically and permanently.
+3. for non-commercial research; and
 
-3.  INTELLECTUAL PROPERTY.
+4. in connection with professional services that you provide to a licensee
+   using the Software in accordance with these Terms and Conditions.
 
-    As between the parties, Breu will retain all right, title, and interest
-    in the Software, and all intellectual property rights therein. Breu hereby
-    reserves all rights not expressly granted to Licensee in this Agreement.
-    Breu hereby reserves all rights in its trademarks and service marks,
-    and no licenses therein are granted in this Agreement.
+### Patents
 
-4.  DISCLAIMER.
+To the extent your use for a Permitted Purpose would necessarily infringe our
+patents, the license grant above includes a license under our patents. If you
+make a claim against any party that the Software infringes or contributes to
+the infringement of any patent, then your patent license to the Software ends
+immediately.
 
-    Breu, Inc. HEREBY DISCLAIMS ANY AND ALL WARRANTIES AND CONDITIONS, EXPRESS,
-    IMPLIED, STATUTORY, OR OTHERWISE, AND SPECIFICALLY DISCLAIMS ANY WARRANTY
-    OF MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE, WITH RESPECT TO
-    THE SOFTWARE.
+### Redistribution
 
-5.  LIMITATION OF LIABILITY.
+The Terms and Conditions apply to all copies, modifications and derivatives of
+the Software.
 
-    Breu, Inc. WILL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND, INCLUDING BUT NOT
-    LIMITED TO, LOST PROFITS OR ANY CONSEQUENTIAL, SPECIAL, INCIDENTAL, INDIRECT,
-    OR DIRECT DAMAGES, HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, ARISING
-    OUT OF THIS AGREEMENT. THE FOREGOING SHALL APPLY TO THE EXTENT PERMITTED
-    BY APPLICABLE LAW.
+If you redistribute any copies, modifications or derivatives of the Software,
+you must include a copy of or a link to these Terms and Conditions and not
+remove any copyright notices provided in or with the Software.
 
-6.  GENERAL.
+### Disclaimer
 
-    6.1 Governing Law.
+THE SOFTWARE IS PROVIDED "AS IS" AND WITHOUT WARRANTIES OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING WITHOUT LIMITATION WARRANTIES OF FITNESS FOR A PARTICULAR
+PURPOSE, MERCHANTABILITY, TITLE OR NON-INFRINGEMENT.
 
-    This Agreement will be governed by and interpreted in accordance with the
-    laws of the state of California, without reference to its conflict of laws
-    principles. If Licensee is located within the United States, all disputes
-    arising out of this Agreement are subject to the exclusive jurisdiction of
-    courts located in Santa Clara County,California. USA. If Licensee is located
-    outside of the United States, any dispute, controversy or claim arising out
-    of or relating to this Agreement will be referred to and finally determined
-    by arbitration in accordance with the JAMS International Arbitration Rules.
-    The tribunal will consist of one arbitrator. The place of arbitration will
-    be Palo Alto, California. The language to be used in the arbitral
-    proceedings will be English. Judgment upon the award rendered by the
-    arbitrator may be entered in any court having jurisdiction thereof.
+IN NO EVENT WILL WE HAVE ANY LIABILITY TO YOU ARISING OUT OF OR RELATED TO THE
+SOFTWARE, INCLUDING INDIRECT, SPECIAL, INCIDENTAL OR CONSEQUENTIAL DAMAGES,
+EVEN IF WE HAVE BEEN INFORMED OF THEIR POSSIBILITY IN ADVANCE.
 
-    6.2 Assignment.
+### Trademarks
 
-    Licensee is not authorized to assign its rights under this Agreement to any
-    third party. Breu may freely assign its rights under this Agreement to any
-    third party.
+Except for displaying the License Details and identifying us as the origin of
+the Software, you have no right under these Terms and Conditions to use our
+trademarks, trade names, service marks or product names.
 
-    6.3 Other.
+## Grant of Future License
 
-    This Agreement is the entire agreement between the parties regarding the
-    subject matter hereof. No amendment or modification of this Agreement will
-    be valid or binding upon the parties unless made in writing and signed by
-    the duly authorized representatives of both parties. In the event that any
-    provision, including without limitation any condition, of this Agreement is
-    held to be unenforceable, this Agreement and all licenses and rights granted
-    hereunder will immediately terminate. Waiver by Breu of a breach of any
-    provision of this Agreement or the failure by Breu to exercise any right
-    hereunder will not be construed as a waiver of any subsequent breach of
-    that right or as a waiver of any other right.
+We hereby irrevocably grant you an additional license to use the Software under
+the Apache License, Version 2.0 that is effective on the second anniversary of
+the date we make the Software available. On or after that date, you may use the
+Software under the Apache License, Version 2.0, in which case the following
+will apply:
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+this file except in compliance with the License.
+
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.

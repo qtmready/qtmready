@@ -46,9 +46,11 @@ licenses:
     - name: Breu, Inc.
       email: info@breu.io
     use_dynamic_year_ranges: true
-    ident: FSL-1.1-MIT
+    ident: FSL-1.1-Apache-2.0
     template: |
       Crafted with ❤ at [name of author], Copyright © [year].
+
+      Functional Source License, Version 1.1, Apache 2.0 Future License
 
       Functional Source License, Version 1.1, Apache 2.0 Future License
 
