@@ -20,6 +20,7 @@ package auth
 import (
 	"context"
 	"strings"
+	"sync"
 
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/qb"
@@ -29,8 +30,13 @@ import (
 )
 
 type (
-	// UserService represents the activities for the user.
-	UserService struct{}
+	// usrio represents the activities for the user.
+	usrio struct{}
+)
+
+var (
+	usronce *usrio
+	usrsync sync.Once
 )
 
 // UserIO creates and returns a new UserIO object.
@@ -38,8 +44,12 @@ type (
 // Example:
 //
 //	user_io := auth.UserIO()
-func UserIO() *UserService {
-	return &UserService{}
+func UserIO() *usrio {
+	usrsync.Do(func() {
+		usronce = &usrio{}
+	})
+
+	return usronce
 }
 
 // Save saves a user to the database. The email address is converted to
@@ -52,7 +62,7 @@ func UserIO() *UserService {
 // Example:
 //
 //	user, err := auth.UserIO().Save(ctx, user)
-func (a *UserService) Save(ctx context.Context, user *User) (*User, error) {
+func (a *usrio) Save(ctx context.Context, user *User) (*User, error) {
 	user.Email = strings.ToLower(user.Email) // Lowercase email before saving
 
 	return user, db.Save(user)
@@ -66,7 +76,7 @@ func (a *UserService) Save(ctx context.Context, user *User) (*User, error) {
 //
 //	user, err := auth.UserIO().Get(ctx, db.QueryParams{"id": user_id})
 //	user, err := auth.UserIO().Get(ctx, db.QueryParams{"email": "user@example.com"})
-func (a *UserService) Get(ctx context.Context, params db.QueryParams) (*User, error) {
+func (a *usrio) Get(ctx context.Context, params db.QueryParams) (*User, error) {
 	user := &User{}
 
 	if email, ok := params["email"]; ok {
@@ -81,7 +91,7 @@ func (a *UserService) Get(ctx context.Context, params db.QueryParams) (*User, er
 // Example:
 //
 //	user, err := auth.UserIO().GetByID(ctx, user_id)
-func (a *UserService) GetByID(ctx context.Context, id string) (*User, error) {
+func (a *usrio) GetByID(ctx context.Context, id string) (*User, error) {
 	user := &User{}
 
 	return user, db.Get(user, db.QueryParams{"id": id})
@@ -93,7 +103,7 @@ func (a *UserService) GetByID(ctx context.Context, id string) (*User, error) {
 // Example:
 //
 //	user, err := auth.UserIO().GetByEmail(ctx, "user@example.com")
-func (a *UserService) GetByEmail(ctx context.Context, email string) (*User, error) {
+func (a *usrio) GetByEmail(ctx context.Context, email string) (*User, error) {
 	user := &User{}
 
 	return user, db.Get(user, db.QueryParams{"email": strings.ToLower(email)})
@@ -104,7 +114,7 @@ func (a *UserService) GetByEmail(ctx context.Context, email string) (*User, erro
 // Example:
 //
 //	team, err := auth.UserIO().GetActiveTeam(ctx, user)
-func (a *UserService) GetActiveTeam(ctx context.Context, user *User) (*Team, error) {
+func (a *usrio) GetActiveTeam(ctx context.Context, user *User) (*Team, error) {
 	team := &Team{}
 
 	return team, db.Get(team, db.QueryParams{
@@ -117,7 +127,7 @@ func (a *UserService) GetActiveTeam(ctx context.Context, user *User) (*Team, err
 // Example:
 //
 //	teams, err := auth.UserIO().GetTeams(ctx, user)
-func (a *UserService) GetTeams(ctx context.Context, user *User) ([]Team, error) {
+func (a *usrio) GetTeams(ctx context.Context, user *User) ([]Team, error) {
 	entity := &Team{}
 	teams := make([]Team, 0)
 	ids := make([]string, 0)
@@ -148,7 +158,7 @@ func (a *UserService) GetTeams(ctx context.Context, user *User) ([]Team, error) 
 // Example:
 //
 //	teamUser, err := auth.UserIO().GetTeamUser(ctx, user_id, team_id)
-func (a *UserService) GetTeamUser(ctx context.Context, user_id string, team_id string) (*TeamUser, error) {
+func (a *usrio) GetTeamUser(ctx context.Context, user_id string, team_id string) (*TeamUser, error) {
 	teamUser := &TeamUser{}
 
 	return teamUser, db.Get(teamUser, db.QueryParams{
@@ -162,7 +172,7 @@ func (a *UserService) GetTeamUser(ctx context.Context, user_id string, team_id s
 // Example:
 //
 //	user, err := auth.UserIO().SetPassword(ctx, user, "password")
-func (a *UserService) SetPassword(ctx context.Context, user *User, password string) (*User, error) {
+func (a *usrio) SetPassword(ctx context.Context, user *User, password string) (*User, error) {
 	p, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
@@ -178,7 +188,7 @@ func (a *UserService) SetPassword(ctx context.Context, user *User, password stri
 // Example:
 //
 //	isValid := auth.UserIO().VerifyPassword(ctx, user, "password")
-func (a *UserService) VerifyPassword(ctx context.Context, user *User, password string) error {
+func (a *usrio) VerifyPassword(ctx context.Context, user *User, password string) error {
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
 		return ErrInvalidCredentials
@@ -192,7 +202,7 @@ func (a *UserService) VerifyPassword(ctx context.Context, user *User, password s
 // Example:
 //
 //	user, err := auth.UserIO().SetActiveTeam(ctx, user, id)
-func (a *UserService) SetActiveTeam(ctx context.Context, user *User, id string) (*User, error) {
+func (a *usrio) SetActiveTeam(ctx context.Context, user *User, id string) (*User, error) {
 	parsed, err := gocql.ParseUUID(id)
 	if err != nil {
 		return nil, err

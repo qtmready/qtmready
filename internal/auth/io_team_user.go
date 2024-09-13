@@ -19,15 +19,19 @@ package auth
 
 import (
 	"context"
+	"sync"
 
 	"go.breu.io/quantm/internal/db"
 )
 
 type (
 	// TeamUserIO represents the activities for the team user.
-	//
-	// NOTE: This is exportable, otherwise temporal's worker doesn't work.
-	TeamUserService struct{}
+	teamusrio struct{}
+)
+
+var (
+	teamusronce *teamusrio
+	teamusrsync sync.Once
 )
 
 // TeamUserIO creates and returns a new TeamUserIO object.
@@ -35,8 +39,12 @@ type (
 // Example:
 //
 //	team_user_io := auth.TeamUserIO()
-func TeamUserIO() *TeamUserService {
-	return &TeamUserService{}
+func TeamUserIO() *teamusrio {
+	teamusrsync.Do(func() {
+		teamusronce = &teamusrio{}
+	})
+
+	return teamusronce
 }
 
 // Get retrieves a team user from the database by their user ID and team ID.
@@ -44,7 +52,7 @@ func TeamUserIO() *TeamUserService {
 // Example:
 //
 //	team_user, err := auth.TeamUserIO().Get(ctx, user_id, team_id)
-func (a *TeamUserService) Get(ctx context.Context, user_id, team_id string) (*TeamUser, error) {
+func (a *teamusrio) Get(ctx context.Context, user_id, team_id string) (*TeamUser, error) {
 	team_user := &TeamUser{}
 
 	return team_user, db.Get(team_user, db.QueryParams{
@@ -58,7 +66,7 @@ func (a *TeamUserService) Get(ctx context.Context, user_id, team_id string) (*Te
 // Example:
 //
 //	team_users, err := auth.TeamUserIO().GetByUserID(ctx, user_id)
-func (a *TeamUserService) GetByUserID(ctx context.Context, user_id string) ([]TeamUser, error) {
+func (a *teamusrio) GetByUserID(ctx context.Context, user_id string) ([]TeamUser, error) {
 	tus := make([]TeamUser, 0)
 	err := db.Filter(&TeamUser{}, tus, db.QueryParams{"id": user_id})
 
@@ -70,7 +78,7 @@ func (a *TeamUserService) GetByUserID(ctx context.Context, user_id string) ([]Te
 // Example:
 //
 //	team_users, err := auth.TeamUserIO().GetByTeamID(ctx, team_id)
-func (a *TeamUserService) GetByTeamID(ctx context.Context, team_id string) ([]TeamUser, error) {
+func (a *teamusrio) GetByTeamID(ctx context.Context, team_id string) ([]TeamUser, error) {
 	tus := make([]TeamUser, 0)
 	err := db.Filter(&TeamUser{}, tus, db.QueryParams{"team_id": team_id})
 
@@ -82,7 +90,7 @@ func (a *TeamUserService) GetByTeamID(ctx context.Context, team_id string) ([]Te
 // Example:
 //
 //	team_user, err := auth.TeamUserIO().GetByLogin(ctx, login)
-func (a *TeamUserService) GetByLogin(ctx context.Context, login string) (*TeamUser, error) {
+func (a *teamusrio) GetByLogin(ctx context.Context, login string) (*TeamUser, error) {
 	team_user := &TeamUser{}
 
 	return team_user, db.Get(team_user, db.QueryParams{"user_login_id": login})
@@ -93,7 +101,7 @@ func (a *TeamUserService) GetByLogin(ctx context.Context, login string) (*TeamUs
 // Example:
 //
 //	team_user, err := auth.TeamUserIO().Save(ctx, team_user)
-func (a *TeamUserService) Save(ctx context.Context, tu *TeamUser) (*TeamUser, error) {
+func (a *teamusrio) Save(ctx context.Context, tu *TeamUser) (*TeamUser, error) {
 	fetched := &TeamUser{}
 
 	if err := db.Get(fetched, db.QueryParams{"team_id": tu.TeamID.String(), "user_id": tu.UserID.String()}); err == nil {
