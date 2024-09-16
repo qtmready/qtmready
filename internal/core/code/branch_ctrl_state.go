@@ -224,7 +224,7 @@ func (state *RepoIOBranchCtrlState) refresh_author(ctx workflow.Context, id shar
 
 	user := &auth.TeamUser{}
 
-	_ = state.do(ctx, "refresh_author", auth.TeamUserIO().GetByLogin, id.String(), user)
+	_ = state.do(ctx, "refresh_author", state.activities.GetByLogin, id.String(), user)
 }
 
 // Git operations

@@ -28,6 +28,7 @@ import (
 	"os/exec"
 	"regexp"
 
+	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/shared"
@@ -210,4 +211,14 @@ func (a *Activities) RemoveClonedAtPath(ctx context.Context, path string) error 
 	}
 
 	return nil
+}
+
+// Call the auth TeamUserIO to get team user by user_login_id.
+func (a *Activities) GetByLogin(ctx context.Context, id string) (*auth.TeamUser, error) {
+	team_user, err := auth.TeamUserIO().GetByLogin(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return team_user, nil
 }
