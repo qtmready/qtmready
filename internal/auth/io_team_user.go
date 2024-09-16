@@ -93,7 +93,11 @@ func (a *teamusrio) GetByTeamID(ctx context.Context, team_id string) ([]TeamUser
 func (a *teamusrio) GetByLogin(ctx context.Context, login string) (*TeamUser, error) {
 	team_user := &TeamUser{}
 
-	return team_user, db.Get(team_user, db.QueryParams{"user_login_id": login})
+	if err := db.Get(team_user, db.QueryParams{"user_login_id": login}); err != nil {
+		return nil, err
+	}
+
+	return team_user, nil
 }
 
 // Save creates or updates a team user in the database.

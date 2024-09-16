@@ -576,6 +576,7 @@ func getRepoEventState(ctx workflow.Context, event RepoEvent) (*RepoEventState, 
 		"github/repo_event: initializing state ...",
 		slog.Int64("github_repo__installation_id", event.InstallationID().Int64()),
 		slog.Int64("github_repo__github_id", event.RepoID().Int64()),
+		slog.String("github_sender_id", event.SenderID()),
 	)
 
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}

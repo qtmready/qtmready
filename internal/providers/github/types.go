@@ -421,11 +421,16 @@ func prelude(
 		Timestamp: time.Now(),
 	}
 
+	userID := gocql.UUID{}
+	if user != nil {
+		userID = user.UserID
+	}
+
 	sub := defs.EventSubject{
 		ID:     repo.ID,
 		Name:   "repos",
 		TeamID: repo.TeamID,
-		UserID: user.UserID,
+		UserID: userID,
 	}
 
 	return id, version, ctx, sub
