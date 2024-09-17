@@ -50,19 +50,19 @@
 //	slackMessageIO := &SlackMessageIO{}
 //
 //	k := kernel.Instance(
-//		kernel.WithRepoProvider(defs.GitRepoProvider, gitRepoIO),
-//		kernel.WithMessageProvider(defs.SlackMessageProvider, slackMessageIO),
+//		kernel.WithRepoProvider(defs.RepoProvider, gitRepoIO),
+//		kernel.WithMessageProvider(defs.MessageProviderSlack, slackMessageIO),
 //	)
 //
 // Retrieve a RepoIO:
 //
-//	gitIO := k.RepoIO(defs.GitRepoProvider)
+//	github := k.RepoIO(defs.RepoProviderGithub)
 //	// Use gitIO to interact with Git repositories
 //
 // Retrieve a MessageIO:
 //
-//	slackIO := k.MessageIO(defs.SlackMessageProvider)
-//	// Use slackIO to send messages via Slack
+//	slack := k.MessageIO(defs.MessageProviderSlack)
+//	// Use slack to send messages via Slack
 //
 // Register a new provider after initialization:
 //
@@ -87,8 +87,7 @@ type (
 		// RegisterRepoProvider registers a RepoIO for a given RepoProvider.
 		//
 		// Usage:
-		//  gitRepoIO := &GitRepoIO{}
-		//  k.RegisterRepoProvider(defs.GitRepoProvider, gitRepoIO)
+		//  kernel.Instance().RegisterRepoProvider(defs.RepoProvider, &github.RepoIO{})
 		RegisterRepoProvider(defs.RepoProvider, RepoIO)
 
 		// RepoIO retrieves the RepoIO for a given RepoProvider.
@@ -100,15 +99,14 @@ type (
 		// manifesting as nil pointer exceptions later in the program execution.
 		//
 		// Usage:
-		//  gitIO := k.RepoIO(defs.GitRepoProvider)
-		//  // Use gitIO to interact with Git repositories
+		//  io := kernel.Instance().RepoIO(defs.RepoProviderGithub)
+		// io.SetEarlyWarning(ctx, repo.ID.String(), true)
 		RepoIO(defs.RepoProvider) RepoIO
 
 		// RegisterMessageProvider registers a MessageIO for a given MessageProvider.
 		//
 		// Usage:
-		//  slackMessageIO := &SlackMessageIO{}
-		//  k.RegisterMessageProvider(defs.SlackMessageProvider, slackMessageIO)
+		//  kernel.Instance().RegisterMessageProvider(defs.MessageProviderSlack, &slack.MessageIO{})
 		RegisterMessageProvider(defs.MessageProvider, MessageIO)
 
 		// MessageIO retrieves the MessageIO for a given MessageProvider.
@@ -120,8 +118,8 @@ type (
 		// rather than allowing the application to continue running in an invalid state.
 		//
 		// Usage:
-		//  slackIO := k.MessageIO(defs.SlackMessageProvider)
-		//  // Use slackIO to send messages via Slack
+		//  io := kernel.Instance().MessageIO(defs.MessageProviderSlack)
+		//  // Use slack to send messages via Slack
 		MessageIO(defs.MessageProvider) MessageIO
 	}
 
@@ -200,15 +198,18 @@ func WithMessageProvider(provider defs.MessageProvider, io MessageIO) Option {
 // in the main function of your application. This ensures that all required
 // providers are registered before any part of the application attempts to use them.
 //
+// Please note that providers cannot be registred after the Kernel has been initialized.
+//
+// The kernel panics if a provider is not found. This is by design to ensure that
+// critical configuration errors are caught early, typically during application
+// startup or in tests, rather than manifesting as nil pointer exceptions later.
+//
 // Example:
 //
-//	func main() {
-//		gitRepoIO := &GitRepoIO{}
-//		slackMessageIO := &SlackMessageIO{}
-//
+//	func main() {}
 //		kernel.Instance(
-//			kernel.WithRepoProvider(defs.GitRepoProvider, gitRepoIO),
-//			kernel.WithMessageProvider(defs.SlackMessageProvider, slackMessageIO),
+//			kernel.WithRepoProvider(defs.RepoProvider, &github.RepoIO{}),
+//			kernel.WithMessageProvider(defs.MessageProviderSlack, slack.MessageIO{}),
 //		)
 //
 //		// Rest of your application setup...

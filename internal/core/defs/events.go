@@ -193,7 +193,7 @@ type (
 		ID          gocql.UUID   `json:"id" cql:"id"`                     // ID is the ID of the event.
 		ParentID    gocql.UUID   `json:"parent_id" cql:"parent_id"`       // ParentID is the ID of the parent event.
 		Provider    P            `json:"provider" cql:"provider"`         // Provider is the provider of the event.
-		Scope       EventScope   `json:"scope" cql:"scope"`               // Scope is the scope of the event.
+		Scope       EventScope   `json:"scope" cql:"scope_"`              // Scope is the scope of the event.
 		Action      EventAction  `json:"action" cql:"action"`             // Action is the action of the event.
 		Source      string       `json:"source" cql:"source"`             // Source is the source of the event.
 		SubjectID   gocql.UUID   `json:"subject_id" cql:"subject_id"`     // SubjectID is the ID of the subject.
@@ -213,6 +213,7 @@ const (
 const (
 	EventScopeBranch             EventScope = "branch"               // EventScopeBranch scopes branch event.
 	EventScopeTag                EventScope = "tag"                  // EventScopeTag scopes tag event.
+	EventScopeCommit             EventScope = "commit"               // EventScopeCommit scopes commit event.
 	EventScopePush               EventScope = "push"                 // EventScopePush scopes push event.
 	EventScopePullRequest        EventScope = "pull_request"         // EventScopePullRequest scopes PR event.
 	EventScopePullRequestLabel   EventScope = "pull_request_label"   // EventScopePullRequestLabel scopes PR label event.
@@ -241,22 +242,24 @@ var (
 	// Metadata for FlatEvent table.
 	flatEventMeta = itable.Metadata{
 		M: &table.Metadata{
-			Name: "flat_events__v_0_1", // see readme for naming convention
-			Columns: []string{"version",
+			Name: "flat_events__v_0_1",
+			Columns: []string{
+				"version",
 				"id",
 				"parent_id",
 				"provider",
-				"scope",
-				"type",
+				"scope_",
+				"action",
 				"source",
 				"subject_id",
 				"subject_name",
 				"payload",
-				"created_at",
 				"team_id",
+				"user_id",
+				"created_at",
 				"updated_at",
 			},
-			PartKey: []string{"team_id", "repo_id"},
+			PartKey: []string{"subject_id", "team_id"},
 		},
 	}
 
@@ -338,23 +341,6 @@ func (ea EventAction) String() string {
 	return string(ea)
 }
 
-// // MarshalJSON customizes the JSON encoding for Event.
-// func (e Event[T, P]) MarshalJSON() ([]byte, error) {
-// 	return json.Marshal(struct {
-// 		Version EventVersion    `json:"version"`
-// 		ID      gocql.UUID      `json:"id"`
-// 		Context EventContext[P] `json:"context"`
-// 		Subject EventSubject    `json:"subject"`
-// 		Payload T               `json:"payload"`
-// 	}{
-// 		Version: e.Version,
-// 		ID:      e.ID,
-// 		Context: e.Context,
-// 		Subject: e.Subject,
-// 		Payload: e.Payload,
-// 	})
-// }
-
 // UnmarshalJSON customizes the JSON decoding for Event.
 func (e *Event[T, P]) UnmarshalJSON(data []byte) error {
 	aux := struct {
@@ -381,6 +367,8 @@ func (e *Event[T, P]) UnmarshalJSON(data []byte) error {
 		payload = any(BranchOrTag{}).(T)
 	case EventScopePullRequest:
 		payload = any(PullRequest{}).(T)
+	case EventScopeCommit:
+		payload = any(Commit{}).(T)
 	case EventScopePush:
 		payload = any(Push{}).(T)
 	case EventScopePullRequestLabel:
