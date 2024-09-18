@@ -135,37 +135,27 @@ func (a *Activities) SendMergeConflictsMessage(ctx context.Context, payload *def
 func (a *Activities) NotifyMergeConflict(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) error {
 	logger := activity.GetLogger(ctx)
 
-	repo, err := code.RepoIO().GetByID(ctx, event.Subject.ID.String())
-	if err != nil {
-		return err
-	}
+	token := ""
+	target := ""
 
-	target := repo.MessageProviderData.Slack.WorkspaceID
-
-	token, err := reveal(repo.MessageProviderData.Slack.BotToken, target)
-	if err != nil {
-		return err
-	}
+	var err error
 
 	fields := a.conflict_fields(event)
-
-	if event.Subject.UserID.String() != db.NullUUID {
-		// user, err := authacts.GetTeamUser(ctx, event.Subject.UserID.String())
-		user, err := auth.TeamUserIO().Get(ctx, event.Subject.UserID.String(), event.Subject.TeamID.String())
-		if user == nil || err != nil { // This should never error out.
-			return err
-		}
-	}
 
 	// by default we send the message to the channel, but if the user is a member of the team, we send the message to the user.
 	// if we are sending on the channel, we introduce the owner of the branch to the channel.
 	if event.Subject.UserID.String() != db.NullUUID {
 		token, target, err = a.user_tokens(ctx, event)
 		if err != nil {
-			logger.Error("Error in getTokenAndChannelID", "Error", err)
+			logger.Error("Error in token or target", "Error", err)
 			return err
 		}
 	} else {
+		token, target, err = a.repo_tokens(ctx, event)
+		if err != nil {
+			return err
+		}
+
 		owner := event.Payload.BaseCommit.Author
 		url := fmt.Sprintf("https://github.com/%s", owner)
 		fields = append(fields, slack.AttachmentField{
@@ -177,8 +167,9 @@ func (a *Activities) NotifyMergeConflict(ctx context.Context, event *defs.Event[
 
 	attachment := slack.Attachment{
 		Color: "warning",
-		Pretext: `We've detected a merge conflict in your feature branch, [Branch Name]. 
-		This means there are changes in your branch that clash with recent updates on the main branch (trunk).`,
+		Pretext: fmt.Sprintf(`We've detected a merge conflict in your feature branch, <%s|%s>. 
+	This means there are changes in your branch that clash with recent updates on the main branch (trunk).`,
+			event.Payload.HeadCommit.URL, event.Payload.HeadCommit.SHA[:7]), // TODO
 		Fallback:   "Merge Conflict Detected",
 		MarkdownIn: []string{"fields"},
 		Footer:     footer,
@@ -203,7 +194,7 @@ func (a *Activities) conflict_fields(event *defs.Event[defs.MergeConflict, defs.
 			Short: true,
 		}, {
 			Title: "Current HEAD",
-			Value: fmt.Sprintf("%s", event.Payload.BaseBranch),
+			Value: fmt.Sprintf("%s", event.Payload.HeadBranch),
 			Short: true,
 		}, {
 			Title: "Conflict HEAD",
@@ -212,8 +203,8 @@ func (a *Activities) conflict_fields(event *defs.Event[defs.MergeConflict, defs.
 		},
 		{
 			Title: "Affected Files",
-			Value: fmt.Sprintf("%s", event.Payload.Files), // TODO:
-			Short: true,
+			Value: fmt.Sprintf("%s", FormatFilesList(event.Payload.Files)),
+			Short: false,
 		},
 	}
 
@@ -221,10 +212,10 @@ func (a *Activities) conflict_fields(event *defs.Event[defs.MergeConflict, defs.
 }
 
 func (a *Activities) user_tokens(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) (string, string, error) {
-	tuser, err := githubacts.GetTeamUserByLoginID(ctx, event.Subject.UserID.String())
+	tuser, err := auth.TeamUserIO().Get(ctx, event.Subject.UserID.String(), event.Subject.TeamID.String())
 
-	if err != nil || tuser == nil {
-		return "", "", nil // We should never arrive here.
+	if err != nil {
+		return "", "", err
 	}
 
 	token, err := reveal(tuser.MessageProviderUserInfo.Slack.BotToken, tuser.MessageProviderUserInfo.Slack.ProviderTeamID)
@@ -235,6 +226,16 @@ func (a *Activities) user_tokens(ctx context.Context, event *defs.Event[defs.Mer
 	return token, tuser.MessageProviderUserInfo.Slack.ProviderUserID, nil
 }
 
-func (a *Activities) team_tokens(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) (string, string, error) {
-	return "", "", nil
+func (a *Activities) repo_tokens(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) (string, string, error) {
+	repo, err := code.RepoIO().GetByID(ctx, event.Subject.ID.String())
+	if err != nil {
+		return "", "", err
+	}
+
+	token, err := reveal(repo.MessageProviderData.Slack.BotToken, repo.MessageProviderData.Slack.WorkspaceID)
+	if err != nil {
+		return "", "", err
+	}
+
+	return token, repo.MessageProviderData.Slack.ChannelID, nil
 }

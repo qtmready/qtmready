@@ -62,7 +62,7 @@ func formatLineThresholdExceededAttachment(payload *defs.MessageIOLineExeededPay
 		{
 			Title: "*Details*",
 			Value: fmt.Sprintf("*Number of Files Changed:* %d\n\n*Files Changed*\n%s",
-				len(payload.DetectChanges.Modified), formatFilesList(payload.DetectChanges.Modified)),
+				len(payload.DetectChanges.Modified), FormatFilesList(payload.DetectChanges.Modified)),
 			Short: false,
 		},
 	}
@@ -142,13 +142,4 @@ func createPushedByField(author, url string, short bool) slack.AttachmentField {
 		Value: fmt.Sprintf("<%s|%s>", url, author),
 		Short: short,
 	}
-}
-
-func formatFilesList(files []string) string {
-	result := ""
-	for _, file := range files {
-		result += "- " + file + "\n"
-	}
-
-	return result
 }

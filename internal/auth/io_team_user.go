@@ -19,6 +19,7 @@ package auth
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"go.breu.io/quantm/internal/db"
@@ -55,10 +56,11 @@ func TeamUserIO() *teamusrio {
 func (a *teamusrio) Get(ctx context.Context, user_id, team_id string) (*TeamUser, error) {
 	team_user := &TeamUser{}
 
-	return team_user, db.Get(team_user, db.QueryParams{
-		"id":      user_id,
-		"team_id": team_id,
-	})
+	if err := db.Get(team_user, db.QueryParams{"user_id": user_id, "team_id": team_id}); err != nil {
+		return nil, err
+	}
+
+	return team_user, nil
 }
 
 // GetByUserID retrieves a team user from the database by their user ID.
@@ -94,6 +96,13 @@ func (a *teamusrio) GetByLogin(ctx context.Context, login string) (*TeamUser, er
 	team_user := &TeamUser{}
 
 	if err := db.Get(team_user, db.QueryParams{"user_login_id": login}); err != nil {
+		// Check if the error message is "not found" and handle accordingly
+		// return error nil if the user not found in the system (not connect with message povider)
+		// in not foun case we return both err and teamuser to run the workflow but not send message to user
+		if strings.Contains(err.Error(), "not found") {
+			return nil, nil
+		}
+
 		return nil, err
 	}
 

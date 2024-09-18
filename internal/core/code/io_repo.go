@@ -57,7 +57,11 @@ func (r *repoio) Get(ctx context.Context, params db.QueryParams) (*defs.Repo, er
 func (r *repoio) GetByID(ctx context.Context, id string) (*defs.Repo, error) {
 	repo := &defs.Repo{}
 
-	return repo, db.Get(repo, db.QueryParams{"id": id})
+	if err := db.Get(repo, db.QueryParams{"id": id}); err != nil {
+		return nil, err
+	}
+
+	return repo, nil
 }
 
 // GetByCtrlID retrieves a repo from the database by their control ID.

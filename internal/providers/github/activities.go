@@ -22,7 +22,6 @@ package github
 
 import (
 	"context"
-	"strings"
 
 	gh "github.com/google/go-github/v62/github"
 	"go.temporal.io/sdk/activity"
@@ -75,13 +74,6 @@ func (a *Activities) GetTeamUserByLoginID(ctx context.Context, loginID string) (
 	teamuser, err := auth.TeamUserIO().GetByLogin(ctx, loginID)
 
 	if err != nil {
-		// Check if the error message is "not found" and handle accordingly
-		// return error nil if the user not found in the system (not connect with message povider)
-		// in not foun case we return both err and teamuser to run the workflow but not send message to user
-		if strings.Contains(err.Error(), "not found") {
-			return nil, nil
-		}
-
 		return nil, err
 	}
 

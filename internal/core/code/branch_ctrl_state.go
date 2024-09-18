@@ -221,10 +221,11 @@ func (state *RepoIOBranchCtrlState) set_author(ctx workflow.Context, owner *auth
 
 func (state *RepoIOBranchCtrlState) refresh_author(ctx workflow.Context, id shared.Int64) {
 	ctx = shared.WithDefaultActivityContext(ctx)
-
 	user := &auth.TeamUser{}
 
 	_ = state.do(ctx, "refresh_author", state.activities.GetByLogin, id.String(), user)
+
+	state.set_author(ctx, user)
 }
 
 // Git operations
@@ -345,9 +346,11 @@ func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, event *d
 	ctx = shared.WithDefaultActivityContext(ctx)
 
 	// msg := comm.NewMergeConflictMessage(event, state.repo, state.author, state.branch(ctx))
-
 	conflict := comm.NewMergeConflictEvent(event, state.pr.HeadBranch, state.pr.BaseBranch, state.last_commit)
-	conflict.SetUserID(state.author.ID)
+
+	if state.author != nil {
+		conflict.SetUserID(state.author.UserID)
+	}
 
 	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
 
