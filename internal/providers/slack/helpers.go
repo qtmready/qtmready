@@ -23,6 +23,7 @@ package slack
 import (
 	"encoding/base64"
 	"log/slog"
+	"strings"
 )
 
 // reveal decodes a base64-encoded encrypted token and decrypts it using a generated key.
@@ -54,4 +55,9 @@ func FormatFilesList(files []string) string {
 	}
 
 	return result
+}
+
+func ExtractRepoName(repoURL string) string {
+	parts := strings.Split(repoURL, "/")
+	return parts[len(parts)-1]
 }

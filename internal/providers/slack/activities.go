@@ -167,9 +167,9 @@ func (a *Activities) NotifyMergeConflict(ctx context.Context, event *defs.Event[
 
 	attachment := slack.Attachment{
 		Color: "warning",
-		Pretext: fmt.Sprintf(`We've detected a merge conflict in your feature branch, <%s|%s>. 
-	This means there are changes in your branch that clash with recent updates on the main branch (trunk).`,
-			event.Payload.HeadCommit.URL, event.Payload.HeadCommit.SHA[:7]), // TODO
+		Pretext: fmt.Sprintf(`We've detected a merge conflict in your feature branch, <%s/tree/%s|%s>. 
+    This means there are changes in your branch that clash with recent updates on the main branch (trunk).`,
+			event.Context.Source, event.Payload.HeadBranch, event.Payload.HeadBranch),
 		Fallback:   "Merge Conflict Detected",
 		MarkdownIn: []string{"fields"},
 		Footer:     footer,
@@ -189,19 +189,22 @@ func (a *Activities) NotifyMergeConflict(ctx context.Context, event *defs.Event[
 func (a *Activities) conflict_fields(event *defs.Event[defs.MergeConflict, defs.RepoProvider]) []slack.AttachmentField {
 	fields := []slack.AttachmentField{
 		{
+			Title: "*Repository*",
+			Value: fmt.Sprintf("<%s|%s>", event.Context.Source, ExtractRepoName(event.Context.Source)),
+			Short: true,
+		}, {
 			Title: "*Branch*",
-			Value: fmt.Sprintf("%s", event.Payload.BaseBranch),
+			Value: fmt.Sprintf("<%s/tree/%s|%s>", event.Context.Source, event.Payload.BaseBranch, event.Payload.BaseBranch),
 			Short: true,
 		}, {
 			Title: "Current HEAD",
-			Value: fmt.Sprintf("%s", event.Payload.HeadBranch),
+			Value: fmt.Sprintf("<%s/tree/%s|%s>", event.Context.Source, event.Payload.HeadBranch, event.Payload.HeadBranch),
 			Short: true,
 		}, {
 			Title: "Conflict HEAD",
-			Value: fmt.Sprintf("%s", event.Payload.HeadCommit.SHA),
+			Value: fmt.Sprintf("<%s|%s>", event.Payload.HeadCommit.URL, event.Payload.HeadCommit.SHA[:7]),
 			Short: true,
-		},
-		{
+		}, {
 			Title: "Affected Files",
 			Value: fmt.Sprintf("%s", FormatFilesList(event.Payload.Files)),
 			Short: false,
