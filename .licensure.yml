@@ -46,7 +46,9 @@ licenses:
     use_dynamic_year_ranges: true
     ident: FSL-1.1-MIT
     template: |
-      Copyright © [year], [name of author]
+      Crafted with ❤ at [name of author], Copyright © [year].
+
+      Functional Source License, Version 1.1, Apache 2.0 Future License
 
       We hereby irrevocably grant you an additional license to use the Software under
       the Apache License, Version 2.0 that is effective on the second anniversary of

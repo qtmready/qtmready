@@ -36,7 +36,6 @@ require (
 	go.step.sm/crypto v0.51.2
 	go.temporal.io/sdk v1.29.0
 	golang.org/x/crypto v0.27.0
-	golang.org/x/tools v0.24.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -45,6 +44,7 @@ require (
 	github.com/containerd/platforms v0.2.1 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.19.0 // indirect
+	golang.org/x/tools v0.24.0 // indirect
 )
 
 require (
