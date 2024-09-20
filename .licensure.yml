@@ -1,4 +1,6 @@
-# Copyright © 2022, 2024, Breu, Inc. <info@breu.io>
+# Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2022, 2024.
+#
+# Functional Source License, Version 1.1, Apache 2.0 Future License
 #
 # We hereby irrevocably grant you an additional license to use the Software under the Apache License, Version 2.0 that
 # is effective on the second anniversary of the date we make the Software available. On or after that date, you may use
@@ -67,7 +69,6 @@ licenses:
       under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
       CONDITIONS OF ANY KIND, either express or implied. See the License for the
       specific language governing permissions and limitations under the License.
-
 comments:
   
   - extensions:
