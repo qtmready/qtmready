@@ -1,4 +1,4 @@
-// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2024.
+// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2023, 2024.
 //
 // Functional Source License, Version 1.1, Apache 2.0 Future License
 //
@@ -17,8 +17,6 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
-// Package mutex provides functionality for managing distributed locks.
 package mutex
 
 import (

@@ -21,6 +21,7 @@
 package db
 
 import (
+	"context"
 	"embed"
 	"fmt"
 	"sync"
@@ -89,6 +90,12 @@ func (l *MigrationLogger) Verbose() bool {
 }
 
 func (mc *MockConfig) Session() *igocqlx.Session {
+	return nil
+}
+
+func (c *Config) Shutdown(ctx context.Context) error {
+	c.Session.Session().S.Session.Close()
+
 	return nil
 }
 
