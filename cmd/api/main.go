@@ -23,23 +23,17 @@ import (
 	"context"
 	"log/slog"
 	"os"
-	"os/signal"
-	"syscall"
+	"time"
 
-	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	"go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho"
 
-	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
-	coreweb "go.breu.io/quantm/internal/core/web"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
-	"go.breu.io/quantm/internal/shared/logger"
+	"go.breu.io/quantm/internal/shared/graceful"
 )
 
 const (
@@ -48,12 +42,10 @@ const (
 )
 
 func main() {
-	exitcode := 0
 	ctx := context.Background()
-	quit := make(chan os.Signal, 1) // create a channel to listen to quit signals.
-	errs := make(chan error, 1)     // create a channel to listen to errors.
-
-	defer db.DB().Session.Close()
+	sigterm := make(chan os.Signal, 1) // create a channel to listen to quit signals.
+	quit := make(chan bool, 1)         // channel to signal the shutdown to goroutines.
+	errs := make(chan error, 1)        // create a channel to listen to errors.
 
 	// init service
 	shared.Service().SetName("api")
@@ -63,8 +55,12 @@ func main() {
 		slog.String("version", shared.Service().GetVersion()),
 	)
 
-	// init open telemetry
-	otelshutdown, err := _otel(ctx, shared.Service().GetName(), shared.Service().GetVersion())
+	kernel.Instance(
+		kernel.WithRepoProvider(defs.RepoProviderGithub, &github.RepoIO{}),
+		kernel.WithMessageProvider(defs.MessageProviderSlack, &slack.Activities{}),
+	)
+
+	otelshutdown, err := observe(ctx, shared.Service().GetName(), shared.Service().GetVersion())
 	if err != nil {
 		slog.Error("failed to setup opentelemetry, exiting ...", slog.Any("error", err.Error()))
 		errs <- err
@@ -75,51 +71,33 @@ func main() {
 	slog.Info("setting up webserver")
 
 	web := echo.New()
-	web.HideBanner = true
-	web.HTTPErrorHandler = shared.EchoAPIErrorHandler
-	web.Validator = &shared.EchoValidator{Validator: shared.Validator()}
-
-	web.Use(middleware.CORS())
-	web.Use(otelecho.Middleware(shared.Service().GetName()))
-	web.Use(logger.NewRequestLoggerMiddleware())
-	web.Use(echoprometheus.NewMiddleware(shared.Service().GetName()))
-	web.Use(middleware.Recover())
-
-	web.GET("/healthx", healthz)
-
-	auth.RegisterHandlers(web, auth.NewServerHandler(auth.Middleware))
-	coreweb.RegisterHandlers(web, coreweb.NewServerHandler(auth.Middleware))
-	github.RegisterHandlers(web, github.NewServerHandler(auth.Middleware))
-	slack.RegisterHandlers(web, slack.NewServerHandler(auth.Middleware))
-
-	kernel.Instance(
-		kernel.WithRepoProvider(defs.RepoProviderGithub, &github.RepoIO{}),
-		kernel.WithMessageProvider(defs.MessageProviderSlack, &slack.Activities{}),
-	)
+	configure_web(web)
 
 	slog.Info("setting up metrics")
 
 	metrics := echo.New()
-	metrics.HideBanner = true
+	configure_metrics(metrics)
 
-	// configure metrics routes
-	metrics.GET("/metrics", echoprometheus.NewHandler())
+	cleanup := []graceful.Cleanup{
+		otelshutdown,
+		metrics.Shutdown,
+		web.Shutdown,
+		db.DB().Shutdown,
+	}
 
-	go _run(_serve(web, HTTPPort), errs)
-	go _run(_serve(metrics, PrometheusPort), errs)
-
-	slog.Info("registering quit signals")
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // setting up the signals to listen to.
+	graceful.Go(ctx, graceful.GrabAndGo(metrics.Start, ":"+PrometheusPort), errs)
+	graceful.Go(ctx, graceful.GrabAndGo(web.Start, ":"+HTTPPort), errs)
 
 	shared.Service().Banner()
 
 	select {
 	case err := <-errs:
-		slog.Error("encountered error, shutting down gracefully ...", slog.Any("error", err.Error()))
-		_graceful(ctx, []shutdownfn{web.Shutdown, metrics.Shutdown, otelshutdown}, []chan any{}, exitcode)
-
-	case <-quit:
-		slog.Info("received quit signal, shutting down gracefully ...")
-		_graceful(ctx, []shutdownfn{web.Shutdown, metrics.Shutdown, otelshutdown}, []chan any{}, exitcode)
+		slog.Error("failed to start service", slog.Any("error", err.Error()))
+	case <-sigterm:
+		slog.Info("received shutdown signal")
 	}
+
+	code := graceful.Shutdown(ctx, cleanup, quit, 10*time.Second, 0)
+
+	os.Exit(code)
 }

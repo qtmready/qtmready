@@ -33,6 +33,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+
+	"go.breu.io/quantm/internal/shared/graceful"
 )
 
 type (
@@ -53,8 +55,37 @@ func (d *devnull) MarshalLog() any {
 	return nil
 }
 
-// _otel sets up opentelemetry.
-func _otel(ctx context.Context, name, version string) (shutdown shutdownfn, err error) {
+// configure_exporter returns a trace exporter based on the environment. When running on GCE, the cloudtrace exporter is used.
+func configure_exporter() (trace.SpanExporter, error) {
+	if metadata.OnGCE() {
+		project, _ := metadata.ProjectIDWithContext(context.Background())
+		return cloudtrace.New(cloudtrace.WithProjectID(project))
+	}
+
+	// return stdouttrace.New()
+	return &devnull{}, nil
+}
+
+// configure_resource returns a resource with the service name and version.
+func configure_resource(_ context.Context, name, version string) (*resource.Resource, error) {
+	return resource.Merge(
+		resource.Default(),
+		resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceName(name), semconv.ServiceVersion(version)),
+	)
+}
+
+// configure_propagator returns a propagator based on the environment. The gcp.CloudTraceOneWayPropagator is only used when
+// running on GCE. It allows for the open telemetry traceheader to take precedence over the x-cloud-trace-context.
+func configure_propagator() propagation.TextMapPropagator {
+	return propagation.NewCompositeTextMapPropagator(
+		gcppropagator.CloudTraceOneWayPropagator{},
+		propagation.TraceContext{},
+		propagation.Baggage{},
+	)
+}
+
+// observe sets up opentelemetry.
+func observe(ctx context.Context, name, version string) (shutdown graceful.Cleanup, err error) {
 	slog.Info("otel: init ...")
 
 	shutdownfns := make([]shutdownfn, 0)
@@ -77,7 +108,7 @@ func _otel(ctx context.Context, name, version string) (shutdown shutdownfn, err 
 	 * Setup OpenTelemetry Exporter
 	 */
 
-	exporter, err := _exporter()
+	exporter, err := configure_exporter()
 	if err != nil {
 		handlerr(err)
 		return
@@ -87,7 +118,7 @@ func _otel(ctx context.Context, name, version string) (shutdown shutdownfn, err 
 	 * Setup OpenTelemetry Resource
 	 */
 
-	res, err := _resource(ctx, name, version)
+	res, err := configure_resource(ctx, name, version)
 	if err != nil {
 		handlerr(err)
 		return
@@ -97,7 +128,7 @@ func _otel(ctx context.Context, name, version string) (shutdown shutdownfn, err 
 	 * Setup OpenTelemetry Propagator
 	 */
 
-	propagator := _propagator()
+	propagator := configure_propagator()
 	otel.SetTextMapPropagator(propagator)
 
 	/**
@@ -117,33 +148,4 @@ func _otel(ctx context.Context, name, version string) (shutdown shutdownfn, err 
 	slog.Info("otel: initialized")
 
 	return
-}
-
-// _exporter returns a trace exporter based on the environment. When running on GCE, the cloudtrace exporter is used.
-func _exporter() (trace.SpanExporter, error) {
-	if metadata.OnGCE() {
-		project, _ := metadata.ProjectIDWithContext(context.Background())
-		return cloudtrace.New(cloudtrace.WithProjectID(project))
-	}
-
-	// return stdouttrace.New()
-	return &devnull{}, nil
-}
-
-// _resource returns a resource with the service name and version.
-func _resource(_ context.Context, name, version string) (*resource.Resource, error) {
-	return resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(semconv.SchemaURL, semconv.ServiceName(name), semconv.ServiceVersion(version)),
-	)
-}
-
-// _propagator returns a propagator based on the environment. The gcp.CloudTraceOneWayPropagator is only used when
-// running on GCE. It allows for the open telemetry traceheader to take precedence over the x-cloud-trace-context.
-func _propagator() propagation.TextMapPropagator {
-	return propagation.NewCompositeTextMapPropagator(
-		gcppropagator.CloudTraceOneWayPropagator{},
-		propagation.TraceContext{},
-		propagation.Baggage{},
-	)
 }
