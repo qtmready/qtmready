@@ -17,7 +17,6 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package shared
 
 import (
@@ -70,6 +69,7 @@ func Service() service.Service {
 
 // Logger returns the global structured logger. If the global structured logger has not been initialized, it will be initialized with
 // default values. This is required if we need to pass the logger to other packages during initialization.
+//
 // NOTE: Do not use this for logging. Use slog.Info, slog.Warn, slog.Error, etc. instead.
 func Logger() *slog.Logger {
 	var handler slog.Handler
@@ -127,7 +127,7 @@ func Temporal() temporal.Temporal {
 			temporal.WithClientCreation(),
 			temporal.WithQueue(CoreQueue),
 			temporal.WithQueue(ProvidersQueue),
-			temporal.WithQueue(MutexQueue), // FIXME: WithClientCreation needs to come before the queue.
+			temporal.WithQueue(MutexQueue),
 			temporal.WithQueue(WebSocketQueue),
 		)
 	})
