@@ -34,7 +34,7 @@
 //
 //   - GrabAndGo:  Creates a function that can be launched using graceful.Go, accepting a parameter. It simplifies
 //     starting functions that accept a single parameter.
-//   - StopAndDrop: Creates a function that can be launched using graceful.Go, designed for programs like Temporal that
+//   - FreezeAndFizzle: Creates a function that can be launched using graceful.Go, designed for programs like Temporal that
 //     utilize an interrupt channel for graceful shutdown.
 //
 // Example Usage:
@@ -66,7 +66,7 @@
 //	  ctx, cancel := context.WithCancel(context.Background())
 //	  defer cancel()
 //
-//	  quit := make(chan error)
+//	  errs := make(chan error)
 //	  interrupt := make(chan any)
 //
 //	  // Handle termination signals (SIGINT, SIGTERM, SIGQUIT)
@@ -74,10 +74,10 @@
 //	  signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 //
 //	  // Start the Echo server:
-//	  graceful.Go(ctx, graceful.GrabAndGo(ctx, echo.New().Start, ":8080"), quit)
+//	  graceful.Go(ctx, graceful.GrabAndGo(ctx, echo.New().Start, ":8080"), errs)
 //
 //	  // Run a Temporal worker:
-//	  graceful.Go(ctx, graceful.StopAndDrop(ctx, worker.Run, interrupt), quit)
+//	  graceful.Go(ctx, graceful.FreezeAndFizzle(ctx, worker.Run, interrupt), errs)
 //
 //	  // Wait for a signal or an error
 //	  select {
@@ -94,7 +94,7 @@
 //	    shutdownDatabase,
 //	    closeConnections,
 //	  }
-//	  code := graceful.Shutdown(ctx, cleanups, quit, 10*time.Second, 0)
+//	  code := graceful.Shutdown(ctx, cleanups, errs, 10*time.Second, 0)
 //	  os.Exit(code)
 //	}
 package graceful
@@ -124,8 +124,8 @@ func GrabAndGo[T any](fn Parameterized[T], arg T) func() error {
 	}
 }
 
-// StopAndDrop simplifies the use of graceful.Go with functions that accept an interrupt channel for graceful shutdown.
-func StopAndDrop(fn Interruptable, interrupt <-chan any) func() error {
+// FreezeAndFizzle simplifies the use of graceful.Go with functions that accept an interrupt channel for graceful shutdown.
+func FreezeAndFizzle(fn Interruptable, interrupt <-chan any) func() error {
 	return func() error {
 		return fn(interrupt)
 	}
@@ -138,10 +138,10 @@ func StopAndDrop(fn Interruptable, interrupt <-chan any) func() error {
 //
 // It is intended to be used in conjunction with the Shutdown function to handle errors from goroutines and ensure a
 // graceful shutdown.
-func Go(ctx context.Context, fn func() error, quit chan error) {
+func Go(ctx context.Context, fn func() error, errs chan error) {
 	go func() {
 		if err := fn(); err != nil {
-			quit <- err
+			errs <- err
 		}
 	}()
 }
@@ -157,10 +157,13 @@ func Go(ctx context.Context, fn func() error, quit chan error) {
 //
 // It is intended to be used in conjunction with the Go function to handle errors from goroutines and ensure a graceful
 // shutdown.
-func Shutdown(ctx context.Context, cleanups []Cleanup, quit chan bool, timeout time.Duration, code int) int {
-	quit <- true
+func Shutdown(ctx context.Context, cleanups []Cleanup, interrupt chan any, timeout time.Duration, code int) int {
+	interrupt <- nil
 
-	var wg sync.WaitGroup
+	var (
+		wg sync.WaitGroup
+		mu sync.Mutex
+	)
 
 	wg.Add(len(cleanups))
 
@@ -169,17 +172,20 @@ func Shutdown(ctx context.Context, cleanups []Cleanup, quit chan bool, timeout t
 			defer wg.Done()
 
 			if err := cleanup(ctx); err != nil {
-				slog.Error("unable to shutdown gracefully", "error", err)
+				mu.Lock()
+				defer mu.Unlock()
+
+				slog.Error("cleanup failed", "error", err)
 
 				code = 1
 			}
 		}()
 	}
 
-	done := make(chan struct{})
+	done := make(chan bool)
 	go func() {
 		wg.Wait()
-		close(done)
+		done <- true
 	}()
 
 	select {
@@ -187,6 +193,9 @@ func Shutdown(ctx context.Context, cleanups []Cleanup, quit chan bool, timeout t
 		// All cleanups completed within the timeout
 	case <-time.After(timeout):
 		slog.Warn("shutdown timeout reached, some cleanups may not have completed")
+		mu.Lock()   // Acquire the lock before updating code
+		code = 1    // Update the code value
+		mu.Unlock() // Release the lock
 	}
 
 	return code

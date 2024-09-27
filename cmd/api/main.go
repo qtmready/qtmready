@@ -23,6 +23,8 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -43,9 +45,11 @@ const (
 
 func main() {
 	ctx := context.Background()
-	sigterm := make(chan os.Signal, 1) // create a channel to listen to quit signals.
-	quit := make(chan bool, 1)         // channel to signal the shutdown to goroutines.
-	errs := make(chan error, 1)        // create a channel to listen to errors.
+	sigterm := make(chan os.Signal, 1) // create a channel to listen to interrupt signals.
+	interrupt := make(chan any, 1)     // channel to signal the shutdown to goroutines.
+	errs := make(chan error)           // create a channel to listen to errors.
+
+	signal.Notify(sigterm, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt)
 
 	// init service
 	shared.Service().SetName("api")
@@ -97,7 +101,7 @@ func main() {
 		slog.Info("received shutdown signal")
 	}
 
-	code := graceful.Shutdown(ctx, cleanup, quit, 10*time.Second, 0)
+	code := graceful.Shutdown(ctx, cleanup, interrupt, 10*time.Second, 0)
 
 	os.Exit(code)
 }

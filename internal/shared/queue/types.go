@@ -62,9 +62,6 @@ type (
 	// Queues is a map of queues.
 	Queues map[Name]Queue
 
-	// Workers is a map of workers against queues.
-	Workers map[Name]worker.Worker
-
 	// WorkflowOptions defines the interface for creating workflow options.
 	WorkflowOptions interface {
 		IsChild() bool            // IsChild returns true if the workflow id is a child workflow id.

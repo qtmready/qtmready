@@ -17,102 +17,100 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package main
 
 import (
+	"context"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"go.breu.io/quantm/internal/core/code"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/core/mutex"
-	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/shared/graceful"
 )
 
 func main() {
-	shared.Service().SetName("mothership")
-	// graceful shutdown. see https://stackoverflow.com/a/46255965/228697.
-	exitcode := 0
-	defer func() { os.Exit(exitcode) }()
-	defer shared.Temporal().Client().Close()
-	defer db.DB().Session.Close()
+	ctx := context.Background()
+	interrupt := make(chan any, 1) // channel to signal the shutdown to goroutines.
+	errs := make(chan error, 1)    // create a channel to listen to errors.
 
-	providerWrkr := shared.Temporal().Worker(shared.ProvidersQueue)
-	coreWrkr := shared.Temporal().Worker(shared.CoreQueue)
+	// Handle termination signals (SIGINT, SIGTERM, SIGQUIT)
+	terminate := make(chan os.Signal, 1)
+	signal.Notify(terminate, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt)
+
+	// init service
+	shared.Service().SetName("mothership")
+	shared.Logger().Info(
+		"starting ...",
+		slog.Any("service", shared.Service().GetName()),
+		slog.String("version", shared.Service().GetVersion()),
+	)
 
 	kernel.Instance(
 		kernel.WithRepoProvider(defs.RepoProviderGithub, &github.RepoIO{}),
 		kernel.WithMessageProvider(defs.MessageProviderSlack, &slack.Activities{}),
 	)
 
-	githubwfs := &github.Workflows{}
+	cleanups := []graceful.Cleanup{}
 
-	// provider workflows
-	providerWrkr.RegisterWorkflow(githubwfs.OnInstallationEvent)
-	providerWrkr.RegisterWorkflow(githubwfs.OnInstallationRepositoriesEvent)
-	providerWrkr.RegisterWorkflow(githubwfs.PostInstall)
-	providerWrkr.RegisterWorkflow(githubwfs.OnPushEvent)
-	providerWrkr.RegisterWorkflow(githubwfs.OnCreateOrDeleteEvent)
-	providerWrkr.RegisterWorkflow(githubwfs.OnPullRequestEvent)
-	providerWrkr.RegisterWorkflow(githubwfs.OnWorkflowRunEvent)
-
-	// provider activities
-	providerWrkr.RegisterActivity(&github.Activities{})
-	providerWrkr.RegisterActivity(&slack.Activities{})
-
-	// mutex workflow
-	coreWrkr.RegisterWorkflow(mutex.MutexWorkflow)
-	providerWrkr.RegisterWorkflow(mutex.MutexWorkflow)
-
-	// code workflows
-	coreWrkr.RegisterWorkflow(code.RepoCtrl)
-	coreWrkr.RegisterWorkflow(code.TrunkCtrl)
-	coreWrkr.RegisterWorkflow(code.BranchCtrl)
-	coreWrkr.RegisterWorkflow(code.QueueCtrl)
-
-	// core activities
-	coreWrkr.RegisterActivity(&code.Activities{})
-
-	// RepoIO & MessageIO
-	coreWrkr.RegisterActivity(&github.RepoIO{})
-	coreWrkr.RegisterActivity(&slack.Activities{})
-
-	// mutex activity
-	coreWrkr.RegisterActivity(mutex.PrepareMutexActivity)
-	providerWrkr.RegisterActivity(mutex.PrepareMutexActivity)
-
-	// start worker for provider queue
-	err := providerWrkr.Start()
-	if err != nil {
-		exitcode = 1
-		return
-	}
-
-	// start worker for core queue
-	err = coreWrkr.Start()
-	if err != nil {
-		exitcode = 1
-		return
-	}
+	graceful.Go(ctx, graceful.FreezeAndFizzle(q_core, interrupt), errs)
+	graceful.Go(ctx, graceful.FreezeAndFizzle(q_provider, interrupt), errs)
 
 	shared.Service().Banner()
 
-	quit := make(chan os.Signal, 1)                      // create a channel to listen to quit signals.
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM) // setting up the signals to listen to.
-	<-quit                                               // wait for quit signal.
+	select {
+	case <-terminate:
+		shared.Logger().Info("received shutdown signal")
+	case err := <-errs:
+		shared.Logger().Error("unable to start ", "error", err)
+	}
 
-	shared.Logger().Info("Shutting down workers...")
+	code := graceful.Shutdown(ctx, cleanups, interrupt, 10*time.Second, 0)
 
-	providerWrkr.Stop()
-	coreWrkr.Stop()
+	os.Exit(code)
+}
 
-	shared.Logger().Info("Workers stopped. Exiting...")
+func q_core(interrupt <-chan any) error {
+	worker := shared.Temporal().Queue(shared.CoreQueue).Worker(shared.Temporal().Client())
 
-	exitcode = 1
+	worker.RegisterWorkflow(code.RepoCtrl)
+	worker.RegisterWorkflow(code.TrunkCtrl)
+	worker.RegisterWorkflow(code.BranchCtrl)
+	worker.RegisterWorkflow(code.QueueCtrl)
+
+	worker.RegisterActivity(&code.Activities{})
+
+	// TODO: this will not work if we have more than one provider.
+	worker.RegisterActivity(&github.RepoIO{})
+	worker.RegisterActivity(&slack.Activities{})
+
+	worker.RegisterActivity(mutex.PrepareMutexActivity)
+
+	return worker.Run(interrupt)
+}
+
+func q_provider(interrupt <-chan any) error {
+	worker := shared.Temporal().Queue(shared.ProvidersQueue).Worker(shared.Temporal().Client())
+
+	github_workflows := &github.Workflows{}
+
+	worker.RegisterWorkflow(github_workflows.OnInstallationEvent)
+	worker.RegisterWorkflow(github_workflows.OnInstallationRepositoriesEvent)
+	worker.RegisterWorkflow(github_workflows.PostInstall)
+	worker.RegisterWorkflow(github_workflows.OnPushEvent)
+	worker.RegisterWorkflow(github_workflows.OnCreateOrDeleteEvent)
+	worker.RegisterWorkflow(github_workflows.OnPullRequestEvent)
+	worker.RegisterWorkflow(github_workflows.OnWorkflowRunEvent)
+
+	worker.RegisterActivity(&github.Activities{})
+
+	return worker.Run(interrupt)
 }

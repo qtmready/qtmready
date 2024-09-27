@@ -69,7 +69,7 @@ func main() {
 }
 
 func configure(queue queue.Name) worker.Worker {
-	worker := shared.Temporal().Worker(queue)
+	worker := shared.Temporal().Queue(queue).Worker(shared.Temporal().Client())
 	worker.RegisterWorkflow(mutex.MutexWorkflow)
 	worker.RegisterWorkflow(ParentWorkflow)
 	worker.RegisterWorkflow(ChildWorkflow)

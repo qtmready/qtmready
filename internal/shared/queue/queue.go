@@ -21,6 +21,8 @@ package queue
 
 import (
 	"fmt"
+	"log/slog"
+	"sync"
 
 	"go.temporal.io/sdk/client"
 	sdktemporal "go.temporal.io/sdk/temporal"
@@ -31,9 +33,11 @@ import (
 type (
 	// queue defines the basic queue.
 	queue struct {
-		name                Name   // The name of the temporal queue.
-		prefix              string // The prefix for the Workflow ID.
-		workflowMaxAttempts int32  // The maximum number of attempts for a workflow.
+		name                Name          // The name of the temporal queue.
+		prefix              string        // The prefix for the Workflow ID.
+		workflowMaxAttempts int32         // The maximum number of attempts for a workflow.
+		worker              worker.Worker // worker singleton.
+		workeronce          sync.Once     // worker singleton lock.
 	}
 )
 
@@ -78,7 +82,10 @@ func (q *queue) ChildWorkflowOptions(options ...WorkflowOptionProvider) workflow
 }
 
 func (q *queue) Worker(c client.Client) worker.Worker {
+	slog.Info("queue: starting worker ...", "queue", q.name, "id_prefix", q.Prefix())
+
 	options := worker.Options{OnFatalError: func(err error) { panic(err) }, EnableSessionWorker: true}
+
 	return worker.New(c, q.Name(), options)
 }
 
