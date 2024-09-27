@@ -20,6 +20,8 @@
 package queue
 
 import (
+	"context"
+
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
@@ -52,8 +54,14 @@ type (
 		// ChildWorkflowOptions creates the child workflow options for the queue given WorkflowIDOptions.
 		ChildWorkflowOptions(options ...WorkflowOptionProvider) workflow.ChildWorkflowOptions
 
-		// Worker creates a worker for the queue.
+		// Worker either creates a new worker or returns the existing worker associated with the queue.
 		Worker(client client.Client) worker.Worker
+
+		// Listen starts the worker associated with the queue.
+		Listen(interrupt <-chan any) error
+
+		// Stop stops the worker associated with the queue.
+		Stop(ctx context.Context) error
 	}
 
 	// QueueOption is the option for a queue.

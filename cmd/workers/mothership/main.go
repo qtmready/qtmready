@@ -35,51 +35,56 @@ import (
 	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
 	"go.breu.io/quantm/internal/shared/graceful"
+	"go.breu.io/quantm/internal/shared/queue"
 )
 
 func main() {
-	ctx := context.Background()
-	interrupt := make(chan any, 1) // channel to signal the shutdown to goroutines.
-	errs := make(chan error, 1)    // create a channel to listen to errors.
+	shared.Service().SetName("api")
+	shared.Logger().Info("main: init ...", "service", shared.Service().GetName(), "version", shared.Service().GetVersion())
 
-	// Handle termination signals (SIGINT, SIGTERM, SIGQUIT)
+	ctx := context.Background()
+	release := make(chan any, 1)
+	rx_errors := make(chan error)
+	timeout := time.Second * 10
+
 	terminate := make(chan os.Signal, 1)
 	signal.Notify(terminate, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt)
-
-	// init service
-	shared.Service().SetName("mothership")
-	shared.Logger().Info(
-		"starting ...",
-		slog.Any("service", shared.Service().GetName()),
-		slog.String("version", shared.Service().GetVersion()),
-	)
 
 	kernel.Instance(
 		kernel.WithRepoProvider(defs.RepoProviderGithub, &github.RepoIO{}),
 		kernel.WithMessageProvider(defs.MessageProviderSlack, &slack.Activities{}),
 	)
 
+	core_queue := shared.Temporal().Queue(shared.CoreQueue)
+	configure_core(core_queue)
+
+	provider_queue := shared.Temporal().Queue(shared.ProvidersQueue)
+	configure_provider(provider_queue)
+
 	cleanups := []graceful.Cleanup{}
 
-	graceful.Go(ctx, graceful.WrapRelease(q_core, interrupt), errs)
-	graceful.Go(ctx, graceful.WrapRelease(q_provider, interrupt), errs)
+	graceful.Go(ctx, graceful.WrapRelease(core_queue.Listen, release), rx_errors)
+	graceful.Go(ctx, graceful.WrapRelease(provider_queue.Listen, release), rx_errors)
 
 	shared.Service().Banner()
 
 	select {
-	case <-terminate:
-		shared.Logger().Info("received shutdown signal")
-	case err := <-errs:
-		shared.Logger().Error("unable to start ", "error", err)
+	case rx := <-terminate:
+		slog.Info("main: received shutdown signal, attempting graceful shutdown ...", "signal", rx.String())
+	case err := <-rx_errors:
+		slog.Error("main: unable to start ...", "error", err.Error())
 	}
 
-	code := graceful.Shutdown(ctx, cleanups, interrupt, 10*time.Second, 0)
+	code := graceful.Shutdown(ctx, cleanups, release, timeout, 0)
+	if code == 1 {
+		slog.Warn("main: failed to shutdown gracefully, exiting ...")
+	}
 
 	os.Exit(code)
 }
 
-func q_core(interrupt <-chan any) error {
-	worker := shared.Temporal().Queue(shared.CoreQueue).Worker(shared.Temporal().Client())
+func configure_core(q queue.Queue) {
+	worker := q.Worker(shared.Temporal().Client())
 
 	worker.RegisterWorkflow(code.RepoCtrl)
 	worker.RegisterWorkflow(code.TrunkCtrl)
@@ -93,12 +98,10 @@ func q_core(interrupt <-chan any) error {
 	worker.RegisterActivity(&slack.Activities{})
 
 	worker.RegisterActivity(mutex.PrepareMutexActivity)
-
-	return worker.Run(interrupt)
 }
 
-func q_provider(interrupt <-chan any) error {
-	worker := shared.Temporal().Queue(shared.ProvidersQueue).Worker(shared.Temporal().Client())
+func configure_provider(q queue.Queue) {
+	worker := q.Worker(shared.Temporal().Client())
 
 	github_workflows := &github.Workflows{}
 
@@ -111,6 +114,4 @@ func q_provider(interrupt <-chan any) error {
 	worker.RegisterWorkflow(github_workflows.OnWorkflowRunEvent)
 
 	worker.RegisterActivity(&github.Activities{})
-
-	return worker.Run(interrupt)
 }
