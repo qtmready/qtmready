@@ -11,7 +11,8 @@
       "mode": "debug",
       "program": "${workspaceFolder}/cmd/workers/mothership",
       "args": [],
-      "envFile": "${workspaceFolder}/.env.debug"
+      "envFile": "${workspaceFolder}/.env.debug",
+      "console": "integratedTerminal"
     },
     {
       "name": "cli",

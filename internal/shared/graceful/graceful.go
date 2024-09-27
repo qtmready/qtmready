@@ -34,7 +34,7 @@
 //
 //   - GrabAndGo:  Creates a function that can be launched using graceful.Go, accepting a parameter. It simplifies
 //     starting functions that accept a single parameter.
-//   - FreezeAndFizzle: Creates a function that can be launched using graceful.Go, designed for programs like Temporal that
+//   - WrapRelease: Creates a function that can be launched using graceful.Go, designed for programs like Temporal that
 //     utilize an interrupt channel for graceful shutdown.
 //
 // Example Usage:
@@ -77,7 +77,7 @@
 //	  graceful.Go(ctx, graceful.GrabAndGo(ctx, echo.New().Start, ":8080"), errs)
 //
 //	  // Run a Temporal worker:
-//	  graceful.Go(ctx, graceful.FreezeAndFizzle(ctx, worker.Run, interrupt), errs)
+//	  graceful.Go(ctx, graceful.WrapRelease(ctx, worker.Run, interrupt), errs)
 //
 //	  // Wait for a signal or an error
 //	  select {
@@ -124,10 +124,10 @@ func GrabAndGo[T any](fn Parameterized[T], arg T) func() error {
 	}
 }
 
-// FreezeAndFizzle simplifies the use of graceful.Go with functions that accept an interrupt channel for graceful shutdown.
-func FreezeAndFizzle(fn Interruptable, interrupt <-chan any) func() error {
+// WrapRelease simplifies the use of graceful.Go with functions that accept an interrupt channel for graceful shutdown.
+func WrapRelease(fn Interruptable, release <-chan any) func() error {
 	return func() error {
-		return fn(interrupt)
+		return fn(release)
 	}
 }
 

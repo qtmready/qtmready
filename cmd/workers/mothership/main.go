@@ -61,8 +61,8 @@ func main() {
 
 	cleanups := []graceful.Cleanup{}
 
-	graceful.Go(ctx, graceful.FreezeAndFizzle(q_core, interrupt), errs)
-	graceful.Go(ctx, graceful.FreezeAndFizzle(q_provider, interrupt), errs)
+	graceful.Go(ctx, graceful.WrapRelease(q_core, interrupt), errs)
+	graceful.Go(ctx, graceful.WrapRelease(q_provider, interrupt), errs)
 
 	shared.Service().Banner()
 

@@ -82,8 +82,8 @@ func (s *GracefulSuite) TestForError() {
 	graceful.Go(s.ctx, graceful.GrabAndGo(fn2.Start, 124), s.errs)
 
 	// Start multiple StopAndDrop functions using common interrupt channel
-	graceful.Go(s.ctx, graceful.FreezeAndFizzle(fn3.Run, s.interrupt), s.errs)
-	graceful.Go(s.ctx, graceful.FreezeAndFizzle(fn4.Run, s.interrupt), s.errs)
+	graceful.Go(s.ctx, graceful.WrapRelease(fn3.Run, s.interrupt), s.errs)
+	graceful.Go(s.ctx, graceful.WrapRelease(fn4.Run, s.interrupt), s.errs)
 
 	cleanups := []graceful.Cleanup{
 		fn1.Stop,
@@ -118,8 +118,8 @@ func (s *GracefulSuite) TestSystemInterrupt() {
 	graceful.Go(s.ctx, graceful.GrabAndGo(fn2.Start, 123), s.errs)
 
 	// Start multiple StopAndDrop functions using common interrupt channel
-	graceful.Go(s.ctx, graceful.FreezeAndFizzle(fn3.Run, s.interrupt), s.errs)
-	graceful.Go(s.ctx, graceful.FreezeAndFizzle(fn4.Run, s.interrupt), s.errs)
+	graceful.Go(s.ctx, graceful.WrapRelease(fn3.Run, s.interrupt), s.errs)
+	graceful.Go(s.ctx, graceful.WrapRelease(fn4.Run, s.interrupt), s.errs)
 
 	// Create a goroutine to send the signal
 	go func() {
