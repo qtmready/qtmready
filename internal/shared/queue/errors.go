@@ -26,6 +26,7 @@ import (
 
 var (
 	ErrParentNil = errors.New("parent workflow context is nil")
+	ErrNilWorker = errors.New("worker is nil")
 )
 
 type (

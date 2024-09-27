@@ -38,7 +38,7 @@ func uuid() gocql.UUID {
 func main() {
 	slog.Info("starting merge queue ...")
 
-	worker := shared.Temporal().Worker(shared.CoreQueue)
+	worker := shared.Temporal().Queue(shared.CoreQueue).Worker(shared.Temporal().Client())
 	worker.RegisterWorkflow(code.QueueCtrl)
 
 	if err := worker.Start(); err != nil {

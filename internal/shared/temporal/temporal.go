@@ -17,7 +17,6 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package temporal
 
 import (
@@ -30,7 +29,6 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
-	"go.temporal.io/sdk/worker"
 
 	"go.breu.io/quantm/internal/shared/queue"
 )
@@ -44,7 +42,6 @@ type (
 		GetConnectionString() string
 		Queue(queue.Name) queue.Queue
 		Client() client.Client
-		Worker(queue.Name) worker.Worker
 	}
 
 	// Config holds the temporal server host and port, the client and all the available queues.
@@ -62,7 +59,7 @@ type (
 		client     client.Client
 		queues     queue.Queues
 		logger     *slog.Logger
-		workers    queue.Workers
+		retries    uint
 	}
 
 	ConfigOption func(*Config)
@@ -76,57 +73,69 @@ func (t *Config) Queue(name queue.Name) queue.Queue {
 	return t.queues[name]
 }
 
-func (t *Config) Worker(name queue.Name) worker.Worker {
-	return t.workers[name]
-}
-
 func (t *Config) Client() client.Client {
-	if t.client == nil {
-		once.Do(func() {
-			t.logger.Info("temporal instantiating ....")
-
-			logger := log.NewStructuredLogger(t.logger)
-			options := client.Options{HostPort: t.GetConnectionString(), Logger: logger}
-
-			retryTemporal := func() error {
-				clt, err := client.Dial(options)
-				if err != nil {
-					return err
-				}
-
-				t.client = clt
-
-				t.logger.Info("temporal: connected")
-
-				return nil
-			}
-
-			if err := retry.Do(
-				retryTemporal,
-				retry.Attempts(10),
-				retry.Delay(1*time.Second),
-				retry.OnRetry(func(n uint, err error) {
-					t.logger.Info("temporal: failed to connect. retrying connection ...", "attempt", n, "error", err)
-				}),
-			); err != nil {
-				panic(fmt.Errorf("failed to connect to temporal: %w", err))
-			}
-		})
-	}
+	once.Do(func() {
+		slog.Info("temporal: instantiating ...")
+		t.connect()
+	})
 
 	return t.client
+}
+
+func (t *Config) connect() {
+	slog.Info("temporal: connecting ...", slog.String("host", t.ServerHost), slog.String("port", t.ServerPort))
+
+	if len(t.queues) < 1 {
+		slog.Warn(
+			"temporal: no queues configured ...",
+			slog.String("host", t.ServerHost), slog.String("port", t.ServerPort),
+		)
+	}
+
+	if t.logger == nil {
+		slog.Warn("temporal: no logger configured, using default ...")
+		t.logger = slog.Default()
+	}
+
+	if err := retry.Do(
+		t.retry,
+		retry.Attempts(t.retries),
+		retry.Delay(1*time.Second),
+		retry.OnRetry(func(attempts uint, err error) {
+			remaining := t.retries - attempts
+			t.logger.Warn("temporal: retrying connection ...", "attempts", attempts, "remaining", remaining, "error", err)
+		}),
+	); err != nil {
+		slog.Error("temporal: retries exhausted, aborting ...", slog.String("error", err.Error()))
+		panic("program exited prematurely ...")
+	}
+}
+
+func (t *Config) options() client.Options {
+	return client.Options{
+		HostPort: t.GetConnectionString(),
+		Logger:   log.NewStructuredLogger(t.logger),
+	}
+}
+
+func (t *Config) retry() error {
+	c, err := client.Dial(t.options())
+	if err != nil {
+		return err
+	}
+
+	t.client = c
+
+	slog.Info("temporal: connected")
+
+	return nil
 }
 
 // WithQueue adds a new queue and worker to the Config.
 func WithQueue(name queue.Name) ConfigOption {
 	return func(t *Config) {
-		options := worker.Options{
-			OnFatalError:        func(err error) { t.logger.Error("Fatal error during worker execution", "error", err.Error()) },
-			EnableSessionWorker: true,
-		}
-
+		slog.Info("temporal: configuring queue ...", "queue", name.String())
 		t.queues[name] = queue.NewQueue(queue.WithName(name))
-		t.workers[name] = worker.New(t.client, name.String(), options)
 	}
 }
 
@@ -149,40 +158,13 @@ func FromEnvironment() ConfigOption {
 // WithClientCreation initializes the Temporal client.
 func WithClientCreation() ConfigOption {
 	return func(t *Config) {
-		t.logger.Info("temporal: connecting ...", "host", t.ServerHost, "port", t.ServerPort)
-
-		logger := log.NewStructuredLogger(t.logger)
-		options := client.Options{HostPort: t.GetConnectionString(), Logger: logger}
-
-		retryTemporal := func() error {
-			clt, err := client.Dial(options)
-			if err != nil {
-				return err
-			}
-
-			t.client = clt
-
-			t.logger.Info("temporal: connected")
-
-			return nil
-		}
-
-		if err := retry.Do(
-			retryTemporal,
-			retry.Attempts(10),
-			retry.Delay(1*time.Second),
-			retry.OnRetry(func(n uint, err error) {
-				t.logger.Info("temporal: failed to connect. retrying connection ...", "attempt", n, "error", err)
-			}),
-		); err != nil {
-			panic(fmt.Errorf("failed to connect to temporal: %w", err))
-		}
+		t.Client()
 	}
 }
 
 // New creates a new Temporal instance.
 func New(opts ...ConfigOption) Temporal {
-	t := &Config{queues: make(queue.Queues), workers: make(queue.Workers)}
+	t := &Config{queues: make(queue.Queues), retries: 10}
 	for _, opt := range opts {
 		opt(t)
 	}

@@ -20,10 +20,13 @@
 package queue
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
+	"sync"
 
 	"go.temporal.io/sdk/client"
-	sdktemporal "go.temporal.io/sdk/temporal"
+	sdk "go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/worker"
 	"go.temporal.io/sdk/workflow"
 )
@@ -31,9 +34,11 @@ import (
 type (
 	// queue defines the basic queue.
 	queue struct {
-		name                Name   // The name of the temporal queue.
-		prefix              string // The prefix for the Workflow ID.
-		workflowMaxAttempts int32  // The maximum number of attempts for a workflow.
+		name                Name          // The name of the temporal queue.
+		prefix              string        // The prefix for the Workflow ID.
+		workflowMaxAttempts int32         // The maximum number of attempts for a workflow.
+		worker              worker.Worker // worker singleton.
+		workeronce          sync.Once     // worker singleton lock.
 	}
 )
 
@@ -66,20 +71,45 @@ func (q *queue) WorkflowOptions(options ...WorkflowOptionProvider) client.StartW
 	return client.StartWorkflowOptions{
 		ID:          q.WorkflowID(options...),
 		TaskQueue:   q.Name(),
-		RetryPolicy: &sdktemporal.RetryPolicy{MaximumAttempts: q.workflowMaxAttempts},
+		RetryPolicy: &sdk.RetryPolicy{MaximumAttempts: q.workflowMaxAttempts},
 	}
 }
 
 func (q *queue) ChildWorkflowOptions(options ...WorkflowOptionProvider) workflow.ChildWorkflowOptions {
 	return workflow.ChildWorkflowOptions{
 		WorkflowID:  q.WorkflowID(options...),
-		RetryPolicy: &sdktemporal.RetryPolicy{MaximumAttempts: q.workflowMaxAttempts},
+		RetryPolicy: &sdk.RetryPolicy{MaximumAttempts: q.workflowMaxAttempts},
 	}
 }
 
 func (q *queue) Worker(c client.Client) worker.Worker {
-	options := worker.Options{OnFatalError: func(err error) { panic(err) }, EnableSessionWorker: true}
-	return worker.New(c, q.Name(), options)
+	q.workeronce.Do(func() {
+		slog.Info("queue: creating worker ...", "queue", q.name, "id_prefix", q.Prefix())
+
+		options := worker.Options{OnFatalError: func(err error) { panic(err) }, EnableSessionWorker: true}
+
+		q.worker = worker.New(c, q.Name(), options)
+	})
+
+	return q.worker
+}
+
+func (q *queue) Listen(interrupt <-chan any) error {
+	if q.worker == nil {
+		return ErrNilWorker
+	}
+
+	return q.worker.Run(interrupt)
+}
+
+func (q *queue) Stop(ctx context.Context) error {
+	if q.worker == nil {
+		return ErrNilWorker
+	}
+
+	q.worker.Stop()
+
+	return nil
 }
 
 // WithName sets the queue name and the prefix for the workflow ID.

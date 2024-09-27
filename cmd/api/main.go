@@ -23,6 +23,8 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -42,18 +44,16 @@ const (
 )
 
 func main() {
-	ctx := context.Background()
-	sigterm := make(chan os.Signal, 1) // create a channel to listen to quit signals.
-	quit := make(chan bool, 1)         // channel to signal the shutdown to goroutines.
-	errs := make(chan error, 1)        // create a channel to listen to errors.
-
-	// init service
 	shared.Service().SetName("api")
-	shared.Logger().Info(
-		"starting ...",
-		slog.Any("service", shared.Service().GetName()),
-		slog.String("version", shared.Service().GetVersion()),
-	)
+	shared.Logger().Info("main: init ...", "service", shared.Service().GetName(), "version", shared.Service().GetVersion())
+
+	ctx := context.Background()
+	release := make(chan any, 1)
+	rx_errors := make(chan error)
+	timeout := time.Second * 10
+
+	terminate := make(chan os.Signal, 1)
+	signal.Notify(terminate, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt)
 
 	kernel.Instance(
 		kernel.WithRepoProvider(defs.RepoProviderGithub, &github.RepoIO{}),
@@ -62,42 +62,41 @@ func main() {
 
 	otelshutdown, err := observe(ctx, shared.Service().GetName(), shared.Service().GetVersion())
 	if err != nil {
-		slog.Error("failed to setup opentelemetry, exiting ...", slog.Any("error", err.Error()))
-		errs <- err
+		slog.Error("main: failed to setup opentelemetry, exiting ...", slog.Any("error", err.Error()))
+		rx_errors <- err
 
 		return
 	}
 
-	slog.Info("setting up webserver")
-
-	web := echo.New()
-	configure_web(web)
-
-	slog.Info("setting up metrics")
+	api := echo.New()
+	configure_api(api)
 
 	metrics := echo.New()
 	configure_metrics(metrics)
 
-	cleanup := []graceful.Cleanup{
+	cleanups := []graceful.Cleanup{
 		otelshutdown,
+		api.Shutdown,
 		metrics.Shutdown,
-		web.Shutdown,
 		db.DB().Shutdown,
 	}
 
-	graceful.Go(ctx, graceful.GrabAndGo(metrics.Start, ":"+PrometheusPort), errs)
-	graceful.Go(ctx, graceful.GrabAndGo(web.Start, ":"+HTTPPort), errs)
+	graceful.Go(ctx, graceful.GrabAndGo(metrics.Start, ":"+PrometheusPort), rx_errors)
+	graceful.Go(ctx, graceful.GrabAndGo(api.Start, ":"+HTTPPort), rx_errors)
 
 	shared.Service().Banner()
 
 	select {
-	case err := <-errs:
-		slog.Error("failed to start service", slog.Any("error", err.Error()))
-	case <-sigterm:
-		slog.Info("received shutdown signal")
+	case rx := <-terminate:
+		slog.Info("main: received shutdown signal, attempting graceful shutdown ...", "signal", rx.String())
+	case err := <-rx_errors:
+		slog.Error("main: unable to start ...", "error", err.Error())
 	}
 
-	code := graceful.Shutdown(ctx, cleanup, quit, 10*time.Second, 0)
+	code := graceful.Shutdown(ctx, cleanups, release, timeout, 0)
+	if code == 1 {
+		slog.Warn("main: failed to shutdown gracefully, exiting ...")
+	}
 
 	os.Exit(code)
 }
