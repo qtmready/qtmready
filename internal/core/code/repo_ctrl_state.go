@@ -31,6 +31,7 @@ import (
 type (
 	RepoCtrlState struct {
 		*BaseCtrl
+		triggers BranchTriggers
 	}
 )
 
@@ -38,27 +39,38 @@ type (
 // It receives a RepoIOSignalPushPayload and signals the corresponding branch.
 func (state *RepoCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		push := &defs.RepoIOSignalPushPayload{}
+		push := &defs.Event[defs.Push, defs.RepoProvider]{}
 		state.rx(ctx, rx, push)
-		state.signal_branch(ctx, BranchNameFromRef(push.BranchRef), defs.RepoIOSignalPush, push)
+
+		id, ok := state.triggers.get(push.Payload.Ref)
+		if ok {
+			push.SetParent(id)
+		} else {
+			state.log(ctx, "on_push").Warn("unable to set parent id.")
+		}
+
+		state.signal_branch(ctx, BranchNameFromRef(push.Payload.Ref), defs.RepoIOSignalPush, push)
 	}
 }
 
 // on_create_delete is a channel handler that processes create or delete events for the repository.
-// It receives a RepoIOSignalCreateOrDeletePayload, signals the corresponding branch,
+// It receives a defs.Event[defs.BranchOrTag, defs.RepoProvider], signals the corresponding branch,
 // and updates the branch list in the state.
 func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		create_delete := &defs.RepoIOSignalCreateOrDeletePayload{}
-		state.rx(ctx, rx, create_delete)
+		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
+		state.rx(ctx, rx, event)
 
-		if create_delete.ForBranch(ctx) {
-			state.signal_branch(ctx, create_delete.Ref, defs.RepoIOSignalCreateOrDelete, create_delete)
+		if event.Context.Scope == defs.EventScopeBranch {
+			// Assuming signal_branch is updated to accept the Event:
+			state.signal_branch(ctx, event.Payload.Ref, defs.RepoIOSignalCreateOrDelete, event) // TODO: fix the payload
 
-			if create_delete.IsCreated {
-				state.add_branch(ctx, create_delete.Ref)
-			} else {
-				state.remove_branch(ctx, create_delete.Ref)
+			if event.Context.Action == defs.EventActionCreated {
+				state.add_branch(ctx, event.Payload.Ref)
+				state.triggers.add(event.Payload.Ref, event.ID)
+			} else if event.Context.Action == defs.EventActionDeleted {
+				state.remove_branch(ctx, event.Payload.Ref)
+				state.triggers.del(event.Payload.Ref)
 			}
 		}
 	}
@@ -68,19 +80,33 @@ func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.Channe
 // It receives a RepoIOSignalPullRequestPayload and signals the corresponding branch.
 func (state *RepoCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		pr := &defs.RepoIOSignalPullRequestPayload{}
-		state.rx(ctx, rx, pr)
+		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
+		state.rx(ctx, rx, event)
 
-		state.signal_branch(ctx, pr.HeadBranch, defs.RepoIOSignalPullRequestOpenedOrClosedOrReopened, pr)
+		id, ok := state.triggers.get(event.Payload.HeadBranch)
+		if ok {
+			event.SetParent(id)
+		} else {
+			state.log(ctx, "on_pr").Warn("unable to set parent id.")
+		}
+
+		state.signal_branch(ctx, event.Payload.HeadBranch, defs.RepoIOSignalPullRequest, event)
 	}
 }
 
 func (state *RepoCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		label := &defs.RepoIOSignalPullRequestPayload{}
+		label := &defs.Event[defs.PullRequestLabel, defs.RepoProvider]{}
 		state.rx(ctx, rx, label)
 
-		state.signal_branch(ctx, label.HeadBranch, defs.RepoIOSignalPullRequestLabeledOrUnlabeled, label)
+		id, ok := state.triggers.get(label.Payload.Branch)
+		if ok {
+			label.SetParent(id)
+		} else {
+			state.log(ctx, "on_label").Warn("unable to set parent id.")
+		}
+
+		state.signal_branch(ctx, label.Payload.Branch, defs.RepoIOSignalPullRequestLabel, label)
 	}
 }
 
@@ -89,5 +115,6 @@ func (state *RepoCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler
 func NewRepoCtrlState(ctx workflow.Context, repo *defs.Repo) *RepoCtrlState {
 	return &RepoCtrlState{
 		BaseCtrl: NewBaseCtrl(ctx, "repo_ctrl", repo),
+		triggers: make(BranchTriggers),
 	}
 }

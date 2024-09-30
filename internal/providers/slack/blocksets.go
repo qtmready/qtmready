@@ -15,7 +15,7 @@ func notify(client *slack.Client, channelID string, attachment slack.Attachment)
 	)
 
 	if err != nil {
-		slog.Error("Error sending message to channel ", channelID, ": ", slog.Any("e", err))
+		slog.Error("Error sending message to channel ", ": ", slog.Any("e", err))
 		return err
 	}
 

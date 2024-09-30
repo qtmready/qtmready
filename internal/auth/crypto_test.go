@@ -32,18 +32,18 @@ import (
 )
 
 type (
-	EncodeTestSuite struct {
+	CryptoTestSuite struct {
 		suite.Suite
 	}
 )
 
-func (s *EncodeTestSuite) SetupSuite() {
+func (s *CryptoTestSuite) SetupSuite() {
 	shared.InitServiceForTest()
 }
 
 // Positive Tests
 
-func (s *EncodeTestSuite) TestEncodeJWE_Positive() {
+func (s *CryptoTestSuite) TestEncodeJWE_Positive() {
 	claims := map[string]any{
 		"user": map[string]any{
 			"id":   "123",
@@ -61,7 +61,7 @@ func (s *EncodeTestSuite) TestEncodeJWE_Positive() {
 	assert.NotEmpty(s.T(), token)
 }
 
-func (s *EncodeTestSuite) TestDecodeJWE_Positive() {
+func (s *CryptoTestSuite) TestDecodeJWE_Positive() {
 	claims := map[string]any{
 		"user": map[string]any{
 			"id":   "123",
@@ -84,7 +84,7 @@ func (s *EncodeTestSuite) TestDecodeJWE_Positive() {
 	assert.Equal(s.T(), claims["user"].(map[string]any)["name"], decodedClaims["user"].(map[string]any)["name"])
 }
 
-func (s *EncodeTestSuite) TestEncodeJWE_EmptyClaims() {
+func (s *CryptoTestSuite) TestEncodeJWE_EmptyClaims() {
 	params := auth.JWTEncodeParams{
 		Claims: map[string]any{},
 		MaxAge: time.Hour,
@@ -102,12 +102,12 @@ func (s *EncodeTestSuite) TestEncodeJWE_EmptyClaims() {
 
 // Negative Tests
 
-func (s *EncodeTestSuite) TestDecodeJWE_Negative_InvalidToken() {
+func (s *CryptoTestSuite) TestDecodeJWE_Negative_InvalidToken() {
 	_, err := auth.DecodeJWE("invalid.token")
 	assert.Error(s.T(), err)
 }
 
-func (s *EncodeTestSuite) TestDecodeJWE_Negative_ExpiredToken() {
+func (s *CryptoTestSuite) TestDecodeJWE_Negative_ExpiredToken() {
 	claims := map[string]any{
 		"user": map[string]any{
 			"id":   "123",
@@ -131,7 +131,7 @@ func (s *EncodeTestSuite) TestDecodeJWE_Negative_ExpiredToken() {
 
 // Smoke Tests
 
-func (s *EncodeTestSuite) TestEncodeDecodeJWE_Smoke() {
+func (s *CryptoTestSuite) TestEncodeDecodeJWE_Smoke() {
 	// Test a variety of claim types
 	claims := map[string]any{
 		"string": "test",
@@ -183,7 +183,7 @@ func (s *EncodeTestSuite) TestEncodeDecodeJWE_Smoke() {
 	}
 }
 
-func (s *EncodeTestSuite) TestDerive_Smoke() {
+func (s *CryptoTestSuite) TestDerive_Smoke() {
 	// Test multiple derivations
 	key1 := auth.Derive()
 	key2 := auth.Derive()
@@ -197,5 +197,5 @@ func (s *EncodeTestSuite) TestDerive_Smoke() {
 
 // TestEncode runs the test suite.
 func TestEncode(t *testing.T) {
-	suite.Run(t, new(EncodeTestSuite))
+	suite.Run(t, new(CryptoTestSuite))
 }

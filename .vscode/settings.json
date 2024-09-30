@@ -15,5 +15,25 @@
   },
   "cassandraWorkbench.activeClusterName": "ScyllaDB (Docker)",
   "cassandraWorkbench.activeKeyspace": [["ScyllaDB (Docker)", "ctrlplane"]],
-  "makefile.configureOnOpen": false
+  "makefile.configureOnOpen": false,
+  "workbench.colorCustomizations": {
+    "activityBar.activeBackground": "#404566",
+    "activityBar.background": "#404566",
+    "activityBar.foreground": "#e7e7e7",
+    "activityBar.inactiveForeground": "#e7e7e799",
+    "activityBarBadge.background": "#140c0d",
+    "activityBarBadge.foreground": "#e7e7e7",
+    "commandCenter.border": "#e7e7e799",
+    "sash.hoverBorder": "#404566",
+    "statusBar.background": "#2c3047",
+    "statusBar.foreground": "#e7e7e7",
+    "statusBarItem.hoverBackground": "#404566",
+    "statusBarItem.remoteBackground": "#2c3047",
+    "statusBarItem.remoteForeground": "#e7e7e7",
+    "titleBar.activeBackground": "#2c3047",
+    "titleBar.activeForeground": "#e7e7e7",
+    "titleBar.inactiveBackground": "#2c304799",
+    "titleBar.inactiveForeground": "#e7e7e799"
+  },
+  "peacock.color": "#2c3047"
 }

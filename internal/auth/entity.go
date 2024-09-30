@@ -74,13 +74,24 @@ func (u *User) SendEmail() error {
 	return nil
 }
 
-func (mp MessageProviderUserInfo) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
+// TeamUser returns the team user for the given user.
+func (u *User) TeamUser(id gocql.UUID) *TeamUser {
+	tu := &TeamUser{}
+
+	if err := db.Get(tu, db.QueryParams{"user_id": u.ID.String(), "team_id": id.String()}); err != nil {
+		return nil
+	}
+
+	return tu
+}
+
+func (mp MessageProviderInfo) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
 	return json.Marshal(mp)
 }
 
-func (mp *MessageProviderUserInfo) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
+func (mp *MessageProviderInfo) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
 	if len(data) == 0 {
-		*mp = MessageProviderUserInfo{}
+		*mp = MessageProviderInfo{}
 		return nil
 	}
 

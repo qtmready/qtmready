@@ -28,6 +28,7 @@ import (
 	"os/exec"
 	"regexp"
 
+	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/shared"
@@ -105,17 +106,7 @@ func (a *Activities) SignalQueue(ctx context.Context, payload *defs.RepoIOSignal
 // It uses the RepoIO interface to get the url with the oauth token in it.
 // If an error occurs retrieving the clone URL, it is returned.
 func (a *Activities) CloneBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
-	url, err := kernel.
-		Instance().
-		RepoIO(payload.Repo.Provider).
-		TokenizedCloneURL(
-			ctx,
-			&defs.RepoIOProviderInfo{
-				InstallationID: payload.Push.InstallationID,
-				RepoName:       payload.Push.RepoName,
-				RepoOwner:      payload.Push.RepoOwner,
-			},
-		)
+	url, err := kernel.Instance().RepoIO(payload.Repo.Provider).TokenizedCloneURL(ctx, payload.Info)
 	if err != nil {
 		return err
 	}
@@ -220,4 +211,14 @@ func (a *Activities) RemoveClonedAtPath(ctx context.Context, path string) error 
 	}
 
 	return nil
+}
+
+// Call the auth TeamUserIO to get team user by user_login_id.
+func (a *Activities) GetByLogin(ctx context.Context, id string) (*auth.TeamUser, error) {
+	team_user, err := auth.TeamUserIO().GetByLogin(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return team_user, nil
 }

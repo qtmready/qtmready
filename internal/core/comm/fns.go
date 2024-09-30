@@ -21,100 +21,78 @@ package comm
 
 import (
 	"fmt"
+	"time"
 
 	"go.breu.io/quantm/internal/core/defs"
+	"go.breu.io/quantm/internal/db"
 )
 
-// NewMergeConflictMessage creates a new MessageIOMergeConflictPayload instance.
-//
-// It takes a RepoIOSignalPushPayload, Repo information, branch name, and a flag
-// indicating whether the message is for a user or a channel. The function
-// constructs URLs for the repository and commit, and sets the appropriate
-// MessageIOPayload based on the for_user flag.
-//
-// FIXME: this is generic to github. If we are using generic, should we create the url's depending upon the provider?
-func NewMergeConflictMessage(
-	payload *defs.RepoIOSignalPushPayload,
-	repo *defs.Repo,
-	branch string,
-	for_user bool,
-) *defs.MessageIOMergeConflictPayload {
-	msg := &defs.MessageIOMergeConflictPayload{
-		RepoUrl:   fmt.Sprintf("https://github.com/%s/%s", payload.RepoOwner, payload.RepoName),
-		SHA:       payload.After,
-		CommitUrl: fmt.Sprintf("https://github.com/%s/%s/commits/%s", payload.RepoOwner, payload.RepoName, payload.After),
+// NewMergeConflictEvent creates a new defs.Event instance for a merge conflict.
+func NewMergeConflictEvent(
+	event *defs.Event[defs.Push, defs.RepoProvider], head, base string, base_commit *defs.Commit,
+) *defs.Event[defs.MergeConflict, defs.RepoProvider] {
+	id, _ := db.NewUUID()
+	now := time.Now()
+
+	// creating payload
+	conflict := defs.MergeConflict{
+		HeadBranch: head,
+		HeadCommit: *event.Payload.Commits.Latest(),
+		BaseBranch: base,
+		BaseCommit: *base_commit,
+		Files:      make([]string, 0),
+		Timestamp:  now,
 	}
 
-	// set the payload for user message provider
-	if for_user {
-		msg.MessageIOPayload = &defs.MessageIOPayload{
-			WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
-			ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
-			BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
-			RepoName:    repo.Name,
-			BranchName:  branch,
-			IsChannel:   false,
-		}
-	} else {
-		// set the payload for channel message provider
-		msg.MessageIOPayload = &defs.MessageIOPayload{
-			WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
-			ChannelID:   repo.MessageProviderData.Slack.ChannelID,
-			BotToken:    repo.MessageProviderData.Slack.BotToken,
-			Author:      payload.Author,
-			AuthorUrl:   fmt.Sprintf("https://github.com/%s", payload.Author),
-			RepoName:    repo.Name,
-			BranchName:  branch,
-			IsChannel:   true,
-		}
+	// creating new event
+	reply := &defs.Event[defs.MergeConflict, defs.RepoProvider]{
+		Version: event.Version,
+		ID:      id,
+		Context: event.Context,
+		Subject: event.Subject,
+		Payload: conflict,
 	}
 
-	return msg
+	// updating event
+	reply.SetParent(event.ID)
+	reply.SetScopeMergeConflict()
+	reply.SetActionCreated()
+	reply.SetTimestamp(now)
+
+	return reply
 }
 
-// NewNumberOfLinesExceedMessage creates a new MessageIOLineExeededPayload instance.
-//
-// It takes a RepoIOSignalPushPayload, Repo information, branch name, changes,
-// and a flag indicating whether the message is for a user or a channel. The
-// function sets the threshold and detected changes, and constructs the
-// appropriate MessageIOPayload based on the for_user flag.
-func NewNumberOfLinesExceedMessage(
-	payload *defs.RepoIOSignalPushPayload,
-	repo *defs.Repo,
-	branch string,
-	changes *defs.RepoIOChanges,
-	for_user bool,
-) *defs.MessageIOLineExeededPayload {
-	msg := &defs.MessageIOLineExeededPayload{
-		Threshold:     repo.Threshold,
-		DetectChanges: changes,
+// NewLineExceedEvent creates a new defs.Event instance for a line exceed.
+func NewLineExceedEvent(
+	event *defs.Event[defs.Push, defs.RepoProvider], head string, lc *defs.LineChanges,
+) *defs.Event[defs.LinesExceed, defs.RepoProvider] {
+	id, _ := db.NewUUID()
+	now := time.Now()
+
+	// creating payload
+	exceed := defs.LinesExceed{
+		Branch:    head,
+		Commit:    *event.Payload.Commits.Latest(),
+		LineStats: *lc,
+		Timestamp: now,
 	}
 
-	// set the payload for user message provider
-	if for_user {
-		msg.MessageIOPayload = &defs.MessageIOPayload{
-			WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
-			ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
-			BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
-			RepoName:    repo.Name,
-			BranchName:  branch,
-			IsChannel:   false,
-		}
-	} else {
-		// set the payload for channel message provider
-		msg.MessageIOPayload = &defs.MessageIOPayload{
-			WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
-			ChannelID:   repo.MessageProviderData.Slack.ChannelID,
-			BotToken:    repo.MessageProviderData.Slack.BotToken,
-			Author:      payload.Author,
-			AuthorUrl:   fmt.Sprintf("https://github.com/%s", payload.Author),
-			RepoName:    repo.Name,
-			BranchName:  branch,
-			IsChannel:   true,
-		}
+	// creating new event
+	reply := &defs.Event[defs.LinesExceed, defs.RepoProvider]{
+		Version: event.Version,
+		ID:      id,
+		Context: event.Context,
+		Subject: event.Subject,
+		Payload: exceed,
 	}
 
-	return msg
+	// updating event
+	reply.SetParent(event.ID)
+	reply.SetScopeLineExceed()
+	reply.SetActionCreated()
+	reply.SetTimestamp(now)
+
+	return reply
 }
 
 // NewStaleBranchMessage creates a new MessageIOStaleBranchPayload instance.
@@ -123,6 +101,7 @@ func NewNumberOfLinesExceedMessage(
 // function constructs URLs for the commit and repository, and sets the
 // MessageIOPayload for the channel. This function is only used for channel
 // messages.
+// TODO - handle using event.
 func NewStaleBranchMessage(data *defs.RepoIOProviderInfo, repo *defs.Repo, branch string) *defs.MessageIOStaleBranchPayload {
 	return &defs.MessageIOStaleBranchPayload{
 		CommitUrl: fmt.Sprintf("https://github.com/%s/%s/tree/%s",

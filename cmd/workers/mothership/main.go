@@ -55,6 +55,8 @@ func main() {
 		kernel.WithMessageProvider(defs.MessageProviderSlack, &slack.Activities{}),
 	)
 
+	shared.Logger().Info("starting workers...")
+
 	core_queue := shared.Temporal().Queue(shared.CoreQueue)
 	configure_core(core_queue)
 

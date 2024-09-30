@@ -31,10 +31,10 @@ type (
 		// SendStaleBranchMessage sends a message indicating a stale branch.
 		SendStaleBranchMessage(ctx context.Context, payload *defs.MessageIOStaleBranchPayload) error
 
-		// SendNumberOfLinesExceedMessage sends a message indicating the number of lines has been exceeded.
-		SendNumberOfLinesExceedMessage(ctx context.Context, payload *defs.MessageIOLineExeededPayload) error
+		// NotifyLinesExceed sends a message indicating a line exceed message.
+		NotifyLinesExceed(ctx context.Context, event *defs.Event[defs.LinesExceed, defs.RepoProvider]) error
 
-		// SendMergeConflictsMessage sends a message indicating merge conflicts.
-		SendMergeConflictsMessage(ctx context.Context, payload *defs.MessageIOMergeConflictPayload) error
+		// NotifyMergeConflict sends a message indicating a merge conflict.
+		NotifyMergeConflict(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) error
 	}
 )

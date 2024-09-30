@@ -43,7 +43,8 @@ import (
 )
 
 const (
-	NullUUID     = "00000000-0000-0000-0000-000000000000"
+	NullUUID     = "00000000-0000-0000-0000-000000000000" // RFC 9562 - NULL UUID
+	MaxUUID      = "ffffffff-ffff-ffff-ffff-ffffffffffff" // RFC 9562 - MAX UUID
 	NullString   = ""
 	TestKeyspace = "ctrlplane_test"
 )

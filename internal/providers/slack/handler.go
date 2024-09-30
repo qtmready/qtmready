@@ -76,7 +76,7 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context, params SlackOauthParams) er
 	return ctx.JSON(http.StatusOK, resp)
 }
 
-func _user(ctx echo.Context, response *slack.OAuthV2Response) (*auth.MessageProviderUserInfo, error) {
+func _user(ctx echo.Context, response *slack.OAuthV2Response) (*auth.MessageProviderInfo, error) {
 	userID, _ := gocql.ParseUUID(ctx.Get("user_id").(string))
 
 	teamuser := &auth.TeamUser{}
@@ -95,7 +95,7 @@ func _user(ctx echo.Context, response *slack.OAuthV2Response) (*auth.MessageProv
 	}
 
 	// Generate a key for AES-256.
-	key := generateKey(response.Team.ID)
+	key := generate(response.Team.ID)
 
 	// Encrypt the user access token.
 	encryptedUserToken, err := encrypt([]byte(response.AuthedUser.AccessToken), key)
@@ -109,7 +109,7 @@ func _user(ctx echo.Context, response *slack.OAuthV2Response) (*auth.MessageProv
 		return nil, err
 	}
 
-	userinfo := auth.MessageProviderUserInfo{
+	userinfo := auth.MessageProviderInfo{
 		Slack: &auth.MessageProviderSlackUserInfo{
 			BotToken:       base64.StdEncoding.EncodeToString(encryptedBotToken),
 			UserToken:      base64.StdEncoding.EncodeToString(encryptedUserToken),
@@ -131,7 +131,7 @@ func _user(ctx echo.Context, response *slack.OAuthV2Response) (*auth.MessageProv
 
 func _bot(response *slack.OAuthV2Response) (*defs.MessageProviderData, error) {
 	// Generate a key for AES-256.
-	key := generateKey(response.Team.ID)
+	key := generate(response.Team.ID)
 
 	// Encrypt the access token.
 	encryptedToken, err := encrypt([]byte(response.AccessToken), key)

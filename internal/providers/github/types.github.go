@@ -23,6 +23,7 @@ package github
 import (
 	"time"
 
+	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -44,7 +45,7 @@ type (
 		TreeID    string      `json:"tree_id"`
 		Distinct  bool        `json:"distinct"`
 		Message   string      `json:"message"`
-		Timestamp string      `json:"timestamp"`
+		Timestamp Timestamp   `json:"timestamp"`
 		URL       string      `json:"url"`
 		Author    UserPartial `json:"author"`
 		Committer UserPartial `json:"committer"`
@@ -53,20 +54,7 @@ type (
 		Modified  []string    `json:"modified"`
 	}
 
-	HeadCommit struct {
-		ID        string      `json:"id"`
-		NodeID    string      `json:"node_id"`
-		TreeID    string      `json:"tree_id"`
-		Distinct  bool        `json:"distinct"`
-		Message   string      `json:"message"`
-		Timestamp string      `json:"timestamp"`
-		URL       string      `json:"url"`
-		Author    UserPartial `json:"author"`
-		Committer UserPartial `json:"committer"`
-		Added     []string    `json:"added"`
-		Removed   []string    `json:"removed"`
-		Modified  []string    `json:"modified"`
-	}
+	Commits []Commit
 
 	UserPartial struct {
 		Name     string `json:"name"`
@@ -430,7 +418,7 @@ type (
 		CancelURL          *string        `json:"cancel_url,omitempty"`
 		RerunURL           *string        `json:"rerun_url,omitempty"`
 		PreviousAttemptURL *string        `json:"previous_attempt_url,omitempty"`
-		HeadCommit         HeadCommit     `json:"head_commit,omitempty"`
+		HeadCommit         Commit         `json:"head_commit,omitempty"`
 		WorkflowURL        string         `json:"workflow_url,omitempty"`
 		Repository         Repository     `json:"repository,omitempty"`
 		HeadRepository     Repository     `json:"head_repository,omitempty"`
@@ -452,45 +440,45 @@ type (
 	}
 
 	PullRequestReview struct {
-		ID                *int64     `json:"id,omitempty"`
-		NodeID            *string    `json:"node_id,omitempty"`
-		User              *User      `json:"user,omitempty"`
-		Body              *string    `json:"body,omitempty"`
-		SubmittedAt       *Timestamp `json:"submitted_at,omitempty"`
-		CommitID          *string    `json:"commit_id,omitempty"`
-		HTMLURL           *string    `json:"html_url,omitempty"`
-		PullRequestURL    *string    `json:"pull_request_url,omitempty"`
-		State             *string    `json:"state,omitempty"`
-		AuthorAssociation *string    `json:"author_association,omitempty"`
+		ID                shared.Int64 `json:"id,omitempty"`
+		NodeID            string       `json:"node_id,omitempty"`
+		User              User         `json:"user,omitempty"`
+		Body              string       `json:"body,omitempty"`
+		SubmittedAt       Timestamp    `json:"submitted_at,omitempty"`
+		CommitID          string       `json:"commit_id,omitempty"`
+		HTMLURL           string       `json:"html_url,omitempty"`
+		PullRequestURL    string       `json:"pull_request_url,omitempty"`
+		State             string       `json:"state,omitempty"`
+		AuthorAssociation string       `json:"author_association,omitempty"`
 	}
 
 	PullRequestComment struct {
-		ID                  *int64     `json:"id,omitempty"`
-		NodeID              *string    `json:"node_id,omitempty"`
-		InReplyTo           *int64     `json:"in_reply_to_id,omitempty"`
-		Body                *string    `json:"body,omitempty"`
-		Path                *string    `json:"path,omitempty"`
-		DiffHunk            *string    `json:"diff_hunk,omitempty"`
-		PullRequestReviewID *int64     `json:"pull_request_review_id,omitempty"`
-		Position            *int       `json:"position,omitempty"`
-		OriginalPosition    *int       `json:"original_position,omitempty"`
-		StartLine           *int       `json:"start_line,omitempty"`
-		Line                *int       `json:"line,omitempty"`
-		OriginalLine        *int       `json:"original_line,omitempty"`
-		OriginalStartLine   *int       `json:"original_start_line,omitempty"`
-		Side                *string    `json:"side,omitempty"`
-		StartSide           *string    `json:"start_side,omitempty"`
-		CommitID            *string    `json:"commit_id,omitempty"`
-		OriginalCommitID    *string    `json:"original_commit_id,omitempty"`
-		User                *User      `json:"user,omitempty"`
-		Reactions           *Reactions `json:"reactions,omitempty"`
-		CreatedAt           *Timestamp `json:"created_at,omitempty"`
-		UpdatedAt           *Timestamp `json:"updated_at,omitempty"`
-		AuthorAssociation   *string    `json:"author_association,omitempty"`
-		URL                 *string    `json:"url,omitempty"`
-		HTMLURL             *string    `json:"html_url,omitempty"`
-		PullRequestURL      *string    `json:"pull_request_url,omitempty"`
-		SubjectType         *string    `json:"subject_type,omitempty"`
+		ID                  shared.Int64  `json:"id,omitempty"`
+		NodeID              string        `json:"node_id,omitempty"`
+		InReplyTo           *shared.Int64 `json:"in_reply_to_id,omitempty"`
+		Body                string        `json:"body,omitempty"`
+		Path                string        `json:"path,omitempty"`
+		DiffHunk            string        `json:"diff_hunk,omitempty"`
+		PullRequestReviewID shared.Int64  `json:"pull_request_review_id,omitempty"`
+		Position            shared.Int64  `json:"position,omitempty"`
+		OriginalPosition    shared.Int64  `json:"original_position,omitempty"`
+		StartLine           shared.Int64  `json:"start_line,omitempty"`
+		Line                shared.Int64  `json:"line,omitempty"`
+		OriginalLine        shared.Int64  `json:"original_line,omitempty"`
+		OriginalStartLine   shared.Int64  `json:"original_start_line,omitempty"`
+		Side                string        `json:"side,omitempty"`
+		StartSide           string        `json:"start_side,omitempty"`
+		CommitID            string        `json:"commit_id,omitempty"`
+		OriginalCommitID    string        `json:"original_commit_id,omitempty"`
+		User                User          `json:"user,omitempty"`
+		Reactions           Reactions     `json:"reactions,omitempty"`
+		CreatedAt           Timestamp     `json:"created_at,omitempty"`
+		UpdatedAt           Timestamp     `json:"updated_at,omitempty"`
+		AuthorAssociation   string        `json:"author_association,omitempty"`
+		URL                 string        `json:"url,omitempty"`
+		HTMLURL             string        `json:"html_url,omitempty"`
+		PullRequestURL      string        `json:"pull_request_url,omitempty"`
+		SubjectType         string        `json:"subject_type,omitempty"`
 	}
 
 	Reactions struct {
@@ -506,3 +494,21 @@ type (
 		URL        *string `json:"url,omitempty"`
 	}
 )
+
+// normalize converts the Commit struct to a defs.Commit struct.
+//
+// It maps the relevant fields from the Commit struct to the defs.Commit struct, including SHA, Message, URL,
+// Author, Committer, Timestamp, Added, Removed, and Modified.
+func (c Commit) normalize() defs.Commit {
+	return defs.Commit{
+		SHA:       c.ID,
+		Message:   c.Message,
+		URL:       c.URL,
+		Author:    c.Author.Username,
+		Committer: c.Committer.Username,
+		Timestamp: c.Timestamp.Time(),
+		Added:     c.Added,
+		Removed:   c.Removed,
+		Modified:  c.Modified,
+	}
+}

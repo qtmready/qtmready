@@ -2,7 +2,7 @@ services:
   # common
   database:
     container_name: database
-    image: scylladb/scylla:6.0.1
+    image: scylladb/scylla:6.1.1
     ports:
       - "9042:9042"
     volumes:
@@ -77,9 +77,10 @@ services:
       - mothership
       - migrate
     container_name: ctrlplane-job-migrate
-    image: cosmtrek/air:v1.50.0
+    image: cosmtrek/air:v1.52.3
     environment:
-      SERVICE_NAME: job::migrate
+      GOTOOLCHAIN: auto
+      SERVICE_NAME: migrate
       CASSANDRA_MIGRATION_SOURCE_URL: file:///migrate/internal/db/migrations
     env_file:
       - ./.env
@@ -97,10 +98,10 @@ services:
       - full
       - api
     container_name: ctrlplane-api
-    image: cosmtrek/air:v1.50.0
+    image: cosmtrek/air:v1.52.3
     environment:
-      SERVICE_NAME: migrate
-      DEBUG: true
+      GOTOOLCHAIN: auto
+      SERVICE_NAME: api
     env_file:
       - ./.env
     ports:
@@ -111,6 +112,27 @@ services:
       - api-go-pkg-mod:/go/pkg/mod
       - api-build-cache:/root/.cache/go-build
     working_dir: /api
+    networks:
+      - ctrlplane
+
+  ctrlplane-worker--mothership:
+    container_name: ctrlplane-worker--mothership
+    profiles:
+      - mothership
+      - full
+    image: cosmtrek/air:v1.52.3
+    environment:
+      GOTOOLCHAIN: auto
+      SERVICE_NAME: mothership
+      LOG_SKIPPER: 2
+    env_file:
+      - ./.env
+    volumes:
+      - ./deploy/air/mothership.toml:/mothership/.air.toml
+      - ./:/mothership/
+      - worker-mothership-go-pkg-mod:/go/pkg/mod
+      - worker-mothership-build-cache:/root/.cache/go-build
+    working_dir: /mothership
     networks:
       - ctrlplane
 
@@ -135,26 +157,25 @@ services:
     networks:
       - ctrlplane
 
-  ctrlplane-worker--mothership:
-    container_name: ctrlplane-worker--mothership
+  prod-worker-mothership:
+    container_name: prod-worker-mothership
     profiles:
-      - mothership
-      - full
-    image: cosmtrek/air:v1.50.0
+      - prod
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: mothership
     environment:
-      SERVICE_NAME: mothership::worker
-      DEBUG: true
-      LOG_SKIPPER: 2
+      TEMPORAL_HOST: temporal
+      CASSANDRA_HOSTS: database
     env_file:
       - ./.env
     volumes:
-      - ./deploy/air/mothership.toml:/mothership/.air.toml
-      - ./:/mothership/
-      - worker-mothership-go-pkg-mod:/go/pkg/mod
+      - worker-mothership-go-pkg-mod:/root/go/pkg/mod
       - worker-mothership-build-cache:/root/.cache/go-build
-    working_dir: /mothership
     networks:
       - ctrlplane
+
 
 networks:
   ctrlplane: {}

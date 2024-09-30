@@ -17,16 +17,16 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package slack
 
 import (
 	"encoding/base64"
 	"log/slog"
+	"strings"
 )
 
-// DecodeAndDecryptToken decodes a base64-encoded encrypted token and decrypts it using a generated key.
-func decodeAndDecryptToken(botToken, workspaceID string) (string, error) {
+// reveal decodes a base64-encoded encrypted token and decrypts it using a generated key.
+func reveal(botToken, workspaceID string) (string, error) {
 	// Decode the base64-encoded encrypted token.
 	decoded, err := base64.StdEncoding.DecodeString(botToken)
 	if err != nil {
@@ -35,14 +35,28 @@ func decodeAndDecryptToken(botToken, workspaceID string) (string, error) {
 	}
 
 	// Generate the same key used for encryption.
-	key := generateKey(workspaceID)
+	key := generate(workspaceID)
 
 	// Decrypt the token.
-	decryptedToken, err := decrypt(decoded, key)
+	decrypted, err := decrypt(decoded, key)
 	if err != nil {
 		slog.Error("Failed to decrypt the token", slog.Any("e", err))
 		return "", err
 	}
 
-	return string(decryptedToken), nil
+	return string(decrypted), nil
+}
+
+func FormatFilesList(files []string) string {
+	result := ""
+	for _, file := range files {
+		result += "- " + file + "\n"
+	}
+
+	return result
+}
+
+func ExtractRepoName(repoURL string) string {
+	parts := strings.Split(repoURL, "/")
+	return parts[len(parts)-1]
 }
