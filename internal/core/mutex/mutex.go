@@ -64,16 +64,15 @@ type (
 	}
 )
 
-// Prepare prepares the mutex for use by executing the PrepareMutexActivity.
-// It validates the mutex configuration, sets up the activity options, and executes the activity.
-// If successful, it sets the Execution field of the Handler.
+// Prepare prepares the mutex for use by executing the PrepareMutexActivity. It validates the mutex configuration, sets
+// up the activity options, and executes the activity. If successful, it sets the Execution field of the Handler.
 //
 // Usage:
 //
 //	mutex := New(ctx, WithResourceID("resource-id"))
 //	err := mutex.Prepare(ctx)
 //	if err != nil {
-//		// handle error
+//	  // handle error
 //	}
 func (h *Handler) Prepare(ctx workflow.Context) error {
 	if err := h.validate(); err != nil {
@@ -99,14 +98,14 @@ func (h *Handler) Prepare(ctx workflow.Context) error {
 	return nil
 }
 
-// Acquire attempts to acquire the lock by signaling the mutex workflow.
-// It waits for the WorkflowSignalLocked signal to confirm acquisition.
+// Acquire attempts to acquire the lock by signaling the mutex workflow. It waits for the WorkflowSignalLocked signal to
+// confirm acquisition.
 //
 // Usage:
 //
 //	err := mutex.Acquire(ctx)
 //	if err != nil {
-//		// handle error
+//	  // handle error
 //	}
 //	// Critical section - mutex is acquired
 func (h *Handler) Acquire(ctx workflow.Context) error {
@@ -132,14 +131,14 @@ func (h *Handler) Acquire(ctx workflow.Context) error {
 	return NewAcquireLockError(h.ResourceID)
 }
 
-// Release signals the mutex workflow to release the lock.
-// It waits for the WorkflowSignalReleased signal to confirm the release.
+// Release signals the mutex workflow to release the lock. It waits for the WorkflowSignalReleased signal to confirm the
+// release.
 //
 // Usage:
 //
 //	err := mutex.Release(ctx)
 //	if err != nil {
-//		// handle error
+//	  // handle error
 //	}
 func (h *Handler) Release(ctx workflow.Context) error {
 	h.logger.info(h.Info.WorkflowExecution.ID, "release", "requesting release")
@@ -165,14 +164,14 @@ func (h *Handler) Release(ctx workflow.Context) error {
 	return nil
 }
 
-// Cleanup attempts to shut down the mutex workflow if it's no longer needed.
-// It signals the mutex workflow and waits for confirmation of cleanup.
+// Cleanup attempts to shut down the mutex workflow if it's no longer needed. It signals the mutex workflow and waits
+// for confirmation of cleanup.
 //
 // Usage:
 //
 //	err := mutex.Cleanup(ctx)
 //	if err != nil {
-//		// handle error
+//	  // handle error
 //	}
 func (h *Handler) Cleanup(ctx workflow.Context) error {
 	h.logger.info(h.Info.WorkflowExecution.ID, "cleanup", "requesting cleanup")
@@ -220,16 +219,18 @@ func (h *Handler) validate() error {
 	return nil
 }
 
-// WithResourceID sets the resource ID for the mutex workflow. We start with the assumption that a valid resource ID will be provided.
-// The lock must always be held against the ids of core entities e.g. Stack, Repo or Resource. and the format may look like
-// ${entity_type}.${entity_id}.mutex
+// WithResourceID sets the resource ID for the mutex workflow. We start with the assumption that a valid resource ID
+// will be provided. The lock must always be held against the ids of core entities e.g. Stack, Repo or Resource. and the
+// format may look like ${entity_type}.${entity_id}.mutex
+//
 //   - entity type e.g stack, repo, resource
 //   - entity id e.g. the database id.
 //
-// for some cases, this may be made easy by getting the id of the parent workflow info e.g. if we are running stack controller, we can
-// get the stack controller id, which would be in the format "io.quantm.stack.${stack_id}" and then adding the "mutex" suffix. Alernatively
-// this can be set explicitly as well as "io.quantm.repo.${repo_id}.branch.${branch_name}.mutex". This is the format that should be used
-// when holding locks against specific resources like repos or artifacts or cloud resources. This is a judgement call. The goal is, we
+// for some cases, this may be made easy by getting the id of the parent workflow info e.g. if we are running stack
+// controller, we can get the stack controller id, which would be in the format "io.quantm.stack.${stack_id}" and then
+// adding the "mutex" suffix. Alernatively this can be set explicitly as well as
+// "io.quantm.repo.${repo_id}.branch.${branch_name}.mutex". This is the format that should be used when holding locks
+// against specific resources like repos or artifacts or cloud resources. This is a judgement call. The goal is, we
 // should be able to arrive at the lock id regardless of the context.
 func WithResourceID(id string) Option {
 	return func(m *Handler) {
@@ -244,9 +245,8 @@ func WithTimeout(timeout time.Duration) Option {
 	}
 }
 
-// New returns a new Mutex.
-// It should always be called with WithResourceID option.
-// If WithTimeout is not called, it defaults to DefaultTimeout.
+// New returns a new Mutex. It should always be called with WithResourceID option. If WithTimeout is not called, it
+// defaults to DefaultTimeout.
 //
 // Usage:
 //

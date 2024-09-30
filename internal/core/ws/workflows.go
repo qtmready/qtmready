@@ -36,18 +36,17 @@ const (
 	QueryGetUserQueue = "get_user_queue"
 )
 
-// ConnectionsHubWorkflow manages the state of WebSocket connections across multiple API containers in a Kubernetes cluster.
-// It doesn't handle the actual WebSocket connections, but rather maintains a record of which users are connected to which containers.
+// ConnectionsHubWorkflow manages the state of WebSocket connections across multiple API containers in a Kubernetes
+// cluster. It doesn't handle the actual WebSocket connections, but rather maintains a record of which users are
+// connected to which containers.
 //
-// This workflow solves the challenge of routing WebSocket messages in a scalable API setup where:
-// - The number of API containers can scale from a minimum of 3 to n.
-// - Users can be connected to any of the available containers.
-// - Events may be received by different containers than the one a user is connected to.
+// This workflow solves the challenge of routing WebSocket messages in a scalable API setup where: - The number of API
+// containers can scale from a minimum of 3 to n. - Users can be connected to any of the available containers. - Events
+// may be received by different containers than the one a user is connected to.
 //
-// The workflow:
-// - Maintains a map of user connections and their associated API containers.
-// - Handles signals for adding/removing users, & flushing queues if the container goes down.
-// - Provides a query handler for retrieving queue which user is connected to, which is used by the Hub for message routing.
+// The workflow: - Maintains a map of user connections and their associated API containers. - Handles signals for
+// adding/removing users, & flushing queues if the container goes down. - Provides a query handler for retrieving queue
+// which user is connected to, which is used by the Hub for message routing.
 //
 // Parameters:
 //   - ctx: The workflow context
@@ -96,9 +95,9 @@ func ConnectionsHubWorkflow(ctx workflow.Context, conns *Connections) error {
 
 // SendMessageWorkflow sends a message to a specified user.
 //
-// This workflow executes the SendMessage activity to send a message to a user identified by user_id.
-// It handles any errors that occur during the execution of the activity and logs relevant information.
-// If the message cannot be sent locally, it logs a warning.
+// This workflow executes the SendMessage activity to send a message to a user identified by user_id. It handles any
+// errors that occur during the execution of the activity and logs relevant information. If the message cannot be sent
+// locally, it logs a warning.
 //
 // Parameters:
 //   - ctx: The workflow context
@@ -121,8 +120,7 @@ func SendMessageWorkflow(ctx workflow.Context, user_id string, message []byte) e
 	}
 
 	if !sent {
-		// The message couldn't be sent locally
-		// You can add logic here to handle this case
+		// The message couldn't be sent locally You can add logic here to handle this case
 		shared.Logger().Warn("ws/send: unable to send locally, dropping ..", "user_id", user_id)
 	}
 

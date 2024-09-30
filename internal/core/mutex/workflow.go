@@ -35,6 +35,7 @@ import (
 //  3. Cleanup loop: Manages the cleanup process and potential workflow shutdown.
 //
 // It operates as a state machine, transitioning between MutexStatus states:
+//
 // Acquiring -> Locked -> Releasing -> Released (or Timeout)
 //
 // Uses two pools to manage lock requests:

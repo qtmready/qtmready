@@ -175,7 +175,7 @@ func Shutdown(ctx context.Context, cleanups []Cleanup, interrupt chan any, timeo
 				mu.Lock()
 				defer mu.Unlock()
 
-				slog.Error("cleanup failed", "error", err)
+				slog.Warn("graceful: cleanup failed", "error", err)
 
 				code = 1
 			}
@@ -192,10 +192,12 @@ func Shutdown(ctx context.Context, cleanups []Cleanup, interrupt chan any, timeo
 	case <-done:
 		// All cleanups completed within the timeout
 	case <-time.After(timeout):
-		slog.Warn("shutdown timeout reached, some cleanups may not have completed")
-		mu.Lock()   // Acquire the lock before updating code
-		code = 1    // Update the code value
-		mu.Unlock() // Release the lock
+		mu.Lock()
+		defer mu.Unlock()
+
+		slog.Warn("graceful: shutdown timeout reached, some cleanups may not have completed")
+
+		code = 1
 	}
 
 	return code

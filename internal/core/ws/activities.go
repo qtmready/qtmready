@@ -36,7 +36,7 @@ type (
 )
 
 func (a *Activities) SendMessage(ctx context.Context, id string, message []byte) (bool, error) {
-	return instance.send_local(id, message), nil
+	return instance.local(id, message), nil
 }
 
 func (a *Activities) RouteMessage(ctx context.Context, id string, message []byte) error {

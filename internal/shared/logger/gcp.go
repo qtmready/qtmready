@@ -29,6 +29,12 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
+const (
+	prefix_trace   = "logging.googleapis.com/trace"
+	prefix_span    = "logging.googleapis.com/spanId"
+	prefix_sampled = "logging.googleapis.com/trace_sampled"
+)
+
 type (
 	GoogleCloudHandler struct {
 		handler slog.Handler
@@ -70,18 +76,14 @@ func (h *GoogleCloudHandler) enrich(ctx context.Context, record slog.Record) slo
 	span := trace.SpanFromContext(ctx)
 	if span != nil && span.SpanContext().IsValid() {
 		if metadata.OnGCE() {
-			project, _ := metadata.ProjectID()
-			rec.Add("logging.googleapis.com/trace", fmt.Sprintf(
-				"projects/%s/traces/%s",
-				project,
-				span.SpanContext().TraceID().String(),
-			))
+			project, _ := metadata.ProjectIDWithContext(ctx)
+			rec.Add(prefix_trace, fmt.Sprintf("projects/%s/traces/%s", project, span.SpanContext().TraceID().String()))
 		} else {
-			rec.Add("logging.googleapis.com/trace", span.SpanContext().TraceID().String())
+			rec.Add(prefix_trace, span.SpanContext().TraceID().String())
 		}
 
-		rec.Add("logging.googleapis.com/spanId", span.SpanContext().SpanID().String())
-		rec.Add("logging.googleapis.com/trace_sampled", span.SpanContext().IsSampled())
+		rec.Add(prefix_span, span.SpanContext().SpanID().String())
+		rec.Add(prefix_sampled, span.SpanContext().IsSampled())
 	}
 
 	return rec

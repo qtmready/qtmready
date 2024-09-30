@@ -21,7 +21,7 @@ package ws
 
 import (
 	"crypto/rand"
-	"encoding/base32"
+	"fmt"
 
 	"github.com/google/uuid"
 	sdk_client "go.temporal.io/sdk/client"
@@ -55,24 +55,50 @@ func opts_broadcast(q queue.Queue, team_id string) sdk_client.StartWorkflowOptio
 	)
 }
 
-// opts_hub returns StartWorkflowOptions for the WebSocket hub workflow.
+// opts_hub returns StartWorkflowOptions for the ConnectionsHubWorkflow.
 func opts_hub() sdk_client.StartWorkflowOptions {
 	return shared.Temporal().Queue(shared.WebSocketQueue).WorkflowOptions(
 		queue.WithWorkflowBlock("hub"),
 	)
 }
 
-// queue_name create a name for the temporal queue.
-// It is used to create a unique name for the queue for each running container.
-func queue_name() queue.Name {
+// encode converts a byte slice into a 24-character string using base-32 encoding.
+//
+// Each byte is encoded as three characters, using a 32-character set (lowercase a-z, digits 2-3, 4-5, 6-8, 9). The
+// algorithm converts each byte to an integer, calculates its modulo 32, and uses the corresponding character from the
+// character set. This process is repeated three times, dividing the integer by 32 each time.
+func encode(bytes []byte) string {
+	chars := "abcdefghijklmnopqrstuvwxyz2345689"
+	encoded := ""
+
+	for i := 0; i < len(bytes); i++ {
+		value := int(bytes[i])
+
+		encoded += string(chars[value%32])
+		value /= 32
+		encoded += string(chars[value%32])
+		value /= 32
+		encoded += string(chars[value%32])
+	}
+
+	return encoded
+}
+
+// container_id generates a cryptographically secure, collision-resistant container ID.
+//
+// It uses base-32 encoding to produce a 24-character string from 8 random bytes. The first 8 characters are used.
+//
+// This provides a namespace of 1 billion unique IDs (32^8), sufficient for our current scale of a few hundred
+// containers. However, collision probability increases with container growth due to the birthday paradox.
+//
+// For scalability, a more complex algorithm may be necessary to minimize collision risk.
+func container_id() queue.Name {
 	length := 8
-	bytes := make([]byte, 5) // 5 bytes will give us at least 8 characters when base32 encoded
+	bytes := make([]byte, 8)
 
 	_, _ = rand.Read(bytes)
 
-	// Use base32 encoding to ensure we only get lowercase letters and numbers
-	encoded := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(bytes)
+	encoded := encode(bytes)
 
-	// Trim to exactly 8 characters
-	return queue.Name(encoded[:length])
+	return queue.Name(fmt.Sprintf("%s.%s", shared.WebSocketQueue.String(), encoded[:length]))
 }
