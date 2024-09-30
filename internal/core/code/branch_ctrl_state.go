@@ -62,7 +62,9 @@ func (state *RepoIOBranchCtrlState) on_push(ctx workflow.Context) shared.Channel
 
 		complexity := state.calculate_complexity(ctx)
 		if complexity.Delta > state.repo.Threshold {
-			// state.warn_complexity(ctx, event, complexity) // TODO: handle this.
+			// Set the user if it exist in database then send message to user other wise to channel.
+			state.refresh_author(ctx, event.Payload.SenderID)
+			state.warn_complexity(ctx, event, complexity)
 		}
 
 		state.interval.Restart(ctx)
@@ -321,14 +323,24 @@ func (state *RepoIOBranchCtrlState) calculate_complexity(ctx workflow.Context) *
 
 // warn_complexity sends a warning message if the complexity of changes exceeds the threshold.
 func (state *RepoIOBranchCtrlState) warn_complexity(
-	ctx workflow.Context, push *defs.RepoIOSignalPushPayload, complexity *defs.RepoIOChanges,
-) {
-	for_user := push.User != nil && push.User.IsMessageProviderLinked
-	msg := comm.NewNumberOfLinesExceedMessage(push, state.repo, state.branch(ctx), complexity, for_user)
-	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
+	ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider], complexity *defs.RepoIOChanges) {
 	ctx = shared.WithDefaultActivityContext(ctx)
 
-	_ = state.do(ctx, "warn_complexity", io.SendNumberOfLinesExceedMessage, msg, nil)
+	lc := &defs.LineChanges{
+		Added:     complexity.Added,
+		Removed:   complexity.Removed,
+		Delta:     complexity.Delta,
+		Threshold: state.repo.Threshold,
+	}
+
+	lexceed := comm.NewLineExceedEvent(event, BranchNameFromRef(event.Payload.Ref), lc)
+	if state.author != nil {
+		lexceed.SetUserID(state.author.UserID)
+	}
+
+	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
+
+	_ = state.do(ctx, "warn_complexity", io.NotifyLinesExceed, lexceed, nil)
 }
 
 // warn_stale sends a warning message if the branch is stale.
@@ -345,7 +357,6 @@ func (state *RepoIOBranchCtrlState) warn_stale(ctx workflow.Context) {
 func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider]) {
 	ctx = shared.WithDefaultActivityContext(ctx)
 
-	// msg := comm.NewMergeConflictMessage(event, state.repo, state.author, state.branch(ctx))
 	conflict := comm.NewMergeConflictEvent(event, state.pr.HeadBranch, state.pr.BaseBranch, state.last_commit)
 
 	if state.author != nil {

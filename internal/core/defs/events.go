@@ -39,6 +39,14 @@ type (
 		DefaultBranch string `json:"default_branch"` // DefaultBranch is the name of the default branch.
 	}
 
+	// TODO - set the event payload.
+	LineChanges struct {
+		Added     shared.Int64 `json:"added"`     // Number of lines added in the commit.
+		Removed   shared.Int64 `json:"removed"`   // Number of lines removed in the commit.
+		Threshold shared.Int64 `json:"threshold"` // Set threshold for PR.
+		Delta     shared.Int64 `json:"delta"`     // Net change in lines (added - removed).
+	}
+
 	// Commit represents a git commit.
 	Commit struct {
 		SHA       string    `json:"sha"`       // SHA is the SHA of the commit.
@@ -128,12 +136,19 @@ type (
 		Timestamp  time.Time `json:"timestamp"`   // Timestamp is the timestamp of the merge conflict.
 	}
 
+	LinesExceed struct {
+		Branch    string      `json:"branch"`     // Branch is the name of the head or feature branch.
+		Commit    Commit      `json:"commit"`     // Commit is the last commit on the head branch.
+		LineStats LineChanges `json:"line_stats"` // LineStats contains details about lines added, removed, and the delta.
+		Timestamp time.Time   `json:"timestamp"`  // Timestamp is the timestamp of the merge conflict.
+	}
+
 	// EventPayload represents all available event payloads.
 	EventPayload interface {
 		BranchOrTag |
 			Push |
 			PullRequest | PullRequestReview | PullRequestLabel | PullRequestComment | PullRequestThread |
-			MergeConflict
+			MergeConflict | LinesExceed
 	}
 )
 
@@ -221,6 +236,7 @@ const (
 	EventScopePullRequestComment EventScope = "pull_request_comment" // EventScopePullRequestReviewComment scopes PR comment event.
 	EventScopePullRequestThread  EventScope = "pull_request_thread"  // EventScopePullRequestThread scopes PR thread event.
 	EventScopeMergeConflict      EventScope = "merge_conflict"       // EventScopeMergeCommit scopes merge commit event.
+	EventScopeLineExceed         EventScope = "line_exceed"          // EventScopeLineExceed scopes line exceed event.
 )
 
 const (
@@ -381,6 +397,8 @@ func (e *Event[T, P]) UnmarshalJSON(data []byte) error {
 		payload = any(PullRequestThread{}).(T)
 	case EventScopeMergeConflict:
 		payload = any(MergeConflict{}).(T)
+	case EventScopeLineExceed:
+		payload = any(LinesExceed{}).(T)
 	default:
 		return fmt.Errorf("unsupported event scope: %s", e.Context.Scope)
 	}
@@ -537,6 +555,10 @@ func (e *Event[T, P]) SetScopePullRequestThread() {
 
 func (e *Event[T, P]) SetScopeMergeConflict() {
 	e.Context.Scope = EventScopeMergeConflict
+}
+
+func (e *Event[T, P]) SetScopeLineExceed() {
+	e.Context.Scope = EventScopeLineExceed
 }
 
 // Latest returns the latest commit based on the timestamp. It iterates through the Commits slice and returns the commit with the latest

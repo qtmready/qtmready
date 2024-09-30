@@ -103,13 +103,39 @@ func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context, payload
 	return nil
 }
 
-func (a *Activities) SendMergeConflictsMessage(ctx context.Context, payload *defs.MergeConflictMessage) error {
+func (a *Activities) NotifyLinesExceed(ctx context.Context, event *defs.Event[defs.LinesExceed, defs.RepoProvider]) error {
 	logger := activity.GetLogger(ctx)
 
-	token, err := reveal(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)
-	if err != nil {
-		logger.Error("Error in reveal", "Error", err)
-		return err
+	token := ""
+	target := ""
+
+	var err error
+
+	fields := a.lines_exceed_fields(event)
+
+	// by default we send the message to the channel, but if the user is a member of the team, we send the message to the user.
+	// if we are sending on the channel, we introduce the owner of the branch to the channel.
+	if event.Subject.UserID.String() != db.NullUUID {
+		token, target, err = a.user_tokens(ctx, event.Subject.UserID.String(), event.Subject.TeamID.String())
+		if err != nil {
+			logger.Error("Error in token or target", "Error", err)
+			return err
+		}
+	} else {
+		token, target, err = a.repo_tokens(ctx, event.Subject.ID.String())
+		if err != nil {
+			return err
+		}
+	}
+
+	attachment := slack.Attachment{
+		Color:      "warning",
+		Pretext:    "The number of lines in this pull request exceeds the allowed threshold. Please review and adjust accordingly.",
+		Fallback:   "Merge Conflict Detected",
+		MarkdownIn: []string{"fields"},
+		Footer:     footer,
+		Fields:     fields,
+		Ts:         json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
 	}
 
 	client, err := instance.GetSlackClient(token)
@@ -118,17 +144,7 @@ func (a *Activities) SendMergeConflictsMessage(ctx context.Context, payload *def
 		return err
 	}
 
-	attachment := formatMergeConflictAttachment(payload)
-
-	// call blockset to send the message to slack channel or sepecific workspace.
-	if err := notify(client, payload.MessageIOPayload.ChannelID, attachment); err != nil {
-		logger.Error("Failed to post message to channel", "Error", err)
-		return err
-	}
-
-	logger.Info("Slack notification sent successfully")
-
-	return nil
+	return notify(client, target, attachment)
 }
 
 // TODO - move the uint functions.
@@ -145,13 +161,13 @@ func (a *Activities) NotifyMergeConflict(ctx context.Context, event *defs.Event[
 	// by default we send the message to the channel, but if the user is a member of the team, we send the message to the user.
 	// if we are sending on the channel, we introduce the owner of the branch to the channel.
 	if event.Subject.UserID.String() != db.NullUUID {
-		token, target, err = a.user_tokens(ctx, event)
+		token, target, err = a.user_tokens(ctx, event.Subject.UserID.String(), event.Subject.TeamID.String())
 		if err != nil {
 			logger.Error("Error in token or target", "Error", err)
 			return err
 		}
 	} else {
-		token, target, err = a.repo_tokens(ctx, event)
+		token, target, err = a.repo_tokens(ctx, event.Subject.ID.String())
 		if err != nil {
 			return err
 		}
@@ -214,8 +230,44 @@ func (a *Activities) conflict_fields(event *defs.Event[defs.MergeConflict, defs.
 	return fields
 }
 
-func (a *Activities) user_tokens(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) (string, string, error) {
-	tuser, err := auth.TeamUserIO().Get(ctx, event.Subject.UserID.String(), event.Subject.TeamID.String())
+func (a *Activities) lines_exceed_fields(event *defs.Event[defs.LinesExceed, defs.RepoProvider]) []slack.AttachmentField {
+	fields := []slack.AttachmentField{
+		{
+			Title: "*Repository*",
+			Value: fmt.Sprintf("<%s|%s>", event.Context.Source, ExtractRepoName(event.Context.Source)),
+			Short: true,
+		}, {
+			Title: "*Branch*",
+			Value: fmt.Sprintf("<%s/tree/%s|%s>", event.Context.Source, event.Payload.Commit, event.Payload.Branch),
+			Short: true,
+		}, {
+			Title: "*Threshold*",
+			Value: fmt.Sprintf("%d", event.Payload.LineStats.Threshold),
+			Short: true,
+		}, {
+			Title: "*Total Lines Count*",
+			Value: fmt.Sprintf("%d", event.Payload.LineStats.Delta),
+			Short: true,
+		}, {
+			Title: "*Lines Added*",
+			Value: fmt.Sprintf("%d", event.Payload.LineStats.Added),
+			Short: true,
+		}, {
+			Title: "*Lines Deleted*",
+			Value: fmt.Sprintf("%d", event.Payload.LineStats.Removed),
+			Short: true,
+		}, {
+			Title: "Affected Files",
+			Value: fmt.Sprintf("%s", FormatFilesList(event.Payload.Commit.Modified)),
+			Short: false,
+		},
+	}
+
+	return fields
+}
+
+func (a *Activities) user_tokens(ctx context.Context, usr_id, team_id string) (string, string, error) {
+	tuser, err := auth.TeamUserIO().Get(ctx, usr_id, team_id)
 
 	if err != nil {
 		return "", "", err
@@ -229,8 +281,8 @@ func (a *Activities) user_tokens(ctx context.Context, event *defs.Event[defs.Mer
 	return token, tuser.MessageProviderUserInfo.Slack.ProviderUserID, nil
 }
 
-func (a *Activities) repo_tokens(ctx context.Context, event *defs.Event[defs.MergeConflict, defs.RepoProvider]) (string, string, error) {
-	repo, err := code.RepoIO().GetByID(ctx, event.Subject.ID.String())
+func (a *Activities) repo_tokens(ctx context.Context, repo_id string) (string, string, error) {
+	repo, err := code.RepoIO().GetByID(ctx, repo_id)
 	if err != nil {
 		return "", "", err
 	}

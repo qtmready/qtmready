@@ -153,6 +153,39 @@ func NewNumberOfLinesExceedMessage(
 	return msg
 }
 
+// NewLineExceedEvent creates a new defs.Event instance for a merge conflict.
+func NewLineExceedEvent(
+	event *defs.Event[defs.Push, defs.RepoProvider], head string, lc *defs.LineChanges,
+) *defs.Event[defs.LinesExceed, defs.RepoProvider] {
+	id, _ := db.NewUUID()
+	now := time.Now()
+
+	// creating payload
+	exceed := defs.LinesExceed{
+		Branch:    head,
+		Commit:    *event.Payload.Commits.Latest(),
+		LineStats: *lc,
+		Timestamp: now,
+	}
+
+	// creating new event
+	reply := &defs.Event[defs.LinesExceed, defs.RepoProvider]{
+		Version: event.Version,
+		ID:      id,
+		Context: event.Context,
+		Subject: event.Subject,
+		Payload: exceed,
+	}
+
+	// updating event
+	reply.SetParent(event.ID)
+	reply.SetScopeLineExceed()
+	reply.SetActionCreated()
+	reply.SetTimestamp(now)
+
+	return reply
+}
+
 // NewStaleBranchMessage creates a new MessageIOStaleBranchPayload instance.
 //
 // It takes RepoIOProviderInfo, Repo information, and a branch name. The
