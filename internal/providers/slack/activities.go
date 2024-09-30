@@ -17,7 +17,6 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package slack
 
 import (
@@ -47,6 +46,10 @@ var (
 	githubacts *github.Activities
 )
 
+const (
+	footer = "Powered by quantm.io"
+)
+
 func (a *Activities) SendStaleBranchMessage(ctx context.Context, payload *defs.MessageIOStaleBranchPayload) error {
 	logger := activity.GetLogger(ctx)
 
@@ -62,37 +65,15 @@ func (a *Activities) SendStaleBranchMessage(ctx context.Context, payload *defs.M
 		return err
 	}
 
-	attachment := formatStaleBranchAttachment(payload)
+	attachment := slack.Attachment{
+		Pretext: fmt.Sprintf("Stale branch <%s|%s> is detected on repository <%s|%s>. Please review and take necessary action.",
+			payload.CommitUrl, payload.MessageIOPayload.BranchName, payload.RepoUrl, payload.MessageIOPayload.RepoName),
+		Fallback: "Stale Branch Detected",
+		Footer:   footer,
+		Ts:       json.Number(strconv.FormatInt(time.Now().Unix(), 10)),
+	}
 
 	// call blockset to send the message to slack channel or sepecific workspace.
-	if err := notify(client, payload.MessageIOPayload.ChannelID, attachment); err != nil {
-		logger.Error("Failed to post message to channel", "Error", err)
-		return err
-	}
-
-	logger.Info("Slack notification sent successfully")
-
-	return nil
-}
-
-func (a *Activities) SendNumberOfLinesExceedMessage(ctx context.Context, payload *defs.MessageIOLineExeededPayload) error {
-	logger := activity.GetLogger(ctx)
-
-	token, err := reveal(payload.MessageIOPayload.BotToken, payload.MessageIOPayload.WorkspaceID)
-	if err != nil {
-		logger.Error("Error in reveal", "Error", err)
-		return err
-	}
-
-	client, err := instance.GetSlackClient(token)
-	if err != nil {
-		logger.Error("Error in GetSlackClient", "Error", err)
-		return err
-	}
-
-	attachment := formatLineThresholdExceededAttachment(payload)
-
-	// Call function to send the message to Slack channel or specific workspace.
 	if err := notify(client, payload.MessageIOPayload.ChannelID, attachment); err != nil {
 		logger.Error("Failed to post message to channel", "Error", err)
 		return err
@@ -131,7 +112,7 @@ func (a *Activities) NotifyLinesExceed(ctx context.Context, event *defs.Event[de
 	attachment := slack.Attachment{
 		Color:      "warning",
 		Pretext:    "The number of lines in this pull request exceeds the allowed threshold. Please review and adjust accordingly.",
-		Fallback:   "Merge Conflict Detected",
+		Fallback:   "Line Exceed Detected",
 		MarkdownIn: []string{"fields"},
 		Footer:     footer,
 		Fields:     fields,

@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"time"
 
-	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db"
 )
@@ -63,97 +62,7 @@ func NewMergeConflictEvent(
 	return reply
 }
 
-// NewMergeConflictMessage creates a new MessageIOMergeConflictPayload instance.
-//
-// It takes a RepoIOSignalPushPayload, Repo information, branch name, and a flag
-// indicating whether the message is for a user or a channel. The function
-// constructs URLs for the repository and commit, and sets the appropriate
-// MessageIOPayload based on the for_user flag.
-//
-// FIXME: this is generic to github. If we are using generic, should we create the url's depending upon the provider?
-func NewMergeConflictMessage(
-	event *defs.Event[defs.Push, defs.RepoProvider],
-	repo *defs.Repo,
-	author *auth.TeamUser,
-	branch string,
-) *defs.MergeConflictMessage {
-	msg := &defs.MergeConflictMessage{
-		RepoUrl:   event.Context.Source,
-		SHA:       event.Payload.After,
-		CommitUrl: fmt.Sprintf("%s/commits/%s", event.Context.Source, event.Payload.After),
-	}
-
-	msg.MessageIOPayload = &defs.MessageIOPayload{
-		WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
-		ChannelID:   repo.MessageProviderData.Slack.ChannelID,
-		BotToken:    repo.MessageProviderData.Slack.BotToken,
-		Author:      event.Payload.Commits.Latest().Author,
-		AuthorURL:   fmt.Sprintf("https://github.com/%s", event.Payload.Commits.Latest().Author),
-		RepoName:    repo.Name,
-		BranchName:  branch,
-		IsChannel:   false,
-	}
-
-	if author != nil {
-		msg.MessageIOPayload = &defs.MessageIOPayload{
-			WorkspaceID: author.MessageProviderUserInfo.Slack.ProviderTeamID,
-			ChannelID:   author.MessageProviderUserInfo.Slack.ProviderUserID,
-			BotToken:    author.MessageProviderUserInfo.Slack.BotToken,
-			RepoName:    repo.Name,
-			BranchName:  branch,
-			IsChannel:   false,
-		}
-	}
-
-	return msg
-}
-
-// NewNumberOfLinesExceedMessage creates a new MessageIOLineExeededPayload instance.
-//
-// It takes a RepoIOSignalPushPayload, Repo information, branch name, changes,
-// and a flag indicating whether the message is for a user or a channel. The
-// function sets the threshold and detected changes, and constructs the
-// appropriate MessageIOPayload based on the for_user flag.
-func NewNumberOfLinesExceedMessage(
-	payload *defs.RepoIOSignalPushPayload,
-	repo *defs.Repo,
-	branch string,
-	changes *defs.RepoIOChanges,
-	for_user bool,
-) *defs.MessageIOLineExeededPayload {
-	msg := &defs.MessageIOLineExeededPayload{
-		Threshold:     repo.Threshold,
-		DetectChanges: changes,
-	}
-
-	// set the payload for user message provider
-	if for_user {
-		msg.MessageIOPayload = &defs.MessageIOPayload{
-			WorkspaceID: payload.User.MessageProviderUserInfo.Slack.ProviderTeamID,
-			ChannelID:   payload.User.MessageProviderUserInfo.Slack.ProviderUserID,
-			BotToken:    payload.User.MessageProviderUserInfo.Slack.BotToken,
-			RepoName:    repo.Name,
-			BranchName:  branch,
-			IsChannel:   false,
-		}
-	} else {
-		// set the payload for channel message provider
-		msg.MessageIOPayload = &defs.MessageIOPayload{
-			WorkspaceID: repo.MessageProviderData.Slack.WorkspaceID,
-			ChannelID:   repo.MessageProviderData.Slack.ChannelID,
-			BotToken:    repo.MessageProviderData.Slack.BotToken,
-			Author:      payload.Author,
-			AuthorURL:   fmt.Sprintf("https://github.com/%s", payload.Author),
-			RepoName:    repo.Name,
-			BranchName:  branch,
-			IsChannel:   true,
-		}
-	}
-
-	return msg
-}
-
-// NewLineExceedEvent creates a new defs.Event instance for a merge conflict.
+// NewLineExceedEvent creates a new defs.Event instance for a line exceed.
 func NewLineExceedEvent(
 	event *defs.Event[defs.Push, defs.RepoProvider], head string, lc *defs.LineChanges,
 ) *defs.Event[defs.LinesExceed, defs.RepoProvider] {
@@ -192,6 +101,7 @@ func NewLineExceedEvent(
 // function constructs URLs for the commit and repository, and sets the
 // MessageIOPayload for the channel. This function is only used for channel
 // messages.
+// TODO - handle using event.
 func NewStaleBranchMessage(data *defs.RepoIOProviderInfo, repo *defs.Repo, branch string) *defs.MessageIOStaleBranchPayload {
 	return &defs.MessageIOStaleBranchPayload{
 		CommitUrl: fmt.Sprintf("https://github.com/%s/%s/tree/%s",
