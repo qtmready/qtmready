@@ -17,7 +17,6 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package auth
 
 import (
@@ -28,6 +27,7 @@ import (
 	"io"
 	"time"
 
+	"github.com/go-jose/go-jose/v4/jwt"
 	"go.step.sm/crypto/jose"
 	"golang.org/x/crypto/hkdf"
 
@@ -41,11 +41,37 @@ const (
 	salt   = "__Secure-authjs.session-token"
 )
 
+//	{
+//	  "name": "Alice Smith",
+//	  "email": "alice@example.com",
+//	  "picture": "https://example.com/alice.jpg",
+//	  "sub": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+//	  "user": {
+//	    "created_at": "2024-09-10T23:43:24.131Z",
+//	    "email": "alice@example.com",
+//	    "first_name": "Alice",
+//	    "id": "a1b2c3d4-e5f6-7890-1234-567890abcdef",
+//	    "is_active": true,
+//	    "is_admin": false,
+//	    "is_verified": true,
+//	    "last_name": "Smith",
+//	    "team_id": "b1c2d3e4-f5g6-7890-1234-567890abcdef",
+//	    "updated_at": "2024-09-10T23:45:01.21Z",
+//	  },
+//	  "iat": 1727707811,
+//	  "exp": 1730299811,
+//	  "jti": "f7654321-0987-6543-2109-876543210987"
+//	}
+//
 // JWTEncodeParams represents the parameters for JWT encoding.
 type (
+	Claims struct {
+		jwt.Claims
+		User User `json:"user"`
+	}
 	JWTEncodeParams struct {
-		Claims map[string]any // Payload of the JWT
-		Secret []byte         // Encryption key
+		Claims Claims // Payload of the JWT
+		Secret []byte // Encryption key
 		MaxAge time.Duration
 		Salt   []byte // Salt used for key derivation
 	}
@@ -90,24 +116,20 @@ func EncodeJWT(params JWTEncodeParams) (string, error) {
 
 // DecodeJWE decodes and validates a JWE token.
 // It returns the decoded claims if the token is valid.
-func DecodeJWE(token string) (map[string]any, error) {
+func DecodeJWE(token string) (*Claims, error) {
 	enc, err := jose.Decrypt([]byte(token), jose.WithAlg(string(jose.A256CBC_HS512)), jose.WithPassword(Derive()))
 	if err != nil {
 		return nil, err
 	}
 
-	var claims map[string]any
-	if err = json.Unmarshal(enc, &claims); err != nil {
+	claims := &Claims{}
+	if err := json.Unmarshal(enc, claims); err != nil {
 		return nil, err
 	}
 
 	// Validate expiration
-	if user, ok := claims["user"].(map[string]any); ok {
-		if exp, ok := user["exp"].(float64); ok {
-			if time.Now().Unix() > int64(exp) {
-				return nil, ErrTokenExpired
-			}
-		}
+	if time.Now().Unix() > int64(*claims.Expiry) {
+		return nil, ErrTokenExpired
 	}
 
 	return claims, nil

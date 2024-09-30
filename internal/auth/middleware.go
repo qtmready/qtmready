@@ -17,7 +17,6 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package auth
 
 import (
@@ -25,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/quantm/internal/db"
@@ -81,23 +81,23 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 // GenerateAccessToken creates a short-lived JWE token for the given user.
-func GenerateAccessToken(userID, teamID string) (string, error) {
+func GenerateAccessToken(user *User) (string, error) {
 	expires := time.Now().Add(time.Minute * 15)
 	if shared.Service().GetDebug() {
 		expires = time.Now().Add(time.Hour * 24)
 	}
 
-	return generateJWE(userID, teamID, expires)
+	return generateJWE(user, expires)
 }
 
 // GenerateRefreshToken creates a long-lived JWE token for the given user.
-func GenerateRefreshToken(userID, teamID string) (string, error) {
+func GenerateRefreshToken(user *User) (string, error) {
 	expires := time.Now().Add(time.Minute * 60)
 	if shared.Service().GetDebug() {
 		expires = time.Now().Add(time.Hour * 24 * 30)
 	}
 
-	return generateJWE(userID, teamID, expires)
+	return generateJWE(user, expires)
 }
 
 // BearerFn handles the JWE token authentication.
@@ -108,10 +108,8 @@ func BearerFn(next echo.HandlerFunc, ctx echo.Context, token string) error {
 		return shared.NewAPIError(http.StatusBadRequest, err)
 	}
 
-	if info, ok := claims["user"].(map[string]any); ok {
-		ctx.Set("user_id", info["id"])
-		ctx.Set("team_id", info["team_id"])
-	}
+	ctx.Set("user_id", claims.User.ID.String())
+	ctx.Set("team_id", claims.User.TeamID.String())
 
 	if next != nil {
 		return next(ctx)
@@ -121,14 +119,16 @@ func BearerFn(next echo.HandlerFunc, ctx echo.Context, token string) error {
 }
 
 // generateJWE creates a JWE token with the given user ID, team ID, and expiration time.
-func generateJWE(userID, teamID string, expires time.Time) (string, error) {
-	claims := map[string]any{
-		"user": map[string]any{
-			"id":      userID,
-			"team_id": teamID,
-			"exp":     expires.Unix(),
-			"iss":     shared.Service().GetName(),
+func generateJWE(user *User, expires time.Time) (string, error) {
+	claims := Claims{
+		Claims: jwt.Claims{
+			Issuer:   shared.Service().GetName(),
+			Subject:  user.ID.String(),
+			Audience: jwt.Audience{shared.Service().GetName()},
+			Expiry:   jwt.NewNumericDate(expires),
+			IssuedAt: jwt.NewNumericDate(time.Now()),
 		},
+		User: *user,
 	}
 
 	return EncodeJWT(JWTEncodeParams{

@@ -17,7 +17,6 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package auth_test
 
 import (
@@ -282,12 +281,8 @@ func (s *ServerHandlerTestSuite) Test_0101_Login() {
 		s.T().Fatalf("failed to decode access token: %v", err)
 	}
 
-	if userClaims, ok := claims["user"].(map[string]any); ok {
-		s.Assert().Equal(s.responses.register.User.ID.String(), userClaims["id"])
-		s.Assert().Equal(s.responses.register.Team.ID.String(), userClaims["team_id"])
-	} else {
-		s.T().Fatalf("failed to parse claims")
-	}
+	s.Assert().Equal(claims.Subject, s.responses.register.User.ID.String())
+	s.Assert().Equal(claims.User.TeamID, s.responses.register.Team.ID)
 }
 
 // TestHandler runs the test suite for the server handler. Please note that suite tests run in alphabetical order.
