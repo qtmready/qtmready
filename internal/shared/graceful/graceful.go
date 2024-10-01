@@ -110,21 +110,21 @@ type (
 	// Cleanup represents a function that performs cleanup actions during a graceful shutdown.
 	Cleanup func(ctx context.Context) error
 
-	// Parameterized represents a function that can be started, typically accepting a param.
+	// Parameterized represents a function that can be started, typically accepting a parameter.
 	Parameterized[T any] func(param T) error
 
 	// Interruptable represents a function that can be gracefully interrupted.
 	Interruptable func(interrupt <-chan any) error
 )
 
-// GrabAndGo simplifies the use of graceful.Go with functions that require an argument.
+// GrabAndGo simplifies the use of Go with functions that require an argument.
 func GrabAndGo[T any](fn Parameterized[T], arg T) func() error {
 	return func() error {
 		return fn(arg)
 	}
 }
 
-// WrapRelease simplifies the use of graceful.Go with functions that accept an interrupt channel for graceful shutdown.
+// WrapRelease simplifies the use of Go with functions that accept an interrupt channel for graceful shutdown.
 func WrapRelease(fn Interruptable, release <-chan any) func() error {
 	return func() error {
 		return fn(release)
@@ -133,10 +133,7 @@ func WrapRelease(fn Interruptable, release <-chan any) func() error {
 
 // Go runs a function in a goroutine and sends any errors to the quit channel.
 //
-// The Go function takes a context, a function to execute, and a channel to send errors to. It runs the function in a
-// goroutine and sends any errors to the quit channel.
-//
-// It is intended to be used in conjunction with the Shutdown function to handle errors from goroutines and ensure a
+// This function is intended to be used in conjunction with Shutdown to handle errors from goroutines and ensure a
 // graceful shutdown.
 func Go(ctx context.Context, fn func() error, errs chan error) {
 	go func() {
@@ -146,17 +143,16 @@ func Go(ctx context.Context, fn func() error, errs chan error) {
 	}()
 }
 
-// Shutdown handles the graceful shutdown process for the given components. enabling components to drain inflight
-// requests and complete ongoing tasks before exiting.
+// Shutdown handles the graceful shutdown process for the given components.
 //
 // The Shutdown function gracefully shuts down components by:
 //
-//  1. Sending a shutdown signal to the quit channel.
-//  2. Calling each shutdown handler in the handlers slice in a separate goroutine.
+//  1. Sending a shutdown signal to the interrupt channel.
+//  2. Calling each shutdown handler in the cleanups slice in a separate goroutine.
 //  3. Waiting for all handlers to complete before exiting.
 //
-// It is intended to be used in conjunction with the Go function to handle errors from goroutines and ensure a graceful
-// shutdown.
+// This function is intended to be used in conjunction with the Go function to handle errors from goroutines and ensure
+// a graceful shutdown.
 func Shutdown(ctx context.Context, cleanups []Cleanup, interrupt chan any, timeout time.Duration, code int) int {
 	interrupt <- nil
 
@@ -175,7 +171,7 @@ func Shutdown(ctx context.Context, cleanups []Cleanup, interrupt chan any, timeo
 				mu.Lock()
 				defer mu.Unlock()
 
-				slog.Error("cleanup failed", "error", err)
+				slog.Warn("graceful: cleanup failed", "error", err)
 
 				code = 1
 			}
@@ -190,12 +186,14 @@ func Shutdown(ctx context.Context, cleanups []Cleanup, interrupt chan any, timeo
 
 	select {
 	case <-done:
-		// All cleanups completed within the timeout
+		// All cleanups completed within the timeout.
 	case <-time.After(timeout):
-		slog.Warn("shutdown timeout reached, some cleanups may not have completed")
-		mu.Lock()   // Acquire the lock before updating code
-		code = 1    // Update the code value
-		mu.Unlock() // Release the lock
+		mu.Lock()
+		defer mu.Unlock()
+
+		slog.Warn("graceful: shutdown timeout reached, some cleanups may not have completed")
+
+		code = 1
 	}
 
 	return code

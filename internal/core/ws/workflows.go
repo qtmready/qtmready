@@ -36,18 +36,17 @@ const (
 	QueryGetUserQueue = "get_user_queue"
 )
 
-// ConnectionsHubWorkflow manages the state of WebSocket connections across multiple API containers in a Kubernetes cluster.
-// It doesn't handle the actual WebSocket connections, but rather maintains a record of which users are connected to which containers.
+// ConnectionsHubWorkflow manages the state of WebSocket connections across multiple API containers in a Kubernetes
+// cluster. It doesn't handle the actual WebSocket connections, but rather maintains a record of which users are
+// connected to which containers.
 //
-// This workflow solves the challenge of routing WebSocket messages in a scalable API setup where:
-// - The number of API containers can scale from a minimum of 3 to n.
-// - Users can be connected to any of the available containers.
-// - Events may be received by different containers than the one a user is connected to.
+// This workflow solves the challenge of routing WebSocket messages in a scalable API setup where: - The number of API
+// containers can scale from a minimum of 3 to n. - Users can be connected to any of the available containers. - Events
+// may be received by different containers than the one a user is connected to.
 //
-// The workflow:
-// - Maintains a map of user connections and their associated API containers.
-// - Handles signals for adding/removing users, & flushing queues if the container goes down.
-// - Provides a query handler for retrieving queue which user is connected to, which is used by the Hub for message routing.
+// The workflow: - Maintains a map of user connections and their associated API containers. - Handles signals for
+// adding/removing users, & flushing queues if the container goes down. - Provides a query handler for retrieving queue
+// which user is connected to, which is used by the Hub for message routing.
 //
 // Parameters:
 //   - ctx: The workflow context
@@ -94,20 +93,13 @@ func ConnectionsHubWorkflow(ctx workflow.Context, conns *Connections) error {
 	}
 }
 
-// SendMessageWorkflow sends a message to a specified user.
+// SendMessageWorkflow is a Temporal workflow that routes messages to connected users.
 //
-// This workflow executes the SendMessage activity to send a message to a user identified by user_id.
-// It handles any errors that occur during the execution of the activity and logs relevant information.
-// If the message cannot be sent locally, it logs a warning.
-//
-// Parameters:
-//   - ctx: The workflow context
-//   - user_id: The ID of the user to whom the message is being sent
-//   - message: The message content to be sent as a byte slice
-//
-// Returns:
-//   - error: Any error that occurs during the workflow execution
+// When the Hub identifies the container where a user is connected, it triggers this workflow. The workflow leverages
+// the `SendMessage` activity and the Hub singleton to send the message directly to the intended user. If the message
+// delivery fails, likely due to the user disconnecting during the routing process, a warning is logged.
 func SendMessageWorkflow(ctx workflow.Context, user_id string, message []byte) error {
+	logger := workflow.GetLogger(ctx)
 	activities := &Activities{}
 	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
 	sent := false
@@ -116,20 +108,19 @@ func SendMessageWorkflow(ctx workflow.Context, user_id string, message []byte) e
 
 	err := workflow.ExecuteActivity(ctx, activities.SendMessage, user_id, message).Get(ctx, &sent)
 	if err != nil {
-		shared.Logger().Error("ws/send: unable to execute activity ..", "error", err)
+		logger.Error("ws/send: unable to execute activity ..", "error", err)
 		return err
 	}
 
 	if !sent {
-		// The message couldn't be sent locally
-		// You can add logic here to handle this case
-		shared.Logger().Warn("ws/send: unable to send locally, dropping ..", "user_id", user_id)
+		logger.Warn("ws/send: unable to send locally, dropping ..", "user_id", user_id)
 	}
 
 	return nil
 }
 
 func BroadcastMessageWorkflow(ctx workflow.Context, team_id string, message []byte) error {
+	logger := workflow.GetLogger(ctx)
 	ao := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
 	ctx = workflow.WithActivityOptions(ctx, ao)
 
@@ -138,14 +129,14 @@ func BroadcastMessageWorkflow(ctx workflow.Context, team_id string, message []by
 
 	err := workflow.ExecuteActivity(ctx, activities.GetTeamUsers, team_id).Get(ctx, response)
 	if err != nil {
-		shared.Logger().Error("ws/broadcast: unable to fetch users ...", "error", err)
+		logger.Error("ws/broadcast: unable to fetch users ...", "error", err)
 		return err
 	}
 
 	for _, id := range response.IDs {
 		err := workflow.ExecuteActivity(ctx, activities.RouteMessage, id, message).Get(ctx, nil)
 		if err != nil {
-			shared.Logger().Error("ws/broadcast: unable to route message ...", "user_id", id, "error", err)
+			logger.Error("ws/broadcast: unable to route message ...", "user_id", id, "error", err)
 		}
 	}
 

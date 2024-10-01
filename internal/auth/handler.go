@@ -17,7 +17,6 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package auth
 
 import (
@@ -123,8 +122,8 @@ func (s *ServerHandler) Login(ctx echo.Context) error {
 	}
 
 	if user.VerifyPassword(request.Password) {
-		access, _ := GenerateAccessToken(user.ID.String(), user.TeamID.String())
-		refresh, _ := GenerateRefreshToken(user.ID.String(), user.TeamID.String())
+		access, _ := GenerateAccessToken(user)
+		refresh, _ := GenerateRefreshToken(user)
 
 		return ctx.JSON(http.StatusOK, &TokenResponse{AccessToken: access, RefreshToken: refresh})
 	}

@@ -17,10 +17,6 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
-// Package shared provides a set of utilities for handling errors in an API. It
-// defines a standard error structure (APIError) and provides helper functions
-// for converting and formatting errors.
 package shared
 
 import (
@@ -36,13 +32,14 @@ import (
 var (
 	// ErrInternalServerError represents an internal server error.
 	ErrInternalServerError = errors.New("internal server error")
+
 	// ErrValidation represents a validation error.
 	ErrValidation = errors.New("validation error")
+
 	// ErrInvalidRolloutState represents an invalid rollout state error.
 	ErrInvalidRolloutState = errors.New("invalid rollout state")
 )
 
-// Type definitions.
 type (
 	// ErrorMap is a map of error messages keyed by field names.
 	ErrorMap map[string]string
@@ -54,19 +51,15 @@ func (e *ErrorMap) Get(key string) (string, bool) {
 	return val, ok
 }
 
-// Private receiver methods
-
 // format formats the APIError for JSON serialization.
 func (e *APIError) format() *APIError {
-	// Message is always an error, so no need to convert
+	// Message is always an error, so no need to convert.
 	if e.Internal != nil && e.Errors == nil {
 		e.Errors = &ErrorMap{"internal": e.Internal.Error()}
 	}
 
 	return e
 }
-
-// Public receiver methods
 
 // Error returns a string representation of the APIError.
 func (e *APIError) Error() string {
@@ -90,8 +83,6 @@ func (e *APIError) WithErrors(errs *ErrorMap) *APIError {
 	return e
 }
 
-// Private methods
-
 // tag_msg returns a user-friendly error message for a given validation tag.
 func tag_msg(tag string) string {
 	switch tag {
@@ -106,6 +97,7 @@ func tag_msg(tag string) string {
 	}
 }
 
+// format_echo_error formats an Echo HTTPError for use in the APIError.
 func format_echo_error(err *echo.HTTPError) error {
 	return fmt.Errorf("%v", err.Message)
 }
@@ -118,26 +110,26 @@ func handle_validation(apiErr *APIError) *APIError {
 			errs[fe.Field()] = tag_msg(fe.Tag())
 		}
 
-		// Return a new APIError with status 400 and validation message
+		// Return a new APIError with status 400 and validation message.
 		return NewAPIError(http.StatusBadRequest, ErrValidation).WithInternal(validerr).WithErrors(&errs)
 	}
 
-	return apiErr // Return the original APIError if no validation errors
+	return apiErr // Return the original APIError if no validation errors.
 }
 
 // to_api_error converts any error to an APIError.
 func to_api_error(err error) *APIError {
 	if apierr, ok := err.(*APIError); ok {
-		return apierr // Return the existing APIError
+		return apierr // Return the existing APIError.
 	}
 
 	if httpErr, ok := err.(*echo.HTTPError); ok {
-		// Create a new APIError based on the echo.HTTPError
+		// Create a new APIError based on the echo.HTTPError.
 		return NewAPIError(httpErr.Code, format_echo_error(httpErr)).WithInternal(httpErr.Internal)
 	}
 
 	if validerr, ok := err.(validator.ValidationErrors); ok {
-		// Handle validation errors directly
+		// Handle validation errors directly.
 		errs := ErrorMap{}
 		for _, fe := range validerr {
 			errs[fe.Field()] = tag_msg(fe.Tag())
@@ -146,24 +138,23 @@ func to_api_error(err error) *APIError {
 		return NewAPIError(http.StatusBadRequest, ErrValidation).WithErrors(&errs)
 	}
 
-	// Wrap any other error type in an APIError
+	// Wrap any other error type in an APIError.
 	return NewAPIError(http.StatusInternalServerError, err)
 }
 
-// Public methods
-
 // EchoAPIErrorHandler is an Echo error handler that standardizes error responses.
-// It converts any error to an APIError, handles validation errors, and formats
-// the error response before sending it back to the client.
+//
+// It converts any error to an APIError, handles validation errors, and formats the error response before sending
+// it back to the client.
 func EchoAPIErrorHandler(err error, ctx echo.Context) {
 	if ctx.Response().Committed {
 		return
 	}
 
-	// Convert to APIError
+	// Convert to APIError.
 	apierr := to_api_error(err)
 
-	// Refactored response handling
+	// Refactored response handling.
 	if err_ := respond(ctx, apierr); err_ != nil {
 		ctx.Logger().Error(err_)
 	}
@@ -175,7 +166,7 @@ func respond(ctx echo.Context, err *APIError) error {
 		return ctx.NoContent(err.Code)
 	}
 
-	return ctx.JSON(err.Code, err.format()) // Format the APIError before sending
+	return ctx.JSON(err.Code, err.format()) // Format the APIError before sending.
 }
 
 // NewAPIError creates a new APIError instance.

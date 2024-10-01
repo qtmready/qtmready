@@ -14,6 +14,7 @@ require (
 	github.com/deepmap/oapi-codegen/v2 v2.1.0
 	github.com/docker/docker v27.2.0+incompatible
 	github.com/fatih/color v1.17.0
+	github.com/go-jose/go-jose/v4 v4.0.4
 	github.com/go-playground/validator/v10 v10.22.1
 	github.com/gocql/gocql v1.6.0
 	github.com/google/go-github/v62 v62.0.0

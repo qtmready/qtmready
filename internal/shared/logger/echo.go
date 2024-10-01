@@ -32,19 +32,30 @@ import (
 )
 
 type (
+	// CloudTraceContextKey defines a type for the Cloud Trace Context key.
 	CloudTraceContextKey string
+
+	// RequestLoggerConfig defines the configuration for the RequestLogger middleware.
+	RequestLoggerConfig = middleware.RequestLoggerConfig
 )
 
 const (
+	// CloudTraceContextHeader is the header name for the Cloud Trace Context.
 	CloudTraceContextHeader = "X-Cloud-Trace-Context"
 
-	TraceContextKey   CloudTraceContextKey = "trace"
-	SpanContextKey    CloudTraceContextKey = "span"
+	// TraceContextKey is the key for storing the trace ID in the request context.
+	TraceContextKey CloudTraceContextKey = "trace"
+
+	// SpanContextKey is the key for storing the span ID in the request context.
+	SpanContextKey CloudTraceContextKey = "span"
+
+	// SampledContextKey is the key for storing the trace sampling flag in the request context.
 	SampledContextKey CloudTraceContextKey = "trace_sampled"
 )
 
 var (
-	DefaultRequestLoggerConfig = middleware.RequestLoggerConfig{
+	// DefaultRequestLoggerConfig defines the default configuration for the RequestLogger middleware.
+	DefaultRequestLoggerConfig = RequestLoggerConfig{
 		Skipper:          middleware.DefaultSkipper,
 		LogValuesFunc:    EchoRequestLogger,
 		HandleError:      true,
@@ -62,6 +73,7 @@ var (
 		LogUserAgent:     true,
 	}
 
+	// condition defines a regular expression for parsing the Cloud Trace Context header.
 	condition = regexp.MustCompile(
 		// Matches on "TRACE_ID"
 		`([a-f\d]+)?` +
@@ -71,11 +83,11 @@ var (
 			`(?:;o=(\d))?`)
 )
 
-// ParseCloudTraceHeaderMiddleware is a middleware that parses the x-cloud-trace-context header and adds the trace, span and
-// sampled values to the request context. We then pass the context to the logger so that the trace and span are
+// ParseCloudTraceHeaderMiddleware is a middleware that parses the X-Cloud-Trace-Context header and adds the trace, span and
+// sampled values to the request context. The context is then passed to the logger so that the trace and span are
 // included in the logs.
 //
-// This will also come in handy when we are instrumenting third party call with OpenTelemetry.
+// This middleware is useful for instrumenting third-party calls with OpenTelemetry.
 func ParseCloudTraceHeaderMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
 		if metadata.OnGCE() {
@@ -87,7 +99,8 @@ func ParseCloudTraceHeaderMiddleware(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 // EchoRequestLogger is a middleware that logs the request.
-// NOTE: This should come after the ParseCloudTraceMiddleware.
+//
+// This middleware should come after the ParseCloudTraceMiddleware to ensure that the trace and span context is available.
 func EchoRequestLogger(ctx echo.Context, values middleware.RequestLoggerValues) error {
 	level := slog.LevelInfo
 	url := fmt.Sprintf("%s://%s%s", ctx.Scheme(), values.Host, values.URI)
@@ -110,8 +123,8 @@ func EchoRequestLogger(ctx echo.Context, values middleware.RequestLoggerValues) 
 	if values.Error != nil {
 		level = slog.LevelError
 
-		// known errors: logged as warning without stack trace
-		// system or unhandled error: logged as error with stack trace
+		// Known errors: logged as warning without stack trace.
+		// System or unhandled errors: logged as error with stack trace.
 		if values.Status <= 499 && values.Status > 399 {
 			level = slog.LevelWarn
 		} else {
@@ -139,7 +152,7 @@ func NewRequestLoggerMiddleware() echo.MiddlewareFunc {
 	return middleware.RequestLoggerWithConfig(DefaultRequestLoggerConfig)
 }
 
-// enrich parses the x-cloud-trace-context header and adds the trace, span and sampled values to the request context.
+// enrich parses the X-Cloud-Trace-Context header and adds the trace, span and sampled values to the request context.
 func enrich(ctx echo.Context) echo.Context {
 	header := ctx.Request().Header.Get(CloudTraceContextHeader)
 	if header != "" && condition != nil {

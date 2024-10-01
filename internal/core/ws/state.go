@@ -219,9 +219,9 @@ func (con *Connections) on_add(ctx workflow.Context) shared.ChannelHandler {
 		rx.Receive(ctx, &signal)
 
 		if err := con.AddUserToQueue(ctx, signal.UserID, signal.Queue); err != nil {
-			con.error("Failed to add user to queue", "user_id", signal.UserID, "queue", signal.Queue, "error", err)
+			con.error("connection registration failed", "user_id", signal.UserID, "queue", signal.Queue, "error", err)
 		} else {
-			con.info("Added user to queue", "user_id", signal.UserID, "queue", signal.Queue)
+			con.info("connection registered", "user_id", signal.UserID, "queue", signal.Queue)
 		}
 	}
 }
@@ -233,9 +233,9 @@ func (con *Connections) on_remove(ctx workflow.Context) shared.ChannelHandler {
 		rx.Receive(ctx, &signal)
 
 		if err := con.RemoveUserFromQueue(ctx, signal.UserID); err != nil {
-			con.error("Failed to remove user from queue", "user_id", signal.UserID, "error", err)
+			con.error("failed to drop connection", "user_id", signal.UserID, "error", err)
 		} else {
-			con.info("Removed user from queue", "user_id", signal.UserID)
+			con.info("connection dropped", "user_id", signal.UserID)
 		}
 	}
 }
@@ -247,9 +247,9 @@ func (con *Connections) on_flush(ctx workflow.Context) shared.ChannelHandler {
 		rx.Receive(ctx, &signal)
 
 		if err := con.ClearQueue(ctx, signal.Queue); err != nil {
-			con.error("Failed to flush queue", "queue", signal.Queue, "error", err)
+			con.error("failed to drop container", "queue", signal.Queue, "error", err)
 		} else {
-			con.info("Flushed queue", "queue", signal.Queue)
+			con.info("container disconnected", "queue", signal.Queue)
 		}
 	}
 }
@@ -260,7 +260,7 @@ func (con *Connections) on_worker_added(ctx workflow.Context) shared.ChannelHand
 
 		rx.Receive(ctx, &signal)
 
-		con.info("Worker added", "queue", signal.Queue)
+		con.info("container connected", "queue", signal.Queue)
 	}
 }
 

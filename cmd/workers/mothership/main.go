@@ -27,19 +27,17 @@ import (
 	"syscall"
 	"time"
 
-	"go.breu.io/quantm/internal/core/code"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
-	"go.breu.io/quantm/internal/core/mutex"
+	"go.breu.io/quantm/internal/core/ws"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
 	"go.breu.io/quantm/internal/shared/graceful"
-	"go.breu.io/quantm/internal/shared/queue"
 )
 
 func main() {
-	shared.Service().SetName("api")
+	shared.Service().SetName("mothership")
 	shared.Logger().Info("main: init ...", "service", shared.Service().GetName(), "version", shared.Service().GetVersion())
 
 	ctx := context.Background()
@@ -55,18 +53,21 @@ func main() {
 		kernel.WithMessageProvider(defs.MessageProviderSlack, &slack.Activities{}),
 	)
 
-	shared.Logger().Info("starting workers...")
+	client := shared.Temporal().Client()
 
 	core_queue := shared.Temporal().Queue(shared.CoreQueue)
-	configure_core(core_queue)
+	configure_core(core_queue, client)
 
 	provider_queue := shared.Temporal().Queue(shared.ProvidersQueue)
-	configure_provider(provider_queue)
+	configure_provider(provider_queue, client)
+
+	hub := ws.ConnectionsHubWorker()
 
 	cleanups := []graceful.Cleanup{}
 
 	graceful.Go(ctx, graceful.WrapRelease(core_queue.Listen, release), rx_errors)
 	graceful.Go(ctx, graceful.WrapRelease(provider_queue.Listen, release), rx_errors)
+	graceful.Go(ctx, graceful.WrapRelease(hub.Run, release), rx_errors)
 
 	shared.Service().Banner()
 
@@ -83,37 +84,4 @@ func main() {
 	}
 
 	os.Exit(code)
-}
-
-func configure_core(q queue.Queue) {
-	worker := q.Worker(shared.Temporal().Client())
-
-	worker.RegisterWorkflow(code.RepoCtrl)
-	worker.RegisterWorkflow(code.TrunkCtrl)
-	worker.RegisterWorkflow(code.BranchCtrl)
-	worker.RegisterWorkflow(code.QueueCtrl)
-
-	worker.RegisterActivity(&code.Activities{})
-
-	// TODO: this will not work if we have more than one provider.
-	worker.RegisterActivity(&github.RepoIO{})
-	worker.RegisterActivity(&slack.Activities{})
-
-	worker.RegisterActivity(mutex.PrepareMutexActivity)
-}
-
-func configure_provider(q queue.Queue) {
-	worker := q.Worker(shared.Temporal().Client())
-
-	github_workflows := &github.Workflows{}
-
-	worker.RegisterWorkflow(github_workflows.OnInstallationEvent)
-	worker.RegisterWorkflow(github_workflows.OnInstallationRepositoriesEvent)
-	worker.RegisterWorkflow(github_workflows.PostInstall)
-	worker.RegisterWorkflow(github_workflows.OnPushEvent)
-	worker.RegisterWorkflow(github_workflows.OnCreateOrDeleteEvent)
-	worker.RegisterWorkflow(github_workflows.OnPullRequestEvent)
-	worker.RegisterWorkflow(github_workflows.OnWorkflowRunEvent)
-
-	worker.RegisterActivity(&github.Activities{})
 }

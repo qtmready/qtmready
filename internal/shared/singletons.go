@@ -53,9 +53,10 @@ var (
 	cliOnce sync.Once // Global cli instance initializer
 )
 
-// Service returns the global service instance. If the global service instance has not been initialized, it will be initialized with
-// default values. The benefit is, you don't need to initialize the service instance in main.go if you don't need to override the
-// default values.
+// Service returns the global service instance.
+//
+// If the global service instance has not been initialized, it will be initialized with default values. The benefit is,
+// you don't need to initialize the service instance in `main.go` if you don't need to override the default values.
 func Service() service.Service {
 	svcOnce.Do(func() {
 		svc = service.New(
@@ -67,10 +68,12 @@ func Service() service.Service {
 	return svc
 }
 
-// Logger returns the global structured logger. If the global structured logger has not been initialized, it will be initialized with
-// default values. This is required if we need to pass the logger to other packages during initialization.
+// Logger returns the global structured logger.
 //
-// NOTE: Do not use this for logging. Use slog.Info, slog.Warn, slog.Error, etc. instead.
+// If the global structured logger has not been initialized, it will be initialized with default values. This is required
+// if we need to pass the logger to other packages during initialization.
+//
+// Deprecated: Do not use this for logging. Use `slog.Info`, `slog.Warn`, `slog.Error`, etc. instead.
 func Logger() *slog.Logger {
 	var handler slog.Handler
 
@@ -147,6 +150,7 @@ func InitServiceForTest() {
 	})
 }
 
+// CLI returns the global CLI instance.
 func CLI() cli.Cli {
 	cliOnce.Do(func() {
 		ci = cli.New(

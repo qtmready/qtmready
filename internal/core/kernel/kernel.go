@@ -17,30 +17,26 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 // Package kernel provides a central registry for various I/O providers in the application.
 //
 // The Kernel pattern implemented here serves several important purposes:
 //
-//  1. Centralized Configuration: It provides a single point of configuration for
-//     all I/O providers (e.g., repository access, messaging systems) used throughout
-//     the application. This centralization makes it easier to manage and modify the
-//     application's external dependencies.
+//  1. Centralized Configuration: It provides a single point of configuration for all I/O providers
+//     (e.g., repository access, messaging systems) used throughout the application. This centralization makes it
+//     easier to manage and modify the application's external dependencies.
 //
-//  2. Dependency Injection: By registering providers in the Kernel, we implement a
-//     form of dependency injection. This allows for easier testing and more flexible
-//     architecture, as providers can be swapped out without changing the core application logic.
+//  2. Dependency Injection: By registering providers in the Kernel, we implement a form of dependency injection. This
+//     allows for easier testing and more flexible architecture, as providers can be swapped out without changing the
+//     core application logic.
 //
-//  3. Abstraction: The Kernel abstracts away the details of how different I/O operations
-//     are performed. This allows the rest of the application to work with a consistent
-//     interface, regardless of the underlying implementation.
+//  3. Abstraction: The Kernel abstracts away the details of how different I/O operations are performed. This allows
+//     the rest of the application to work with a consistent interface, regardless of the underlying implementation.
 //
-//  4. Singleton Pattern: The Kernel is implemented as a singleton, ensuring that there's
-//     only one instance managing all providers across the application. This prevents
-//     duplication and ensures consistency.
+//  4. Singleton Pattern: The Kernel is implemented as a singleton, ensuring that there's only one instance managing
+//     all providers across the application. This prevents duplication and ensures consistency.
 //
-//  5. Lazy Initialization: Providers are only initialized when first requested, which
-//     can help improve application startup time and resource usage.
+//  5. Lazy Initialization: Providers are only initialized when first requested, which can help improve application
+//     startup time and resource usage.
 //
 // Usage:
 //
@@ -50,8 +46,8 @@
 //	slackMessageIO := &SlackMessageIO{}
 //
 //	k := kernel.Instance(
-//		kernel.WithRepoProvider(defs.RepoProvider, gitRepoIO),
-//		kernel.WithMessageProvider(defs.MessageProviderSlack, slackMessageIO),
+//	  kernel.WithRepoProvider(defs.RepoProvider, gitRepoIO),
+//	  kernel.WithMessageProvider(defs.MessageProviderSlack, slackMessageIO),
 //	)
 //
 // Retrieve a RepoIO:
@@ -91,16 +87,16 @@ type (
 		RegisterRepoProvider(defs.RepoProvider, RepoIO)
 
 		// RepoIO retrieves the RepoIO for a given RepoProvider.
+		//
 		// It panics with a ProviderNotFoundError if the provider is not registered.
 		//
-		// Panicking is used here because a missing provider indicates a critical
-		// configuration error. This approach ensures that such errors are caught
-		// early, typically during application startup or in tests, rather than
-		// manifesting as nil pointer exceptions later in the program execution.
+		// Panicking is used here because a missing provider indicates a critical configuration error. This approach ensures
+		// that such errors are caught early, typically during application startup or in tests, rather than manifesting as
+		// nil pointer exceptions later in the program execution.
 		//
 		// Usage:
 		//  io := kernel.Instance().RepoIO(defs.RepoProviderGithub)
-		// io.SetEarlyWarning(ctx, repo.ID.String(), true)
+		//  io.SetEarlyWarning(ctx, repo.ID.String(), true)
 		RepoIO(defs.RepoProvider) RepoIO
 
 		// RegisterMessageProvider registers a MessageIO for a given MessageProvider.
@@ -110,12 +106,12 @@ type (
 		RegisterMessageProvider(defs.MessageProvider, MessageIO)
 
 		// MessageIO retrieves the MessageIO for a given MessageProvider.
+		//
 		// It panics with a ProviderNotFoundError if the provider is not registered.
 		//
-		// As with RepoIO, panicking is used to immediately surface critical
-		// configuration errors. This fail-fast approach helps identify missing
-		// or misconfigured providers during application initialization or testing,
-		// rather than allowing the application to continue running in an invalid state.
+		// As with RepoIO, panicking is used to immediately surface critical configuration errors. This fail-fast approach
+		// helps identify missing or misconfigured providers during application initialization or testing, rather than
+		// allowing the application to continue running in an invalid state.
 		//
 		// Usage:
 		//  io := kernel.Instance().MessageIO(defs.MessageProviderSlack)
@@ -191,12 +187,17 @@ func WithMessageProvider(provider defs.MessageProvider, io MessageIO) Option {
 	}
 }
 
-// Instance returns the singleton instance of the Kernel.
-// It initializes the Kernel on the first call and applies the provided options.
+// Instance returns the singleton instance of the Kernel. It initializes the Kernel on the first call and applies the
+// provided options.
 //
-// It's recommended to instantiate the Kernel with all necessary providers
-// in the main function of your application. This ensures that all required
-// providers are registered before any part of the application attempts to use them.
+// It's recommended to instantiate the Kernel with all necessary providers in the main function of your application.
+// This ensures that all required providers are registered before any part of the application attempts to use them.
+//
+// Please note that providers cannot be registred after the Kernel has been initialized.
+//
+// The kernel panics if a provider is not found. This is by design to ensure that critical configuration errors are
+// caught early, typically during application startup or in tests, rather than manifesting as nil pointer exceptions
+// later.
 //
 // Please note that providers cannot be registred after the Kernel has been initialized.
 //
@@ -207,20 +208,20 @@ func WithMessageProvider(provider defs.MessageProvider, io MessageIO) Option {
 // Example:
 //
 //	func main() {}
-//		kernel.Instance(
-//			kernel.WithRepoProvider(defs.RepoProvider, &github.RepoIO{}),
-//			kernel.WithMessageProvider(defs.MessageProviderSlack, slack.MessageIO{}),
-//		)
+//	  kernel.Instance(
+//	    kernel.WithRepoProvider(defs.RepoProvider, &github.RepoIO{}),
+//	    kernel.WithMessageProvider(defs.MessageProviderSlack, slack.MessageIO{}),
+//	  )
 //
-//		// Rest of your application setup...
-//		// ...
+//	  // Rest of your application setup...
+//	  // ...
 //
-//		// Run your application
-//		app.Run()
+//	  // Run your application
+//	  app.Run()
 //	}
 //
-// After this initial setup, you can retrieve the Kernel instance
-// from anywhere in your application using kernel.Instance() without any arguments.
+// After this initial setup, you can retrieve the Kernel instance from anywhere in your application using
+// kernel.Instance() without any arguments.
 func Instance(opts ...Option) Kernel {
 	once.Do(func() {
 		shared.Logger().Info("kernel: init ...")

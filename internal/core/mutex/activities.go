@@ -27,8 +27,8 @@ import (
 	"go.breu.io/quantm/internal/shared"
 )
 
-// PrepareMutexActivity either starts a new mutex workflow for the requested resource or signals the running mutex to schedule a new lock
-// with the specified timeout.
+// PrepareMutexActivity either starts a new mutex workflow for the requested resource or signals the running mutex to
+// schedule a new lock with the specified timeout.
 //
 // Parameters:
 //   - ctx: The context for the activity execution.
@@ -39,14 +39,15 @@ import (
 //   - error: An error if the operation fails, or nil if successful.
 //
 // The function performs the following steps:
-// 1. Creates workflow options using the shared.Temporal() helper, setting the queue and workflow block details.
-// 2. Creates a new MutexState instance with the necessary initial values.
-// 3. Calls SignalWithStartWorkflow on the Temporal client to either start a new workflow or signal an existing one.
-// 4. If an error occurs during the SignalWithStartWorkflow call, it returns an empty workflow.Execution and the error.
-// 5. On success, it returns a workflow.Execution with the ID and RunID from the started or signaled workflow.
 //
-// This activity is typically used as part of the mutex preparation process in a distributed system,
-// ensuring that mutex operations are properly coordinated across different workflows.
+//  1. Creates workflow options using the shared.Temporal() helper, setting  the queue and workflow block details.
+//  2. Creates a new MutexState instance with the necessary initial values.
+//  3. Calls SignalWithStartWorkflow on the Temporal client to either start a new workflow or signal an existing one.
+//  4. If an error occurs during the SignalWithStartWorkflow call, it returns an empty workflow.Execution and the error.
+//  5. On success, it returns a workflow.Execution with the ID and RunID from the started or signaled workflow.
+//
+// This activity is typically used as part of the mutex preparation process in a distributed system, ensuring that mutex
+// operations are properly coordinated across different workflows.
 func PrepareMutexActivity(ctx context.Context, payload *Handler) (*workflow.Execution, error) {
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
 		shared.WithWorkflowBlock("mutex"),
