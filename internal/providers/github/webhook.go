@@ -78,7 +78,7 @@ func handlePushEvent(ctx echo.Context) error {
 	// the value will be `NoCommit` if we have a tag push.
 	// TODO: handle tag.
 	if payload.After == NoCommit {
-		return ctx.JSON(http.StatusNoContent, nil)
+		return ctx.NoContent(http.StatusNoContent)
 	}
 
 	w := &Workflows{}
