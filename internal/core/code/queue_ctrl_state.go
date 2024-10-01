@@ -227,7 +227,7 @@ func (q *Queue) promote(node *Node) {
 //
 //	q.demote(b)
 //
-//	the queue should now be: a <-> c <-> b <-> d
+// the queue should now be: a <-> c <-> b <-> d.
 func (q *Queue) demote(node *Node) {
 	if node.next != nil {
 		prev := node.prev

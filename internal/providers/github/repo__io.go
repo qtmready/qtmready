@@ -1,6 +1,6 @@
 // Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2024.
 //
-// Functional Source License, Version 1.1, Apache 2.0 Future License
+// # Functional Source License, Version 1.1, Apache 2.0 Future License
 //
 // We hereby irrevocably grant you an additional license to use the Software under the Apache License, Version 2.0 that
 // is effective on the second anniversary of the date we make the Software available. On or after that date, you may use
@@ -9,14 +9,13 @@
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
 // the License.
 //
-// You may obtain a copy of the License at
+// # You may obtain a copy of the License at
 //
 // http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
-
 package github
 
 import (
@@ -35,9 +34,16 @@ import (
 )
 
 type (
+	// RepoIO is the implementation of the RepoIO interface for the github provider.
+	//
+	// Please note, this ihis implemenation is meant to be used from within activities and not directly in the code.
 	RepoIO struct{}
 )
 
+// GetProviderInfo retrieves information about a repository from the database.
+//
+// The function retrieves the repository's name, default branch, provider ID, owner, and installation ID.
+// It fetches the repository data from the database based on the provided ID.
 func (r *RepoIO) GetProviderInfo(ctx context.Context, id string) (*defs.RepoIOProviderInfo, error) {
 	repo := &Repo{}
 	if err := db.Get(repo, db.QueryParams{"id": id}); err != nil {
@@ -55,6 +61,9 @@ func (r *RepoIO) GetProviderInfo(ctx context.Context, id string) (*defs.RepoIOPr
 	return data, nil
 }
 
+// SetEarlyWarning updates the early warning status of a repository in the database.
+//
+// The function sets the `HasEarlyWarning` field of the repository record in the database to the provided value.
 func (r *RepoIO) SetEarlyWarning(ctx context.Context, id string, value bool) error {
 	repo := &Repo{}
 	if err := db.Get(repo, db.QueryParams{"id": id}); err != nil {
@@ -70,6 +79,10 @@ func (r *RepoIO) SetEarlyWarning(ctx context.Context, id string, value bool) err
 	return nil
 }
 
+// GetAllBranches retrieves all branches of a repository.
+//
+// The function uses the GitHub API to list all branches for the provided repository and installation ID. It iterates
+// through the pages of branches and appends them to a slice, returning the result.
 func (r *RepoIO) GetAllBranches(ctx context.Context, payload *defs.RepoIOProviderInfo) ([]string, error) {
 	branches := make([]string, 0)
 	page := 1
@@ -105,7 +118,11 @@ func (r *RepoIO) GetAllBranches(ctx context.Context, payload *defs.RepoIOProvide
 	return branches, nil
 }
 
-// DetectChanges detects changes in a repository.
+// DetectChanges detects changes between two branches in a repository.
+//
+// The function uses the GitHub API to compare two branches and returns the differences between them. It provides the
+// number of added, removed, and modified files, as well as the total changes and links to the comparison and repository
+// pages.
 func (r *RepoIO) DetectChanges(ctx context.Context, payload *defs.RepoIODetectChangesPayload) (*defs.RepoIOChanges, error) {
 	client, err := Instance().GetClientForInstallationID(payload.InstallationID)
 	if err != nil {
@@ -150,8 +167,11 @@ func (r *RepoIO) DetectChanges(ctx context.Context, payload *defs.RepoIODetectCh
 	return dc, nil
 }
 
-// Clone shallow clones a repository at a sepcific commit.
-// see https://stackoverflow.com/a/76334845
+// TokenizedCloneURL retrieves a tokenized Git clone URL for a repository.
+//
+// The function uses the GitHub Installation API to fetch an installation token for the provided repository. It then
+// constructs and returns a Git clone URL with the generated token embedded. This URL is used to securely clone
+// the repository.
 func (r *RepoIO) TokenizedCloneURL(ctx context.Context, payload *defs.RepoIOProviderInfo) (string, error) {
 	installation, err := ghinstallation.
 		New(http.DefaultTransport, Instance().AppID, payload.InstallationID.Int64(), []byte(Instance().PrivateKey))
@@ -168,9 +188,14 @@ func (r *RepoIO) TokenizedCloneURL(ctx context.Context, payload *defs.RepoIOProv
 	return fmt.Sprintf("https://git:%s@github.com/%s/%s.git", token, payload.RepoOwner, payload.RepoName), nil
 }
 
-// MergePR Branch in default repo branch.
-// TODO - need to refine.
-// NOTE - to optimze the logic need to make a logic like RebaseAtCommit for RebaseAtMerge.
+// MergePR merges a pull request (PR) into the default branch of a repository.
+//
+// The function performs the following steps:
+// 1. Creates a temporary branch based on the default branch.
+// 2. Rebases the target branch onto the temporary branch.
+// 3. Rebases the temporary branch onto the default branch.
+// 4. Merges the temporary branch into the default branch.
+// This process ensures that the PR's changes are correctly integrated into the main branch.
 func (r *RepoIO) MergePR(ctx context.Context, payload *defs.RepoIOMergePRPayload) error {
 	client, err := Instance().GetClientForInstallationID(payload.InstallationID)
 	if err != nil {
