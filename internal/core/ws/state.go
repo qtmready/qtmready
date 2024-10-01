@@ -61,12 +61,20 @@ type (
 //	    fmt.Printf("User is in queue: %s\n", queue)
 //	}
 func (con *Connections) GetQueueForUser(ctx workflow.Context, user_id string) (string, bool) {
+	con.info("get queue for user", "user_id", user_id)
+
 	if err := con.mu.Lock(ctx); err != nil {
 		return "", false
 	}
 	defer con.mu.Unlock()
 
 	queue, exists := con.UserQueue[user_id]
+
+	if exists {
+		con.info("queue found", "user_id", user_id, "queue", queue)
+	} else {
+		con.warn("no queue found for user", "user_id", user_id)
+	}
 
 	return queue, exists
 }
