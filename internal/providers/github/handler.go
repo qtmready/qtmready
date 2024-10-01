@@ -17,12 +17,12 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package github
 
 import (
 	"bytes"
 	"io"
+	"log/slog"
 	"net/http"
 	"strconv"
 
@@ -65,11 +65,11 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusBadRequest, ErrMissingHeaderGithubEvent)
 	}
 
-	shared.Logger().Debug("GithubWebhook", "headerEvent", headerEvent)
+	slog.Debug("GithubWebhook", "headerEvent", headerEvent)
 	// Uncomment for debugging!
 	// var jsonMap map[string]interface{}
 	// json.Unmarshal([]byte(string(body)), &jsonMap)
-	// shared.Logger().Debug("GithubWebhook", "body", jsonMap)
+	// slog.Debug("GithubWebhook", "body", jsonMap)
 
 	event := WebhookEvent(headerEvent)
 	handlers := WebhookEventHandlers{
@@ -86,7 +86,7 @@ func (s *ServerHandler) GithubWebhook(ctx echo.Context) error {
 	if handle, exists := handlers[event]; exists {
 		return handle(ctx)
 	} else {
-		shared.Logger().Warn("Github Webhook: Unsupported event", "event", event)
+		slog.Warn("Github Webhook: Unsupported event", "event", event)
 	}
 
 	return shared.NewAPIError(http.StatusBadRequest, ErrInvalidEvent)
@@ -246,14 +246,14 @@ func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 	// associtaed user with team
 	user := &auth.User{}
 	if err := db.Get(user, db.QueryParams{"id": request.UserID.String()}); err != nil {
-		shared.Logger().Error("get user", "debug", err.Error())
+		slog.Error("get user", "debug", err.Error())
 		return shared.NewAPIError(http.StatusNotFound, err)
 	}
 
 	user.TeamID = request.TeamID
 
 	if err := db.Save(user); err != nil {
-		shared.Logger().Error("save user", "debug", err.Error())
+		slog.Error("save user", "debug", err.Error())
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
@@ -261,13 +261,13 @@ func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 	filter := db.QueryParams{"github_org_id": request.GithubOrgID.String(), "github_user_id": request.GithubUserID.String()}
 
 	if err := db.Get(orguser, filter); err != nil {
-		shared.Logger().Error("get org user", "error", err.Error())
+		slog.Error("get org user", "error", err.Error())
 		return shared.NewAPIError(http.StatusNotFound, err)
 	}
 
 	orguser.UserID = request.UserID
 	if err := db.Save(orguser); err != nil {
-		shared.Logger().Error("update org user", "error", err.Error())
+		slog.Error("update org user", "error", err.Error())
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
@@ -281,7 +281,7 @@ func (s *ServerHandler) CreateTeamUser(ctx echo.Context) error {
 		UserLoginId:             orguser.GithubUserID,
 	}
 	if err := db.Save(teamuser); err != nil {
-		shared.Logger().Error("create team user", "debug", err.Error())
+		slog.Error("create team user", "debug", err.Error())
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
