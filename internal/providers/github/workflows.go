@@ -251,6 +251,7 @@ func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, payload *CreateO
 	}
 
 	event := payload.normalize(state.CoreRepo)
+	event.SetUserID(state.User.UserID)
 
 	if err := workflow.
 		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalCreateOrDelete, event).
@@ -283,6 +284,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	}
 
 	event := payload.normalize(state.CoreRepo)
+	event.SetUserID(state.User.UserID)
 
 	if err := workflow.
 		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPush, event).
@@ -314,6 +316,8 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	}
 
 	event_pr := payload.normalize(state.CoreRepo)
+	event_pr.SetUserID(state.User.UserID)
+
 	event_label := payload.as_label(event_pr) // this will be nil if scope is label
 
 	fn := func() workflow.Future {
