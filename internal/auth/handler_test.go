@@ -22,6 +22,7 @@ package auth_test
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"testing"
 
@@ -67,7 +68,7 @@ type (
 )
 
 func (c *Containers) shutdown(ctx context.Context) {
-	shared.Logger().Info("graceful shutdown test environment ...")
+	slog.Info("graceful shutdown test environment ...")
 
 	_ = c.api.Shutdown()
 	_ = c.mothership.Shutdown()
@@ -77,7 +78,7 @@ func (c *Containers) shutdown(ctx context.Context) {
 	_ = c.network.Remove(ctx)
 
 	db.DB().Session.Close()
-	shared.Logger().Info("graceful shutdown complete.")
+	slog.Info("graceful shutdown complete.")
 }
 
 func (s *ServerHandlerTestSuite) SetupSuite() {
@@ -95,7 +96,7 @@ func (s *ServerHandlerTestSuite) TearDownSuite() {
 }
 
 func (s *ServerHandlerTestSuite) SetupContainers() {
-	shared.Logger().Info("setting up test environment ...")
+	slog.Info("setting up test environment ...")
 
 	network, err := testutils.CreateTestNetwork(s.context)
 	if err != nil {
@@ -140,7 +141,7 @@ func (s *ServerHandlerTestSuite) SetupContainers() {
 	apihost, _ := apictr.Container.ContainerIP(s.context)
 	mxhost, _ := mxctr.Container.ContainerIP(s.context)
 
-	shared.Logger().Info("hosts ...", "db", dbhost, "temporal", temporalhost, "api", apihost, "mothership", mxhost)
+	slog.Info("hosts ...", "db", dbhost, "temporal", temporalhost, "api", apihost, "mothership", mxhost)
 
 	s.ctrs = &Containers{
 		network:    network,

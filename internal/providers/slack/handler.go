@@ -21,6 +21,7 @@ package slack
 
 import (
 	"encoding/base64"
+	"log/slog"
 	"net/http"
 
 	"github.com/gocql/gocql"
@@ -90,7 +91,7 @@ func _user(ctx echo.Context, response *slack.OAuthV2Response) (*auth.MessageProv
 
 	identity, err := client.GetUserIdentity()
 	if err != nil {
-		shared.Logger().Error("SlackOauth/identity", "error", err.Error())
+		slog.Error("SlackOauth/identity", "error", err.Error())
 		return nil, err
 	}
 
