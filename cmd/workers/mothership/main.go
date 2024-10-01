@@ -81,6 +81,8 @@ func main() {
 	code := graceful.Shutdown(ctx, cleanups, release, timeout, 0)
 	if code == 1 {
 		slog.Warn("main: failed to shutdown gracefully, exiting ...")
+	} else {
+		slog.Info("main: shutdown complete, exiting ...")
 	}
 
 	os.Exit(code)
