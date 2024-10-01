@@ -1,4 +1,5 @@
 // Package periodic provides tools for managing recurring intervals within Temporal workflows.
+//
 // It simplifies the process of executing tasks at regular intervals, offering a more convenient
 // and expressive way to handle periodic operations compared to using raw timers.
 //
@@ -28,29 +29,28 @@ import (
 
 type (
 	interval struct {
-		running  bool
-		duration time.Duration
-		until    time.Time
-		channel  workflow.Channel
+		running  bool             // Indicates if the interval is currently active.
+		duration time.Duration    // The duration of each interval.
+		until    time.Time        // The time when the next interval will expire.
+		channel  workflow.Channel // A channel for receiving new durations or stop signals.
 	}
 
-	// Interval provides tools for managing recurring intervals within Temporal workflows.
-	// It simplifies the process of executing tasks at regular intervals.
+	// Interval provides tools for managing recurring intervals within Temporal workflows. It simplifies the process
+	// of executing tasks at regular intervals.
 	Interval interface {
 		// Tick executes a single iteration of the current interval using the current duration.
 		Tick(ctx workflow.Context)
 
-		// Adjust changes the duration of the current interval to a new value.
-		// The change takes effect after the current interval completes.
+		// Adjust waits for the current interval to complete and then adjusts the interval's duration.
 		Adjust(ctx workflow.Context, duration time.Duration)
-
-		// Reset restarts the current interval with its original duration.
-		// Any changes to the interval's duration are discarded.
-		Reset(ctx workflow.Context)
 
 		// Restart immediately cancels the current interval and starts a new one with the specified duration.
 		// This allows you to switch to a new frequency without waiting for the current interval to complete.
 		Restart(ctx workflow.Context, duration time.Duration)
+
+		// Reset restarts the current interval with its original duration. Any changes to the interval's duration are
+		// discarded.
+		Reset(ctx workflow.Context)
 
 		// Stop cancels the interval and prevents any further ticks.
 		Stop(ctx workflow.Context)
@@ -84,10 +84,11 @@ func (t *interval) Stop(ctx workflow.Context) {
 	t.channel.Send(ctx, time.Duration(0))
 }
 
-// wait manages the execution loop of the interval, waiting for either the timer to expire or a new duration to be received on the channel.
+// wait manages the execution loop of the interval, waiting for either the timer to expire or a new duration to be
+// received on the channel.
 //
-// - If a new duration is received, it updates the interval's duration and resets the time until the next tick.
-// - If a 0 duration is received, it stops the loop, effectively canceling the interval.
+//   - If a new duration is received, it updates the interval's duration and resets the time until the next tick.
+//   - If a 0 duration is received, it stops the loop, effectively canceling the interval.
 func (t *interval) wait(ctx workflow.Context) {
 	done := false
 
@@ -124,6 +125,7 @@ func (t *interval) update(ctx workflow.Context, duration time.Duration) {
 }
 
 // Now returns the current time using a side effect.
+//
 // This is useful for obtaining the current time within a Temporal workflow.
 func Now(ctx workflow.Context) time.Time {
 	var now time.Time

@@ -57,6 +57,9 @@ const (
 	WorkflowQueryState shared.WorkflowSignal = "query__mutex__state"
 )
 
+// set_query_state sets a query handler for the mutex workflow.
+//
+// The query handler allows external systems to retrieve the current state of the mutex.
 func (s *MutexState) set_query_state(ctx workflow.Context) error {
 	return workflow.SetQueryHandler(ctx, WorkflowQueryState.String(), func() (*MutexState, error) {
 		return s, nil
@@ -64,7 +67,9 @@ func (s *MutexState) set_query_state(ctx workflow.Context) error {
 }
 
 // on_prepare handles the preparation of lock requests.
-// This signal originates from a client attempting to prepare for lock acquisition.
+//
+// This signal originates from a client attempting to prepare for lock acquisition. The handler adds the client's
+// workflow ID and timeout to the pool of pending lock requests.
 func (s *MutexState) on_prepare(_ workflow.Context) func(workflow.Context) {
 	return func(ctx workflow.Context) {
 		for {
@@ -79,7 +84,9 @@ func (s *MutexState) on_prepare(_ workflow.Context) func(workflow.Context) {
 }
 
 // on_acquire handles the acquisition of locks.
-// This signal originates from a client attempting to acquire the lock.
+//
+// This signal originates from a client attempting to acquire the lock. The handler sets the current handler and
+// timeout, then signals the external workflow that the lock has been acquired.
 func (s *MutexState) on_acquire(ctx workflow.Context) shared.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
 		rx := &Handler{}
@@ -98,7 +105,9 @@ func (s *MutexState) on_acquire(ctx workflow.Context) shared.ChannelHandler {
 }
 
 // on_release handles the release of locks.
-// This signal originates from a client that currently holds the lock and wants to release it.
+//
+// This signal originates from a client that currently holds the lock and wants to release it. The handler releases
+// the lock, removes the client from the pool, and signals the external workflow that the lock has been released.
 func (s *MutexState) on_release(ctx workflow.Context) shared.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
 		rx := &Handler{}
@@ -121,7 +130,9 @@ func (s *MutexState) on_release(ctx workflow.Context) shared.ChannelHandler {
 }
 
 // on_abort handles the timeout and abortion of locks.
-// This is triggered internally when a lock timeout occurs.
+//
+// This is triggered internally when a lock timeout occurs. The handler moves the timed-out client from the pool to
+// the orphan pool. It then transitions the mutex to the Timeout state.
 func (s *MutexState) on_abort(ctx workflow.Context) shared.FutureHandler {
 	return func(future workflow.Future) {
 		s.logger.info(s.Handler.Info.WorkflowExecution.ID, "abort", "init")
@@ -136,7 +147,10 @@ func (s *MutexState) on_abort(ctx workflow.Context) shared.FutureHandler {
 }
 
 // on_cleanup handles the cleanup process.
-// This signal originates from an external system or administrator initiating a cleanup.
+//
+// This signal originates from an external system or administrator initiating a cleanup. The handler checks if the
+// pool is empty. If it is, the handler signals the external workflow that the cleanup is complete and shuts down.
+// Otherwise, it continues to monitor the pool for empty state.
 func (s *MutexState) on_cleanup(_ workflow.Context, fn workflow.Settable) func(workflow.Context) {
 	shutdown := false
 
@@ -167,7 +181,9 @@ func (s *MutexState) on_cleanup(_ workflow.Context, fn workflow.Settable) func(w
 }
 
 // on_terminate handles the termination process.
-// This is triggered internally when the workflow is being shut down.
+//
+// This is triggered internally when the workflow is being shut down. The handler stops persisting the state and
+// logs the termination event.
 func (s *MutexState) on_terminate(ctx workflow.Context) shared.FutureHandler {
 	return func(future workflow.Future) {
 		rx := &Handler{}
@@ -180,6 +196,8 @@ func (s *MutexState) on_terminate(ctx workflow.Context) shared.FutureHandler {
 }
 
 // to_locked transitions the state to Locked.
+//
+// It acquires the internal mutex, sets the state to Locked, and logs the transition event.
 func (s *MutexState) to_locked(ctx workflow.Context) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
@@ -189,6 +207,8 @@ func (s *MutexState) to_locked(ctx workflow.Context) {
 }
 
 // to_releasing transitions the state to Releasing.
+//
+// It acquires the internal mutex, sets the state to Releasing, and logs the transition event.
 func (s *MutexState) to_releasing(ctx workflow.Context) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
@@ -198,6 +218,8 @@ func (s *MutexState) to_releasing(ctx workflow.Context) {
 }
 
 // to_released transitions the state to Released.
+//
+// It acquires the internal mutex, sets the state to Released, and logs the transition event.
 func (s *MutexState) to_released(ctx workflow.Context) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
@@ -207,6 +229,8 @@ func (s *MutexState) to_released(ctx workflow.Context) {
 }
 
 // to_timeout transitions the state to Timeout.
+//
+// It acquires the internal mutex, sets the state to Timeout, and logs the transition event.
 func (s *MutexState) to_timeout(ctx workflow.Context) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
@@ -216,6 +240,8 @@ func (s *MutexState) to_timeout(ctx workflow.Context) {
 }
 
 // to_acquiring transitions the state to Acquiring.
+//
+// It acquires the internal mutex, sets the state to Acquiring, and logs the transition event.
 func (s *MutexState) to_acquiring(ctx workflow.Context) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
@@ -225,6 +251,8 @@ func (s *MutexState) to_acquiring(ctx workflow.Context) {
 }
 
 // set_handler updates the current handler.
+//
+// It acquires the internal mutex, sets the handler to the provided value, and releases the mutex.
 func (s *MutexState) set_handler(ctx workflow.Context, handler *Handler) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
@@ -233,6 +261,8 @@ func (s *MutexState) set_handler(ctx workflow.Context, handler *Handler) {
 }
 
 // set_timeout updates the current timeout.
+//
+// It acquires the internal mutex, sets the timeout to the provided value, and releases the mutex.
 func (s *MutexState) set_timeout(ctx workflow.Context, timeout time.Duration) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
@@ -241,6 +271,8 @@ func (s *MutexState) set_timeout(ctx workflow.Context, timeout time.Duration) {
 }
 
 // stop_persisting sets the persist flag to false.
+//
+// It acquires the internal mutex, sets the persist flag to false, and logs the change.
 func (s *MutexState) stop_persisting(ctx workflow.Context) {
 	_ = s.mutex.Lock(ctx)
 	defer s.mutex.Unlock()
@@ -250,6 +282,7 @@ func (s *MutexState) stop_persisting(ctx workflow.Context) {
 }
 
 // restore reinitializes the mutex and logger, and restores the Pool and Orphans.
+//
 // It should be called after deserializing a MutexState instance.
 func (s *MutexState) restore(ctx workflow.Context) {
 	s.mutex = workflow.NewMutex(ctx)
@@ -269,6 +302,9 @@ func (s *MutexState) restore(ctx workflow.Context) {
 }
 
 // NewMutexState creates a new MutexState instance.
+//
+// It initializes the state with the provided handler, a new pool and orphan pool, zero timeout, persist flag set to
+// true, a new internal mutex, and a new logger.
 func NewMutexState(ctx workflow.Context, handler *Handler) *MutexState {
 	state := &MutexState{
 		Status:  MutexStatusAcquiring,

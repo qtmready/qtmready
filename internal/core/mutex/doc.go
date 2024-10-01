@@ -19,9 +19,9 @@
 
 // Package mutex provides a distributed, durable mutex implementation for Temporal workflows.
 //
-// This package offers a custom mutex solution that extends beyond Temporal's built-in mutex
-// capabilities. While Temporal's native mutex is local to a specific workflow, this implementation
-// provides global and durable locks that can persist across multiple workflows.
+// This package offers a custom mutex solution that extends beyond Temporal's built-in mutex capabilities. While
+// Temporal's native mutex is local to a specific workflow, this implementation provides global and durable locks that
+// can persist across multiple workflows.
 //
 // Features:
 //
@@ -68,6 +68,5 @@
 //		// handle error
 //	}
 //
-// This mutex implementation relies on Temporal workflows and should be used
-// within a Temporal workflow context.
+// This mutex implementation relies on Temporal workflows and should be used within a Temporal workflow context.
 package mutex
