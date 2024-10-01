@@ -21,6 +21,7 @@ package github
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -35,7 +36,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 		return err
 	}
 
-	shared.Logger().Info("installation event received ...", "action", payload.Action)
+	slog.Info("installation event received ...", "action", payload.Action)
 
 	workflows := &Workflows{}
 	opts := shared.Temporal().
@@ -55,11 +56,11 @@ func handleInstallationEvent(ctx echo.Context) error {
 		workflows.OnInstallationEvent,
 	)
 	if err != nil {
-		shared.Logger().Error("unable to signal ...", "options", opts, "error", err)
+		slog.Error("unable to signal ...", "options", opts, "error", err)
 		return nil
 	}
 
-	shared.Logger().Debug("installation event handled ...", "options", opts, "execution", exe.GetRunID())
+	slog.Debug("installation event handled ...", "options", opts, "execution", exe.GetRunID())
 
 	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
 }
@@ -68,11 +69,11 @@ func handleInstallationEvent(ctx echo.Context) error {
 func handlePushEvent(ctx echo.Context) error {
 	payload := &PushEvent{}
 	if err := ctx.Bind(payload); err != nil {
-		shared.Logger().Error("unable to bind payload ...", "error", err)
+		slog.Error("unable to bind payload ...", "error", err)
 		return err
 	}
 
-	shared.Logger().Info("repo event received ...", "action", payload.Installation.ID)
+	slog.Info("repo event received ...", "action", payload.Installation.ID)
 
 	// the value will be `NoCommit` if we have a tag push.
 	// TODO: handle tag.
@@ -96,7 +97,7 @@ func handlePushEvent(ctx echo.Context) error {
 
 	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPushEvent, payload)
 	if err != nil {
-		shared.Logger().Error("unable to signal OnPushEvent ...", "options", opts, "error", err)
+		slog.Error("unable to signal OnPushEvent ...", "options", opts, "error", err)
 		return nil
 	}
 
@@ -107,11 +108,11 @@ func handlePushEvent(ctx echo.Context) error {
 func handleCreateOrDeleteEvent(ctx echo.Context) error {
 	payload := &CreateOrDeleteEvent{}
 	if err := ctx.Bind(payload); err != nil {
-		shared.Logger().Error("unable to bind payload ...", "error", err)
+		slog.Error("unable to bind payload ...", "error", err)
 		return err
 	}
 
-	shared.Logger().Info("repo event received ...", "installation", payload.Installation.ID)
+	slog.Info("repo event received ...", "installation", payload.Installation.ID)
 
 	w := &Workflows{}
 
@@ -134,7 +135,7 @@ func handleCreateOrDeleteEvent(ctx echo.Context) error {
 
 	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnCreateOrDeleteEvent, payload)
 	if err != nil {
-		shared.Logger().Error("unable to signal OnPushEvent ...", "options", opts, "error", err)
+		slog.Error("unable to signal OnPushEvent ...", "options", opts, "error", err)
 		return nil
 	}
 
@@ -145,11 +146,11 @@ func handleCreateOrDeleteEvent(ctx echo.Context) error {
 func handlePullRequestEvent(ctx echo.Context) error {
 	payload := &PullRequestEvent{}
 	if err := ctx.Bind(payload); err != nil {
-		shared.Logger().Error("unable to bind payload ...", "error", err)
+		slog.Error("unable to bind payload ...", "error", err)
 		return err
 	}
 
-	shared.Logger().Info("pull request event received ...", "action", payload.Action)
+	slog.Info("pull request event received ...", "action", payload.Action)
 
 	w := &Workflows{}
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
@@ -168,7 +169,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 
 	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPullRequestEvent, payload)
 	if err != nil {
-		shared.Logger().Error("unable to signal OnPullRequestEvent ...", "options", opts, "error", err)
+		slog.Error("unable to signal OnPullRequestEvent ...", "options", opts, "error", err)
 		return nil
 	}
 
@@ -182,7 +183,7 @@ func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 		return err
 	}
 
-	shared.Logger().Info("installation repositories event received...", "action", payload.Action)
+	slog.Info("installation repositories event received...", "action", payload.Action)
 
 	w := &Workflows{}
 	opts := shared.Temporal().
@@ -207,11 +208,11 @@ func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 func handlePullRequestReviewEvent(ctx echo.Context) error {
 	payload := &PullRequestReviewEvent{}
 	if err := ctx.Bind(payload); err != nil {
-		shared.Logger().Error("unable to bind payload ...", "error", err)
+		slog.Error("unable to bind payload ...", "error", err)
 		return err
 	}
 
-	shared.Logger().Info("pull request review event received ...", "action", payload.Action)
+	slog.Info("pull request review event received ...", "action", payload.Action)
 
 	w := &Workflows{}
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
@@ -230,7 +231,7 @@ func handlePullRequestReviewEvent(ctx echo.Context) error {
 
 	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPullRequestReviewEvent, payload)
 	if err != nil {
-		shared.Logger().Error("unable to signal OnPullRequestReviewEvent ...", "options", opts, "error", err)
+		slog.Error("unable to signal OnPullRequestReviewEvent ...", "options", opts, "error", err)
 		return nil
 	}
 
@@ -241,11 +242,11 @@ func handlePullRequestReviewEvent(ctx echo.Context) error {
 func handlePullRequestReviewCommentEvent(ctx echo.Context) error {
 	payload := &PullRequestReviewCommentEvent{}
 	if err := ctx.Bind(payload); err != nil {
-		shared.Logger().Error("unable to bind payload ...", "error", err)
+		slog.Error("unable to bind payload ...", "error", err)
 		return err
 	}
 
-	shared.Logger().Info("pull request review comment event received ...", "action", payload.Action)
+	slog.Info("pull request review comment event received ...", "action", payload.Action)
 
 	w := &Workflows{}
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
@@ -264,7 +265,7 @@ func handlePullRequestReviewCommentEvent(ctx echo.Context) error {
 
 	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPullRequestReviewCommentEvent, payload)
 	if err != nil {
-		shared.Logger().Error("unable to signal OnPullRequestReviewCommentEvent ...", "options", opts, "error", err)
+		slog.Error("unable to signal OnPullRequestReviewCommentEvent ...", "options", opts, "error", err)
 		return nil
 	}
 
@@ -272,15 +273,15 @@ func handlePullRequestReviewCommentEvent(ctx echo.Context) error {
 }
 
 func handleWorkflowRunEvent(ctx echo.Context) error {
-	shared.Logger().Debug("workflow-run event received.")
+	slog.Debug("workflow-run event received.")
 
 	payload := &GithubWorkflowRunEvent{}
 	if err := ctx.Bind(payload); err != nil {
-		shared.Logger().Error("unable to bind payload ...", "error", err)
+		slog.Error("unable to bind payload ...", "error", err)
 		return err
 	}
 
-	shared.Logger().Info("workflow run event received ...", "action", payload.Action)
+	slog.Info("workflow run event received ...", "action", payload.Action)
 
 	workflows := &Workflows{}
 	opts := shared.Temporal().
@@ -299,7 +300,7 @@ func handleWorkflowRunEvent(ctx echo.Context) error {
 		payload,
 	)
 	if err != nil {
-		shared.Logger().Error("unable to signal OnWorkflowRunEvent ...", "options", opts, "error", err)
+		slog.Error("unable to signal OnWorkflowRunEvent ...", "options", opts, "error", err)
 		return nil
 	}
 

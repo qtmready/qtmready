@@ -20,6 +20,7 @@
 package slack
 
 import (
+	"log/slog"
 	"sync"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -66,7 +67,7 @@ func connect(c *config) *integration {
 }
 
 func (i *integration) GetSlackClient(token string) (*slack.Client, error) {
-	lgr := &logger{shared.Logger().WithGroup("slack")}
+	lgr := &logger{slog.Default().WithGroup("slack")}
 	client := slack.New(
 		token,
 		slack.OptionDebug(shared.Service().GetDebug()),

@@ -20,6 +20,7 @@
 package auth
 
 import (
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -54,7 +55,7 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 		keyScopes, requiresKey := ctx.Get(APIKeyAuthScopes).([]string)
 		bearerScopes, requiresBearer := ctx.Get(BearerAuthScopes).([]string)
 
-		shared.Logger().Debug("auth requirements", "bearer", requiresBearer, "key", requiresKey)
+		slog.Debug("auth requirements", "bearer", requiresBearer, "key", requiresKey)
 
 		if !requiresKey && !requiresBearer {
 			return next(ctx)

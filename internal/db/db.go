@@ -23,6 +23,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -82,7 +83,7 @@ type (
 )
 
 func (l *MigrationLogger) Printf(format string, v ...any) {
-	shared.Logger().Info(fmt.Sprintf(format, v...))
+	slog.Info(fmt.Sprintf(format, v...))
 }
 
 func (l *MigrationLogger) Verbose() bool {
@@ -153,17 +154,17 @@ func WithSessionCreation() ConfigOption {
 		}
 
 		createSession := func() error {
-			shared.Logger().Info("db: connecting ...", "hosts", c.Hosts, "keyspace", c.Keyspace)
+			slog.Info("db: connecting ...", "hosts", c.Hosts, "keyspace", c.Keyspace)
 
 			session, err := igocqlx.WrapSession(cluster.CreateSession())
 			if err != nil {
-				shared.Logger().Error("db: failed to connect", "error", err)
+				slog.Error("db: failed to connect", "error", err)
 				return err
 			}
 
 			c.Session = session
 
-			shared.Logger().Info("db: connected")
+			slog.Info("db: connected")
 
 			return nil
 		}
@@ -173,7 +174,7 @@ func WithSessionCreation() ConfigOption {
 			retry.Attempts(15),
 			retry.Delay(6*time.Second),
 		); err != nil {
-			shared.Logger().Error("db: aborting ....", "error", err)
+			slog.Error("db: aborting ....", "error", err)
 		}
 	}
 }
@@ -220,7 +221,7 @@ func WithMigrations() ConfigOption {
 	return func(c *Config) {
 		dir, err := iofs.New(src, "migrations")
 		if err != nil {
-			shared.Logger().Error("db: failed to initialize migrations ...", "error", err)
+			slog.Error("db: failed to initialize migrations ...", "error", err)
 			return
 		}
 
@@ -229,41 +230,41 @@ func WithMigrations() ConfigOption {
 
 		driver, err := cassandra.WithInstance(c.Session.Session().S.Session, config)
 		if err != nil {
-			shared.Logger().Error("db: failed to initialize driver for migrations ...", "error", err)
+			slog.Error("db: failed to initialize driver for migrations ...", "error", err)
 		}
 
 		migrations, err := migrate.NewWithInstance("iofs", dir, "cassandra", driver)
 		if err != nil {
-			shared.Logger().Error("db: failed to initialize migrations ...", "error", err)
+			slog.Error("db: failed to initialize migrations ...", "error", err)
 		}
 
 		migrations.Log = logger
 
 		version, dirty, err := migrations.Version()
 		if err == migrate.ErrNilVersion {
-			shared.Logger().Info("db: no migrations have been run, initializing keyspace ...")
+			slog.Info("db: no migrations have been run, initializing keyspace ...")
 		} else if err != nil {
-			shared.Logger().Error("db: failed to get migration version ...", "error", err)
+			slog.Error("db: failed to get migration version ...", "error", err)
 			return
 		}
 
-		shared.Logger().Info("db: migrations version ...", "version", version, "dirty", dirty)
+		slog.Info("db: migrations version ...", "version", version, "dirty", dirty)
 
 		err = migrations.Up()
 		if err != nil && err != migrate.ErrNoChange {
-			shared.Logger().Warn("db: failed to run migrations ...", "error", err)
+			slog.Warn("db: failed to run migrations ...", "error", err)
 		}
 
 		if err == migrate.ErrNoChange {
-			shared.Logger().Info("db: no new migrations to run")
+			slog.Info("db: no new migrations to run")
 		}
 
-		shared.Logger().Info("db: migrations done")
+		slog.Info("db: migrations done")
 	}
 }
 
 func WithValidator(name string, validator validator.Func) ConfigOption {
-	shared.Logger().Info("db: registering validator", "name", name)
+	slog.Info("db: registering validator", "name", name)
 
 	return func(c *Config) {
 		if err := shared.Validator().RegisterValidation(name, validator); err != nil {
@@ -304,7 +305,7 @@ func NewMockSession(session *gocqlxmock.SessionxMock) {
 // DB returns the singleton database session.
 func DB() *Config {
 	if db == nil {
-		shared.Logger().Info("db: creating new session")
+		slog.Info("db: creating new session")
 		once.Do(func() {
 			db = NewSession(
 				FromEnvironment(),

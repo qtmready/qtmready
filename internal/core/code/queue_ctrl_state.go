@@ -493,7 +493,7 @@ func (s *QueueCtrlState) pop(ctx workflow.Context) *defs.PullRequest {
 
 // process handles the processing of a pull request popped from the queue.
 func (s *QueueCtrlState) process(ctx workflow.Context, pr *defs.PullRequest) error {
-	if !s.can_process_pr(pr) {
+	if !s.can_process_pr(ctx, pr) {
 		return nil // TODO - return error
 	}
 
@@ -506,11 +506,11 @@ func (s *QueueCtrlState) process(ctx workflow.Context, pr *defs.PullRequest) err
 	return nil
 }
 
-func (s *QueueCtrlState) can_process_pr(pr *defs.PullRequest) bool {
+func (s *QueueCtrlState) can_process_pr(ctx workflow.Context, pr *defs.PullRequest) bool {
 	// Add logic to check if the pull request can be processed
 	// For example, you can check if the pull request is open, not a draft, and not a work-in-progress
 	// Return true if the pull request can be processed, false otherwise
-	shared.Logger().Info("queue/merge/can_process_pr", "info", pr)
+	s.log(ctx, "can_process_pr").Info("checking if PR can be processed", "pr", pr.Number)
 
 	return true
 }
