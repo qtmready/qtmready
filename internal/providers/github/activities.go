@@ -17,11 +17,11 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package github
 
 import (
 	"context"
+	"log/slog"
 
 	gh "github.com/google/go-github/v62/github"
 	"go.temporal.io/sdk/activity"
@@ -215,13 +215,13 @@ func (a *Activities) GetRepoByProviderID(
 ) (*defs.RepoProviderData, error) {
 	repo := &Repo{}
 
-	// NOTE: these activities are used in api not in temporal workflow use shared.Logger()
+	// NOTE: these activities are used in api not in temporal workflow use slog
 	if err := db.Get(repo, db.QueryParams{"id": payload.ProviderID}); err != nil {
-		shared.Logger().Error("GetRepoByProviderID failed", "Error", err)
+		slog.Error("GetRepoByProviderID failed", "Error", err)
 		return nil, err
 	}
 
-	shared.Logger().Info("Get Repo by Provider ID successfully")
+	slog.Info("Get Repo by Provider ID successfully")
 
 	data := &defs.RepoProviderData{
 		Name:          repo.Name,
@@ -235,7 +235,7 @@ func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *def
 	repo := &Repo{}
 
 	if err := db.Get(repo, db.QueryParams{"id": payload.ProviderID}); err != nil {
-		shared.Logger().Error("UpdateRepoHasRarlWarning failed", "Error", err)
+		slog.Error("UpdateRepoHasRarlWarning failed", "Error", err)
 		return err
 	}
 
@@ -245,7 +245,7 @@ func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *def
 		return err
 	}
 
-	shared.Logger().Info("Update Repo Has Rarly Warning successfully")
+	slog.Info("Update Repo Has Rarly Warning successfully")
 
 	return nil
 }
@@ -308,7 +308,7 @@ func (a *Activities) SyncOrgUsersFromGithub(ctx context.Context, payload *SyncOr
 
 			// TODO - need to refine
 			if err := db.Get(orgusr, filter); err != nil {
-				shared.Logger().Debug("member => err", "debug", err)
+				slog.Debug("member => err", "debug", err)
 			}
 
 			orgusr.GithubOrgName = payload.GithubOrgName
@@ -323,44 +323,6 @@ func (a *Activities) SyncOrgUsersFromGithub(ctx context.Context, payload *SyncOr
 
 	return nil
 }
-
-// func (a *Activities) RefreshDefaultBranches(ctx context.Context, payload *defs.RepoIORefreshDefaultBranchesPayload) error {
-// 	logger := activity.GetLogger(ctx)
-
-// 	repos := make([]Repo, 0)
-// 	if err := db.Filter(&Repo{}, &repos, db.QueryParams{"team_id": payload.TeamID}); err != nil {
-// 		shared.Logger().Error("Error filter repos", "error", err)
-// 		return err
-// 	}
-
-// 	logger.Info("provider repos length", "info", len(repos))
-
-// 	client, err := Instance().GetClientForInstallationID(repos[0].InstallationID)
-// 	if err != nil {
-// 		logger.Error("GetClientFromInstallation failed", "error", err)
-// 		return err
-// 	}
-
-// 	// Save the github org users
-// 	for idx := range repos {
-// 		repo := repos[idx]
-
-// 		result, _, err := client.Repositories.Get(ctx, strings.Split(repo.FullName, "/")[0], repo.Name)
-// 		if err != nil {
-// 			logger.Error("RefreshDefaultBranches Activity", "error", err)
-// 			return err
-// 		}
-
-// 		repo.DefaultBranch = result.GetDefaultBranch()
-
-// 		if err := db.Save(&repo); err != nil {
-// 			logger.Error("Error saving github repo", "error", err)
-// 			return err
-// 		}
-// 	}
-
-// 	return nil
-// }
 
 // GetRepoForInstallation filters repositories by installation ID and GitHub ID.
 // A repo on GitHub can be associated with multiple installations. This function is used to get the repo for a specific installation.

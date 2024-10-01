@@ -17,7 +17,6 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package github
 
 import (
@@ -408,8 +407,8 @@ func (p *GithubWorkflowRunEvent) SenderID() string {
 
 // prelude is a helper function to create a base event structure with common fields.
 //
-// It takes a `defs.Repo` pointer and returns a `gocql.UUID`, `defs.EventVersion`, `defs.EventContext`, and `defs.EventSubject`
-// that can be used to construct a `defs.Event`.
+// It takes a `defs.Repo` pointer and returns a `gocql.UUID`, `defs.EventVersion`, `defs.EventContext`, and
+// `defs.EventSubject` that can be used to construct a `defs.Event`.
 func prelude(
 	repo *defs.Repo,
 ) (gocql.UUID, defs.EventVersion, defs.EventContext[defs.RepoProvider], defs.EventSubject) {
@@ -434,10 +433,15 @@ func prelude(
 //
 // It returns a `BranchOrTag` struct containing the `ref` and `default_branch` fields.
 func (coe *CreateOrDeleteEvent) payload() defs.BranchOrTag {
-	return defs.BranchOrTag{
-		Ref:           coe.Ref,
-		DefaultBranch: *coe.MasterBranch,
+	result := defs.BranchOrTag{
+		Ref: coe.Ref,
 	}
+
+	if coe.MasterBranch != nil {
+		result.DefaultBranch = *coe.MasterBranch
+	}
+
+	return result
 }
 
 // normalize converts the CreateOrDeleteEvent struct to an Event struct.
@@ -446,12 +450,18 @@ func (coe *CreateOrDeleteEvent) payload() defs.BranchOrTag {
 // The action is set to either "created" or "deleted" based on the `IsCreated` flag.
 func (coe *CreateOrDeleteEvent) normalize(repo *defs.Repo) *defs.Event[defs.BranchOrTag, defs.RepoProvider] {
 	id, version, ctx, sub := prelude(repo)
+	payload := coe.payload()
+
+	if payload.DefaultBranch == "" {
+		payload.DefaultBranch = repo.DefaultBranch
+	}
+
 	event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{
 		ID:      id,
 		Version: version,
 		Context: ctx,
 		Subject: sub,
-		Payload: coe.payload(),
+		Payload: payload,
 	}
 
 	event.SetSource(coe.Repository.URL)
@@ -650,7 +660,8 @@ func (pre PullRequestReviewEvent) normalize(repo *defs.Repo) *defs.Event[defs.Pu
 
 // payload converts the PullRequestReviewCommentEvent struct to the relevant EventPayload.
 //
-// It returns a `defs.PullRequestComment` struct containing the relevant information for a pull request review comment event.
+// It returns a `defs.PullRequestComment` struct containing the relevant information for a pull request review comment
+// event.
 func (pre PullRequestReviewCommentEvent) payload() defs.PullRequestComment {
 	return defs.PullRequestComment{
 		ID:                pre.Comment.ID,
@@ -667,8 +678,8 @@ func (pre PullRequestReviewCommentEvent) payload() defs.PullRequestComment {
 
 // normalize converts the PullRequestReviewCommentEvent struct to an Event struct.
 //
-// It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject.
-// The action is set based on the `Action` field of the PullRequestReviewCommentEvent struct.
+// It uses the provided Repo struct to extract relevant information for the EventContext and EventSubject. The action is
+// set based on the `Action` field of the PullRequestReviewCommentEvent struct.
 func (pre PullRequestReviewCommentEvent) normalize(
 	repo *defs.Repo,
 ) *defs.Event[defs.PullRequestComment, defs.RepoProvider] {
