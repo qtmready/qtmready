@@ -115,6 +115,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"sync"
 
@@ -263,7 +264,7 @@ func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
 	if err != nil {
 		var hubErr *HubError
 		if errors.As(err, &hubErr) && hubErr.Code == ErrorCodeUserNotRegistered {
-			shared.Logger().Warn("ws/hub: user not registered", "user_id", user_id)
+			slog.Warn("ws/hub: user not registered", "user_id", user_id)
 			return nil
 		}
 
@@ -300,7 +301,7 @@ func (h *hub) Stop(_ context.Context) error {
 	}
 
 	if err := h.Signal(context.Background(), WorkflowSignalFlushQueue, RegisterOrFlush{Queue: h.queue.Name()}); err != nil {
-		shared.Logger().Warn("ws/hub: failed to signal flush", "error", err.Error())
+		slog.Warn("ws/hub: failed to signal flush", "error", err.Error())
 	}
 
 	close(h.register)
@@ -310,6 +311,8 @@ func (h *hub) Stop(_ context.Context) error {
 }
 
 func (h *hub) SetAuthFn(fn AuthFn) {
+	slog.Info("ws/hub: setting auth handler ...")
+
 	h.auth = fn
 }
 
@@ -418,7 +421,7 @@ func (h *hub) run() {
 // worker sets up and runs the Temporal worker for handling the hub's queue. It starts the worker, registers workflows
 // and activities, and listens for the stop signal. On receiving the stop signal, it gracefully shuts down the worker.
 func (h *hub) worker() {
-	shared.Logger().Info("ws/queue: starting worker ...")
+	slog.Info("ws/queue: starting worker ...")
 
 	worker := h.queue.Worker(shared.Temporal().Client())
 
@@ -430,8 +433,14 @@ func (h *hub) worker() {
 	worker.RegisterActivity(&Activities{})
 
 	if err := worker.Start(); err != nil {
-		shared.Logger().Error("ws/queue: unable to start worker for the queue, shutdown ..", "error", err)
+		slog.Error("ws/queue: unable to start worker for the queue, shutdown ..", "error", err)
 		h.stop <- true
+	}
+
+	err := h.Signal(context.Background(), WorkflowSignalWorkerAdded, &RegisterOrFlush{Queue: h.queue.Name()})
+	if err != nil {
+		slog.Warn("ws/queue: failed to signal worker addition", "error", err)
+		panic(err)
 	}
 
 	<-h.stop
@@ -464,7 +473,7 @@ func (h *hub) read(client *connection) {
 
 		// Signal that a user has disconnected
 		if err := h.Signal(context.Background(), WorkflowSignalRemoveUser, User{UserID: client.user_id}); err != nil {
-			shared.Logger().Warn("ws/hub: failed to remove client", "user_id", client.user_id, "error", err)
+			slog.Warn("ws/hub: failed to remove client", "user_id", client.user_id, "error", err)
 			return
 		}
 	}()
@@ -474,7 +483,7 @@ func (h *hub) read(client *connection) {
 
 	// Signal that a user has connected
 	if err := h.Signal(context.Background(), WorkflowSignalAddUser, QueueUser{UserID: client.user_id, Queue: h.queue.Name()}); err != nil {
-		shared.Logger().Warn("ws/hub: failed to add client", "user_id", client.user_id, "error", err)
+		slog.Warn("ws/hub: failed to add client", "user_id", client.user_id, "error", err)
 		return
 	}
 
@@ -482,14 +491,14 @@ func (h *hub) read(client *connection) {
 		_, message, err := client.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				shared.Logger().Warn("ws/hub: websocket read error", "error", err)
+				slog.Warn("ws/hub: websocket read error", "error", err)
 			}
 
 			break
 		}
 
 		// FIXME: Implement message handling.
-		shared.Logger().Debug("Received message from client", "user_id", client.user_id, "message", string(message))
+		slog.Debug("ws: recieved on websocket", "user_id", client.user_id, "message", string(message))
 	}
 }
 
@@ -534,7 +543,7 @@ func (h *hub) write(client *connection) {
 //	}
 //	defer worker.Stop()
 func ConnectionsHubWorker() worker.Worker {
-	shared.Logger().Info("ws/hub: starting worker ...")
+	slog.Info("ws/hub: starting worker ...")
 
 	q := queue.NewQueue(queue.WithName(shared.WebSocketQueue))
 	worker := q.Worker(shared.Temporal().Client())

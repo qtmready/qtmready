@@ -86,12 +86,14 @@ func encode(bytes []byte) string {
 
 // container_id generates a cryptographically secure, collision-resistant container ID.
 //
-// It uses base-32 encoding to produce a 24-character string from 8 random bytes. The first 8 characters are used.
+// It uses base-32 encoding of 8 random bytes to produce a 24-character string. The first 8 characters are used.
 //
-// This provides a namespace of 1 billion unique IDs (32^8), sufficient for our current scale of a few hundred
-// containers. However, collision probability increases with container growth due to the birthday paradox.
+// This provides a namespace of 1 billion unique IDs (32^8), sufficient for current scale. However, the birthday paradox
+// dictates that collision probability increases as the number of containers grows.
 //
-// For scalability, a more complex algorithm may be necessary to minimize collision risk.
+// For scalability beyond a few hundred containers at a given time, a more complex algorithm or a larger namespace may
+// be necessary to
+// minimize collision risk.
 func container_id() queue.Name {
 	length := 8
 	bytes := make([]byte, 8)

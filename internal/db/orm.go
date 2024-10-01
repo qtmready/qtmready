@@ -17,7 +17,6 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package db
 
 import (
@@ -35,28 +34,37 @@ type (
 	// QueryParams defines the query params required for DB lookup queries.
 	QueryParams map[string]string
 
-	// An Entity defines the interface for a database entity.
+	// Entity defines the interface for a database entity.
 	Entity interface {
 		GetTable() itable.ITable
 		PreCreate() error
 		PreUpdate() error
 	}
 
+	// GetOrCreateResponse represents the response for GetOrCreate operations.
 	GetOrCreateResponse[T Entity] struct {
 		Entity  T
 		Created bool
 	}
 )
 
+// SelectBuilder returns a new SelectBuilder for the given table name.
 func SelectBuilder(table string) iqb.ISelectBuilder {
 	return &iqb.SelectBuilder{SB: qb.Select(table)}
 }
 
-// Get the entity by given query params.
+// Get retrieves the entity matching the given query parameters.
 //
-// FIXME: sometimes you have to manually surround the value with "'" to make cql work
+// The function iterates over the provided query parameters and constructs an `EqLit` clause for each key-value pair.
+// It then builds a `Select` query using the `SelectBuilder` and executes it against the database.
 //
-// A simple example:
+// The query uses `AllowFiltering()` to enable filtering on non-primary key columns.
+//
+// The results are then mapped to the provided entity using `GetRelease()`.
+//
+// NOTE: In some cases, manual surrounding of values with single quotes (”) might be required for CQL to work correctly.
+//
+// Example:
 //
 //	type User struct {
 //	  ID     string `json:"getID" cql:"getID"`
@@ -81,11 +89,18 @@ func Get[T Entity](entity T, params QueryParams) error {
 	return DB().Session.Query(query.ToCql()).GetRelease(entity)
 }
 
-// Filter the entity by given query params.
+// Filter retrieves all entities matching the given query parameters.
 //
-// FIXME: sometimes you have to manually surround the value with "'" to make cql work
+// The function iterates over the provided query parameters and constructs an `EqLit` clause for each key-value pair.
+// It then builds a `Select` query using the `SelectBuilder` and executes it against the database.
 //
-// A simple example:
+// The query uses `AllowFiltering()` to enable filtering on non-primary key columns.
+//
+// The results are then mapped to the provided destination using `SelectRelease()`.
+//
+// NOTE: In some cases, manual surrounding of values with single quotes (”) might be required for CQL to work correctly.
+//
+// Example:
 //
 //		 type User struct {
 //		   ID     string `json:"getID" cql:"getID"`
@@ -110,8 +125,11 @@ func Filter(entity Entity, dest any, params QueryParams) error {
 	return DB().Session.Query(query.ToCql()).SelectRelease(dest)
 }
 
-// Save saves the entity. If the entity has an ID, it will be updated. Otherwise,
-// it will be created. A pointer to the entity must be passed.
+// Save saves the entity to the database.
+//
+// If the entity has an ID, it will be updated. Otherwise, a new entity will be created.
+//
+// Example:
 //
 //	type User struct {
 //	  ID     string `json:"getID" cql:"getID"`
@@ -130,13 +148,42 @@ func Save[T Entity](entity T) error {
 	return Update(entity)
 }
 
-// Create creates the entity. The entity value is a pointer to the struct.
+// Create creates a new entity in the database.
+//
+// The function generates a new UUID for the entity's ID, sets the `CreatedAt` and `UpdatedAt` fields to the current time,
+// and calls `PreCreate()` on the entity to allow for pre-creation logic.
+//
+// It then constructs an `Insert` query and executes it against the database.
+//
+// Example:
+//
+//	type User struct {
+//	  ID     string `json:"getID" cql:"getID"`
+//	  Email  string `json:"name" cql:"name"`
+//	}
+//
+//	user := User{Email: "user@example.com"}
+//	err := db.Create(&user)
 func Create[T Entity](entity T) error {
 	pk, _ := NewUUID()
 	return CreateWithID(entity, pk)
 }
 
-// CreateWithID forces the ID while creating. The entity value is a pointer to the struct.
+// CreateWithID creates a new entity in the database with a specified ID.
+//
+// The function sets the `CreatedAt` and `UpdatedAt` fields to the current time and calls `PreCreate()` on the entity
+// to allow for pre-creation logic. It then constructs an `Insert` query and executes it against the database.
+//
+// Example:
+//
+//	type User struct {
+//	  ID     string `json:"getID" cql:"getID"`
+//	  Email  string `json:"name" cql:"name"`
+//	}
+//
+//	user := User{Email: "user@example.com"}
+//	user.ID, _ = db.NewUUID()
+//	err := db.CreateWithID(&user, user.ID)
 func CreateWithID[T Entity](entity T, pk gocql.UUID) error {
 	now := time.Now()
 
@@ -153,10 +200,22 @@ func CreateWithID[T Entity](entity T, pk gocql.UUID) error {
 	return query.ExecRelease()
 }
 
-// Update updates the entity.
+// Update updates an existing entity in the database.
 //
-// NOTE: The assumption is that ID is the primary key and the first one defined in the struct.
-// NOTE: you must pass the complete struct.
+// The function sets the `UpdatedAt` field to the current time and constructs an `Update` query with the entity's
+// primary key as the `Where` clause. It then executes the query against the database.
+//
+// NOTE: The assumption is that the `ID` field is the primary key and the first one defined in the struct.
+//
+// Example:
+//
+//	type User struct {
+//	  ID     string `json:"getID" cql:"getID"`
+//	  Email  string `json:"name" cql:"name"`
+//	}
+//
+//	user := User{ID: "some_id", Email: "updated_user@example.com"}
+//	err := db.Update(&user)
 func Update[T Entity](entity T) error {
 	now := time.Now()
 	_set(entity, "UpdatedAt", now)
@@ -175,11 +234,23 @@ func Update[T Entity](entity T) error {
 	return query.ExecRelease()
 }
 
-// Delete deletes the row from cassandra. The entity value is a pointer to the struct.
+// Delete removes an entity from the database.
 //
-// CAUTION: Cassandra has a concept of tombstones. When you delete a row, it is not immediately removed from the database.
-// Instead, a tombstone is created, which is a marker that tells Cassandra that the row has been deleted. The tombstone
-// will be removed after the gc_grace_seconds period has passed. This is a setting in the table definition.
+// The function constructs a `Delete` query with the entity's primary key as the `Where` clause and executes it
+// against the database.
+//
+// NOTE: Cassandra uses tombstones for deletion, which are markers that indicate a row has been deleted. The tombstone
+// will be removed after the `gc_grace_seconds` period has passed, as defined in the table definition.
+//
+// Example:
+//
+//	type User struct {
+//	  ID     string `json:"getID" cql:"getID"`
+//	  Email  string `json:"name" cql:"name"`
+//	}
+//
+//	user := User{ID: "some_id"}
+//	err := db.Delete(&user)
 func Delete[T Entity](entity T) error {
 	tbl := entity.GetTable()
 	stmnt, names := qb.Delete(tbl.Name()).Where(qb.Eq("id")).ToCql()
@@ -188,17 +259,18 @@ func Delete[T Entity](entity T) error {
 	return query.BindStruct(entity).ExecRelease()
 }
 
-// gets the ID of the entity. The entity value is a pointer to the struct.
+// _id retrieves the `ID` field of the entity.
 func _id(entity Entity) gocql.UUID {
 	return reflect.ValueOf(entity).Elem().FieldByName("ID").Interface().(gocql.UUID)
 }
 
-// Set the value of the field of the entity. The entity value is a pointer to the struct.
+// _set sets the value of the field of the entity.
 func _set(entity Entity, name string, val any) {
 	elem := reflect.ValueOf(entity).Elem()
 	elem.FieldByName(name).Set(reflect.ValueOf(val))
 }
 
+// _delPK removes the primary key columns from the list of columns.
 func _delPK(columns, part []string) []string {
 	result := make([]string, 0)
 
@@ -211,6 +283,7 @@ func _delPK(columns, part []string) []string {
 	return result
 }
 
+// _wherePK constructs a `Where` clause for the primary key columns.
 func _wherePK(keys []string) []qb.Cmp {
 	result := make([]qb.Cmp, 0)
 

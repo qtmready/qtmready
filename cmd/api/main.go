@@ -70,6 +70,7 @@ func main() {
 	}
 
 	hub := ws.Instance()
+	hub.SetAuthFn(user_id)
 
 	api := echo.New()
 	configure_api(api)

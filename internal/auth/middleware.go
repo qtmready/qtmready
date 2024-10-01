@@ -32,18 +32,23 @@ import (
 )
 
 const (
-	BearerHeaderName    = "Authorization"
-	APIKeyHeaderName    = "X-API-KEY"
-	GuardLookupTypeTeam = "team"
-	GuardLookupTypeUser = "user"
+	BearerHeaderName    = "Authorization" // Header name for bearer token authentication.
+	APIKeyHeaderName    = "X-API-KEY"     // Header name for API key authentication.
+	GuardLookupTypeTeam = "team"          // Lookup type for API key authentication: team.
+	GuardLookupTypeUser = "user"          // Lookup type for API key authentication: user.
 )
 
 var (
-	BearerPrefixes = []string{"Token", "Bearer"}
+	BearerPrefixes = []string{"Token", "Bearer"} // Valid prefixes for bearer tokens.
 )
 
 // Middleware provides JWE & API Key authentication.
-// It checks for bearer token (JWE) and API key based on the context requirements.
+//
+// It checks for bearer token (JWE) and API key based on the context requirements. If both are required, it prioritizes
+// bearer token authentication. If neither is required, it proceeds to the next handler.
+//
+// The context requirements are determined by the `APIKeyAuthScopes` and `BearerAuthScopes` values, set by middleware
+// handlers upstream.
 func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
 		keyScopes, requiresKey := ctx.Get(APIKeyAuthScopes).([]string)
@@ -55,6 +60,7 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 			return next(ctx)
 		}
 
+		// Prioritize bearer token authentication if both are required.
 		if requiresBearer && len(bearerScopes) > -1 {
 			header := ctx.Request().Header.Get(BearerHeaderName)
 			if header != "" {
@@ -81,6 +87,8 @@ func Middleware(next echo.HandlerFunc) echo.HandlerFunc {
 }
 
 // GenerateAccessToken creates a short-lived JWE token for the given user.
+//
+// The token's expiration time is set to 15 minutes by default, but it can be overridden to 24 hours in debug mode.
 func GenerateAccessToken(user *User) (string, error) {
 	expires := time.Now().Add(time.Minute * 15)
 	if shared.Service().GetDebug() {
@@ -91,6 +99,8 @@ func GenerateAccessToken(user *User) (string, error) {
 }
 
 // GenerateRefreshToken creates a long-lived JWE token for the given user.
+//
+// The token's expiration time is set to 60 minutes by default, but it can be overridden to 30 days in debug mode.
 func GenerateRefreshToken(user *User) (string, error) {
 	expires := time.Now().Add(time.Minute * 60)
 	if shared.Service().GetDebug() {
@@ -101,6 +111,7 @@ func GenerateRefreshToken(user *User) (string, error) {
 }
 
 // BearerFn handles the JWE token authentication.
+//
 // It decrypts the JWE token, validates its contents, and sets user and team IDs in the context.
 func BearerFn(next echo.HandlerFunc, ctx echo.Context, token string) error {
 	claims, err := DecodeJWE(token)
@@ -131,7 +142,7 @@ func generateJWE(user *User, expires time.Time) (string, error) {
 		User: *user,
 	}
 
-	return EncodeJWT(JWTEncodeParams{
+	return EncodeJWE(JWTEncodeParams{
 		Claims: claims,
 		Secret: Derive(),
 		MaxAge: time.Hour * 24,
@@ -150,8 +161,8 @@ func isValidPrefix(prefix string) bool {
 }
 
 // KeyFn handles the API key authentication.
-// It verifies the API key, determines the lookup type (team or user),
-// and sets the appropriate IDs in the context.
+//
+// It verifies the API key, determines the lookup type (team or user), and sets the appropriate IDs in the context.
 func KeyFn(next echo.HandlerFunc, ctx echo.Context, key string) error {
 	guard := &Guard{}
 	if err := guard.VerifyAPIKey(key); err != nil {

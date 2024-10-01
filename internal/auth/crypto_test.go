@@ -59,7 +59,7 @@ func (s *CryptoTestSuite) TestEncodeJWE_Positive() {
 		MaxAge: time.Hour,
 	}
 
-	token, err := auth.EncodeJWT(params)
+	token, err := auth.EncodeJWE(params)
 	require.NoError(s.T(), err)
 	assert.NotEmpty(s.T(), token)
 }
@@ -93,7 +93,7 @@ func (s *CryptoTestSuite) TestDecodeJWE_Positive() {
 		MaxAge: time.Hour,
 	}
 
-	token, err := auth.EncodeJWT(params)
+	token, err := auth.EncodeJWE(params)
 	require.NoError(s.T(), err)
 
 	decodedClaims, err := auth.DecodeJWE(token)
@@ -132,7 +132,7 @@ func (s *CryptoTestSuite) TestEncodeJWE_EmptyClaims() {
 		MaxAge: time.Hour,
 	}
 
-	token, err := auth.EncodeJWT(params)
+	token, err := auth.EncodeJWE(params)
 	assert.NoError(s.T(), err)
 	assert.NotEmpty(s.T(), token)
 
@@ -178,7 +178,7 @@ func (s *CryptoTestSuite) TestDecodeJWE_Negative_ExpiredToken() {
 		MaxAge: time.Hour,
 	}
 
-	token, err := auth.EncodeJWT(params)
+	token, err := auth.EncodeJWE(params)
 	require.NoError(s.T(), err)
 
 	_, err = auth.DecodeJWE(token)
@@ -218,7 +218,7 @@ func (s *CryptoTestSuite) TestEncodeDecodeJWE_Smoke() {
 		MaxAge: time.Hour,
 	}
 
-	token, err := auth.EncodeJWT(params)
+	token, err := auth.EncodeJWE(params)
 	require.NoError(s.T(), err)
 
 	decodedClaims, err := auth.DecodeJWE(token)
@@ -282,7 +282,7 @@ func TestEncodeDecodeJWE_UserObject(t *testing.T) {
 	}
 
 	// Encode the JWT
-	token, err := auth.EncodeJWT(auth.JWTEncodeParams{
+	token, err := auth.EncodeJWE(auth.JWTEncodeParams{
 		Claims: claims,
 		MaxAge: time.Hour,
 	})

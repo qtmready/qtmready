@@ -29,6 +29,7 @@ import (
 
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
+	"go.breu.io/quantm/internal/core/ws"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
@@ -60,10 +61,13 @@ func main() {
 	provider_queue := shared.Temporal().Queue(shared.ProvidersQueue)
 	configure_provider(provider_queue, client)
 
+	hub := ws.ConnectionsHubWorker()
+
 	cleanups := []graceful.Cleanup{}
 
 	graceful.Go(ctx, graceful.WrapRelease(core_queue.Listen, release), rx_errors)
 	graceful.Go(ctx, graceful.WrapRelease(provider_queue.Listen, release), rx_errors)
+	graceful.Go(ctx, graceful.WrapRelease(hub.Run, release), rx_errors)
 
 	shared.Service().Banner()
 
