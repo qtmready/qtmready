@@ -26,17 +26,17 @@ import (
 	"go.breu.io/quantm/internal/shared"
 )
 
-// RepoCtrlState defines the state for RepoWorkflows.RepoCtrl.
-// It embeds base_ctrl to inherit common functionality.
+// RepoCtrlState defines the state for RepoWorkflows.RepoCtrl. It embeds base_ctrl to inherit common functionality.
 type (
 	RepoCtrlState struct {
-		*BaseCtrl
+		*BaseState
 		triggers BranchTriggers
+		stash    StashedEvents
 	}
 )
 
-// on_push is a channel handler that processes push events for the repository.
-// It receives a RepoIOSignalPushPayload and signals the corresponding branch.
+// on_push is a channel handler that processes push events for the repository. It receives a RepoIOSignalPushPayload and
+// signals the corresponding branch.
 func (state *RepoCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		push := &defs.Event[defs.Push, defs.RepoProvider]{}
@@ -53,9 +53,9 @@ func (state *RepoCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler 
 	}
 }
 
-// on_create_delete is a channel handler that processes create or delete events for the repository.
-// It receives a defs.Event[defs.BranchOrTag, defs.RepoProvider], signals the corresponding branch,
-// and updates the branch list in the state.
+// on_create_delete is a channel handler that processes create or delete events for the repository. It receives a
+// defs.Event[defs.BranchOrTag, defs.RepoProvider], signals the corresponding branch, and updates the branch list in the
+// state.
 func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
@@ -76,8 +76,8 @@ func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.Channe
 	}
 }
 
-// on_pr is a channel handler that processes pull request events for the repository.
-// It receives a RepoIOSignalPullRequestPayload and signals the corresponding branch.
+// on_pr is a channel handler that processes pull request events for the repository. It receives a
+// RepoIOSignalPullRequestPayload and signals the corresponding branch.
 func (state *RepoCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
@@ -110,11 +110,12 @@ func (state *RepoCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler
 	}
 }
 
-// NewRepoCtrlState creates a new RepoCtrlState with the specified repo.
-// It initializes the embedded base_ctrl using NewBaseCtrl.
+// NewRepoCtrlState creates a new RepoCtrlState with the specified repo. It initializes the embedded base_ctrl using
+// NewBaseCtrl.
 func NewRepoCtrlState(ctx workflow.Context, repo *defs.Repo) *RepoCtrlState {
 	return &RepoCtrlState{
-		BaseCtrl: NewBaseCtrl(ctx, "repo_ctrl", repo),
-		triggers: make(BranchTriggers),
+		BaseState: NewBaseCtrl(ctx, "repo_ctrl", repo),
+		triggers:  make(BranchTriggers),
+		stash:     make(StashedEvents),
 	}
 }

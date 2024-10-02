@@ -23,10 +23,12 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -34,13 +36,12 @@ const (
 	event_threshold = 4000
 )
 
-// DoFn represents the signature of the do function.
 type (
 	CallAsync func(workflow.Context)
 
-	// BaseCtrl represents the base control structure for repository operations.
+	// BaseState represents the base state for repository operations.
 	// It provides common functionality for various repository control types.
-	BaseCtrl struct {
+	BaseState struct {
 		kind       string                   // kind identifies the type of control (e.g., "repo", "branch")
 		activities *Activities              // activities holds the repository activities
 		repo       *defs.Repo               // repo is a reference to the repository
@@ -50,20 +51,29 @@ type (
 		active     bool                     // active indicates if the control is active
 		counter    int                      // counter counts the number of operations performed
 	}
+
+	// RepoEvent defines an interface for repository events. It simplifies type operations by wrapping
+	// defs.Event[defs.EventPayload, defs.EventProvider].
+	RepoEvent interface {
+		Flatten() (db.Entity, error)
+		SetParentID(gocql.UUID)
+		MarshalJSON() ([]byte, error)
+		UnmarshalJSON([]byte) error
+	}
 )
 
 // is_active returns the active status of the control.
-func (base *BaseCtrl) is_active() bool {
+func (base *BaseState) is_active() bool {
 	return base.active
 }
 
 // needs_reset checks if the event count has reached the threshold for resetting.
-func (base *BaseCtrl) needs_reset() bool {
+func (base *BaseState) needs_reset() bool {
 	return base.counter >= event_threshold
 }
 
 // branch returns the branch name associated with this control.
-func (base *BaseCtrl) branch(ctx workflow.Context) string {
+func (base *BaseState) branch(ctx workflow.Context) string {
 	if branch, ok := ctx.Value("active_branch").(string); ok {
 		return branch
 	}
@@ -72,12 +82,12 @@ func (base *BaseCtrl) branch(ctx workflow.Context) string {
 }
 
 // set_branch sets the active branch in the context.
-func (base *BaseCtrl) set_branch(ctx workflow.Context, branch string) workflow.Context {
+func (base *BaseState) set_branch(ctx workflow.Context, branch string) workflow.Context {
 	return workflow.WithValue(ctx, "active_branch", branch)
 }
 
 // set_info sets the provider-specific information for the control.
-func (base *BaseCtrl) set_info(ctx workflow.Context, info *defs.RepoIOProviderInfo) {
+func (base *BaseState) set_info(ctx workflow.Context, info *defs.RepoIOProviderInfo) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
 
@@ -85,7 +95,7 @@ func (base *BaseCtrl) set_info(ctx workflow.Context, info *defs.RepoIOProviderIn
 }
 
 // set_branches sets the list of branches associated with the control.
-func (base *BaseCtrl) set_branches(ctx workflow.Context, branches []string) {
+func (base *BaseState) set_branches(ctx workflow.Context, branches []string) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
 
@@ -93,7 +103,7 @@ func (base *BaseCtrl) set_branches(ctx workflow.Context, branches []string) {
 }
 
 // set_done marks the control as inactive.
-func (base *BaseCtrl) set_done(ctx workflow.Context) {
+func (base *BaseState) set_done(ctx workflow.Context) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
 
@@ -101,19 +111,19 @@ func (base *BaseCtrl) set_done(ctx workflow.Context) {
 }
 
 // terminate marks the control as done and logs the termination.
-func (base *BaseCtrl) terminate(ctx workflow.Context) {
+func (base *BaseState) terminate(ctx workflow.Context) {
 	base.set_done(ctx)
 	base.log(ctx, "terminate").Info("state terminated")
 }
 
 // as_new continues the workflow as new with the given function and arguments.
-func (base *BaseCtrl) as_new(ctx workflow.Context, msg string, fn any, args ...any) error {
+func (base *BaseState) as_new(ctx workflow.Context, msg string, fn any, args ...any) error {
 	base.log(ctx, "as_new").Warn(msg)
 	return workflow.NewContinueAsNewError(ctx, fn, args...)
 }
 
 // increment increases the operation counter by the specified number of steps.
-func (base *BaseCtrl) increment(ctx workflow.Context, steps int) {
+func (base *BaseState) increment(ctx workflow.Context, steps int) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
 
@@ -121,7 +131,7 @@ func (base *BaseCtrl) increment(ctx workflow.Context, steps int) {
 }
 
 // add_branch adds a new branch to the list of branches.
-func (base *BaseCtrl) add_branch(ctx workflow.Context, branch string) {
+func (base *BaseState) add_branch(ctx workflow.Context, branch string) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
 
@@ -131,7 +141,7 @@ func (base *BaseCtrl) add_branch(ctx workflow.Context, branch string) {
 }
 
 // remove_branch removes a branch from the list of branches.
-func (base *BaseCtrl) remove_branch(ctx workflow.Context, branch string) {
+func (base *BaseState) remove_branch(ctx workflow.Context, branch string) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
 
@@ -144,7 +154,7 @@ func (base *BaseCtrl) remove_branch(ctx workflow.Context, branch string) {
 }
 
 // signal_branch sends a signal to a specific branch.
-func (base *BaseCtrl) signal_branch(ctx workflow.Context, branch string, signal shared.WorkflowSignal, payload any) {
+func (base *BaseState) signal_branch(ctx workflow.Context, branch string, signal shared.WorkflowSignal, payload any) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
@@ -164,7 +174,7 @@ func (base *BaseCtrl) signal_branch(ctx workflow.Context, branch string, signal 
 
 // TODO - refine the logic.
 // signal_branch sends a signal to a specific branch.
-func (base *BaseCtrl) signal_queue(ctx workflow.Context, branch string, signal shared.WorkflowSignal, payload any) {
+func (base *BaseState) signal_queue(ctx workflow.Context, branch string, signal shared.WorkflowSignal, payload any) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
@@ -183,14 +193,14 @@ func (base *BaseCtrl) signal_queue(ctx workflow.Context, branch string, signal s
 }
 
 // rx receives a message from a channel and logs the event.
-func (base *BaseCtrl) rx(ctx workflow.Context, channel workflow.ReceiveChannel, target any) {
+func (base *BaseState) rx(ctx workflow.Context, channel workflow.ReceiveChannel, target any) {
 	base.log(ctx, "rx").Info(channel.Name())
 
 	channel.Receive(ctx, target)
 }
 
 // refresh_info updates the provider information for the repository.
-func (base *BaseCtrl) refresh_info(ctx workflow.Context) {
+func (base *BaseState) refresh_info(ctx workflow.Context) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
@@ -202,7 +212,7 @@ func (base *BaseCtrl) refresh_info(ctx workflow.Context) {
 }
 
 // refresh_branches updates the list of branches for the repository.
-func (base *BaseCtrl) refresh_branches(ctx workflow.Context) {
+func (base *BaseState) refresh_branches(ctx workflow.Context) {
 	if base.info == nil {
 		base.refresh_info(ctx)
 	}
@@ -217,7 +227,7 @@ func (base *BaseCtrl) refresh_branches(ctx workflow.Context) {
 	base.set_branches(ctx, branches)
 }
 
-func (base *BaseCtrl) save_event(ctx workflow.Context, event RepoEvent) {
+func (base *BaseState) save_event(ctx workflow.Context, event RepoEvent) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
@@ -225,12 +235,12 @@ func (base *BaseCtrl) save_event(ctx workflow.Context, event RepoEvent) {
 }
 
 // log creates a new logger for the current action.
-func (base *BaseCtrl) log(ctx workflow.Context, action string) *RepoIOWorkflowLogger {
+func (base *BaseState) log(ctx workflow.Context, action string) *RepoIOWorkflowLogger {
 	return NewRepoIOWorkflowLogger(ctx, base.repo, base.kind, base.branch(ctx), action)
 }
 
 // do is helper is an activity executor. It logs the activity execution and increments the operation counter.
-func (base *BaseCtrl) do(ctx workflow.Context, action string, activity, payload, result any, keyvals ...any) error {
+func (base *BaseState) do(ctx workflow.Context, action string, activity, payload, result any, keyvals ...any) error {
 	logger := base.log(ctx, action)
 	logger.Info("init", keyvals...)
 
@@ -247,7 +257,7 @@ func (base *BaseCtrl) do(ctx workflow.Context, action string, activity, payload,
 }
 
 // TODO: @asgr - need tp refine.
-func (base *BaseCtrl) child(ctx workflow.Context, action, w_id string, fn, payload any, keyvals ...any) error {
+func (base *BaseState) child(ctx workflow.Context, action, w_id string, fn, payload any, keyvals ...any) error {
 	logger := base.log(ctx, action)
 	logger.Info("init", keyvals...)
 
@@ -274,7 +284,7 @@ func (base *BaseCtrl) child(ctx workflow.Context, action, w_id string, fn, paylo
 
 // call_async executes an activity asynchronously and returns a Future.
 // If a WaitGroup is provided, it will be decremented when the operation completes.
-func (base *BaseCtrl) call_async(ctx workflow.Context, action string, fn CallAsync, wg workflow.WaitGroup) workflow.Future {
+func (base *BaseState) call_async(ctx workflow.Context, action string, fn CallAsync, wg workflow.WaitGroup) workflow.Future {
 	logger := base.log(ctx, action)
 
 	future, setable := workflow.NewFuture(ctx)
@@ -293,8 +303,8 @@ func (base *BaseCtrl) call_async(ctx workflow.Context, action string, fn CallAsy
 }
 
 // NewBaseCtrl creates a new base control instance and refreshes repository information and branches.
-func NewBaseCtrl(ctx workflow.Context, kind string, repo *defs.Repo) *BaseCtrl {
-	base := &BaseCtrl{
+func NewBaseCtrl(ctx workflow.Context, kind string, repo *defs.Repo) *BaseState {
+	base := &BaseState{
 		kind:       kind,
 		activities: &Activities{},
 		info:       &defs.RepoIOProviderInfo{},

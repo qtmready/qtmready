@@ -45,7 +45,7 @@ type (
 	// QueueCtrlState represents the state of the queue controller,
 	// managing both a primary and a priority queue.
 	QueueCtrlState struct {
-		*BaseCtrl
+		*BaseState
 		primary  Queue
 		priority Queue
 	}
@@ -574,9 +574,9 @@ func NewQueue(ctx workflow.Context) Queue {
 //	ctx, state := NewQueueCtrlState(ctx, repo, branch)
 func NewQueueCtrlState(ctx workflow.Context, repo *defs.Repo, branch string) (workflow.Context, *QueueCtrlState) {
 	ctrl := &QueueCtrlState{
-		BaseCtrl: NewBaseCtrl(ctx, "queue_ctrl", repo),
-		primary:  NewQueue(ctx),
-		priority: NewQueue(ctx),
+		BaseState: NewBaseCtrl(ctx, "queue_ctrl", repo),
+		primary:   NewQueue(ctx),
+		priority:  NewQueue(ctx),
 	}
 
 	return ctrl.set_branch(ctx, branch), ctrl

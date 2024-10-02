@@ -37,14 +37,6 @@ import (
 type (
 	// Activities defines an interface for repository-related actions.
 	Activities struct{}
-
-	// RepoEvent defines an interface for repository events. It simplifies type operations by wrapping
-	// defs.Event[defs.EventPayload, defs.EventProvider].
-	RepoEvent interface {
-		Flatten() (db.Entity, error)
-		MarshalJSON() ([]byte, error)
-		UnmarshalJSON([]byte) error
-	}
 )
 
 // SignalBranch signals a branch workflow for the given repository.

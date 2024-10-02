@@ -27,14 +27,14 @@ import (
 )
 
 type (
-	TrunkState struct {
-		*BaseCtrl
+	TrunkCtrlState struct {
+		*BaseState
 		active_branch string
 	}
 )
 
 // on_push handles push events for the trunk.
-func (state *TrunkState) on_push(ctx workflow.Context) shared.ChannelHandler {
+func (state *TrunkCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		push := &defs.Event[defs.Push, defs.RepoProvider]{} // Use Event type
 		state.rx(ctx, rx, push)
@@ -49,7 +49,7 @@ func (state *TrunkState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	}
 }
 
-func (state *TrunkState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
+func (state *TrunkCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -64,9 +64,9 @@ func (state *TrunkState) on_create_delete(ctx workflow.Context) shared.ChannelHa
 	}
 }
 
-func NewTrunkState(ctx workflow.Context, repo *defs.Repo) *TrunkState {
-	return &TrunkState{
-		BaseCtrl:      NewBaseCtrl(ctx, "trunk_ctrl", repo),
+func NewTrunkState(ctx workflow.Context, repo *defs.Repo) *TrunkCtrlState {
+	return &TrunkCtrlState{
+		BaseState:     NewBaseCtrl(ctx, "trunk_ctrl", repo),
 		active_branch: repo.DefaultBranch,
 	}
 }
