@@ -2,6 +2,8 @@ package code
 
 import (
 	"github.com/gocql/gocql"
+
+	"go.breu.io/quantm/internal/core/defs"
 )
 
 type (
@@ -15,7 +17,7 @@ type (
 	// Events are typically stashed when the associated branch does not yet exist or the event requires a
 	// parent event (e.g., a push event needing a branch creation event) that has not yet been received. This
 	// scenario can arise due to the distributed nature of event arrival.
-	StashedEvents map[string][]RepoEvent
+	StashedEvents[P defs.RepoProvider] map[string][]RepoEvent[P]
 )
 
 // add associates a branch with its triggering event ID.
@@ -38,9 +40,9 @@ func (b BranchTriggers) get(branch string) (gocql.UUID, bool) {
 }
 
 // push adds an event to the stash for the specified branch.
-func (s StashedEvents) push(branch string, event RepoEvent) {
+func (s StashedEvents[P]) push(branch string, event RepoEvent[P]) {
 	if _, ok := s[branch]; !ok {
-		s[branch] = make([]RepoEvent, 0)
+		s[branch] = make([]RepoEvent[P], 0)
 	}
 
 	s[branch] = append(s[branch], event)
@@ -49,14 +51,11 @@ func (s StashedEvents) push(branch string, event RepoEvent) {
 // pop retrieves and removes the oldest event from the stash for the specified branch.
 //
 // Returns the event and a boolean indicating whether an event was present.
-func (s StashedEvents) pop(branch string) (RepoEvent, bool) {
+func (s StashedEvents[P]) all(branch string) ([]RepoEvent[P], bool) {
 	events, ok := s[branch]
 	if !ok || len(events) == 0 {
-		return nil, false
+		return events, false
 	}
 
-	event := events[0]
-	s[branch] = events[1:]
-
-	return event, true
+	return events, true
 }

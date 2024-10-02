@@ -28,7 +28,6 @@ import (
 
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
-	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -39,8 +38,8 @@ const (
 type (
 	CallAsync func(workflow.Context)
 
-	// BaseState represents the base state for repository operations.
-	// It provides common functionality for various repository control types.
+	// BaseState represents the base state for repository operations. It provides common functionality for various
+	// repository control types.
 	BaseState struct {
 		kind       string                   // kind identifies the type of control (e.g., "repo", "branch")
 		activities *Activities              // activities holds the repository activities
@@ -52,13 +51,18 @@ type (
 		counter    int                      // counter counts the number of operations performed
 	}
 
-	// RepoEvent defines an interface for repository events. It simplifies type operations by wrapping
-	// defs.Event[defs.EventPayload, defs.EventProvider].
-	RepoEvent interface {
-		Flatten() (db.Entity, error)
-		SetParentID(gocql.UUID)
-		MarshalJSON() ([]byte, error)
-		UnmarshalJSON([]byte) error
+	// RepoEvent defines an interface for repository events. It simplifies working with repository events by
+	// providing a common interface over various event types.
+	//
+	// This interface avoids using generics by leveraging the `Flatten` method, which is available on all
+	// efs.Event[defs.EventPayload, defs.EventProvider] combinations, to streamline event operations.
+	RepoEvent[P defs.RepoProvider] interface {
+		// Flatten converts the RepoEvent into a defs.FlatEvent, which is a more efficient representation for storage and
+		// retrieval.
+		Flatten() (*defs.FlatEvent[P], error)
+
+		// SetParent sets the parent event ID for the current event, enabling the reconstruction of the event lineage.
+		SetParent(gocql.UUID)
 	}
 )
 
@@ -227,11 +231,11 @@ func (base *BaseState) refresh_branches(ctx workflow.Context) {
 	base.set_branches(ctx, branches)
 }
 
-func (base *BaseState) save_event(ctx workflow.Context, event RepoEvent) {
+func (base *BaseState) persist(ctx workflow.Context, event RepoEvent[defs.RepoProvider]) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
-	_ = base.do(ctx, "save_event", base.activities.SaveRepoEvent, event, nil)
+	_ = base.do(ctx, "persist", base.activities.SaveRepoEvent, event, nil)
 }
 
 // log creates a new logger for the current action.

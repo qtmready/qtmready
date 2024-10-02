@@ -25,13 +25,7 @@ import (
 	"go.breu.io/quantm/internal/core/defs"
 )
 
-// RepoCtrl is the event loop to process events during the lifecycle of a repository.
-//
-// It processes the following events:
-//
-//   - push
-//   - create_delete
-//   - pr
+// RepoCtrl manages the event loop for a repository, acting as a central router to orchestrate repository workflows.
 func RepoCtrl(ctx workflow.Context, repo *defs.Repo) error {
 	state := NewRepoCtrlState(ctx, repo)
 	selector := workflow.NewSelector(ctx)

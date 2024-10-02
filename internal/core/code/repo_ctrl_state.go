@@ -31,7 +31,7 @@ type (
 	RepoCtrlState struct {
 		*BaseState
 		triggers BranchTriggers
-		stash    StashedEvents
+		stash    StashedEvents[defs.RepoProvider]
 	}
 )
 
@@ -39,17 +39,19 @@ type (
 // signals the corresponding branch.
 func (state *RepoCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		push := &defs.Event[defs.Push, defs.RepoProvider]{}
-		state.rx(ctx, rx, push)
+		event := &defs.Event[defs.Push, defs.RepoProvider]{}
+		state.rx(ctx, rx, event)
 
-		id, ok := state.triggers.get(push.Payload.Ref)
+		branch := BranchNameFromRef(event.Payload.Ref)
+		id, ok := state.triggers.get(event.Payload.Ref)
+
 		if ok {
-			push.SetParent(id)
+			event.SetParent(id)
+			state.signal_branch(ctx, branch, defs.RepoIOSignalPush, event)
 		} else {
-			state.log(ctx, "on_push").Warn("unable to set parent id.")
+			state.log(ctx, "on_push").Warn("no parent id found, stashing ...", "event_id", event.ID)
+			state.stash.push(branch, event)
 		}
-
-		state.signal_branch(ctx, BranchNameFromRef(push.Payload.Ref), defs.RepoIOSignalPush, push)
 	}
 }
 
@@ -68,6 +70,16 @@ func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.Channe
 			if event.Context.Action == defs.EventActionCreated {
 				state.add_branch(ctx, event.Payload.Ref)
 				state.triggers.add(event.Payload.Ref, event.ID)
+
+				events, ok := state.stash.all(event.Payload.Ref)
+				if ok {
+					for _, each := range events {
+						each.SetParent(event.ID)
+						state.signal_branch(ctx, event.Payload.Ref, defs.RepoIOSignalPush, each)
+					}
+				} else {
+					state.log(ctx, "on_create_delete").Warn("no stashed events found.")
+				}
 			} else if event.Context.Action == defs.EventActionDeleted {
 				state.remove_branch(ctx, event.Payload.Ref)
 				state.triggers.del(event.Payload.Ref)
@@ -83,14 +95,16 @@ func (state *RepoCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
 
-		id, ok := state.triggers.get(event.Payload.HeadBranch)
+		branch := event.Payload.HeadBranch
+		id, ok := state.triggers.get(branch)
+
 		if ok {
 			event.SetParent(id)
+			state.signal_branch(ctx, branch, defs.RepoIOSignalPullRequest, event)
 		} else {
-			state.log(ctx, "on_pr").Warn("unable to set parent id.")
+			state.log(ctx, "on_pr").Warn("no parent id found, stashing ...", "event_id", event.ID)
+			state.stash.push(branch, event)
 		}
-
-		state.signal_branch(ctx, event.Payload.HeadBranch, defs.RepoIOSignalPullRequest, event)
 	}
 }
 
@@ -99,14 +113,16 @@ func (state *RepoCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler
 		label := &defs.Event[defs.PullRequestLabel, defs.RepoProvider]{}
 		state.rx(ctx, rx, label)
 
-		id, ok := state.triggers.get(label.Payload.Branch)
+		branch := label.Payload.Branch
+		id, ok := state.triggers.get(branch)
+
 		if ok {
 			label.SetParent(id)
+			state.signal_branch(ctx, branch, defs.RepoIOSignalPullRequestLabel, label)
 		} else {
-			state.log(ctx, "on_label").Warn("unable to set parent id.")
+			state.log(ctx, "on_label").Warn("no parent id found, stashing ...", "event_id", label.ID)
+			state.stash.push(branch, label)
 		}
-
-		state.signal_branch(ctx, label.Payload.Branch, defs.RepoIOSignalPullRequestLabel, label)
 	}
 }
 
@@ -116,6 +132,6 @@ func NewRepoCtrlState(ctx workflow.Context, repo *defs.Repo) *RepoCtrlState {
 	return &RepoCtrlState{
 		BaseState: NewBaseCtrl(ctx, "repo_ctrl", repo),
 		triggers:  make(BranchTriggers),
-		stash:     make(StashedEvents),
+		stash:     make(StashedEvents[defs.RepoProvider]),
 	}
 }
