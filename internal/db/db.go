@@ -61,15 +61,16 @@ var (
 
 type (
 	// Config holds the information about the database.
+	// Config holds the information about the database.
 	Config struct {
-		Session            igocqlx.ISessionx
-		Hosts              []string      `env:"CASSANDRA_HOSTS" env-default:"database"`
-		Port               int           `env:"CASSANDRA_PORT" env-default:"9042"`
-		User               string        `env:"CASSANDRA_USER" env-default:""`
-		Password           string        `env:"CASSANDRA_PASS" env-default:""`
-		Keyspace           string        `env:"CASSANDRA_KEYSPACE" env-default:"ctrlplane"`
-		MigrationSourceURL string        `env:"CASSANDRA_MIGRATION_SOURCE_URL"`
-		Timeout            time.Duration `env:"CASSANDRA_TIMEOUT" env-default:"1m"`
+		Session            igocqlx.ISessionx // Initialized session.
+		Hosts              []string          `env:"CASSANDRA_HOSTS" env-default:"database"`     // List of Cassandra nodes to connect to.
+		Port               int               `env:"CASSANDRA_PORT" env-default:"9042"`          // Port of the Cassandra cluster.
+		User               string            `env:"CASSANDRA_USER" env-default:""`              // Username to authenticate with Cassandra.
+		Password           string            `env:"CASSANDRA_PASS" env-default:""`              // Password to authenticate with Cassandra.
+		Keyspace           string            `env:"CASSANDRA_KEYSPACE" env-default:"ctrlplane"` // Keyspace to use.
+		MigrationSourceURL string            `env:"CASSANDRA_MIGRATION_SOURCE_URL"`             // URL for migrations.
+		Timeout            time.Duration     `env:"CASSANDRA_TIMEOUT" env-default:"1m"`         // Default timeout for database operations.
 	}
 
 	// MockConfig represents the mock session.
@@ -82,18 +83,22 @@ type (
 	MigrationLogger struct{}
 )
 
+// Printf implements the logger interface.
 func (l *MigrationLogger) Printf(format string, v ...any) {
 	slog.Info(fmt.Sprintf(format, v...))
 }
 
+// Verbose implements the logger interface.
 func (l *MigrationLogger) Verbose() bool {
 	return false
 }
 
+// Session implements the ISessionx interface.
 func (mc *MockConfig) Session() *igocqlx.Session {
 	return nil
 }
 
+// Shutdown closes the database session.
 func (c *Config) Shutdown(ctx context.Context) error {
 	c.Session.Session().S.Session.Close()
 
@@ -263,6 +268,7 @@ func WithMigrations() ConfigOption {
 	}
 }
 
+// WithValidator registers a validator function.
 func WithValidator(name string, validator validator.Func) ConfigOption {
 	slog.Info("db: registering validator", "name", name)
 

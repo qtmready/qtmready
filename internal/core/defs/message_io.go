@@ -24,37 +24,48 @@ import (
 )
 
 type (
-	// NOTE - this base struct need for any type of message. getting from core repo.
+	// MessageIOPayload represents the base payload for all message-related events.
+	//
+	// This struct contains common information shared across different message types, such as workspace ID, channel ID,
+	// bot token, repository name, branch name, author, author URL, and whether the event is triggered by a channel.
+	//
+	// NOTE: This struct is a shared resource, sourced from the core repository.
 	MessageIOPayload struct {
-		WorkspaceID string `json:"workspace_id"`
-		ChannelID   string `json:"channel_id"`
-		BotToken    string `json:"bot_token"`
-		RepoName    string `json:"repo_name"`
-		BranchName  string `json:"branch_name"`
-		Author      string `json:"author"`
-		AuthorURL   string `json:"author_url"`
-		IsChannel   bool   `json:"is_channel"`
+		WorkspaceID string `json:"workspace_id"` // ID of the workspace.
+		ChannelID   string `json:"channel_id"`   // ID of the channel.
+		BotToken    string `json:"bot_token"`    // Bot's authentication token.
+		RepoName    string `json:"repo_name"`    // Name of the repository.
+		BranchName  string `json:"branch_name"`  // Name of the branch.
+		Author      string `json:"author"`       // Author of the event.
+		AuthorURL   string `json:"author_url"`   // URL of the author's profile.
+		IsChannel   bool   `json:"is_channel"`   // Indicates whether the event originates from a channel.
 	}
 
-	// TODO: need to refine.
+	// MessageIOLineExeededPayload contains information about a line limit exceeding event.
+	//
+	// TODO: Revise this structure for improved clarity and functionality.
 	MessageIOLineExeededPayload struct {
-		MessageIOPayload *MessageIOPayload `json:"message_io_payload"`
-		Threshold        shared.Int64      `json:"threshold"`
-		DetectChanges    *RepoIOChanges    `json:"detect_changes"`
+		MessageIOPayload *MessageIOPayload `json:"message_io_payload"` // Base payload for message events.
+		Threshold        shared.Int64      `json:"threshold"`          // Line limit threshold.
+		DetectChanges    *RepoIOChanges    `json:"detect_changes"`     // Details of the detected changes.
 	}
 
-	// TODO: need to refine.
+	// MergeConflictMessage encapsulates information related to a merge conflict event.
+	//
+	// TODO: Revise this structure for improved clarity and functionality.
 	MergeConflictMessage struct {
-		MessageIOPayload *MessageIOPayload `json:"message_io_payload"`
-		CommitUrl        string            `json:"commit_url"`
-		RepoUrl          string            `json:"repo_url"`
-		SHA              string            `json:"sha"`
+		MessageIOPayload *MessageIOPayload `json:"message_io_payload"` // Base payload for message events.
+		CommitUrl        string            `json:"commit_url"`         // URL of the commit related to the conflict.
+		RepoUrl          string            `json:"repo_url"`           // URL of the repository.
+		SHA              string            `json:"sha"`                // SHA hash of the commit.
 	}
 
-	// TODO: need to refine.
+	// MessageIOStaleBranchPayload provides information about a stale branch event.
+	//
+	// TODO: Revise this structure for improved clarity and functionality.
 	MessageIOStaleBranchPayload struct {
-		MessageIOPayload *MessageIOPayload `json:"message_io_payload"`
-		CommitUrl        string            `json:"commit_url"`
-		RepoUrl          string            `json:"repo_url"`
+		MessageIOPayload *MessageIOPayload `json:"message_io_payload"` // Base payload for message events.
+		CommitUrl        string            `json:"commit_url"`         // URL of the commit related to the stale branch.
+		RepoUrl          string            `json:"repo_url"`           // URL of the repository.
 	}
 )
