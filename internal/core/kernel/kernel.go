@@ -67,7 +67,7 @@
 // Access the Kernel instance from anywhere in the application:
 //
 //	k := kernel.Instance()
-//	// Use k to access registered providers
+//	k.RepoIO(defs.RepoProviderGithub).GetProviderInfo(ctx, repo.ID.String())
 package kernel
 
 import (

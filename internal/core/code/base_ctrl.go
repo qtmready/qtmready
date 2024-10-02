@@ -217,6 +217,13 @@ func (base *BaseCtrl) refresh_branches(ctx workflow.Context) {
 	base.set_branches(ctx, branches)
 }
 
+func (base *BaseCtrl) save_event(ctx workflow.Context, event RepoEvent) {
+	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
+	ctx = workflow.WithActivityOptions(ctx, opts)
+
+	_ = base.do(ctx, "save_event", base.activities.SaveRepoEvent, event, nil)
+}
+
 // log creates a new logger for the current action.
 func (base *BaseCtrl) log(ctx workflow.Context, action string) *RepoIOWorkflowLogger {
 	return NewRepoIOWorkflowLogger(ctx, base.repo, base.kind, base.branch(ctx), action)
@@ -240,7 +247,7 @@ func (base *BaseCtrl) do(ctx workflow.Context, action string, activity, payload,
 }
 
 // TODO: @asgr - need tp refine.
-func (base *BaseCtrl) do_child(ctx workflow.Context, action, w_id string, fn, payload any, keyvals ...any) error {
+func (base *BaseCtrl) child(ctx workflow.Context, action, w_id string, fn, payload any, keyvals ...any) error {
 	logger := base.log(ctx, action)
 	logger.Info("init", keyvals...)
 

@@ -1,6 +1,6 @@
 // Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2024.
 //
-// Functional Source License, Version 1.1, Apache 2.0 Future License
+// # Functional Source License, Version 1.1, Apache 2.0 Future License
 //
 // We hereby irrevocably grant you an additional license to use the Software under the Apache License, Version 2.0 that
 // is effective on the second anniversary of the date we make the Software available. On or after that date, you may use
@@ -9,14 +9,13 @@
 // Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
 // the License.
 //
-// You may obtain a copy of the License at
+// # You may obtain a copy of the License at
 //
 // http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
-
 package code
 
 import (
@@ -31,13 +30,27 @@ import (
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
 type (
+	// Activities defines an interface for repository-related actions.
 	Activities struct{}
+
+	// RepoEvent defines an interface for repository events. It simplifies type operations by wrapping
+	// defs.Event[defs.EventPayload, defs.EventProvider].
+	RepoEvent interface {
+		Flatten() (db.Entity, error)
+		MarshalJSON() ([]byte, error)
+		UnmarshalJSON([]byte) error
+	}
 )
 
+// SignalBranch signals a branch workflow for the given repository.
+//
+// If the branch is the default branch, it signals the TrunkCtrl workflow.
+// Otherwise, it signals the BranchCtrl workflow.
 func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSignalBranchCtrlPayload) error {
 	args := make([]any, 0)
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
@@ -73,7 +86,9 @@ func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSigna
 	return err
 }
 
-// TODO - refine the logic.
+// SignalQueue signals a queue workflow for the given repository.
+//
+// It signals the QueueCtrl workflow with the repository, branch, and a serialized queue state.
 func (a *Activities) SignalQueue(ctx context.Context, payload *defs.RepoIOSignalQueueCtrlPayload) error {
 	args := make([]any, 0)
 	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
@@ -102,9 +117,11 @@ func (a *Activities) SignalQueue(ctx context.Context, payload *defs.RepoIOSignal
 	return err
 }
 
-// CloneBranch clones a repository branch at the temporary location, as specified by the payload.
-// It uses the RepoIO interface to get the url with the oauth token in it.
-// If an error occurs retrieving the clone URL, it is returned.
+// CloneBranch clones a repository branch to a temporary location.
+//
+// It retrieves the clone URL, including an OAuth token, using the RepoIO interface.
+//
+// If an error occurs while retrieving the clone URL, it is returned.
 func (a *Activities) CloneBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
 	url, err := kernel.Instance().RepoIO(payload.Repo.Provider).TokenizedCloneURL(ctx, payload.Info)
 	if err != nil {
@@ -132,7 +149,8 @@ func (a *Activities) CloneBranch(ctx context.Context, payload *defs.RepoIOCloneP
 }
 
 // FetchBranch fetches the given branch from the origin.
-// TODO: right now this fetches the default branch but we need to make it generic.
+//
+// TODO: currently fetches the default branch, but should be made generic.
 func (a Activities) FetchBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
 	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "fetch", "origin", payload.Repo.DefaultBranch) //nolint
 
@@ -145,7 +163,9 @@ func (a Activities) FetchBranch(ctx context.Context, payload *defs.RepoIOClonePa
 }
 
 // RebaseAtCommit attempts to rebase the repository at the given commit.
-// If the rebase fails, it returns the SHA and error message of the failed commit.
+//
+// It returns the SHA and error message of the failed commit if the rebase fails.
+//
 // If the rebase is in progress, it returns an InProgress flag.
 func (a *Activities) RebaseAtCommit(ctx context.Context, payload *defs.RepoIOClonePayload) (*defs.RepoIORebaseAtCommitResponse, error) {
 	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "rebase", payload.Push.After) // nolint
@@ -186,6 +206,7 @@ func (a *Activities) RebaseAtCommit(ctx context.Context, payload *defs.RepoIOClo
 }
 
 // Push pushes the contents of the repository at the given path to the remote.
+//
 // If force is true, the push will be forced (--force).
 func (a *Activities) Push(ctx context.Context, payload *defs.RepoIOPushBranchPayload) error {
 	args := []string{"-C", payload.Path, "push", "origin", payload.Branch}
@@ -203,8 +224,9 @@ func (a *Activities) Push(ctx context.Context, payload *defs.RepoIOPushBranchPay
 	return nil
 }
 
-// RemoveClonedAtPath removes the repo that was cloned at the given path.
-// If the path does not exist, RemoveClonedAtPath will return a nil error.
+// RemoveClonedAtPath removes the repository cloned at the given path.
+//
+// If the path does not exist, RemoveClonedAtPath returns a nil.
 func (a *Activities) RemoveClonedAtPath(ctx context.Context, path string) error {
 	if err := os.RemoveAll(path); err != nil {
 		return err
@@ -213,7 +235,9 @@ func (a *Activities) RemoveClonedAtPath(ctx context.Context, path string) error 
 	return nil
 }
 
-// Call the auth TeamUserIO to get team user by user_login_id.
+// GetByLogin retrieves a team user by their login ID.
+//
+// It calls the auth TeamUserIO to retrieve the user.
 func (a *Activities) GetByLogin(ctx context.Context, id string) (*auth.TeamUser, error) {
 	team_user, err := auth.TeamUserIO().GetByLogin(ctx, id)
 	if err != nil {
@@ -221,4 +245,16 @@ func (a *Activities) GetByLogin(ctx context.Context, id string) (*auth.TeamUser,
 	}
 
 	return team_user, nil
+}
+
+// SaveRepoEvent persists a repository event to the database.
+//
+// It converts the event to a db.Entity using the Flatten method and saves it to the database.
+func (a *Activities) SaveRepoEvent(ctx context.Context, event RepoEvent) error {
+	flat, err := event.Flatten()
+	if err != nil {
+		return err
+	}
+
+	return db.Save(flat)
 }

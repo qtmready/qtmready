@@ -77,13 +77,21 @@ func (r *repoio) GetByCtrlID(ctx context.Context, ctrl_id string) (*defs.Repo, e
 
 // Save saves a repo to the database.
 //
-// Note: Always provide a pointer to the complete Repo object to avoid
-// creating a copy. The Save method will update the provided Repo object
-// with any changes made by the database.
+// Note: Always provide a pointer to the complete Repo object to avoid creating a copy. The Save method will update the
+// provided Repo object with any changes made by the database.
 //
 // Example:
 //
 //	repo, err := code.RepoIO().Save(ctx, repo)
 func (r *repoio) Save(ctx context.Context, repo *defs.Repo) (*defs.Repo, error) {
 	return repo, db.Save(repo)
+}
+
+func SaveRepoEvent[T defs.EventPayload, P defs.EventProvider](ctx context.Context, event defs.Event[T, P]) error {
+	flat, err := event.Flatten()
+	if err != nil {
+		return err
+	}
+
+	return db.Save(flat)
 }

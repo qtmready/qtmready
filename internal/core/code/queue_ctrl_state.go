@@ -498,7 +498,7 @@ func (s *QueueCtrlState) process(ctx workflow.Context, pr *defs.PullRequest) err
 	}
 
 	// TODO - signal ctrls
-	err := s.do_child(ctx, "process_pr", pr.Number.String(), PrCtrl, pr, nil)
+	err := s.child(ctx, "process_pr", pr.Number.String(), PrCtrl, pr, nil)
 	if err != nil {
 		return err
 	}
