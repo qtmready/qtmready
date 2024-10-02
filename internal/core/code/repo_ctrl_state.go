@@ -29,9 +29,9 @@ import (
 // RepoCtrlState defines the state for RepoWorkflows.RepoCtrl. It embeds base_ctrl to inherit common functionality.
 type (
 	RepoCtrlState struct {
-		*BaseState
-		triggers BranchTriggers
-		stash    StashedEvents[defs.RepoProvider]
+		*BaseState                                  // Embedded base state for common workflow logic.
+		triggers   BranchTriggers                   // Map of branch names to event IDs, used to track event dependencies.
+		stash      StashedEvents[defs.RepoProvider] // Storage for events that have no parent yet.
 	}
 )
 
@@ -41,17 +41,7 @@ func (state *RepoCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler 
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.Push, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
-
-		branch := BranchNameFromRef(event.Payload.Ref)
-		id, ok := state.triggers.get(event.Payload.Ref)
-
-		if ok {
-			event.SetParent(id)
-			state.signal_branch(ctx, branch, defs.RepoIOSignalPush, event)
-		} else {
-			state.log(ctx, "on_push").Warn("no parent id found, stashing ...", "event_id", event.ID)
-			state.stash.push(branch, event)
-		}
+		state.signal_or_stash(ctx, BranchNameFromRef(event.Payload.Ref), defs.RepoIOSignalPush, event)
 	}
 }
 
@@ -94,35 +84,32 @@ func (state *RepoCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
-
-		branch := event.Payload.HeadBranch
-		id, ok := state.triggers.get(branch)
-
-		if ok {
-			event.SetParent(id)
-			state.signal_branch(ctx, branch, defs.RepoIOSignalPullRequest, event)
-		} else {
-			state.log(ctx, "on_pr").Warn("no parent id found, stashing ...", "event_id", event.ID)
-			state.stash.push(branch, event)
-		}
+		state.signal_or_stash(ctx, event.Payload.HeadBranch, defs.RepoIOSignalPullRequest, event)
 	}
 }
 
+// on_label is a channel handler that processes label events for the repository. It receives a
+// RepoIOSignalPullRequestLabelPayload and signals the corresponding branch.
 func (state *RepoCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		label := &defs.Event[defs.PullRequestLabel, defs.RepoProvider]{}
-		state.rx(ctx, rx, label)
+		event := &defs.Event[defs.PullRequestLabel, defs.RepoProvider]{}
+		state.rx(ctx, rx, event)
+		state.signal_or_stash(ctx, event.Payload.Branch, defs.RepoIOSignalPullRequestLabel, event)
+	}
+}
 
-		branch := label.Payload.Branch
-		id, ok := state.triggers.get(branch)
-
-		if ok {
-			label.SetParent(id)
-			state.signal_branch(ctx, branch, defs.RepoIOSignalPullRequestLabel, label)
-		} else {
-			state.log(ctx, "on_label").Warn("no parent id found, stashing ...", "event_id", label.ID)
-			state.stash.push(branch, label)
-		}
+// signal_or_stash either sets the parent for the event and signals the branch, or stashes the event if no parent is
+// found.
+func (state *RepoCtrlState) signal_or_stash(
+	ctx workflow.Context, branch string, signal shared.WorkflowSignal, event RepoEvent[defs.RepoProvider],
+) {
+	if id, ok := state.triggers.get(branch); ok {
+		event.SetParent(id)
+		state.signal_branch(ctx, branch, signal, event)
+		state.persist(ctx, event)
+	} else {
+		state.log(ctx, "signal_or_stash").Warn("no parent id found, stashing ...")
+		state.stash.push(branch, event)
 	}
 }
 
