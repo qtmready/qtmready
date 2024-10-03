@@ -28,7 +28,6 @@ import (
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db"
-	"go.breu.io/quantm/internal/shared"
 )
 
 var (
@@ -527,7 +526,7 @@ func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, pl *GithubWorkflowR
 }
 
 // onCreateOrUpdateRepoActivityFuture handles post-processing after a repository is saved against an installation.
-func onCreateOrUpdateRepoActivityFuture(ctx workflow.Context, payload *Repo) shared.FutureHandler {
+func onCreateOrUpdateRepoActivityFuture(ctx workflow.Context, payload *Repo) defs.FutureHandler {
 	logger := workflow.GetLogger(ctx)
 	return func(f workflow.Future) { logger.Info("repository saved ...", "repo", payload.GithubID) }
 }
@@ -535,7 +534,7 @@ func onCreateOrUpdateRepoActivityFuture(ctx workflow.Context, payload *Repo) sha
 // onInstallationWebhookSignal handles webhook events for installation that is in progress.
 func onInstallationWebhookSignal(
 	ctx workflow.Context, installation *InstallationEvent, status *InstallationWorkflowStatus,
-) shared.ChannelHandler {
+) defs.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {
@@ -562,7 +561,7 @@ func onInstallationWebhookSignal(
 // onInstallationRequestSignal handles new http requests on an installation in progress.
 func onInstallationRequestSignal(
 	ctx workflow.Context, installation *CompleteInstallationSignal, status *InstallationWorkflowStatus,
-) shared.ChannelHandler {
+) defs.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
 
 	return func(channel workflow.ReceiveChannel, more bool) {

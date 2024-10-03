@@ -23,7 +23,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
-	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -34,7 +33,7 @@ type (
 )
 
 // on_push handles push events for the trunk.
-func (state *TrunkCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
+func (state *TrunkCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		push := &defs.Event[defs.Push, defs.RepoProvider]{} // Use Event type
 		state.rx(ctx, rx, push)
@@ -49,7 +48,7 @@ func (state *TrunkCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler
 	}
 }
 
-func (state *TrunkCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
+func (state *TrunkCtrlState) on_create_delete(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)

@@ -23,7 +23,6 @@ import (
 	"encoding/json"
 
 	"github.com/go-playground/validator/v10"
-	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/shared/queue"
 )
@@ -32,10 +31,6 @@ import (
 type (
 	// WorkflowSignal is a type alias to define the name of the workflow signal.
 	WorkflowSignal string
-
-	FutureHandler    func(workflow.Future)               // FutureHandler is the signature of the future handler for temporal.
-	ChannelHandler   func(workflow.ReceiveChannel, bool) // ChannelHandler is the signature of the channel handler for temporal.
-	CoroutineHandler func(workflow.Context)              // CoroutineHandler is the signature of the coroutine handler for temporal.
 
 	WorkflowOption = queue.WorkflowOptions
 )

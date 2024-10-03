@@ -51,7 +51,7 @@ type (
 // Event handlers
 
 // on_push handles push events for the branch.
-func (state *BranchCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.Push, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -73,7 +73,7 @@ func (state *BranchCtrlState) on_push(ctx workflow.Context) shared.ChannelHandle
 }
 
 // on_rebase handles rebase events for the branch.
-func (state *BranchCtrlState) on_rebase(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_rebase(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.Push, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -103,7 +103,7 @@ func (state *BranchCtrlState) on_rebase(ctx workflow.Context) shared.ChannelHand
 }
 
 // on_pr handles pull request events for the branch.
-func (state *BranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_pr(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -123,7 +123,7 @@ func (state *BranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler 
 
 // TODO - refine the logic.
 // on_label handles pull request label events.
-func (state *BranchCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_label(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		label := &defs.RepoIOSignalPullRequestPayload{}
 		state.rx(ctx, rx, label)
@@ -150,7 +150,7 @@ func (state *BranchCtrlState) on_label(ctx workflow.Context) shared.ChannelHandl
 }
 
 // on_create_delete handles branch creation and deletion events.
-func (state *BranchCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_create_delete(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)

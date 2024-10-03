@@ -23,7 +23,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
-	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -366,7 +365,7 @@ func (q *Queue) deserialize(ctx workflow.Context, members QueueMembers) {
 //	state := NewQueueCtrlState(ctx, repo, branch)
 //	add_handler := state.on_add(ctx)
 //	selector.AddReceive(add_channel, add_handler)
-func (s *QueueCtrlState) on_add(ctx workflow.Context) shared.ChannelHandler {
+func (s *QueueCtrlState) on_add(ctx workflow.Context) defs.ChannelHandler {
 	return func(c workflow.ReceiveChannel, more bool) {
 		payload := &defs.PullRequest{}
 
@@ -376,7 +375,7 @@ func (s *QueueCtrlState) on_add(ctx workflow.Context) shared.ChannelHandler {
 }
 
 // TODO - chnage the logic for on remove.
-func (s *QueueCtrlState) on_remove(ctx workflow.Context) shared.ChannelHandler {
+func (s *QueueCtrlState) on_remove(ctx workflow.Context) defs.ChannelHandler {
 	return func(c workflow.ReceiveChannel, more bool) {
 		payload := &defs.PullRequest{}
 
@@ -392,7 +391,7 @@ func (s *QueueCtrlState) on_remove(ctx workflow.Context) shared.ChannelHandler {
 //	state := NewQueueCtrlState(ctx, repo, branch)
 //	add_priority_handler := state.on_add_priority(ctx)
 //	selector.AddReceive(add_priority_channel, add_priority_handler)
-func (s *QueueCtrlState) on_add_priority(ctx workflow.Context) shared.ChannelHandler {
+func (s *QueueCtrlState) on_add_priority(ctx workflow.Context) defs.ChannelHandler {
 	return func(c workflow.ReceiveChannel, more bool) {
 		payload := &defs.PullRequest{}
 
@@ -408,7 +407,7 @@ func (s *QueueCtrlState) on_add_priority(ctx workflow.Context) shared.ChannelHan
 //	state := NewQueueCtrlState(ctx, repo, branch)
 //	promote_handler := state.on_promote(ctx)
 //	selector.AddReceive(promote_channel, promote_handler)
-func (s *QueueCtrlState) on_promote(ctx workflow.Context) shared.ChannelHandler {
+func (s *QueueCtrlState) on_promote(ctx workflow.Context) defs.ChannelHandler {
 	return func(c workflow.ReceiveChannel, more bool) {
 		payload := &defs.PullRequest{}
 
@@ -424,7 +423,7 @@ func (s *QueueCtrlState) on_promote(ctx workflow.Context) shared.ChannelHandler 
 //	state := NewQueueCtrlState(ctx, repo, branch)
 //	demote_handler := state.on_demote(ctx)
 //	selector.AddReceive(demote_channel, demote_handler)
-func (s *QueueCtrlState) on_demote(ctx workflow.Context) shared.ChannelHandler {
+func (s *QueueCtrlState) on_demote(ctx workflow.Context) defs.ChannelHandler {
 	return func(c workflow.ReceiveChannel, more bool) {
 		payload := &defs.PullRequest{}
 

@@ -19,7 +19,9 @@
 
 package defs
 
-import "go.breu.io/quantm/internal/db"
+import (
+	"go.breu.io/quantm/internal/db"
+)
 
 type (
 	// MessageIOPayload represents the base payload for all message-related events.

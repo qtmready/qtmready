@@ -24,6 +24,7 @@ import (
 
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -87,7 +88,7 @@ func (s *MutexState) on_prepare(_ workflow.Context) func(workflow.Context) {
 //
 // This signal originates from a client attempting to acquire the lock. The handler sets the current handler and
 // timeout, then signals the external workflow that the lock has been acquired.
-func (s *MutexState) on_acquire(ctx workflow.Context) shared.ChannelHandler {
+func (s *MutexState) on_acquire(ctx workflow.Context) defs.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
 		rx := &Handler{}
 		channel.Receive(ctx, rx)
@@ -108,7 +109,7 @@ func (s *MutexState) on_acquire(ctx workflow.Context) shared.ChannelHandler {
 //
 // This signal originates from a client that currently holds the lock and wants to release it. The handler releases
 // the lock, removes the client from the pool, and signals the external workflow that the lock has been released.
-func (s *MutexState) on_release(ctx workflow.Context) shared.ChannelHandler {
+func (s *MutexState) on_release(ctx workflow.Context) defs.ChannelHandler {
 	return func(channel workflow.ReceiveChannel, more bool) {
 		rx := &Handler{}
 		channel.Receive(ctx, rx)
@@ -133,7 +134,7 @@ func (s *MutexState) on_release(ctx workflow.Context) shared.ChannelHandler {
 //
 // This is triggered internally when a lock timeout occurs. The handler moves the timed-out client from the pool to
 // the orphan pool. It then transitions the mutex to the Timeout state.
-func (s *MutexState) on_abort(ctx workflow.Context) shared.FutureHandler {
+func (s *MutexState) on_abort(ctx workflow.Context) defs.FutureHandler {
 	return func(future workflow.Future) {
 		s.logger.info(s.Handler.Info.WorkflowExecution.ID, "abort", "init")
 
@@ -184,7 +185,7 @@ func (s *MutexState) on_cleanup(_ workflow.Context, fn workflow.Settable) func(w
 //
 // This is triggered internally when the workflow is being shut down. The handler stops persisting the state and
 // logs the termination event.
-func (s *MutexState) on_terminate(ctx workflow.Context) shared.FutureHandler {
+func (s *MutexState) on_terminate(ctx workflow.Context) defs.FutureHandler {
 	return func(future workflow.Future) {
 		rx := &Handler{}
 		_ = future.Get(ctx, rx)
