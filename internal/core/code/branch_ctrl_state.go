@@ -316,21 +316,22 @@ func (state *BranchCtrlState) warn_complexity(
 	ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider], complexity *defs.RepoIOChanges) {
 	ctx = shared.WithDefaultActivityContext(ctx)
 
-	lc := &defs.LineChanges{
+	change := &defs.LineChanges{
 		Added:     complexity.Added,
 		Removed:   complexity.Removed,
 		Delta:     complexity.Delta,
 		Threshold: state.repo.Threshold,
 	}
 
-	lexceed := comm.NewLineExceedEvent(event, BranchNameFromRef(event.Payload.Ref), lc)
+	excess := comm.NewLineExceedEvent(event, BranchNameFromRef(event.Payload.Ref), change)
 	if state.author != nil {
-		lexceed.SetUserID(state.author.UserID)
+		excess.SetUserID(state.author.UserID)
 	}
 
 	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
 
-	_ = state.do(ctx, "warn_complexity", io.NotifyLinesExceed, lexceed, nil)
+	_ = state.do(ctx, "warn_complexity", io.NotifyLinesExceed, excess, nil)
+	state.persist(ctx, event)
 }
 
 // warn_stale sends a warning message if the branch is stale.
@@ -358,6 +359,7 @@ func (state *BranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Ev
 	state.log(ctx, "warn_conflict").Info("message", "payload", conflict, "event", event)
 
 	_ = state.do(ctx, "warn_merge_conflict", io.NotifyMergeConflict, conflict, nil)
+	state.persist(ctx, event)
 }
 
 // NewBranchCtrlState creates a new RepoIOBranchCtrlState instance.
