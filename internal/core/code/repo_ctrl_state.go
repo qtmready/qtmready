@@ -113,11 +113,10 @@ func (state *RepoCtrlState) signal_or_stash(
 	}
 }
 
-// NewRepoCtrlState creates a new RepoCtrlState with the specified repo. It initializes the embedded base_ctrl using
-// NewBaseCtrl.
+// NewRepoCtrlState creates a new RepoCtrlState with the specified repo. Embedded BaseState is initialized using NewBaseState.
 func NewRepoCtrlState(ctx workflow.Context, repo *defs.Repo) *RepoCtrlState {
 	return &RepoCtrlState{
-		BaseState: NewBaseCtrl(ctx, "repo_ctrl", repo),
+		BaseState: NewBaseState(ctx, "repo_ctrl", repo),
 		triggers:  make(BranchTriggers),
 		stash:     make(StashedEvents[defs.RepoProvider]),
 	}

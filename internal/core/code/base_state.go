@@ -306,8 +306,8 @@ func (base *BaseState) call_async(ctx workflow.Context, action string, fn CallAs
 	return future
 }
 
-// NewBaseCtrl creates a new base control instance and refreshes repository information and branches.
-func NewBaseCtrl(ctx workflow.Context, kind string, repo *defs.Repo) *BaseState {
+// NewBaseState creates a new base control instance and refreshes repository information and branches.
+func NewBaseState(ctx workflow.Context, kind string, repo *defs.Repo) *BaseState {
 	base := &BaseState{
 		kind:       kind,
 		activities: &Activities{},

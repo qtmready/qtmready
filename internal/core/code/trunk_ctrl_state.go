@@ -64,9 +64,9 @@ func (state *TrunkCtrlState) on_create_delete(ctx workflow.Context) shared.Chann
 	}
 }
 
-func NewTrunkState(ctx workflow.Context, repo *defs.Repo) *TrunkCtrlState {
+func NewTrunkCtrlState(ctx workflow.Context, repo *defs.Repo) *TrunkCtrlState {
 	return &TrunkCtrlState{
-		BaseState:     NewBaseCtrl(ctx, "trunk_ctrl", repo),
+		BaseState:     NewBaseState(ctx, "trunk_ctrl", repo),
 		active_branch: repo.DefaultBranch,
 	}
 }
