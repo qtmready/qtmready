@@ -5,13 +5,12 @@ import (
 )
 
 type (
-	// Signal represents a signal that can be sent to a workflow. It enforces a consistent type for all workflow signals,
-	// promoting code clarity and maintainability. It implements json.Marshaler and json.Unmarshaler interfaces,
-	// enabling easy serialization and deserialization for communication with Temporal and other systems.
+	// Signal is a string alias intended for defining groups of workflow signals, for example, "on_push", "on_pr", etc.
+	// It ensures consistency and code clarity. The Signal type provides methods for conversion and serialization,
+	// promoting good developer experience.
 	//
-	// It is recommended that each package alias this type for local constants, e.g.:
-	//
-	//  type Signal defs.Signal
+	// NOTE: Should we rename this type to TextField or something similar? "Signal" is a bit specific, and the helper
+	// methods for conversion and serialization can be used whenever we need to define a group of constants.
 	Signal string
 )
 
