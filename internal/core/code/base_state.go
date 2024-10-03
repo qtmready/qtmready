@@ -28,7 +28,6 @@ import (
 
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
-	"go.breu.io/quantm/internal/shared"
 )
 
 const (
@@ -160,7 +159,7 @@ func (base *BaseState) remove_branch(ctx workflow.Context, branch string) {
 }
 
 // signal_branch sends a signal to a specific branch.
-func (base *BaseState) signal_branch(ctx workflow.Context, branch string, signal shared.WorkflowSignal, payload any) {
+func (base *BaseState) signal_branch(ctx workflow.Context, branch string, signal defs.Signal, payload any) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
@@ -180,7 +179,7 @@ func (base *BaseState) signal_branch(ctx workflow.Context, branch string, signal
 
 // TODO - refine the logic.
 // signal_branch sends a signal to a specific branch.
-func (base *BaseState) signal_queue(ctx workflow.Context, branch string, signal shared.WorkflowSignal, payload any) {
+func (base *BaseState) signal_queue(ctx workflow.Context, branch string, signal defs.Signal, payload any) {
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 

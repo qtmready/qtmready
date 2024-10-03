@@ -22,9 +22,8 @@ package mutex
 import (
 	"time"
 
+	"go.breu.io/quantm/internal/core/defs"
 	"go.temporal.io/sdk/workflow"
-
-	"go.breu.io/quantm/internal/shared"
 )
 
 const (
@@ -32,15 +31,15 @@ const (
 )
 
 const (
-	WorkflowSignalPrepare        shared.WorkflowSignal = "mutex__prepare"
-	WorkflowSignalAcquire        shared.WorkflowSignal = "mutex__acquire"
-	WorkflowSignalLocked         shared.WorkflowSignal = "mutex__locked"
-	WorkflowSignalRelease        shared.WorkflowSignal = "mutex__release"
-	WorkflowSignalReleased       shared.WorkflowSignal = "mutex__released"
-	WorkflowSignalCleanup        shared.WorkflowSignal = "mutex__cleanup"
-	WorkflowSignalCleanupDone    shared.WorkflowSignal = "mutex__cleanup_done"
-	WorkflowSignalCleanupDoneAck shared.WorkflowSignal = "mutex__cleanup_done_ack"
-	WorkflowSignalShutDown       shared.WorkflowSignal = "mutex__shutdown"
+	WorkflowSignalPrepare        defs.Signal = "mutex__prepare"
+	WorkflowSignalAcquire        defs.Signal = "mutex__acquire"
+	WorkflowSignalLocked         defs.Signal = "mutex__locked"
+	WorkflowSignalRelease        defs.Signal = "mutex__release"
+	WorkflowSignalReleased       defs.Signal = "mutex__released"
+	WorkflowSignalCleanup        defs.Signal = "mutex__cleanup"
+	WorkflowSignalCleanupDone    defs.Signal = "mutex__cleanup_done"
+	WorkflowSignalCleanupDoneAck defs.Signal = "mutex__cleanup_done_ack"
+	WorkflowSignalShutDown       defs.Signal = "mutex__shutdown"
 )
 
 type (

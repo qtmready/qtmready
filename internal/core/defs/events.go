@@ -98,7 +98,7 @@ type (
 
 	// PullRequestLabel represents a pull request label.
 	PullRequestLabel struct {
-		Name              string    `json:"name"`                // Name is the pull request label name.
+		Name              string    `json:"name"`                // Name is the text of the label e.g. "ready", "fix" etc.
 		PullRequestNumber db.Int64  `json:"pull_request_number"` // PullRequestNumber is the pull request number.
 		Branch            string    `json:"branch"`              // Branch is the branch the label belongs to.
 		Timestamp         time.Time `json:"timestamp"`           // Timestamp is the timestamp of the label.

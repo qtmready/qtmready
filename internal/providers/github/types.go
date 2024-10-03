@@ -31,7 +31,6 @@ import (
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db"
-	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -292,13 +291,13 @@ func (e WebhookEvent) String() string { return string(e) }
 
 // Workflow signal types.
 const (
-	WorkflowSignalInstallationEvent    shared.WorkflowSignal = "installation_event"
-	WorkflowSignalCompleteInstallation shared.WorkflowSignal = "complete_installation"
-	WorkflowSignalPullRequestProcessed shared.WorkflowSignal = "pull_request_processed"
-	WorkflowSignalArtifactReady        shared.WorkflowSignal = "artifact_ready"
-	WorkflowSignalActionResult         shared.WorkflowSignal = "action_result"
-	WorkflowSignalPullRequestLabeled   shared.WorkflowSignal = "pull_request_labeled"
-	WorkflowSignalPushEvent            shared.WorkflowSignal = "push_event"
+	WorkflowSignalInstallationEvent    defs.Signal = "installation_event"
+	WorkflowSignalCompleteInstallation defs.Signal = "complete_installation"
+	WorkflowSignalPullRequestProcessed defs.Signal = "pull_request_processed"
+	WorkflowSignalArtifactReady        defs.Signal = "artifact_ready"
+	WorkflowSignalActionResult         defs.Signal = "action_result"
+	WorkflowSignalPullRequestLabeled   defs.Signal = "pull_request_labeled"
+	WorkflowSignalPushEvent            defs.Signal = "push_event"
 )
 
 type (

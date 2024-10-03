@@ -20,8 +20,6 @@
 package shared
 
 import (
-	"encoding/json"
-
 	"github.com/go-playground/validator/v10"
 
 	"go.breu.io/quantm/internal/shared/queue"
@@ -29,9 +27,6 @@ import (
 
 // workflow related shared types and contants.
 type (
-	// WorkflowSignal is a type alias to define the name of the workflow signal.
-	WorkflowSignal string
-
 	WorkflowOption = queue.WorkflowOptions
 )
 
@@ -54,28 +49,6 @@ const (
 	MutexQueue     queue.Name = "mutex"     // mutex workflow queue
 	WebSocketQueue queue.Name = "websocket" // websocket workflow queue
 )
-
-/*
- * Methods for WorkflowSignal.
- */
-func (w WorkflowSignal) String() string { return string(w) }
-
-// MarshalJSON implements the json.Marshaler interface for WorkflowSignal.
-func (w WorkflowSignal) MarshalJSON() ([]byte, error) {
-	return json.Marshal(string(w))
-}
-
-// UnmarshalJSON implements the json.Unmarshaler interface for WorkflowSignal.
-func (w *WorkflowSignal) UnmarshalJSON(data []byte) error {
-	var signal string
-	if err := json.Unmarshal(data, &signal); err != nil {
-		return err
-	}
-
-	*w = WorkflowSignal(signal)
-
-	return nil
-}
 
 type (
 	// EchoValidator is a wrapper for the instantiated validator.

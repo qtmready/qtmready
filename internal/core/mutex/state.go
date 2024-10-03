@@ -25,7 +25,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
-	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -55,7 +54,7 @@ const (
 )
 
 const (
-	WorkflowQueryState shared.WorkflowSignal = "query__mutex__state"
+	WorkflowQueryState defs.Signal = "query__mutex__state"
 )
 
 // set_query_state sets a query handler for the mutex workflow.

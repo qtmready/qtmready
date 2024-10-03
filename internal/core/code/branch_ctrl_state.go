@@ -121,28 +121,17 @@ func (state *BranchCtrlState) on_pr(ctx workflow.Context) defs.ChannelHandler {
 	}
 }
 
-// TODO - refine the logic.
 // on_label handles pull request label events.
 func (state *BranchCtrlState) on_label(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		label := &defs.RepoIOSignalPullRequestPayload{}
-		state.rx(ctx, rx, label)
+		event := &defs.Event[defs.PullRequestLabel, defs.RepoProvider]{}
+		state.rx(ctx, rx, event)
 
-		switch label.Action {
-		case "labeled":
-			// TODO - need to finalize the Lable Names and logic.
-			switch *label.LabelName {
-			case "qmerge":
-				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueAdd, label)
-			case "priority-qmerge":
-				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueAddPriority, label)
-			case "remove":
-				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueRemove, label)
-			default:
-				return
-			}
-		case "unlabeled":
-			state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueRemove, label)
+		switch event.Payload.Name {
+		case "qmerge":
+			state.signal_queue(ctx, event.Payload.Branch, defs.RepoIOSignalQueueAdd, event.Payload)
+		case "priority-qmerge":
+			state.signal_queue(ctx, event.Payload.Branch, defs.RepoIOSignalQueueAddPriority, event.Payload)
 		default:
 			return
 		}

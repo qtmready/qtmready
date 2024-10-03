@@ -351,7 +351,7 @@ func (a *Activities) GetCoreRepoByCtrlID(ctx context.Context, id string) (*defs.
 }
 
 // SignalCoreRepoCtrl signals the core repository control workflow with the given signal and payload.
-func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *defs.Repo, signal shared.WorkflowSignal, payload any) error {
+func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *defs.Repo, signal defs.Signal, payload any) error {
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
 		WorkflowOptions(

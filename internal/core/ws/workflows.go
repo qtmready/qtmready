@@ -22,16 +22,15 @@ package ws
 import (
 	"time"
 
+	"go.breu.io/quantm/internal/core/defs"
 	"go.temporal.io/sdk/workflow"
-
-	"go.breu.io/quantm/internal/shared"
 )
 
 const (
-	WorkflowSignalAddUser     shared.WorkflowSignal = "orchestrate__add_user"
-	WorkflowSignalRemoveUser  shared.WorkflowSignal = "orchestrate__remove_user"
-	WorkflowSignalFlushQueue  shared.WorkflowSignal = "orchestrate__flush_queue"
-	WorkflowSignalWorkerAdded shared.WorkflowSignal = "orchestrate__worker_added"
+	WorkflowSignalAddUser     defs.Signal = "orchestrate__add_user"
+	WorkflowSignalRemoveUser  defs.Signal = "orchestrate__remove_user"
+	WorkflowSignalFlushQueue  defs.Signal = "orchestrate__flush_queue"
+	WorkflowSignalWorkerAdded defs.Signal = "orchestrate__worker_added"
 
 	QueryGetUserQueue = "get_user_queue"
 )

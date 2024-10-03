@@ -23,7 +23,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
-	"go.breu.io/quantm/internal/shared"
 )
 
 // RepoCtrlState defines the state for RepoWorkflows.RepoCtrl. It embeds base_ctrl to inherit common functionality.
@@ -111,7 +110,7 @@ func (state *RepoCtrlState) on_label(ctx workflow.Context) defs.ChannelHandler {
 // signal_or_stash either sets the parent for the event and signals the branch, or stashes the event if no parent is
 // found.
 func (state *RepoCtrlState) signal_or_stash(
-	ctx workflow.Context, branch string, signal shared.WorkflowSignal, event RepoEvent[defs.RepoProvider],
+	ctx workflow.Context, branch string, signal defs.Signal, event RepoEvent[defs.RepoProvider],
 ) {
 	if id, ok := state.triggers.get(branch); ok {
 		event.SetParent(id)
