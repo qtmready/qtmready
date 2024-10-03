@@ -66,12 +66,20 @@ func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.Channe
 					for _, each := range events {
 						each.SetParent(event.ID)
 						state.signal_branch(ctx, event.Payload.Ref, defs.RepoIOSignalPush, each)
+						state.persist(ctx, each)
 					}
 				} else {
 					state.log(ctx, "on_create_delete").Warn("no stashed events found.")
 				}
 			} else if event.Context.Action == defs.EventActionDeleted {
 				state.remove_branch(ctx, event.Payload.Ref)
+
+				parent, ok := state.triggers.get(event.Payload.Ref)
+				if ok {
+					event.SetParent(parent)
+					state.persist(ctx, event)
+				}
+
 				state.triggers.del(event.Payload.Ref)
 			}
 		}
