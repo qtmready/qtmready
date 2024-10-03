@@ -165,7 +165,13 @@ func Save[T Entity](entity T) error {
 //	user := User{Email: "user@example.com"}
 //	err := db.Create(&user)
 func Create[T Entity](entity T) error {
+	now := time.Now()
+
 	pk, _ := NewUUID()
+
+	_set(entity, "CreatedAt", now)
+	_set(entity, "UpdatedAt", now)
+
 	return CreateWithID(entity, pk)
 }
 
@@ -185,11 +191,7 @@ func Create[T Entity](entity T) error {
 //	user.ID, _ = db.NewUUID()
 //	err := db.CreateWithID(&user, user.ID)
 func CreateWithID[T Entity](entity T, pk gocql.UUID) error {
-	now := time.Now()
-
 	_set(entity, "ID", pk)
-	_set(entity, "CreatedAt", now)
-	_set(entity, "UpdatedAt", now)
 
 	if err := entity.PreCreate(); err != nil {
 		return err

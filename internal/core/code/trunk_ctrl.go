@@ -32,7 +32,7 @@ import (
 //   - push
 //   - create_delete
 func TrunkCtrl(ctx workflow.Context, repo *defs.Repo) error {
-	state := NewTrunkState(ctx, repo)
+	state := NewTrunkCtrlState(ctx, repo)
 	selector := workflow.NewSelector(ctx)
 
 	// channels

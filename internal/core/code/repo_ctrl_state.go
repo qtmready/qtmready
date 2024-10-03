@@ -26,36 +26,28 @@ import (
 	"go.breu.io/quantm/internal/shared"
 )
 
-// RepoCtrlState defines the state for RepoWorkflows.RepoCtrl.
-// It embeds base_ctrl to inherit common functionality.
+// RepoCtrlState defines the state for RepoWorkflows.RepoCtrl. It embeds base_ctrl to inherit common functionality.
 type (
 	RepoCtrlState struct {
-		*BaseCtrl
-		triggers BranchTriggers
+		*BaseState                                  // Embedded base state for common workflow logic.
+		triggers   BranchTriggers                   // Map of branch names to event IDs, used to track event dependencies.
+		stash      StashedEvents[defs.RepoProvider] // Storage for events that have no parent yet.
 	}
 )
 
-// on_push is a channel handler that processes push events for the repository.
-// It receives a RepoIOSignalPushPayload and signals the corresponding branch.
+// on_push is a channel handler that processes push events for the repository. It receives a RepoIOSignalPushPayload and
+// signals the corresponding branch.
 func (state *RepoCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		push := &defs.Event[defs.Push, defs.RepoProvider]{}
-		state.rx(ctx, rx, push)
-
-		id, ok := state.triggers.get(push.Payload.Ref)
-		if ok {
-			push.SetParent(id)
-		} else {
-			state.log(ctx, "on_push").Warn("unable to set parent id.")
-		}
-
-		state.signal_branch(ctx, BranchNameFromRef(push.Payload.Ref), defs.RepoIOSignalPush, push)
+		event := &defs.Event[defs.Push, defs.RepoProvider]{}
+		state.rx(ctx, rx, event)
+		state.signal_or_stash(ctx, BranchNameFromRef(event.Payload.Ref), defs.RepoIOSignalPush, event)
 	}
 }
 
-// on_create_delete is a channel handler that processes create or delete events for the repository.
-// It receives a defs.Event[defs.BranchOrTag, defs.RepoProvider], signals the corresponding branch,
-// and updates the branch list in the state.
+// on_create_delete is a channel handler that processes create or delete events for the repository. It receives a
+// defs.Event[defs.BranchOrTag, defs.RepoProvider], signals the corresponding branch, and updates the branch list in the
+// state.
 func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
@@ -68,6 +60,16 @@ func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.Channe
 			if event.Context.Action == defs.EventActionCreated {
 				state.add_branch(ctx, event.Payload.Ref)
 				state.triggers.add(event.Payload.Ref, event.ID)
+
+				events, ok := state.stash.all(event.Payload.Ref)
+				if ok {
+					for _, each := range events {
+						each.SetParent(event.ID)
+						state.signal_branch(ctx, event.Payload.Ref, defs.RepoIOSignalPush, each)
+					}
+				} else {
+					state.log(ctx, "on_create_delete").Warn("no stashed events found.")
+				}
 			} else if event.Context.Action == defs.EventActionDeleted {
 				state.remove_branch(ctx, event.Payload.Ref)
 				state.triggers.del(event.Payload.Ref)
@@ -76,45 +78,46 @@ func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.Channe
 	}
 }
 
-// on_pr is a channel handler that processes pull request events for the repository.
-// It receives a RepoIOSignalPullRequestPayload and signals the corresponding branch.
+// on_pr is a channel handler that processes pull request events for the repository. It receives a
+// RepoIOSignalPullRequestPayload and signals the corresponding branch.
 func (state *RepoCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
-
-		id, ok := state.triggers.get(event.Payload.HeadBranch)
-		if ok {
-			event.SetParent(id)
-		} else {
-			state.log(ctx, "on_pr").Warn("unable to set parent id.")
-		}
-
-		state.signal_branch(ctx, event.Payload.HeadBranch, defs.RepoIOSignalPullRequest, event)
+		state.signal_or_stash(ctx, event.Payload.HeadBranch, defs.RepoIOSignalPullRequest, event)
 	}
 }
 
+// on_label is a channel handler that processes label events for the repository. It receives a
+// RepoIOSignalPullRequestLabelPayload and signals the corresponding branch.
 func (state *RepoCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		label := &defs.Event[defs.PullRequestLabel, defs.RepoProvider]{}
-		state.rx(ctx, rx, label)
-
-		id, ok := state.triggers.get(label.Payload.Branch)
-		if ok {
-			label.SetParent(id)
-		} else {
-			state.log(ctx, "on_label").Warn("unable to set parent id.")
-		}
-
-		state.signal_branch(ctx, label.Payload.Branch, defs.RepoIOSignalPullRequestLabel, label)
+		event := &defs.Event[defs.PullRequestLabel, defs.RepoProvider]{}
+		state.rx(ctx, rx, event)
+		state.signal_or_stash(ctx, event.Payload.Branch, defs.RepoIOSignalPullRequestLabel, event)
 	}
 }
 
-// NewRepoCtrlState creates a new RepoCtrlState with the specified repo.
-// It initializes the embedded base_ctrl using NewBaseCtrl.
+// signal_or_stash either sets the parent for the event and signals the branch, or stashes the event if no parent is
+// found.
+func (state *RepoCtrlState) signal_or_stash(
+	ctx workflow.Context, branch string, signal shared.WorkflowSignal, event RepoEvent[defs.RepoProvider],
+) {
+	if id, ok := state.triggers.get(branch); ok {
+		event.SetParent(id)
+		state.signal_branch(ctx, branch, signal, event)
+		state.persist(ctx, event)
+	} else {
+		state.log(ctx, "signal_or_stash").Warn("no parent id found, stashing ...")
+		state.stash.push(branch, event)
+	}
+}
+
+// NewRepoCtrlState creates a new RepoCtrlState with the specified repo. Embedded BaseState is initialized using NewBaseState.
 func NewRepoCtrlState(ctx workflow.Context, repo *defs.Repo) *RepoCtrlState {
 	return &RepoCtrlState{
-		BaseCtrl: NewBaseCtrl(ctx, "repo_ctrl", repo),
-		triggers: make(BranchTriggers),
+		BaseState: NewBaseState(ctx, "repo_ctrl", repo),
+		triggers:  make(BranchTriggers),
+		stash:     make(StashedEvents[defs.RepoProvider]),
 	}
 }

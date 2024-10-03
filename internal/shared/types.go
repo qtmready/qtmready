@@ -17,7 +17,6 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package shared
 
 import (
@@ -43,46 +42,11 @@ type (
 		time.Duration
 	}
 
-	// PullRequestSignal is the sent to PR workflows to trigger a deployment.
-	PullRequestSignal struct {
-		RepoID           gocql.UUID
-		SenderWorkflowID string
-		TriggerID        Int64
-		Image            string
-		Digest           string
-		ImageRegistry    string //TODO: move registry enum generation to shared
-	}
-
 	FutureHandler    func(workflow.Future)               // FutureHandler is the signature of the future handler for temporal.
 	ChannelHandler   func(workflow.ReceiveChannel, bool) // ChannelHandler is the signature of the channel handler for temporal.
 	CoroutineHandler func(workflow.Context)              // CoroutineHandler is the signature of the coroutine handler for temporal.
 
 	WorkflowOption = queue.WorkflowOptions
-
-	CreateChangesetSignal struct {
-		RepoTableID gocql.UUID
-		RepoID      string
-		CommitID    string
-	}
-
-	PushEventSignal struct {
-		RefBranch      string
-		RepoProvider   string
-		RepoID         Int64
-		RepoName       string
-		RepoOwner      string
-		DefaultBranch  string
-		InstallationID Int64
-	}
-
-	MergeQueueSignal struct {
-		PullRequestID  Int64
-		InstallationID Int64
-		RepoOwner      string
-		RepoName       string
-		Branch         string
-		RepoProvider   string
-	}
 )
 
 var (
@@ -103,15 +67,6 @@ const (
 	ProvidersQueue queue.Name = "providers" // messaging related to providers
 	MutexQueue     queue.Name = "mutex"     // mutex workflow queue
 	WebSocketQueue queue.Name = "websocket" // websocket workflow queue
-)
-
-// workflow signal definitions.
-const (
-	WorkflowSignalDeploymentStarted WorkflowSignal = "deployment_trigger"
-	WorkflowSignalCreateChangeset   WorkflowSignal = "create_changeset"
-	WorkflowPushEvent               WorkflowSignal = "push_event_triggered"
-	MergeQueueStarted               WorkflowSignal = "merge_queue_trigger"
-	MergeTriggered                  WorkflowSignal = "merge_trigger"
 )
 
 /*

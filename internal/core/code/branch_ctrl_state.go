@@ -36,9 +36,9 @@ import (
 )
 
 type (
-	// RepoIOBranchCtrlState represents the state of a branch control workflow.
-	RepoIOBranchCtrlState struct {
-		*BaseCtrl                     // base_ctrl is the embedded struct with common functionality for repo controls.
+	// BranchCtrlState represents the state of a branch control workflow.
+	BranchCtrlState struct {
+		*BaseState                    // base_ctrl is the embedded struct with common functionality for repo controls.
 		created_at  time.Time         // created_at is the time when the branch was created.
 		last_commit *defs.Commit      // last_commit is the most recent commit on the branch.
 		pr          *defs.PullRequest // pr is the pull request associated with the branch, if any.
@@ -50,7 +50,7 @@ type (
 // Event handlers
 
 // on_push handles push events for the branch.
-func (state *RepoIOBranchCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.Push, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -72,7 +72,7 @@ func (state *RepoIOBranchCtrlState) on_push(ctx workflow.Context) shared.Channel
 }
 
 // on_rebase handles rebase events for the branch.
-func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_rebase(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.Push, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -102,7 +102,7 @@ func (state *RepoIOBranchCtrlState) on_rebase(ctx workflow.Context) shared.Chann
 }
 
 // on_pr handles pull request events for the branch.
-func (state *RepoIOBranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -122,7 +122,7 @@ func (state *RepoIOBranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHa
 
 // TODO - refine the logic.
 // on_label handles pull request label events.
-func (state *RepoIOBranchCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		label := &defs.RepoIOSignalPullRequestPayload{}
 		state.rx(ctx, rx, label)
@@ -149,7 +149,7 @@ func (state *RepoIOBranchCtrlState) on_label(ctx workflow.Context) shared.Channe
 }
 
 // on_create_delete handles branch creation and deletion events.
-func (state *RepoIOBranchCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -165,7 +165,7 @@ func (state *RepoIOBranchCtrlState) on_create_delete(ctx workflow.Context) share
 // Core methods
 
 // set_created_at sets the creation time of the branch.
-func (state *RepoIOBranchCtrlState) set_created_at(ctx workflow.Context, t time.Time) {
+func (state *BranchCtrlState) set_created_at(ctx workflow.Context, t time.Time) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 
@@ -173,26 +173,26 @@ func (state *RepoIOBranchCtrlState) set_created_at(ctx workflow.Context, t time.
 }
 
 // set_commit updates the last commit of the branch.
-func (state *RepoIOBranchCtrlState) set_commit(ctx workflow.Context, commit *defs.Commit) {
+func (state *BranchCtrlState) set_commit(ctx workflow.Context, commit *defs.Commit) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 	state.last_commit = commit
 }
 
 // set_pr sets the pull request associated with the branch.
-func (state *RepoIOBranchCtrlState) set_pr(ctx workflow.Context, pr *defs.PullRequest) {
+func (state *BranchCtrlState) set_pr(ctx workflow.Context, pr *defs.PullRequest) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 	state.pr = pr
 }
 
 // has_pr checks if the branch has an associated pull request.
-func (state *RepoIOBranchCtrlState) has_pr() bool {
+func (state *BranchCtrlState) has_pr() bool {
 	return state.pr != nil
 }
 
 // last_active returns the timestamp of the last activity on the branch.
-func (state *RepoIOBranchCtrlState) last_active() time.Time {
+func (state *BranchCtrlState) last_active() time.Time {
 	if state.last_commit == nil {
 		return state.created_at
 	}
@@ -201,7 +201,7 @@ func (state *RepoIOBranchCtrlState) last_active() time.Time {
 }
 
 // check_stale periodically checks if the branch is stale and sends warnings.
-func (state *RepoIOBranchCtrlState) check_stale(ctx workflow.Context) {
+func (state *BranchCtrlState) check_stale(ctx workflow.Context) {
 	workflow.Go(ctx, func(ctx workflow.Context) {
 		for state.is_active() {
 			state.interval.Next(ctx)
@@ -210,18 +210,18 @@ func (state *RepoIOBranchCtrlState) check_stale(ctx workflow.Context) {
 	})
 }
 
-func (state *RepoIOBranchCtrlState) has_author() bool {
+func (state *BranchCtrlState) has_author() bool {
 	return state.author != nil
 }
 
-func (state *RepoIOBranchCtrlState) set_author(ctx workflow.Context, owner *auth.TeamUser) {
+func (state *BranchCtrlState) set_author(ctx workflow.Context, owner *auth.TeamUser) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 
 	state.author = owner
 }
 
-func (state *RepoIOBranchCtrlState) refresh_author(ctx workflow.Context, id shared.Int64) {
+func (state *BranchCtrlState) refresh_author(ctx workflow.Context, id shared.Int64) {
 	ctx = shared.WithDefaultActivityContext(ctx)
 	user := &auth.TeamUser{}
 
@@ -233,7 +233,7 @@ func (state *RepoIOBranchCtrlState) refresh_author(ctx workflow.Context, id shar
 // Git operations
 
 // create_session creates a new workflow session for Git operations.
-func (state *RepoIOBranchCtrlState) create_session(ctx workflow.Context) workflow.Context {
+func (state *BranchCtrlState) create_session(ctx workflow.Context) workflow.Context {
 	state.log(ctx, "session").Info("init")
 
 	opts := &workflow.SessionOptions{ExecutionTimeout: 60 * time.Minute, CreationTimeout: 60 * time.Minute}
@@ -242,13 +242,13 @@ func (state *RepoIOBranchCtrlState) create_session(ctx workflow.Context) workflo
 	return session
 }
 
-func (state *RepoIOBranchCtrlState) finish_session(ctx workflow.Context) {
+func (state *BranchCtrlState) finish_session(ctx workflow.Context) {
 	workflow.CompleteSession(ctx)
 	state.log(ctx, "session").Info("completed")
 }
 
 // clone_at_commit clones the repository at a specific commit.
-func (state *RepoIOBranchCtrlState) clone_at_commit(ctx workflow.Context, push *defs.Push) *defs.RepoIOClonePayload {
+func (state *BranchCtrlState) clone_at_commit(ctx workflow.Context, push *defs.Push) *defs.RepoIOClonePayload {
 	ctx = shared.WithDefaultActivityContext(ctx)
 
 	cloned := &defs.RepoIOClonePayload{Repo: state.repo, Push: push, Info: state.info, Branch: state.branch(ctx)}
@@ -260,14 +260,14 @@ func (state *RepoIOBranchCtrlState) clone_at_commit(ctx workflow.Context, push *
 }
 
 // fetch_default_branch fetches the default branch for the cloned repository.
-func (state *RepoIOBranchCtrlState) fetch_default_branch(ctx workflow.Context, cloned *defs.RepoIOClonePayload) {
+func (state *BranchCtrlState) fetch_default_branch(ctx workflow.Context, cloned *defs.RepoIOClonePayload) {
 	ctx = shared.WithDefaultActivityContext(ctx)
 
 	_ = state.do(ctx, "fetch_branch", state.activities.FetchBranch, cloned, nil)
 }
 
 // rebase_at_commit rebases the branch at a specific commit.
-func (state *RepoIOBranchCtrlState) rebase_at_commit(ctx workflow.Context, cloned *defs.RepoIOClonePayload) error {
+func (state *BranchCtrlState) rebase_at_commit(ctx workflow.Context, cloned *defs.RepoIOClonePayload) error {
 	ctx = shared.WithIgnoredErrorsContext(ctx, "RebaseError")
 
 	response := &defs.RepoIORebaseAtCommitResponse{}
@@ -285,7 +285,7 @@ func (state *RepoIOBranchCtrlState) rebase_at_commit(ctx workflow.Context, clone
 }
 
 // push_branch pushes the rebased branch to the remote repository.
-func (state *RepoIOBranchCtrlState) push_branch(ctx workflow.Context, cloned *defs.RepoIOClonePayload) {
+func (state *BranchCtrlState) push_branch(ctx workflow.Context, cloned *defs.RepoIOClonePayload) {
 	ctx = shared.WithDefaultActivityContext(ctx)
 	payload := &defs.RepoIOPushBranchPayload{Branch: cloned.Branch, Path: cloned.Path, Force: true}
 
@@ -293,7 +293,7 @@ func (state *RepoIOBranchCtrlState) push_branch(ctx workflow.Context, cloned *de
 }
 
 // remove_cloned removes the cloned repository from the local filesystem.
-func (state *RepoIOBranchCtrlState) remove_cloned(ctx workflow.Context, cloned *defs.RepoIOClonePayload) {
+func (state *BranchCtrlState) remove_cloned(ctx workflow.Context, cloned *defs.RepoIOClonePayload) {
 	ctx = shared.WithDefaultActivityContext(ctx)
 
 	_ = state.do(ctx, "remove_cloned", state.activities.RemoveClonedAtPath, cloned.Path, nil)
@@ -304,7 +304,7 @@ func (state *RepoIOBranchCtrlState) remove_cloned(ctx workflow.Context, cloned *
 // calculate_complexity calculates the complexity of changes in a push event.
 //
 // TODO: we should compare the default branch head commit and the push's latest commit.
-func (state *RepoIOBranchCtrlState) calculate_complexity(ctx workflow.Context) *defs.RepoIOChanges {
+func (state *BranchCtrlState) calculate_complexity(ctx workflow.Context) *defs.RepoIOChanges {
 	changes := &defs.RepoIOChanges{}
 	detect := &defs.RepoIODetectChangesPayload{
 		InstallationID: state.info.InstallationID,
@@ -322,7 +322,7 @@ func (state *RepoIOBranchCtrlState) calculate_complexity(ctx workflow.Context) *
 }
 
 // warn_complexity sends a warning message if the complexity of changes exceeds the threshold.
-func (state *RepoIOBranchCtrlState) warn_complexity(
+func (state *BranchCtrlState) warn_complexity(
 	ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider], complexity *defs.RepoIOChanges) {
 	ctx = shared.WithDefaultActivityContext(ctx)
 
@@ -344,7 +344,7 @@ func (state *RepoIOBranchCtrlState) warn_complexity(
 }
 
 // warn_stale sends a warning message if the branch is stale.
-func (state *RepoIOBranchCtrlState) warn_stale(ctx workflow.Context) {
+func (state *BranchCtrlState) warn_stale(ctx workflow.Context) {
 	msg := comm.NewStaleBranchMessage(state.info, state.repo, state.branch(ctx))
 	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
 
@@ -354,7 +354,7 @@ func (state *RepoIOBranchCtrlState) warn_stale(ctx workflow.Context) {
 }
 
 // warn_conflict sends a warning message if there's a merge conflict during rebase.
-func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider]) {
+func (state *BranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider]) {
 	ctx = shared.WithDefaultActivityContext(ctx)
 
 	conflict := comm.NewMergeConflictEvent(event, state.pr.HeadBranch, state.pr.BaseBranch, state.last_commit)
@@ -371,9 +371,9 @@ func (state *RepoIOBranchCtrlState) warn_conflict(ctx workflow.Context, event *d
 }
 
 // NewBranchCtrlState creates a new RepoIOBranchCtrlState instance.
-func NewBranchCtrlState(ctx workflow.Context, repo *defs.Repo, branch string) (workflow.Context, *RepoIOBranchCtrlState) {
-	base := &RepoIOBranchCtrlState{
-		BaseCtrl:   NewBaseCtrl(ctx, "branch_ctrl", repo),
+func NewBranchCtrlState(ctx workflow.Context, repo *defs.Repo, branch string) (workflow.Context, *BranchCtrlState) {
+	base := &BranchCtrlState{
+		BaseState:  NewBaseState(ctx, "branch_ctrl", repo),
 		created_at: timers.Now(ctx),
 		interval:   timers.NewInterval(ctx, repo.StaleDuration.Duration),
 	}
