@@ -237,7 +237,8 @@ func (base *BaseState) persist(ctx workflow.Context, event RepoEvent[defs.RepoPr
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	ctx = workflow.WithActivityOptions(ctx, opts)
 
-	_ = base.do(ctx, "persist", base.activities.SaveRepoEvent, event, nil)
+	flat, _ := event.Flatten()
+	_ = base.do(ctx, "persist", base.activities.SaveRepoEvent, flat, nil)
 }
 
 // log creates a new logger for the current action.

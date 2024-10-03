@@ -242,11 +242,6 @@ func (a *Activities) GetByLogin(ctx context.Context, id string) (*auth.TeamUser,
 // SaveRepoEvent persists a repository event to the database.
 //
 // It converts the event to a db.Entity using the Flatten method and saves it to the database.
-func (a *Activities) SaveRepoEvent(ctx context.Context, event RepoEvent[defs.RepoProvider]) error {
-	flat, err := event.Flatten()
-	if err != nil {
-		return err
-	}
-
-	return db.Save(flat)
+func (a *Activities) SaveRepoEvent(ctx context.Context, event *defs.FlatEvent[defs.RepoProvider]) error {
+	return db.Save(event)
 }
