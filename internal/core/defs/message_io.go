@@ -20,7 +20,7 @@
 package defs
 
 import (
-	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/db"
 )
 
 type (
@@ -46,7 +46,7 @@ type (
 	// TODO: Revise this structure for improved clarity and functionality.
 	MessageIOLineExeededPayload struct {
 		MessageIOPayload *MessageIOPayload `json:"message_io_payload"` // Base payload for message events.
-		Threshold        shared.Int64      `json:"threshold"`          // Line limit threshold.
+		Threshold        db.Int64          `json:"threshold"`          // Line limit threshold.
 		DetectChanges    *RepoIOChanges    `json:"detect_changes"`     // Details of the detected changes.
 	}
 

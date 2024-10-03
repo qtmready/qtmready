@@ -23,7 +23,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
-	"go.breu.io/quantm/internal/shared"
 )
 
 // RepoCtrlState defines the state for RepoWorkflows.RepoCtrl. It embeds base_ctrl to inherit common functionality.
@@ -37,7 +36,7 @@ type (
 
 // on_push is a channel handler that processes push events for the repository. It receives a RepoIOSignalPushPayload and
 // signals the corresponding branch.
-func (state *RepoCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
+func (state *RepoCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.Push, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -48,7 +47,7 @@ func (state *RepoCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler 
 // on_create_delete is a channel handler that processes create or delete events for the repository. It receives a
 // defs.Event[defs.BranchOrTag, defs.RepoProvider], signals the corresponding branch, and updates the branch list in the
 // state.
-func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
+func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -90,7 +89,7 @@ func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.Channe
 
 // on_pr is a channel handler that processes pull request events for the repository. It receives a
 // RepoIOSignalPullRequestPayload and signals the corresponding branch.
-func (state *RepoCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
+func (state *RepoCtrlState) on_pr(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -100,7 +99,7 @@ func (state *RepoCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
 
 // on_label is a channel handler that processes label events for the repository. It receives a
 // RepoIOSignalPullRequestLabelPayload and signals the corresponding branch.
-func (state *RepoCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler {
+func (state *RepoCtrlState) on_label(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.PullRequestLabel, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -111,7 +110,7 @@ func (state *RepoCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler
 // signal_or_stash either sets the parent for the event and signals the branch, or stashes the event if no parent is
 // found.
 func (state *RepoCtrlState) signal_or_stash(
-	ctx workflow.Context, branch string, signal shared.WorkflowSignal, event RepoEvent[defs.RepoProvider],
+	ctx workflow.Context, branch string, signal defs.Signal, event RepoEvent[defs.RepoProvider],
 ) {
 	if id, ok := state.triggers.get(branch); ok {
 		event.SetParent(id)

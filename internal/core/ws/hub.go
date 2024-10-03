@@ -123,6 +123,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"go.temporal.io/sdk/worker"
 
+	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/shared"
 	"go.breu.io/quantm/internal/shared/queue"
 )
@@ -158,11 +159,11 @@ type (
 		//
 		// Example:
 		//  ctx := context.Background()
-		//  err := hub.Signal(ctx, shared.WorkflowSignalStart, payload)
+		//  err := hub.Signal(ctx, defs.WorkflowSignalStart, payload)
 		//  if err != nil {
 		//      log.Printf("Failed to send signal: %v", err)
 		//  }
-		Signal(ctx context.Context, signal shared.WorkflowSignal, payload any) error
+		Signal(ctx context.Context, signal defs.Signal, payload any) error
 
 		// Stop gracefully shuts down the hub and closes all client connections.
 		//
@@ -279,7 +280,7 @@ func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
 	return nil
 }
 
-func (h *hub) Signal(ctx context.Context, signal shared.WorkflowSignal, payload any) error {
+func (h *hub) Signal(ctx context.Context, signal defs.Signal, payload any) error {
 	opts := opts_hub()
 	_, err := shared.Temporal().
 		Client().

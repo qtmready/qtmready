@@ -32,7 +32,7 @@ import (
 	gh "github.com/google/go-github/v62/github"
 	"github.com/ilyakaznacheev/cleanenv"
 
-	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/db"
 )
 
 type (
@@ -141,7 +141,7 @@ func Instance() *Config {
 //
 // The function uses the GitHub Installation API to create a new client for the specified installation ID. It uses the
 // private key provided in the configuration to authenticate with the GitHub API.
-func (config *Config) GetClientForInstallationID(installationID shared.Int64) (*gh.Client, error) {
+func (config *Config) GetClientForInstallationID(installationID db.Int64) (*gh.Client, error) {
 	transport, err := ghinstallation.New(http.DefaultTransport, config.AppID, installationID.Int64(), []byte(config.PrivateKey))
 	if err != nil {
 		return nil, err

@@ -77,7 +77,7 @@ func (e *ServerHandler) SlackOauth(ctx echo.Context, params SlackOauthParams) er
 	return ctx.JSON(http.StatusOK, resp)
 }
 
-func _user(ctx echo.Context, response *slack.OAuthV2Response) (*auth.MessageProviderInfo, error) {
+func _user(ctx echo.Context, response *slack.OAuthV2Response) (*auth.MessageProviderUserInfo, error) {
 	userID, _ := gocql.ParseUUID(ctx.Get("user_id").(string))
 
 	teamuser := &auth.TeamUser{}
@@ -110,7 +110,7 @@ func _user(ctx echo.Context, response *slack.OAuthV2Response) (*auth.MessageProv
 		return nil, err
 	}
 
-	userinfo := auth.MessageProviderInfo{
+	userinfo := auth.MessageProviderUserInfo{
 		Slack: &auth.MessageProviderSlackUserInfo{
 			BotToken:       base64.StdEncoding.EncodeToString(encryptedBotToken),
 			UserToken:      base64.StdEncoding.EncodeToString(encryptedUserToken),

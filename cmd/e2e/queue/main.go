@@ -28,6 +28,7 @@ import (
 
 	"go.breu.io/quantm/internal/core/code"
 	"go.breu.io/quantm/internal/core/defs"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -55,7 +56,7 @@ func main() {
 	}
 
 	// Wrap time.Duration into shared.Duration
-	stale := shared.NewDuration(duration)
+	stale := db.NewDuration(duration)
 
 	repo := &defs.Repo{
 		CtrlID:          uuid(),

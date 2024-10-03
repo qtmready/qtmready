@@ -28,7 +28,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/table"
 
-	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/db"
 )
 
 // Event paylaods.
@@ -41,10 +41,10 @@ type (
 
 	// TODO - set the event payload.
 	LineChanges struct {
-		Added     shared.Int64 `json:"added"`     // Number of lines added in the commit.
-		Removed   shared.Int64 `json:"removed"`   // Number of lines removed in the commit.
-		Threshold shared.Int64 `json:"threshold"` // Set threshold for PR.
-		Delta     shared.Int64 `json:"delta"`     // Net change in lines (added - removed).
+		Added     db.Int64 `json:"added"`     // Number of lines added in the commit.
+		Removed   db.Int64 `json:"removed"`   // Number of lines removed in the commit.
+		Threshold db.Int64 `json:"threshold"` // Set threshold for PR.
+		Delta     db.Int64 `json:"delta"`     // Net change in lines (added - removed).
 	}
 
 	// Commit represents a git commit.
@@ -64,66 +64,66 @@ type (
 
 	// Push represents a git push.
 	Push struct {
-		Ref        string       `json:"ref"`        // Ref is the ref that was pushed to.
-		Before     string       `json:"before"`     // Before is the SHA of the commit before the push.
-		After      string       `json:"after"`      // After is the SHA of the commit after the push.
-		Repository string       `json:"repository"` // Repository is the repository that was pushed to.
-		SenderID   shared.Int64 `json:"sender_id"`  // SenderID is the id of the user who pushed the changes.
-		Commits    Commits      `json:"commits"`    // Commits is a list of commits that were pushed.
-		Timestamp  time.Time    `json:"timestamp"`  // Timestamp is the timestamp of the push.
+		Ref        string    `json:"ref"`        // Ref is the ref that was pushed to.
+		Before     string    `json:"before"`     // Before is the SHA of the commit before the push.
+		After      string    `json:"after"`      // After is the SHA of the commit after the push.
+		Repository string    `json:"repository"` // Repository is the repository that was pushed to.
+		SenderID   db.Int64  `json:"sender_id"`  // SenderID is the id of the user who pushed the changes.
+		Commits    Commits   `json:"commits"`    // Commits is a list of commits that were pushed.
+		Timestamp  time.Time `json:"timestamp"`  // Timestamp is the timestamp of the push.
 	}
 
 	// PullRequest represents a pull request.
 	PullRequest struct {
-		Number         shared.Int64 `json:"number"`                     // Number is the pull request number.
-		Title          string       `json:"title"`                      // Title is the pull request title.
-		Body           string       `json:"body"`                       // Body is the pull request body.
-		State          string       `json:"state"`                      // State is the pull request state.
-		MergeCommitSHA *string      `json:"merge_commit_sha,omitempty"` // MergeCommitSHA is the SHA of the merge commit.
-		AuthorID       shared.Int64 `json:"author_id"`                  // AuthorID is the author_id of the pull request.
-		HeadBranch     string       `json:"head_branch"`                // HeadBranch is the head branch of the pull request.
-		BaseBranch     string       `json:"base_branch"`                // BaseBranch is the base branch of the pull request.
-		Timestamp      time.Time    `json:"timestamp"`                  // Timestamp is the timestamp when the pull request was created.
+		Number         db.Int64  `json:"number"`                     // Number is the pull request number.
+		Title          string    `json:"title"`                      // Title is the pull request title.
+		Body           string    `json:"body"`                       // Body is the pull request body.
+		State          string    `json:"state"`                      // State is the pull request state.
+		MergeCommitSHA *string   `json:"merge_commit_sha,omitempty"` // MergeCommitSHA is the SHA of the merge commit.
+		AuthorID       db.Int64  `json:"author_id"`                  // AuthorID is the author_id of the pull request.
+		HeadBranch     string    `json:"head_branch"`                // HeadBranch is the head branch of the pull request.
+		BaseBranch     string    `json:"base_branch"`                // BaseBranch is the base branch of the pull request.
+		Timestamp      time.Time `json:"timestamp"`                  // Timestamp is the timestamp when the pull request was created.
 	}
 
 	// PullRequestReview represents a pull request review.
 	PullRequestReview struct {
-		ID                shared.Int64 `json:"id"`                  // ID is the pull request review ID.
-		PullRequestNumber shared.Int64 `json:"pull_request_number"` // PullRequestNumber is the pull request number.
-		Branch            string       `json:"branch"`              // Branch is the branch the review belongs to.
-		State             string       `json:"state"`               // State is the pull request review state.
-		AuthorID          shared.Int64 `json:"author_id"`           // AuthorID is the author of the review.
-		Timestamp         time.Time    `json:"submitted_at"`        // SubmittedAt is the timestamp when the review was submitted.
+		ID                db.Int64  `json:"id"`                  // ID is the pull request review ID.
+		PullRequestNumber db.Int64  `json:"pull_request_number"` // PullRequestNumber is the pull request number.
+		Branch            string    `json:"branch"`              // Branch is the branch the review belongs to.
+		State             string    `json:"state"`               // State is the pull request review state.
+		AuthorID          db.Int64  `json:"author_id"`           // AuthorID is the author of the review.
+		Timestamp         time.Time `json:"submitted_at"`        // SubmittedAt is the timestamp when the review was submitted.
 	}
 
 	// PullRequestLabel represents a pull request label.
 	PullRequestLabel struct {
-		Name              string       `json:"name"`                // Name is the pull request label name.
-		PullRequestNumber shared.Int64 `json:"pull_request_number"` // PullRequestNumber is the pull request number.
-		Branch            string       `json:"branch"`              // Branch is the branch the label belongs to.
-		Timestamp         time.Time    `json:"timestamp"`           // Timestamp is the timestamp of the label.
+		Name              string    `json:"name"`                // Name is the text of the label e.g. "ready", "fix" etc.
+		PullRequestNumber db.Int64  `json:"pull_request_number"` // PullRequestNumber is the pull request number.
+		Branch            string    `json:"branch"`              // Branch is the branch the label belongs to.
+		Timestamp         time.Time `json:"timestamp"`           // Timestamp is the timestamp of the label.
 	}
 
 	// PullRequestComment represents a pull request comment.
 	PullRequestComment struct {
-		ID                shared.Int64  `json:"id"`                    // ID is the pull request review comment ID.
-		PullRequestNumber shared.Int64  `json:"pull_request_number"`   // PullRequestNumber is the pull request number.
-		Branch            string        `json:"branch"`                // Branch is the branch the comment belongs to.
-		ReviewID          shared.Int64  `json:"review_id"`             // ReviewID is the ID of the pull request review the comment belongs.
-		InReplyTo         *shared.Int64 `json:"in_reply_to,omitempty"` // InReplyTo is the ID of the parent comment.
-		CommitSHA         string        `json:"commit_sha"`            // CommitSHA is the SHA of the commit associated with the comment.
-		Path              string        `json:"path"`                  // Path is the path to the file where the comment was made.
-		Position          shared.Int64  `json:"position"`              // Position is the line number where the comment was made.
-		AuthorID          shared.Int64  `json:"author_id"`             // AuthorID is the author_id of the comment.
-		Timestamp         time.Time     `json:"timestamp"`             // Timestamp is the timestamp of the comment.
+		ID                db.Int64  `json:"id"`                    // ID is the pull request review comment ID.
+		PullRequestNumber db.Int64  `json:"pull_request_number"`   // PullRequestNumber is the pull request number.
+		Branch            string    `json:"branch"`                // Branch is the branch the comment belongs to.
+		ReviewID          db.Int64  `json:"review_id"`             // ReviewID is the ID of the pull request review the comment belongs.
+		InReplyTo         *db.Int64 `json:"in_reply_to,omitempty"` // InReplyTo is the ID of the parent comment.
+		CommitSHA         string    `json:"commit_sha"`            // CommitSHA is the SHA of the commit associated with the comment.
+		Path              string    `json:"path"`                  // Path is the path to the file where the comment was made.
+		Position          db.Int64  `json:"position"`              // Position is the line number where the comment was made.
+		AuthorID          db.Int64  `json:"author_id"`             // AuthorID is the author_id of the comment.
+		Timestamp         time.Time `json:"timestamp"`             // Timestamp is the timestamp of the comment.
 	}
 
 	// PullRequestThread represents a pull request thread.
 	PullRequestThread struct {
-		ID                shared.Int64   `json:"id"`                  // ID is the pull request thread ID.
-		PullRequestNumber shared.Int64   `json:"pull_request_number"` // PullRequestNumber is the pull request number.
-		CommentIDs        []shared.Int64 `json:"comment_ids"`         // CommentIDs is the list of comment IDs associated with the thread.
-		Timestamp         time.Time      `json:"timestamp"`           // Timestamp is the timestamp of the thread.
+		ID                db.Int64   `json:"id"`                  // ID is the pull request thread ID.
+		PullRequestNumber db.Int64   `json:"pull_request_number"` // PullRequestNumber is the pull request number.
+		CommentIDs        []db.Int64 `json:"comment_ids"`         // CommentIDs is the list of comment IDs associated with the thread.
+		Timestamp         time.Time  `json:"timestamp"`           // Timestamp is the timestamp of the thread.
 	}
 
 	// MergeConflict represents a git merge conflict.

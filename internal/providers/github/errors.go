@@ -23,17 +23,17 @@ import (
 	"errors"
 	"fmt"
 
-	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/db"
 )
 
 type (
 	MissingConfigurationError struct{}
 
 	RepoEventError struct {
-		InstallationID shared.Int64 `json:"installation_id"`
-		GithubRepoID   shared.Int64 `json:"github_repo_id"`
-		RepoName       string       `json:"repo_name"`
-		Details        string       `json:"details"`
+		InstallationID db.Int64 `json:"installation_id"`
+		GithubRepoID   db.Int64 `json:"github_repo_id"`
+		RepoName       string   `json:"repo_name"`
+		Details        string   `json:"details"`
 	}
 )
 
@@ -54,7 +54,7 @@ func (e *RepoEventError) Error() string {
 	)
 }
 
-func NewRepoNotFoundRepoEventError(installationID, githubRepoID shared.Int64, repoName string) error {
+func NewRepoNotFoundRepoEventError(installationID, githubRepoID db.Int64, repoName string) error {
 	return &RepoEventError{
 		InstallationID: installationID,
 		GithubRepoID:   githubRepoID,
@@ -63,7 +63,7 @@ func NewRepoNotFoundRepoEventError(installationID, githubRepoID shared.Int64, re
 	}
 }
 
-func NewMultipleReposFoundRepoEventError(installationID, githubRepoID shared.Int64, repoName string) error {
+func NewMultipleReposFoundRepoEventError(installationID, githubRepoID db.Int64, repoName string) error {
 	return &RepoEventError{
 		InstallationID: installationID,
 		GithubRepoID:   githubRepoID,
@@ -72,7 +72,7 @@ func NewMultipleReposFoundRepoEventError(installationID, githubRepoID shared.Int
 	}
 }
 
-func NewInactiveRepoRepoEventError(installationID, githubRepoID shared.Int64, repoName string) error {
+func NewInactiveRepoRepoEventError(installationID, githubRepoID db.Int64, repoName string) error {
 	return &RepoEventError{
 		InstallationID: installationID,
 		GithubRepoID:   githubRepoID,
@@ -81,7 +81,7 @@ func NewInactiveRepoRepoEventError(installationID, githubRepoID shared.Int64, re
 	}
 }
 
-func NewHasNoEarlyWarningRepoEventError(installationID, githubRepoID shared.Int64, repoName string) error {
+func NewHasNoEarlyWarningRepoEventError(installationID, githubRepoID db.Int64, repoName string) error {
 	return &RepoEventError{
 		InstallationID: installationID,
 		GithubRepoID:   githubRepoID,

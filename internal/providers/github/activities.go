@@ -137,7 +137,7 @@ func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *In
 }
 
 // GetInstallation gets Installation against given installation_id & github login.
-func (a *Activities) GetInstallation(ctx context.Context, id shared.Int64, login string) (*Installation, error) {
+func (a *Activities) GetInstallation(ctx context.Context, id db.Int64, login string) (*Installation, error) {
 	installation := &Installation{}
 	params := db.QueryParams{"installation_id": id.String(), "installation_login": login}
 
@@ -303,7 +303,7 @@ func (a *Activities) SyncOrgUsersFromGithub(ctx context.Context, payload *SyncOr
 			orgusr := &OrgUser{}
 			filter := db.QueryParams{
 				"github_org_id":  payload.GithubOrgID.String(),
-				"github_user_id": shared.Int64(*member.ID).String(),
+				"github_user_id": db.Int64(*member.ID).String(),
 			}
 
 			// TODO - need to refine
@@ -313,7 +313,7 @@ func (a *Activities) SyncOrgUsersFromGithub(ctx context.Context, payload *SyncOr
 
 			orgusr.GithubOrgName = payload.GithubOrgName
 			orgusr.GithubOrgID = payload.GithubOrgID
-			orgusr.GithubUserID = shared.Int64(*member.ID)
+			orgusr.GithubUserID = db.Int64(*member.ID)
 
 			if err := db.Save(orgusr); err != nil {
 				return err
@@ -351,7 +351,7 @@ func (a *Activities) GetCoreRepoByCtrlID(ctx context.Context, id string) (*defs.
 }
 
 // SignalCoreRepoCtrl signals the core repository control workflow with the given signal and payload.
-func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *defs.Repo, signal shared.WorkflowSignal, payload any) error {
+func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *defs.Repo, signal defs.Signal, payload any) error {
 	opts := shared.Temporal().
 		Queue(shared.CoreQueue).
 		WorkflowOptions(
@@ -380,14 +380,14 @@ func (a *Activities) GithubWorkflowInfo(ctx context.Context, payload *defs.RepoI
 
 	// Initialize the result struct
 	winfo := &defs.RepoIOWorkflowInfo{
-		TotalCount: shared.Int64(workflows.GetTotalCount()),
+		TotalCount: db.Int64(workflows.GetTotalCount()),
 		Workflows:  make([]*defs.RepIOWorkflow, 0, workflows.GetTotalCount()),
 	}
 
 	// Iterate through each workflow
 	for _, workflow := range workflows.Workflows {
 		w := &defs.RepIOWorkflow{
-			ID:      shared.Int64(*workflow.ID),
+			ID:      db.Int64(*workflow.ID),
 			NodeID:  workflow.GetNodeID(),
 			Name:    workflow.GetName(),
 			Path:    workflow.GetPath(),

@@ -32,6 +32,7 @@ import (
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/core/timers"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -50,7 +51,7 @@ type (
 // Event handlers
 
 // on_push handles push events for the branch.
-func (state *BranchCtrlState) on_push(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.Push, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -72,7 +73,7 @@ func (state *BranchCtrlState) on_push(ctx workflow.Context) shared.ChannelHandle
 }
 
 // on_rebase handles rebase events for the branch.
-func (state *BranchCtrlState) on_rebase(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_rebase(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.Push, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -102,7 +103,7 @@ func (state *BranchCtrlState) on_rebase(ctx workflow.Context) shared.ChannelHand
 }
 
 // on_pr handles pull request events for the branch.
-func (state *BranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_pr(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -120,28 +121,17 @@ func (state *BranchCtrlState) on_pr(ctx workflow.Context) shared.ChannelHandler 
 	}
 }
 
-// TODO - refine the logic.
 // on_label handles pull request label events.
-func (state *BranchCtrlState) on_label(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_label(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		label := &defs.RepoIOSignalPullRequestPayload{}
-		state.rx(ctx, rx, label)
+		event := &defs.Event[defs.PullRequestLabel, defs.RepoProvider]{}
+		state.rx(ctx, rx, event)
 
-		switch label.Action {
-		case "labeled":
-			// TODO - need to finalize the Lable Names and logic.
-			switch *label.LabelName {
-			case "qmerge":
-				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueAdd, label)
-			case "priority-qmerge":
-				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueAddPriority, label)
-			case "remove":
-				state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueRemove, label)
-			default:
-				return
-			}
-		case "unlabeled":
-			state.signal_queue(ctx, label.HeadBranch, defs.RepoIOSignalQueueRemove, label)
+		switch event.Payload.Name {
+		case "qmerge":
+			state.signal_queue(ctx, event.Payload.Branch, defs.RepoIOSignalQueueAdd, event.Payload)
+		case "priority-qmerge":
+			state.signal_queue(ctx, event.Payload.Branch, defs.RepoIOSignalQueueAddPriority, event.Payload)
 		default:
 			return
 		}
@@ -149,7 +139,7 @@ func (state *BranchCtrlState) on_label(ctx workflow.Context) shared.ChannelHandl
 }
 
 // on_create_delete handles branch creation and deletion events.
-func (state *BranchCtrlState) on_create_delete(ctx workflow.Context) shared.ChannelHandler {
+func (state *BranchCtrlState) on_create_delete(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
@@ -221,7 +211,7 @@ func (state *BranchCtrlState) set_author(ctx workflow.Context, owner *auth.TeamU
 	state.author = owner
 }
 
-func (state *BranchCtrlState) refresh_author(ctx workflow.Context, id shared.Int64) {
+func (state *BranchCtrlState) refresh_author(ctx workflow.Context, id db.Int64) {
 	ctx = shared.WithDefaultActivityContext(ctx)
 	user := &auth.TeamUser{}
 

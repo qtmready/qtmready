@@ -23,8 +23,8 @@ import (
 	"context"
 
 	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db"
-	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -43,7 +43,7 @@ func (a *Activities) RouteMessage(ctx context.Context, id string, message []byte
 	return instance.Send(ctx, id, message)
 }
 
-func (a *Activities) Signal(ctx context.Context, signal shared.WorkflowSignal, payload any) error {
+func (a *Activities) Signal(ctx context.Context, signal defs.Signal, payload any) error {
 	return instance.Signal(ctx, signal, payload)
 }
 

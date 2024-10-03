@@ -25,7 +25,7 @@ import (
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/core/defs"
 )
 
 type (
@@ -220,7 +220,7 @@ func (con *Connections) error(msg string, keyvals ...any) {
 	con.logger.Error(con.prefixed(msg), keyvals...)
 }
 
-func (con *Connections) on_add(ctx workflow.Context) shared.ChannelHandler {
+func (con *Connections) on_add(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		var signal QueueUser
 
@@ -234,7 +234,7 @@ func (con *Connections) on_add(ctx workflow.Context) shared.ChannelHandler {
 	}
 }
 
-func (con *Connections) on_remove(ctx workflow.Context) shared.ChannelHandler {
+func (con *Connections) on_remove(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		var signal User
 
@@ -248,7 +248,7 @@ func (con *Connections) on_remove(ctx workflow.Context) shared.ChannelHandler {
 	}
 }
 
-func (con *Connections) on_flush(ctx workflow.Context) shared.ChannelHandler {
+func (con *Connections) on_flush(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		var signal RegisterOrFlush
 
@@ -262,7 +262,7 @@ func (con *Connections) on_flush(ctx workflow.Context) shared.ChannelHandler {
 	}
 }
 
-func (con *Connections) on_worker_added(ctx workflow.Context) shared.ChannelHandler {
+func (con *Connections) on_worker_added(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		var signal RegisterOrFlush
 

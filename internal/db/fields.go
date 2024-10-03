@@ -1,6 +1,8 @@
 package db
 
 import (
+	"time"
+
 	"go.breu.io/quantm/internal/db/fields"
 )
 
@@ -24,3 +26,7 @@ type (
 	// at application startup using environment variables.
 	Sensitive = fields.Sensitive
 )
+
+func NewDuration(d time.Duration) Duration {
+	return fields.NewDuration(d)
+}
