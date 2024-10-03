@@ -63,6 +63,8 @@ type (
 
 		// SetParent sets the parent event ID for the current event, enabling the reconstruction of the event lineage.
 		SetParent(gocql.UUID)
+
+		UnmarshalJSON(data []byte) error
 	}
 )
 
