@@ -73,7 +73,7 @@ func main() {
 
 	select {
 	case rx := <-terminate:
-		slog.Info("main: received shutdown signal, attempting graceful shutdown ...", "signal", rx.String())
+		slog.Info("main: shutdown requested ...", "signal", rx.String())
 	case err := <-rx_errors:
 		slog.Error("main: unable to start ...", "error", err.Error())
 	}
