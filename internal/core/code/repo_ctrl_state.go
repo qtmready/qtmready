@@ -83,6 +83,8 @@ func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) shared.Channe
 				state.triggers.del(event.Payload.Ref)
 			}
 		}
+
+		state.persist(ctx, event)
 	}
 }
 
