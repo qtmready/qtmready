@@ -27,7 +27,6 @@ FROM base AS src
 
 WORKDIR /src
 COPY . .
-RUN git status
 
 
 # migrate
