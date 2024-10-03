@@ -84,38 +84,38 @@ type (
 	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler // EventHandlers maps event types to their respective event handlers.
 
 	RepoEvent interface {
-		RepoID() shared.Int64
+		RepoID() db.Int64
 		RepoName() string
-		InstallationID() shared.Int64
+		InstallationID() db.Int64
 		SenderID() string
 	}
 )
 
 type (
 	CreateMembershipsPayload struct {
-		UserID        gocql.UUID   `json:"user_id"`
-		TeamID        gocql.UUID   `json:"team_id"`
-		IsAdmin       bool         `json:"is_admin"`
-		GithubOrgName string       `json:"github_org_name"`
-		GithubOrgID   shared.Int64 `json:"github_org_id"`
-		GithubUserID  shared.Int64 `json:"github_user_id"`
+		UserID        gocql.UUID `json:"user_id"`
+		TeamID        gocql.UUID `json:"team_id"`
+		IsAdmin       bool       `json:"is_admin"`
+		GithubOrgName string     `json:"github_org_name"`
+		GithubOrgID   db.Int64   `json:"github_org_id"`
+		GithubUserID  db.Int64   `json:"github_user_id"`
 	}
 
 	PostInstallPayload struct {
-		InstallationID    shared.Int64 `json:"installation_id"`
-		InstallationLogin string       `json:"installation_login"`
+		InstallationID    db.Int64 `json:"installation_id"`
+		InstallationLogin string   `json:"installation_login"`
 	}
 
 	SyncReposFromGithubPayload struct {
-		InstallationID shared.Int64 `json:"installation_id"`
-		Owner          string       `json:"owner"`
-		TeamID         gocql.UUID   `json:"team_id"`
+		InstallationID db.Int64   `json:"installation_id"`
+		Owner          string     `json:"owner"`
+		TeamID         gocql.UUID `json:"team_id"`
 	}
 
 	SyncOrgUsersFromGithubPayload struct {
-		InstallationID shared.Int64 `json:"installation_id"`
-		GithubOrgName  string       `json:"github_org_name"`
-		GithubOrgID    shared.Int64 `json:"github_org_id"`
+		InstallationID db.Int64 `json:"installation_id"`
+		GithubOrgName  string   `json:"github_org_name"`
+		GithubOrgID    db.Int64 `json:"github_org_id"`
 	}
 )
 
@@ -174,7 +174,7 @@ type (
 
 	PullRequestEvent struct {
 		Action       string         `json:"action"`
-		Number       shared.Int64   `json:"number"`
+		Number       db.Int64       `json:"number"`
 		PullRequest  PullRequest    `json:"pull_request"`
 		Repository   RepositoryPR   `json:"repository"`
 		Organization *Organization  `json:"organization"`
@@ -194,9 +194,9 @@ type (
 	}
 
 	CompleteInstallationSignal struct {
-		InstallationID shared.Int64 `json:"installation_id"`
-		SetupAction    SetupAction  `json:"setup_action"`
-		UserID         gocql.UUID   `json:"user_id"`
+		InstallationID db.Int64    `json:"installation_id"`
+		SetupAction    SetupAction `json:"setup_action"`
+		UserID         gocql.UUID  `json:"user_id"`
 	}
 
 	ArtifactReadySignal struct {
@@ -207,7 +207,7 @@ type (
 
 	GithubActionResult struct {
 		Branch         string
-		InstallationID shared.Int64
+		InstallationID db.Int64
 		RepoID         string
 		RepoName       string
 		RepoOwner      string
@@ -215,7 +215,7 @@ type (
 
 	PullRequestReviewEvent struct {
 		Action       string             `json:"action"`
-		Number       shared.Int64       `json:"number"`
+		Number       db.Int64           `json:"number"`
 		Installation InstallationID     `json:"installation"`
 		Review       *PullRequestReview `json:"review"`
 		PullRequest  PullRequest        `json:"pull_request"`
@@ -225,7 +225,7 @@ type (
 
 	PullRequestReviewCommentEvent struct {
 		Action       string              `json:"action"`
-		Number       shared.Int64        `json:"number"`
+		Number       db.Int64            `json:"number"`
 		Installation InstallationID      `json:"installation"`
 		Comment      *PullRequestComment `json:"comment"`
 		PullRequest  PullRequest         `json:"pull_request"`
@@ -309,11 +309,11 @@ type (
 	}
 )
 
-func (p *PushEvent) RepoID() shared.Int64 {
+func (p *PushEvent) RepoID() db.Int64 {
 	return p.Repository.ID
 }
 
-func (p *PushEvent) InstallationID() shared.Int64 {
+func (p *PushEvent) InstallationID() db.Int64 {
 	return p.Installation.ID
 }
 
@@ -325,11 +325,11 @@ func (p *PushEvent) SenderID() string {
 	return p.Sender.ID.String()
 }
 
-func (p *PullRequestEvent) RepoID() shared.Int64 {
+func (p *PullRequestEvent) RepoID() db.Int64 {
 	return p.Repository.ID
 }
 
-func (p *PullRequestEvent) InstallationID() shared.Int64 {
+func (p *PullRequestEvent) InstallationID() db.Int64 {
 	return p.Installation.ID
 }
 
@@ -341,11 +341,11 @@ func (p *PullRequestEvent) SenderID() string {
 	return p.Sender.ID.String()
 }
 
-func (p *CreateOrDeleteEvent) RepoID() shared.Int64 {
+func (p *CreateOrDeleteEvent) RepoID() db.Int64 {
 	return p.Repository.ID
 }
 
-func (p *CreateOrDeleteEvent) InstallationID() shared.Int64 {
+func (p *CreateOrDeleteEvent) InstallationID() db.Int64 {
 	return p.Installation.ID
 }
 
@@ -357,11 +357,11 @@ func (p *CreateOrDeleteEvent) SenderID() string {
 	return p.Sender.ID.String()
 }
 
-func (p *PullRequestReviewEvent) RepoID() shared.Int64 {
+func (p *PullRequestReviewEvent) RepoID() db.Int64 {
 	return p.Repository.ID
 }
 
-func (p *PullRequestReviewEvent) InstallationID() shared.Int64 {
+func (p *PullRequestReviewEvent) InstallationID() db.Int64 {
 	return p.Installation.ID
 }
 
@@ -373,11 +373,11 @@ func (p *PullRequestReviewEvent) SenderID() string {
 	return p.Sender.ID.String()
 }
 
-func (p *PullRequestReviewCommentEvent) RepoID() shared.Int64 {
+func (p *PullRequestReviewCommentEvent) RepoID() db.Int64 {
 	return p.Repository.ID
 }
 
-func (p *PullRequestReviewCommentEvent) InstallationID() shared.Int64 {
+func (p *PullRequestReviewCommentEvent) InstallationID() db.Int64 {
 	return p.Installation.ID
 }
 
@@ -389,11 +389,11 @@ func (p *PullRequestReviewCommentEvent) SenderID() string {
 	return p.Sender.ID.String()
 }
 
-func (p *GithubWorkflowRunEvent) RepoID() shared.Int64 {
+func (p *GithubWorkflowRunEvent) RepoID() db.Int64 {
 	return p.Repository.ID
 }
 
-func (p *GithubWorkflowRunEvent) InstallationID() shared.Int64 {
+func (p *GithubWorkflowRunEvent) InstallationID() db.Int64 {
 	return p.Installation.ID
 }
 

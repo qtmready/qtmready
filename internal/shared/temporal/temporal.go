@@ -103,7 +103,13 @@ func (t *Config) connect() {
 		retry.Delay(1*time.Second),
 		retry.OnRetry(func(attempts uint, err error) {
 			remaining := t.retries - attempts
-			t.logger.Warn("temporal: retrying connection ...", "attempts", attempts, "remaining", remaining, "error", err)
+			t.logger.Warn(
+				"temporal: retrying connection ...",
+				"host", t.ServerHost, "port", t.ServerPort,
+				"attempts", attempts,
+				"remaining", remaining,
+				"error", err,
+			)
 		}),
 	); err != nil {
 		slog.Error("temporal: retries exhausted, aborting ...", slog.String("error", err.Error()))

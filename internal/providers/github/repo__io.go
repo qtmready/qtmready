@@ -30,7 +30,6 @@ import (
 	"go.breu.io/quantm/internal/core/code"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db"
-	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -156,10 +155,10 @@ func (r *RepoIO) DetectChanges(ctx context.Context, payload *defs.RepoIODetectCh
 
 	// detect changes struct
 	dc := &defs.RepoIOChanges{
-		Added:      shared.Int64(additions),
-		Removed:    shared.Int64(deletions),
+		Added:      db.Int64(additions),
+		Removed:    db.Int64(deletions),
 		Modified:   files,
-		Delta:      shared.Int64(changes),
+		Delta:      db.Int64(changes),
 		CompareUrl: comparison.GetHTMLURL(),
 		RepoUrl:    repo.GetHTMLURL(),
 	}

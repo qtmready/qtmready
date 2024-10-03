@@ -16,7 +16,8 @@ import (
 	itable "github.com/Guilospanck/igocqlx/table"
 	"github.com/gocql/gocql"
 	"github.com/scylladb/gocqlx/v2/table"
-	"go.breu.io/quantm/internal/shared"
+
+	"go.breu.io/quantm/internal/db"
 )
 
 var (
@@ -138,9 +139,9 @@ type Repo struct {
 	Name                string              `cql:"name" json:"name"`
 	Provider            RepoProvider        `cql:"provider" json:"provider"`
 	ProviderID          string              `cql:"provider_id" json:"provider_id"`
-	StaleDuration       shared.Duration     `cql:"stale_duration" json:"stale_duration"`
+	StaleDuration       db.Duration         `cql:"stale_duration" json:"stale_duration"`
 	TeamID              gocql.UUID          `cql:"team_id" json:"team_id"`
-	Threshold           shared.Int64        `cql:"threshold" json:"threshold"`
+	Threshold           db.Int64            `cql:"threshold" json:"threshold"`
 	UpdatedAt           time.Time           `cql:"updated_at" json:"updated_at"`
 }
 
@@ -167,8 +168,8 @@ type RepoCreateRequest struct {
 	MessageProvider     MessageProvider     `json:"message_provider"`
 	MessageProviderData MessageProviderData `json:"message_provider_data"`
 	Provider            RepoProvider        `json:"provider"`
-	StaleDuration       shared.Duration     `json:"stale_duration"`
-	Threshold           shared.Int64        `json:"threshold"`
+	StaleDuration       db.Duration         `json:"stale_duration"`
+	Threshold           db.Int64            `json:"threshold"`
 }
 
 // RepoListResponse defines model for RepoListResponse.

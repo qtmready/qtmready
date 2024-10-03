@@ -25,6 +25,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -57,7 +58,7 @@ type (
 		RepoName       string         `json:"repo_name"`       // RepoName represents the name of the repository.
 		RepoOwner      string         `json:"repo_owner"`      // RepoOwner represents the owner of the repository.
 		CtrlID         string         `json:"ctrl_id"`         // CtrlID represents the id of the provider repo in the quantm DB.
-		InstallationID shared.Int64   `json:"installation_id"` // InstallationID represents the GitHub installation ID.
+		InstallationID db.Int64       `json:"installation_id"` // InstallationID represents the GitHub installation ID.
 		ProviderID     string         `json:"provider_id"`     // ProviderID represents the provider ID.
 		Commits        RepoIOCommits  `json:"commits"`         // Commits represents a list of commits in the push.
 		User           *auth.TeamUser `json:"user"`            // User represents the user who triggered the push.
@@ -73,7 +74,7 @@ type (
 		RepoName       string         `json:"repo_name"`       // RepoName represents the name of the repository.
 		RepoOwner      string         `json:"repo_owner"`      // RepoOwner represents the owner of the repository.
 		CtrlID         string         `json:"ctrl_id"`         // CtrlID represents the id of the provider repo in the quantm DB.
-		InstallationID shared.Int64   `json:"installation_id"` // InstallationID represents the GitHub installation ID.
+		InstallationID db.Int64       `json:"installation_id"` // InstallationID represents the GitHub installation ID.
 		ProviderID     string         `json:"provider_id"`     // ProviderID represents the provider ID.
 		User           *auth.TeamUser `json:"user"`            // User represents the user who triggered the event.
 	}
@@ -81,13 +82,13 @@ type (
 	// RepoIOSignalPullRequestPayload represents the payload for the `RepoIOSignalPullRequest` signal.
 	RepoIOSignalPullRequestPayload struct {
 		Action         string         `json:"action"`          // Action represents the action taken on the pull request.
-		Number         shared.Int64   `json:"number"`          // Number represents the pull request number.
+		Number         db.Int64       `json:"number"`          // Number represents the pull request number.
 		RepoName       string         `json:"repo_name"`       // RepoName represents the name of the repository.
 		RepoOwner      string         `json:"repo_owner"`      // RepoOwner represents the owner of the repository.
 		BaseBranch     string         `json:"base_branch"`     // BaseBranch represents the base branch of the pull request.
 		HeadBranch     string         `json:"head_branch"`     // HeadBranch represents the head branch of the pull request.
 		CtrlID         string         `json:"ctrl_id"`         // CtrlID represents the id of the provider repo in the quantm DB.
-		InstallationID shared.Int64   `json:"installation_id"` // InstallationID represents the GitHub installation ID.
+		InstallationID db.Int64       `json:"installation_id"` // InstallationID represents the GitHub installation ID.
 		ProviderID     string         `json:"provider_id"`     // ProviderID represents the provider ID.
 		User           *auth.TeamUser `json:"user"`            // User represents the user who triggered the event.
 		LabelName      *string        `json:"label_name"`      // LabelName represents the name of the label.
@@ -96,13 +97,13 @@ type (
 	// RepoIOSignalPullRequestReviewPayload represents the payload for the `RepoIOSignalPullRequestReview` signal.
 	RepoIOSignalPullRequestReviewPayload struct {
 		Action         string         `json:"action"`          // Action represents the action taken on the pull request review.
-		Number         shared.Int64   `json:"number"`          // Number represents the pull request number.
+		Number         db.Int64       `json:"number"`          // Number represents the pull request number.
 		RepoName       string         `json:"repo_name"`       // RepoName represents the name of the repository.
 		RepoOwner      string         `json:"repo_owner"`      // RepoOwner represents the owner of the repository.
 		BaseBranch     string         `json:"base_branch"`     // BaseBranch represents the base branch of the pull request.
 		HeadBranch     string         `json:"head_branch"`     // HeadBranch represents the head branch of the pull request.
 		CtrlID         string         `json:"ctrl_id"`         // CtrlID represents the id of the provider repo in the quantm DB.
-		InstallationID shared.Int64   `json:"installation_id"` // InstallationID represents the GitHub installation ID.
+		InstallationID db.Int64       `json:"installation_id"` // InstallationID represents the GitHub installation ID.
 		ProviderID     string         `json:"provider_id"`     // ProviderID represents the provider ID.
 		User           *auth.TeamUser `json:"user"`            // User represents the user who triggered the event.
 	}
@@ -110,13 +111,13 @@ type (
 	// RepoIOSignalPullRequestReviewCommentPayload represents the payload for the `RepoIOSignalPullRequestReviewComment` signal.
 	RepoIOSignalPullRequestReviewCommentPayload struct {
 		Action         string         `json:"action"`          // Action represents the action taken on the pull request review comment.
-		Number         shared.Int64   `json:"number"`          // Number represents the pull request number.
+		Number         db.Int64       `json:"number"`          // Number represents the pull request number.
 		RepoName       string         `json:"repo_name"`       // RepoName represents the name of the repository.
 		RepoOwner      string         `json:"repo_owner"`      // RepoOwner represents the owner of the repository.
 		BaseBranch     string         `json:"base_branch"`     // BaseBranch represents the base branch of the pull request.
 		HeadBranch     string         `json:"head_branch"`     // HeadBranch represents the head branch of the pull request.
 		CtrlID         string         `json:"ctrl_id"`         // CtrlID represents the id of the provider repo in the quantm DB.
-		InstallationID shared.Int64   `json:"installation_id"` // InstallationID represents the GitHub installation ID.
+		InstallationID db.Int64       `json:"installation_id"` // InstallationID represents the GitHub installation ID.
 		ProviderID     string         `json:"provider_id"`     // ProviderID represents the provider ID.
 		User           *auth.TeamUser `json:"user"`            // User represents the user who triggered the event.
 	}
@@ -124,11 +125,11 @@ type (
 	// RepoIOSignalLabelPayload represents the payload for the `RepoIOSignalLabel` signal.
 	RepoIOSignalLabelPayload struct {
 		Action         string         `json:"action"`          // Action represents the action taken on the pull request label.
-		Number         shared.Int64   `json:"number"`          // Number represents the pull request number.
+		Number         db.Int64       `json:"number"`          // Number represents the pull request number.
 		RepoName       string         `json:"repo_name"`       // RepoName represents the name of the repository.
 		RepoOwner      string         `json:"repo_owner"`      // RepoOwner represents the owner of the repository.
 		CtrlID         string         `json:"ctrl_id"`         // CtrlID represents the id of the provider repo in the quantm DB.
-		InstallationID shared.Int64   `json:"installation_id"` // InstallationID represents the GitHub installation ID.
+		InstallationID db.Int64       `json:"installation_id"` // InstallationID represents the GitHub installation ID.
 		ProviderID     string         `json:"provider_id"`     // ProviderID represents the provider ID.
 		User           *auth.TeamUser `json:"user"`            // User represents the user who triggered the event.
 	}
@@ -136,11 +137,11 @@ type (
 	// RepoIOSignalWorkflowRunPayload represents the payload for the `RepoIOSignalWorkflowRun` signal.
 	RepoIOSignalWorkflowRunPayload struct {
 		Action         string              `json:"action"`          // Action represents the action taken on the workflow run.
-		Number         shared.Int64        `json:"number"`          // Number represents the workflow run number.
+		Number         db.Int64            `json:"number"`          // Number represents the workflow run number.
 		RepoName       string              `json:"repo_name"`       // RepoName represents the name of the repository.
 		RepoOwner      string              `json:"repo_owner"`      // RepoOwner represents the owner of the repository.
 		CtrlID         string              `json:"ctrl_id"`         // CtrlID represents the id of the provider repo in the quantm DB.
-		InstallationID shared.Int64        `json:"installation_id"` // InstallationID represents the GitHub installation ID.
+		InstallationID db.Int64            `json:"installation_id"` // InstallationID represents the GitHub installation ID.
 		ProviderID     string              `json:"provider_id"`     // ProviderID represents the provider ID.
 		WorkflowInfo   *RepoIOWorkflowInfo `json:"workflow_info"`   // WorkflowInfo represents the workflow run information.
 		User           *auth.TeamUser      `json:"user"`            // User represents the user who triggered the event.
@@ -151,11 +152,11 @@ type (
 type (
 	// RepoIOProviderInfo represents the information about a repository from a provider.
 	RepoIOProviderInfo struct {
-		RepoName       string       `json:"repo_name"`       // RepoName represents the name of the repository.
-		RepoOwner      string       `json:"owner"`           // RepoOwner represents the owner of the repository.
-		DefaultBranch  string       `json:"default_branch"`  // DefaultBranch represents the default branch of the repository.
-		ProviderID     string       `json:"provider_id"`     // ProviderID represents the provider ID.
-		InstallationID shared.Int64 `json:"installation_id"` // InstallationID represents the GitHub installation ID.
+		RepoName       string   `json:"repo_name"`       // RepoName represents the name of the repository.
+		RepoOwner      string   `json:"owner"`           // RepoOwner represents the owner of the repository.
+		DefaultBranch  string   `json:"default_branch"`  // DefaultBranch represents the default branch of the repository.
+		ProviderID     string   `json:"provider_id"`     // ProviderID represents the provider ID.
+		InstallationID db.Int64 `json:"installation_id"` // InstallationID represents the GitHub installation ID.
 	}
 
 	// RepoIOClonePayload represents the payload for cloning a repository.
@@ -176,21 +177,21 @@ type (
 
 	// RepoIODetectChangesPayload represents the payload for detecting changes in a repository.
 	RepoIODetectChangesPayload struct {
-		InstallationID shared.Int64 `json:"installation_id"` // InstallationID represents the GitHub installation ID.
-		RepoName       string       `json:"repo_name"`       // RepoName represents the name of the repository.
-		RepoOwner      string       `json:"repo_owner"`      // RepoOwner represents the owner of the repository.
-		DefaultBranch  string       `json:"defualt_branch"`  // DefaultBranch represents the default branch of the repository.
-		TargetBranch   string       `json:"target_branch"`   // TargetBranch represents the target branch for comparison.
+		InstallationID db.Int64 `json:"installation_id"` // InstallationID represents the GitHub installation ID.
+		RepoName       string   `json:"repo_name"`       // RepoName represents the name of the repository.
+		RepoOwner      string   `json:"repo_owner"`      // RepoOwner represents the owner of the repository.
+		DefaultBranch  string   `json:"defualt_branch"`  // DefaultBranch represents the default branch of the repository.
+		TargetBranch   string   `json:"target_branch"`   // TargetBranch represents the target branch for comparison.
 	}
 
 	// RepoIOChanges represents the changes detected in a repository.
 	RepoIOChanges struct {
-		Added      shared.Int64 `json:"added"`       // Added represents the number of files added.
-		Removed    shared.Int64 `json:"removed"`     // Removed represents the number of files removed.
-		Modified   []string     `json:"modified"`    // Modified represents a list of files modified.
-		Delta      shared.Int64 `json:"delta"`       // Delta represents the total number of changes.
-		CompareUrl string       `json:"compare_url"` // CompareUrl represents the URL to compare the branches.
-		RepoUrl    string       `json:"repo_url"`    // RepoUrl represents the URL of the repository.
+		Added      db.Int64 `json:"added"`       // Added represents the number of files added.
+		Removed    db.Int64 `json:"removed"`     // Removed represents the number of files removed.
+		Modified   []string `json:"modified"`    // Modified represents a list of files modified.
+		Delta      db.Int64 `json:"delta"`       // Delta represents the total number of changes.
+		CompareUrl string   `json:"compare_url"` // CompareUrl represents the URL to compare the branches.
+		RepoUrl    string   `json:"repo_url"`    // RepoUrl represents the URL of the repository.
 	}
 
 	// RepoIOCommit represents a commit in a repository.
@@ -204,34 +205,34 @@ type (
 
 	// RepoIOMergePRPayload represents the payload for merging a pull request.
 	RepoIOMergePRPayload struct {
-		RepoName       string       `json:"repo_name"`       // RepoName represents the name of the repository.
-		RepoOwner      string       `json:"owner"`           // RepoOwner represents the owner of the repository.
-		DefaultBranch  string       `json:"defualt_branch"`  // DefaultBranch represents the default branch of the repository.
-		TargetBranch   string       `json:"target_branch"`   // TargetBranch represents the target branch for merging.
-		InstallationID shared.Int64 `json:"installation_id"` // InstallationID represents the GitHub installation ID.
+		RepoName       string   `json:"repo_name"`       // RepoName represents the name of the repository.
+		RepoOwner      string   `json:"owner"`           // RepoOwner represents the owner of the repository.
+		DefaultBranch  string   `json:"defualt_branch"`  // DefaultBranch represents the default branch of the repository.
+		TargetBranch   string   `json:"target_branch"`   // TargetBranch represents the target branch for merging.
+		InstallationID db.Int64 `json:"installation_id"` // InstallationID represents the GitHub installation ID.
 	}
 
 	// RepoIOWorkflowActionPayload represents the payload for performing an action on a workflow.
 	RepoIOWorkflowActionPayload struct {
-		RepoName       string       `json:"repo_name"`       // RepoName represents the name of the repository.
-		RepoOwner      string       `json:"owner"`           // RepoOwner represents the owner of the repository.
-		InstallationID shared.Int64 `json:"installation_id"` // InstallationID represents the GitHub installation ID.
+		RepoName       string   `json:"repo_name"`       // RepoName represents the name of the repository.
+		RepoOwner      string   `json:"owner"`           // RepoOwner represents the owner of the repository.
+		InstallationID db.Int64 `json:"installation_id"` // InstallationID represents the GitHub installation ID.
 	}
 
 	// RepoIOWorkflowInfo represents information about workflow runs in a repository.
 	RepoIOWorkflowInfo struct {
-		TotalCount shared.Int64     `json:"total_count"` // TotalCount represents the total number of workflow runs.
+		TotalCount db.Int64         `json:"total_count"` // TotalCount represents the total number of workflow runs.
 		Workflows  []*RepIOWorkflow `json:"workflows"`   // Workflows represents a list of workflow runs.
 	}
 
 	// RepIOWorkflow represents a single workflow run.
 	RepIOWorkflow struct {
-		ID      shared.Int64 `json:"id"`       // ID represents the workflow run ID.
-		NodeID  string       `json:"node_id"`  // NodeID represents the workflow run node ID.
-		Name    string       `json:"name"`     // Name represents the workflow run name.
-		Path    string       `json:"path"`     // Path represents the workflow run path.
-		State   string       `json:"state"`    // State represents the workflow run state.
-		HTMLURL string       `json:"html_url"` // HTMLURL represents the workflow run URL.
+		ID      db.Int64 `json:"id"`       // ID represents the workflow run ID.
+		NodeID  string   `json:"node_id"`  // NodeID represents the workflow run node ID.
+		Name    string   `json:"name"`     // Name represents the workflow run name.
+		Path    string   `json:"path"`     // Path represents the workflow run path.
+		State   string   `json:"state"`    // State represents the workflow run state.
+		HTMLURL string   `json:"html_url"` // HTMLURL represents the workflow run URL.
 	}
 
 	// RepoIOCommits represents a slice of RepoIOCommit.
@@ -239,9 +240,9 @@ type (
 
 	// RepoIOPullRequest represents a pull request.
 	RepoIOPullRequest struct {
-		Number     shared.Int64 `json:"number"`      // Number represents the pull request number.
-		HeadBranch string       `json:"head_branch"` // HeadBranch represents the head branch of the pull request.
-		BaseBranch string       `json:"base_branch"` // BaseBranch represents the base branch of the pull request.
+		Number     db.Int64 `json:"number"`      // Number represents the pull request number.
+		HeadBranch string   `json:"head_branch"` // HeadBranch represents the head branch of the pull request.
+		BaseBranch string   `json:"base_branch"` // BaseBranch represents the base branch of the pull request.
 	}
 
 	// RepoIORebaseAtCommitResponse represents the response for a rebase operation.

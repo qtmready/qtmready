@@ -20,6 +20,8 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime"
 	"github.com/scylladb/gocqlx/v2/table"
+
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -129,38 +131,38 @@ func (v *WorkflowStatus) UnmarshalJSON(data []byte) error {
 
 // CompleteInstallationRequest complete the installation given the installation_id & setup_action.
 type CompleteInstallationRequest struct {
-	InstallationID shared.Int64 `json:"installation_id"`
-	SetupAction    SetupAction  `json:"setup_action"`
+	InstallationID db.Int64    `json:"installation_id"`
+	SetupAction    SetupAction `json:"setup_action"`
 }
 
 // CreateGithubUserOrgsRequest defines model for CreateGithubUserOrgsRequest.
 type CreateGithubUserOrgsRequest struct {
-	GithubOrgIDs []shared.Int64 `json:"github_org_ids"`
-	GithubUserID shared.Int64   `json:"github_user_id"`
-	UserID       gocql.UUID     `json:"user_id"`
+	GithubOrgIDs []db.Int64 `json:"github_org_ids"`
+	GithubUserID db.Int64   `json:"github_user_id"`
+	UserID       gocql.UUID `json:"user_id"`
 }
 
 // CreateTeamUserRequest defines model for CreateTeamUserRequest.
 type CreateTeamUserRequest struct {
-	GithubOrgID  shared.Int64 `json:"github_org_id"`
-	GithubUserID shared.Int64 `json:"github_user_id"`
-	TeamID       gocql.UUID   `json:"team_id"`
-	UserID       gocql.UUID   `json:"user_id"`
+	GithubOrgID  db.Int64   `json:"github_org_id"`
+	GithubUserID db.Int64   `json:"github_user_id"`
+	TeamID       gocql.UUID `json:"team_id"`
+	UserID       gocql.UUID `json:"user_id"`
 }
 
 // Installation defines model for GithubInstallation.
 type Installation struct {
-	CreatedAt           time.Time    `json:"created_at"`
-	ID                  gocql.UUID   `json:"id"`
-	InstallationID      shared.Int64 `json:"installation_id" validate:"required,db_unique"`
-	InstallationLogin   string       `json:"installation_login"`
-	InstallationLoginID shared.Int64 `json:"installation_login_id"`
-	InstallationType    string       `json:"installation_type"`
-	SenderID            shared.Int64 `json:"sender_id"`
-	SenderLogin         string       `json:"sender_login"`
-	Status              string       `json:"status"`
-	TeamID              gocql.UUID   `json:"team_id"`
-	UpdatedAt           time.Time    `json:"updated_at"`
+	CreatedAt           time.Time  `json:"created_at"`
+	ID                  gocql.UUID `json:"id"`
+	InstallationID      db.Int64   `json:"installation_id" validate:"required,db_unique"`
+	InstallationLogin   string     `json:"installation_login"`
+	InstallationLoginID db.Int64   `json:"installation_login_id"`
+	InstallationType    string     `json:"installation_type"`
+	SenderID            db.Int64   `json:"sender_id"`
+	SenderLogin         string     `json:"sender_login"`
+	Status              string     `json:"status"`
+	TeamID              gocql.UUID `json:"team_id"`
+	UpdatedAt           time.Time  `json:"updated_at"`
 }
 
 var (
@@ -181,12 +183,12 @@ func (githubinstallation *Installation) GetTable() itable.ITable {
 
 // OrgUser defines model for GithubOrgUser.
 type OrgUser struct {
-	CreatedAt     time.Time    `json:"created_at"`
-	GithubOrgID   shared.Int64 `json:"github_org_id"`
-	GithubOrgName string       `json:"github_org_name"`
-	GithubUserID  shared.Int64 `json:"github_user_id"`
-	ID            gocql.UUID   `json:"id"`
-	UpdatedAt     time.Time    `json:"updated_at"`
+	CreatedAt     time.Time  `json:"created_at"`
+	GithubOrgID   db.Int64   `json:"github_org_id"`
+	GithubOrgName string     `json:"github_org_name"`
+	GithubUserID  db.Int64   `json:"github_user_id"`
+	ID            gocql.UUID `json:"id"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 
 	// UserId auth's user ID.
 	UserID gocql.UUID `json:"user_id"`
@@ -210,17 +212,17 @@ func (githuborguser *OrgUser) GetTable() itable.ITable {
 
 // Repo defines model for GithubRepo.
 type Repo struct {
-	CreatedAt       time.Time    `json:"created_at"`
-	DefaultBranch   string       `json:"default_branch"`
-	FullName        string       `json:"full_name"`
-	GithubID        shared.Int64 `json:"github_id"`
-	HasEarlyWarning bool         `json:"has_early_warning"`
-	ID              gocql.UUID   `json:"id"`
-	InstallationID  shared.Int64 `json:"installation_id"`
-	IsActive        bool         `json:"is_active"`
-	Name            string       `json:"name"`
-	TeamID          gocql.UUID   `json:"team_id"`
-	UpdatedAt       time.Time    `json:"updated_at"`
+	CreatedAt       time.Time  `json:"created_at"`
+	DefaultBranch   string     `json:"default_branch"`
+	FullName        string     `json:"full_name"`
+	GithubID        db.Int64   `json:"github_id"`
+	HasEarlyWarning bool       `json:"has_early_warning"`
+	ID              gocql.UUID `json:"id"`
+	InstallationID  db.Int64   `json:"installation_id"`
+	IsActive        bool       `json:"is_active"`
+	Name            string     `json:"name"`
+	TeamID          gocql.UUID `json:"team_id"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
 
 var (
@@ -259,7 +261,7 @@ type GithubGetInstallationsParams struct {
 	InstallationLogin *string `form:"installation_login,omitempty" json:"installation_login,omitempty"`
 
 	// InstallationId installation ID of the github app.
-	InstallationId *shared.Int64 `form:"installation_id,omitempty" json:"installation_id,omitempty"`
+	InstallationId *db.Int64 `form:"installation_id,omitempty" json:"installation_id,omitempty"`
 }
 
 // GithubListUserOrgsParams defines parameters for GithubListUserOrgs.

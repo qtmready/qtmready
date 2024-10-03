@@ -21,12 +21,8 @@ package shared
 
 import (
 	"encoding/json"
-	"fmt"
-	"strconv"
-	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/shared/queue"
@@ -34,13 +30,8 @@ import (
 
 // workflow related shared types and contants.
 type (
-	Int64 int64
 	// WorkflowSignal is a type alias to define the name of the workflow signal.
 	WorkflowSignal string
-
-	Duration struct {
-		time.Duration
-	}
 
 	FutureHandler    func(workflow.Future)               // FutureHandler is the signature of the future handler for temporal.
 	ChannelHandler   func(workflow.ReceiveChannel, bool) // ChannelHandler is the signature of the channel handler for temporal.
@@ -100,114 +91,4 @@ type (
 
 func (ev *EchoValidator) Validate(i any) error {
 	return ev.Validator.Struct(i)
-}
-
-// String returns the string representation of the Int64 value.
-func (i Int64) String() string {
-	return strconv.FormatInt(int64(i), 10)
-}
-
-// Int64 returns the int64 value of the Int64 .
-func (i Int64) Int64() int64 {
-	return int64(i)
-}
-
-// MarshalJSON implements the json.Marshaler interface.
-func (i Int64) MarshalJSON() ([]byte, error) {
-	return json.Marshal(int64(i))
-}
-
-// UnmarshalJSON implements the json.Unmarshaler .
-func (i *Int64) UnmarshalJSON(data []byte) error {
-	var v int64
-	if err := json.Unmarshal(data, &v); err != nil {
-		return err
-	}
-
-	*i = Int64(v)
-
-	return nil
-}
-
-func (i Int64) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
-	return gocql.Marshal(info, i.Int64())
-}
-
-func (i *Int64) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
-	var v int64
-	if err := gocql.Unmarshal(info, data, &v); err != nil {
-		return err
-	}
-
-	*i = Int64(v)
-
-	return nil
-}
-
-// UnmarshalCQL unmarshals a Cassandra duration (stored as text or varchar) into Duration.
-// NOTE - saving duration as a string in database.
-func (d *Duration) UnmarshalCQL(info gocql.TypeInfo, data []byte) error {
-	if info.Type() != gocql.TypeVarchar && info.Type() != gocql.TypeText {
-		return fmt.Errorf("expected varchar or text type, got %v", info.Type())
-	}
-
-	if len(data) == 0 {
-		return nil // Handle null values if needed
-	}
-
-	s := string(data)
-
-	duration, err := time.ParseDuration(s)
-	if err != nil {
-		return fmt.Errorf("error parsing duration %s: %w", s, err)
-	}
-
-	d.Duration = duration
-
-	return nil
-}
-
-// MarshalCQL marshals Duration into a Cassandra duration.
-func (d Duration) MarshalCQL(info gocql.TypeInfo) ([]byte, error) {
-	return []byte(d.String()), nil
-}
-
-// MarshalJSON marshals Duration to JSON string.
-func (d Duration) MarshalJSON() ([]byte, error) {
-	if d.Duration == 0 {
-		return []byte("null"), nil // Handle null case for JSON
-	}
-
-	return []byte(fmt.Sprintf(`"%s"`, d.String())), nil
-}
-
-// UnmarshalJSON unmarshals JSON string into Duration.
-func (d *Duration) UnmarshalJSON(b []byte) error {
-	var s string
-	if err := json.Unmarshal(b, &s); err != nil {
-		return err
-	}
-
-	if s == "null" {
-		return nil // Handle null case for JSON
-	}
-
-	duration, err := time.ParseDuration(s)
-	if err != nil {
-		return fmt.Errorf("error parsing duration %s: %w", s, err)
-	}
-
-	d.Duration = duration
-
-	return nil
-}
-
-// String returns the string representation of Duration.
-func (d Duration) String() string {
-	return d.Duration.String()
-}
-
-// NewDuration creates a new Duration from a time.Duration.
-func NewDuration(d time.Duration) Duration {
-	return Duration{d}
 }

@@ -32,6 +32,7 @@ import (
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/core/timers"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -221,7 +222,7 @@ func (state *BranchCtrlState) set_author(ctx workflow.Context, owner *auth.TeamU
 	state.author = owner
 }
 
-func (state *BranchCtrlState) refresh_author(ctx workflow.Context, id shared.Int64) {
+func (state *BranchCtrlState) refresh_author(ctx workflow.Context, id db.Int64) {
 	ctx = shared.WithDefaultActivityContext(ctx)
 	user := &auth.TeamUser{}
 

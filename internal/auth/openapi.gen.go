@@ -26,6 +26,8 @@ import (
 	"github.com/oapi-codegen/runtime"
 	openapi_types "github.com/oapi-codegen/runtime/types"
 	"github.com/scylladb/gocqlx/v2/table"
+
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
 	externalRef0 "go.breu.io/quantm/internal/shared"
 )
@@ -215,8 +217,8 @@ type MessageProviderSlackUserInfo struct {
 	UserToken      string `json:"user_token"`
 }
 
-// MessageProviderInfo defines model for MessageProviderInfo.
-type MessageProviderInfo struct {
+// MessageProviderUserInfo defines model for MessageProviderUserInfo.
+type MessageProviderUserInfo struct {
 	Slack *MessageProviderSlackUserInfo `json:"slack,omitempty"`
 }
 
@@ -262,8 +264,7 @@ func (team *Team) GetTable() itable.ITable {
 }
 
 // TeamUser defines the user in a team and the role they have in the team.
-// Please not that auth.User is our source of truth for the user,
-// so we should only use this to get to the user..
+// Please note that auth.User is our source of truth for the user, so we should only use this to get to the user..
 type TeamUser struct {
 	CreatedAt               time.Time               `cql:"created_at" json:"created_at"`
 	ID                      gocql.UUID              `cql:"id" json:"id"`
@@ -271,12 +272,14 @@ type TeamUser struct {
 	IsAdmin                 bool                    `cql:"is_admin" json:"is_admin"`
 	IsMessageProviderLinked bool                    `cql:"is_message_provider_linked" json:"is_message_provider_linked"`
 	MessageProvider         MessageProvider         `cql:"message_provider" json:"message_provider"`
-	MessageProviderUserInfo MessageProviderInfo `cql:"message_provider_user_info" json:"message_provider_user_info"`
+	MessageProviderUserInfo MessageProviderUserInfo `cql:"message_provider_user_info" json:"message_provider_user_info"`
 	Role                    string                  `cql:"role" json:"role"`
 	TeamID                  gocql.UUID              `cql:"team_id" json:"team_id"`
 	UpdatedAt               time.Time               `cql:"updated_at" json:"updated_at"`
 	UserID                  gocql.UUID              `cql:"user_id" json:"user_id"`
-	UserLoginId             shared.Int64            `cql:"user_login_id" json:"user_login_id"`
+
+	// UserLoginId this should be renamed to provider_account_id
+	UserLoginId db.Int64 `cql:"user_login_id" json:"user_login_id"`
 }
 
 var (
