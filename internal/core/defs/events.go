@@ -210,7 +210,7 @@ type (
 		Provider P            `json:"provider" cql:"provider"`   // Provider is the provider of the event.
 
 		// TODO - replace the db tag to cql tag (custom mapper).
-		Scope       EventScope  `json:"scope" db:"scope_"`               // Scope is the scope of the event.
+		Scope       EventScope  `json:"scope" cql:"scope_"`              // Scope is the scope of the event.
 		Action      EventAction `json:"action" cql:"action"`             // Action is the action of the event.
 		Source      string      `json:"source" cql:"source"`             // Source is the source of the event.
 		SubjectID   gocql.UUID  `json:"subject_id" cql:"subject_id"`     // SubjectID is the ID of the subject.
