@@ -112,6 +112,13 @@ func (state *RepoCtrlState) on_label(ctx workflow.Context) defs.ChannelHandler {
 func (state *RepoCtrlState) signal_or_stash(
 	ctx workflow.Context, branch string, signal defs.Signal, event RepoEvent[defs.RepoProvider],
 ) {
+	if branch == state.repo.DefaultBranch {
+		state.signal_branch(ctx, branch, signal, event)
+		state.persist(ctx, event)
+
+		return
+	}
+
 	if id, ok := state.triggers.get(branch); ok {
 		event.SetParent(id)
 		state.signal_branch(ctx, branch, signal, event)

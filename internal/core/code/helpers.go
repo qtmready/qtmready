@@ -14,9 +14,9 @@ type (
 
 	// StashedEvents stores events that are awaiting processing.
 	//
-	// Events are typically stashed when the associated branch does not yet exist or the event requires a
-	// parent event (e.g., a push event needing a branch creation event) that has not yet been received. This
-	// scenario can arise due to the distributed nature of event arrival.
+	// Events are typically stashed when the associated branch does not yet exist or the event requires a parent event
+	// (e.g., a push event needing a branch creation event) that has not yet been received. This scenario can arise due to
+	// the distributed nature of event arrival.
 	StashedEvents[P defs.RepoProvider] map[string][]RepoEvent[P]
 )
 
