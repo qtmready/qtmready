@@ -36,6 +36,7 @@ import (
 	"github.com/golang-migrate/migrate/v4/database/cassandra"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/scylladb/go-reflectx"
 
 	"go.breu.io/quantm/internal/shared"
 
@@ -97,6 +98,8 @@ func (l *MigrationLogger) Verbose() bool {
 func (mc *MockConfig) Session() *igocqlx.Session {
 	return nil
 }
+
+func (mc *MockConfig) SetMapper(mapper *reflectx.Mapper) {}
 
 // Shutdown closes the database session.
 func (c *Config) Shutdown(ctx context.Context) error {
@@ -167,6 +170,8 @@ func WithSessionCreation() ConfigOption {
 				return err
 			}
 
+			session.SetMapper(CQLMapper)
+
 			c.Session = session
 
 			slog.Info("db: connected")
@@ -210,6 +215,7 @@ func WithE2ESession() ConfigOption {
 			panic(fmt.Errorf("db: failed to connect to test database, %v", err))
 		}
 
+		session.SetMapper(CQLMapper)
 		c.Session = session
 	}
 }
