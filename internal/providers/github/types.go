@@ -27,6 +27,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
+	"go.breu.io/durex/queues"
 
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
@@ -291,13 +292,13 @@ func (e WebhookEvent) String() string { return string(e) }
 
 // Workflow signal types.
 const (
-	WorkflowSignalInstallationEvent    defs.Signal = "installation_event"
-	WorkflowSignalCompleteInstallation defs.Signal = "complete_installation"
-	WorkflowSignalPullRequestProcessed defs.Signal = "pull_request_processed"
-	WorkflowSignalArtifactReady        defs.Signal = "artifact_ready"
-	WorkflowSignalActionResult         defs.Signal = "action_result"
-	WorkflowSignalPullRequestLabeled   defs.Signal = "pull_request_labeled"
-	WorkflowSignalPushEvent            defs.Signal = "push_event"
+	WorkflowSignalInstallationEvent    queues.WorkflowSignal = "installation_event"
+	WorkflowSignalCompleteInstallation queues.WorkflowSignal = "complete_installation"
+	WorkflowSignalPullRequestProcessed queues.WorkflowSignal = "pull_request_processed"
+	WorkflowSignalArtifactReady        queues.WorkflowSignal = "artifact_ready"
+	WorkflowSignalActionResult         queues.WorkflowSignal = "action_result"
+	WorkflowSignalPullRequestLabeled   queues.WorkflowSignal = "pull_request_labeled"
+	WorkflowSignalPushEvent            queues.WorkflowSignal = "push_event"
 )
 
 type (

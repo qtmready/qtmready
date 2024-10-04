@@ -24,7 +24,6 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"strconv"
 
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
@@ -32,6 +31,7 @@ import (
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/shared/queues"
 )
 
 type (
@@ -104,24 +104,14 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 	workflows := &Workflows{}
 
 	{
-		opts := shared.Temporal().
-			Queue(shared.ProvidersQueue).
-			WorkflowOptions(
-				shared.WithWorkflowBlock("github"),
-				shared.WithWorkflowBlockID(strconv.Itoa(int(payload.InstallationID))),
-				shared.WithWorkflowElement(WebhookEventInstallation.String()),
-			)
+		exe, err := queues.Providers().SignalWithStartWorkflow(
+			ctx.Request().Context(),
+			InstallationWebhookWorkflowOptions(request.InstallationID, "install"),
+			WorkflowSignalCompleteInstallation,
+			payload,
+			workflows.OnInstallationEvent,
+		)
 
-		exe, err := shared.Temporal().
-			Client().
-			SignalWithStartWorkflow(
-				ctx.Request().Context(),
-				opts.ID,
-				WorkflowSignalCompleteInstallation.String(),
-				payload,
-				opts,
-				workflows.OnInstallationEvent,
-			)
 		if err != nil {
 			return err
 		}
@@ -129,21 +119,12 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 		_ = exe.Get(ctx.Request().Context(), installation)
 	}
 
-	// TODO: handle this case!
-	opts := shared.Temporal().Queue(shared.ProvidersQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(strconv.Itoa(int(payload.InstallationID))),
-			shared.WithWorkflowElement(WebhookEventInstallation.String()),
-			shared.WithWorkflowElementID("post-install"),
-		)
-	exe, err := shared.Temporal().Client().
-		ExecuteWorkflow(
-			ctx.Request().Context(),
-			opts,
-			workflows.PostInstall,
-			installation,
-		)
+	exe, err := queues.Providers().ExecuteWorkflow(
+		ctx.Request().Context(),
+		InstallationWebhookWorkflowOptions(request.InstallationID, "post_install"),
+		workflows.PostInstall,
+		installation,
+	)
 
 	if err != nil {
 		return err

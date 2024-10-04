@@ -27,6 +27,7 @@ import (
 	"github.com/labstack/echo/v4"
 
 	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/shared/queues"
 )
 
 // handleInstallationEvent handles GitHub App installation event.
@@ -39,28 +40,21 @@ func handleInstallationEvent(ctx echo.Context) error {
 	slog.Info("installation event received ...", "action", payload.Action)
 
 	workflows := &Workflows{}
-	opts := shared.Temporal().
-		Queue(shared.ProvidersQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
-			shared.WithWorkflowElement(WebhookEventInstallation.String()),
-		)
-
-	exe, err := shared.Temporal().Client().SignalWithStartWorkflow(
+	exe, err := queues.Providers().SignalWithStartWorkflow(
 		ctx.Request().Context(),
-		opts.ID,
-		WorkflowSignalInstallationEvent.String(),
+		// TODO: we should probably take the action from the payload.
+		InstallationWebhookWorkflowOptions(payload.Installation.ID, "install"),
+		WorkflowSignalInstallationEvent,
 		payload,
-		opts,
 		workflows.OnInstallationEvent,
 	)
+
 	if err != nil {
-		slog.Error("unable to signal ...", "options", opts, "error", err)
-		return nil
+		slog.Error("unable to signal ...", "error", err)
+		return err
 	}
 
-	slog.Debug("installation event handled ...", "options", opts, "execution", exe.GetRunID())
+	slog.Debug("installation event handled ...", "execution", exe.GetRunID())
 
 	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
 }
