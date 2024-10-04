@@ -24,13 +24,14 @@ import (
 	"log/slog"
 
 	gh "github.com/google/go-github/v62/github"
+	dq "go.breu.io/durex/queues"
 	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/code"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db"
-	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/shared/queues"
 )
 
 type (
@@ -351,17 +352,15 @@ func (a *Activities) GetCoreRepoByCtrlID(ctx context.Context, id string) (*defs.
 }
 
 // SignalCoreRepoCtrl signals the core repository control workflow with the given signal and payload.
-func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *defs.Repo, signal defs.Signal, payload any) error {
-	opts := shared.Temporal().
-		Queue(shared.CoreQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("repo"),
-			shared.WithWorkflowBlockID(repo.ID.String()),
-		)
-
-	_, err := shared.Temporal().
-		Client().
-		SignalWithStartWorkflow(context.Background(), opts.ID, signal.String(), payload, opts, code.RepoCtrl, repo)
+func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *defs.Repo, signal dq.WorkflowSignal, payload any) error {
+	_, err := queues.Core().SignalWithStartWorkflow(
+		ctx,
+		code.RepoCtrlWorkflowOptions(repo.TeamID.String(), repo.Name, repo.ID),
+		signal,
+		payload,
+		code.RepoCtrl,
+		repo,
+	)
 
 	return err
 }
