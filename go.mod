@@ -1,6 +1,6 @@
 module go.breu.io/quantm
 
-go 1.23
+go 1.23.1
 
 require (
 	cloud.google.com/go/logging v1.11.0
@@ -28,6 +28,7 @@ require (
 	github.com/sethvargo/go-password v0.3.1
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.33.0
+	go.breu.io/graceful v0.0.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.55.0
 	go.opentelemetry.io/otel v1.30.0
 	go.opentelemetry.io/otel/sdk v1.30.0

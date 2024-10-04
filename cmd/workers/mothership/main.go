@@ -27,13 +27,14 @@ import (
 	"syscall"
 	"time"
 
+	"go.breu.io/graceful"
+
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/core/ws"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
-	"go.breu.io/quantm/internal/shared/graceful"
 )
 
 func main() {
