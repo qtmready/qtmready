@@ -27,8 +27,8 @@ import (
 
 // QueueCtrl processes PRs sequentially, ensuring only one PR is handled at a time.
 //
-// Queue modifications (add, promote, demote) are handled concurrently via signals,
-// allowing for uninterrupted queue management during PR processing.
+// Queue modifications (add, promote, demote) are handled concurrently via signals, allowing for uninterrupted queue
+// management during PR processing.
 func QueueCtrl(ctx workflow.Context, repo *defs.Repo, branch string, queues *QueueCtrlSerializedState) error {
 	ctx, state := NewQueueCtrlState(ctx, repo, branch)
 

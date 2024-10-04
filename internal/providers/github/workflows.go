@@ -75,8 +75,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 	requestChannel := workflow.GetSignalChannel(ctx, WorkflowSignalCompleteInstallation.String())
 
 	// setting up callbacks for the channels
-	selector.AddReceive(webhookChannel, onInstallationWebhookSignal(ctx, webhook, status))
-	selector.AddReceive(requestChannel, onInstallationRequestSignal(ctx, request, status))
+	selector.AddReceive(webhookChannel, on_install_webhook_signal(ctx, webhook, status))
+	selector.AddReceive(requestChannel, on_install_request_signal(ctx, request, status))
 
 	logger.Info("github/installation: waiting for webhook and complete installation request signals ...")
 
@@ -172,7 +172,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 
 			// NOTE - ideally, we should use a new selector here, but since there will be no new signals comings in, we know that
 			// selector.Select will only be waiting for the futures to complete.
-			selector.AddFuture(future, onCreateOrUpdateRepoActivityFuture(ctx, repo))
+			selector.AddFuture(future, on_repo_saved_future(ctx, repo))
 		}
 
 		logger.Info("github/installation: waiting for repositories to be saved ...")
@@ -242,7 +242,7 @@ func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, payload *CreateO
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	_ctx := workflow.WithActivityOptions(ctx, opts)
 
-	state, err := getRepoEventState(ctx, payload)
+	state, err := workflow_prelude(ctx, payload)
 	if err != nil {
 		logger.Warn("github/repo_event: unable to initialize event state ...", "error", err.Error())
 
@@ -250,7 +250,11 @@ func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, payload *CreateO
 	}
 
 	event := payload.normalize(state.CoreRepo)
-	event.SetUserID(state.User.UserID)
+	if state.User != nil {
+		event.SetUserID(state.User.UserID)
+	} else {
+		logger.Warn("github/repo_event: unable to set user id ...")
+	}
 
 	if err := workflow.
 		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalCreateOrDelete, event).
@@ -275,7 +279,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	_ctx := workflow.WithActivityOptions(ctx, opts)
 
-	state, err := getRepoEventState(ctx, payload)
+	state, err := workflow_prelude(ctx, payload)
 	if err != nil {
 		logger.Error("github/repo_event: unable to initialize event state ...", "error", err.Error())
 
@@ -283,7 +287,11 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 	}
 
 	event := payload.normalize(state.CoreRepo)
-	event.SetUserID(state.User.UserID)
+	if state.User != nil {
+		event.SetUserID(state.User.UserID)
+	} else {
+		logger.Warn("github/repo_event: unable to set user id ...")
+	}
 
 	if err := workflow.
 		ExecuteActivity(_ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPush, event).
@@ -308,7 +316,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	_ctx := workflow.WithActivityOptions(ctx, opts)
 
-	state, err := getRepoEventState(ctx, payload)
+	state, err := workflow_prelude(ctx, payload)
 	if err != nil {
 		logger.Error("github/pull_request: error preparing ...", "error", err.Error())
 		return err
@@ -354,7 +362,7 @@ func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRe
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	_ctx := workflow.WithActivityOptions(ctx, opts)
 
-	state, err := getRepoEventState(ctx, event)
+	state, err := workflow_prelude(ctx, event)
 	if err != nil {
 		logger.Error("github/pull_request_review: error preparing ...", "error", err.Error())
 		return err
@@ -398,7 +406,7 @@ func (w *Workflows) OnPullRequestReviewCommentEvent(ctx workflow.Context, event 
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	_ctx := workflow.WithActivityOptions(ctx, opts)
 
-	state, err := getRepoEventState(ctx, event)
+	state, err := workflow_prelude(ctx, event)
 	if err != nil {
 		logger.Error("github/pull_request_review_comment: error preparing ...", "error", err.Error())
 		return err
@@ -466,7 +474,7 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 		}
 
 		future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateGithubRepo, repo)
-		selector.AddFuture(future, onCreateOrUpdateRepoActivityFuture(ctx, repo))
+		selector.AddFuture(future, on_repo_saved_future(ctx, repo))
 	}
 
 	// wait for all the repositories to be saved.
@@ -482,7 +490,7 @@ func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, pl *GithubWorkflowR
 	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
 	_ctx := workflow.WithActivityOptions(ctx, activityOpts)
 
-	state, err := getRepoEventState(ctx, pl)
+	state, err := workflow_prelude(ctx, pl)
 	if err != nil {
 		logger.Error("github/workflow_run: error preparing ...", "error", err.Error())
 		return err
@@ -518,21 +526,21 @@ func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, pl *GithubWorkflowR
 	}
 
 	payload.WorkflowInfo = winfo
-	logger.Info("OnWorkflowRunEvent/payload", "info", payload)
+	logger.Info("github/workflow_run", "info", payload)
 
 	// TODO - wrokflow logic
 
 	return nil
 }
 
-// onCreateOrUpdateRepoActivityFuture handles post-processing after a repository is saved against an installation.
-func onCreateOrUpdateRepoActivityFuture(ctx workflow.Context, payload *Repo) defs.FutureHandler {
+// on_repo_saved_future handles post-processing after a repository is saved against an installation.
+func on_repo_saved_future(ctx workflow.Context, payload *Repo) defs.FutureHandler {
 	logger := workflow.GetLogger(ctx)
 	return func(f workflow.Future) { logger.Info("repository saved ...", "repo", payload.GithubID) }
 }
 
-// onInstallationWebhookSignal handles webhook events for installation that is in progress.
-func onInstallationWebhookSignal(
+// on_install_webhook_signal handles webhook events for installation that is in progress.
+func on_install_webhook_signal(
 	ctx workflow.Context, installation *InstallationEvent, status *InstallationWorkflowStatus,
 ) defs.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
@@ -558,8 +566,8 @@ func onInstallationWebhookSignal(
 	}
 }
 
-// onInstallationRequestSignal handles new http requests on an installation in progress.
-func onInstallationRequestSignal(
+// on_install_request_signal handles new http requests on an installation in progress.
+func on_install_request_signal(
 	ctx workflow.Context, installation *CompleteInstallationSignal, status *InstallationWorkflowStatus,
 ) defs.ChannelHandler {
 	logger := workflow.GetLogger(ctx)
@@ -572,7 +580,7 @@ func onInstallationRequestSignal(
 	}
 }
 
-func getRepoEventState(ctx workflow.Context, event RepoEvent) (*RepoEventState, error) {
+func workflow_prelude(ctx workflow.Context, event RepoEvent) (*RepoEventState, error) {
 	logger := workflow.GetLogger(ctx)
 	logger.Info(
 		"github/repo_event: initializing state ...",

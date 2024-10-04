@@ -262,7 +262,9 @@ func (base *BaseState) do(ctx workflow.Context, action string, activity, payload
 	return nil
 }
 
-// TODO: @asgr - need tp refine.
+// child executes a child workflow and logs the event.
+//
+// Deprecated: use signal with start to other workflows. implement.
 func (base *BaseState) child(ctx workflow.Context, action, w_id string, fn, payload any, keyvals ...any) error {
 	logger := base.log(ctx, action)
 	logger.Info("init", keyvals...)
