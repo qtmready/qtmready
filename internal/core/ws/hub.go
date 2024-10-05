@@ -280,7 +280,7 @@ func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
 }
 
 func (h *hub) Signal(ctx context.Context, signal defs.Signal, payload any) error {
-	_, err := h.queue.SignalWithStartWorkflow(ctx, opts_hub(), signal, payload, ConnectionsHubWorkflow, NewConnections())
+	_, err := Queue().SignalWithStartWorkflow(ctx, opts_hub(), signal, payload, ConnectionsHubWorkflow, NewConnections())
 
 	return err
 }
@@ -419,13 +419,19 @@ func (h *hub) worker() {
 
 	h.queue.CreateWorker()
 
-	h.queue.RegisterWorkflow(ConnectionsHubWorkflow)
+	h.queue.RegisterWorkflow(SendMessageWorkflow)
 	h.queue.RegisterWorkflow(BroadcastMessageWorkflow)
 
 	h.queue.RegisterActivity(&Activities{})
 
 	if err := h.queue.Start(); err != nil {
 		h.stop <- true
+	}
+
+	err := h.Signal(context.Background(), WorkflowSignalWorkerAdded, &RegisterOrFlush{Queue: h.queue.String()})
+	if err != nil {
+		slog.Warn("ws/queue: failed to signal worker addition", "error", err)
+		panic(err)
 	}
 
 	<-h.stop

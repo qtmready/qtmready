@@ -22,6 +22,7 @@ func Queue() queues.Queue {
 			queues.WithClient(shared.Temporal().Client()),
 		)
 
+		_q.CreateWorker()
 		_q.RegisterWorkflow(ConnectionsHubWorkflow)
 	})
 

@@ -32,6 +32,7 @@ import (
 
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
+	"go.breu.io/quantm/internal/core/ws"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/providers/slack"
@@ -68,8 +69,8 @@ func main() {
 		return
 	}
 
-	// hub := ws.Instance()
-	// hub.SetAuthFn(user_id)
+	hub := ws.Instance()
+	hub.SetAuthFn(user_id)
 
 	api := echo.New()
 	configure_api(api)
@@ -82,7 +83,7 @@ func main() {
 		api.Shutdown,
 		metrics.Shutdown,
 		db.DB().Shutdown,
-		// hub.Stop,
+		hub.Stop,
 	}
 
 	graceful.Go(ctx, graceful.GrabAndGo(metrics.Start, ":"+PrometheusPort), rx_errors)

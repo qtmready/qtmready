@@ -1,6 +1,8 @@
 package main
 
 import (
+	"go.breu.io/durex/queues"
+
 	"go.breu.io/quantm/internal/core/code"
 	"go.breu.io/quantm/internal/core/mutex"
 	"go.breu.io/quantm/internal/providers/github"
@@ -9,6 +11,10 @@ import (
 )
 
 func configure_core() {
+	queue.Core().CreateWorker(
+		queues.WithWorkerOptionEnableSessionWorker(true),
+	)
+
 	queue.Core().RegisterWorkflow(code.RepoCtrl)
 	queue.Core().RegisterWorkflow(code.TrunkCtrl)
 	queue.Core().RegisterWorkflow(code.BranchCtrl)
@@ -22,6 +28,8 @@ func configure_core() {
 }
 
 func configure_providers() {
+	queue.Providers().CreateWorker()
+
 	github_workflows := &github.Workflows{}
 
 	queue.Providers().RegisterWorkflow(github_workflows.OnInstallationEvent)
@@ -38,5 +46,6 @@ func configure_providers() {
 }
 
 func configure_mutex() {
+	queue.Mutex().CreateWorker()
 	queue.Mutex().RegisterWorkflow(mutex.MutexWorkflow)
 }

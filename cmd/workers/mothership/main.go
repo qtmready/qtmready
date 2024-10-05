@@ -59,6 +59,9 @@ func main() {
 	configure_providers()
 	configure_mutex()
 
+	graceful.Go(ctx, queue.Core().Start, rx_errors)
+	graceful.Go(ctx, queue.Providers().Start, rx_errors)
+	graceful.Go(ctx, queue.Mutex().Start, rx_errors)
 	graceful.Go(ctx, ws.Queue().Start, rx_errors)
 
 	cleanups := []graceful.Cleanup{
