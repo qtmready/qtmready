@@ -31,7 +31,7 @@ import (
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/db"
-	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/shared/queues"
 )
 
 type (
@@ -45,35 +45,28 @@ type (
 // Otherwise, it signals the BranchCtrl workflow.
 func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSignalBranchCtrlPayload) error {
 	args := make([]any, 0)
-	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
-		shared.WithWorkflowBlock("repo"),
-		shared.WithWorkflowBlockID(payload.Repo.ID.String()),
-		shared.WithWorkflowElement("branch"),
-		shared.WithWorkflowElementID(payload.Branch),
-	)
 
-	args = append(args, payload.Repo)
-
-	var workflow any
 	if payload.Repo.DefaultBranch == payload.Branch {
-		workflow = TrunkCtrl
-	} else {
-		workflow = BranchCtrl
+		_, err := queues.Core().SignalWithStartWorkflow(
+			ctx,
+			TrunkCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID),
+			payload.Signal,
+			payload.Payload,
+			TrunkCtrl,
+			append(args, payload.Repo)...,
+		)
 
-		args = append(args, payload.Branch)
+		return err
 	}
 
-	_, err := shared.Temporal().
-		Client().
-		SignalWithStartWorkflow(
-			context.Background(),
-			opts.ID,
-			payload.Signal.String(),
-			payload.Payload,
-			opts,
-			workflow,
-			args...,
-		)
+	_, err := queues.Core().SignalWithStartWorkflow(
+		ctx,
+		BranchCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID, payload.Branch),
+		payload.Signal,
+		payload.Payload,
+		BranchCtrl,
+		append(args, payload.Repo, payload.Branch)...,
+	)
 
 	return err
 }
@@ -83,28 +76,15 @@ func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSigna
 // It signals the QueueCtrl workflow with the repository, branch, and a serialized queue state.
 func (a *Activities) SignalQueue(ctx context.Context, payload *defs.RepoIOSignalQueueCtrlPayload) error {
 	args := make([]any, 0)
-	opts := shared.Temporal().Queue(shared.CoreQueue).WorkflowOptions(
-		shared.WithWorkflowBlock("queue"),
-		shared.WithWorkflowBlockID(payload.Repo.ID.String()),
-		shared.WithWorkflowElement("branch"),
-		shared.WithWorkflowElementID(payload.Branch),
+
+	_, err := queues.Core().SignalWithStartWorkflow(
+		ctx,
+		QueueCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID),
+		payload.Signal,
+		payload.Payload,
+		QueueCtrl,
+		append(args, payload.Repo, payload.Branch, &QueueCtrlSerializedState{})...,
 	)
-
-	queue := &QueueCtrlSerializedState{}
-
-	args = append(args, payload.Repo, payload.Branch, queue)
-
-	_, err := shared.Temporal().
-		Client().
-		SignalWithStartWorkflow(
-			context.Background(),
-			opts.ID,
-			payload.Signal.String(),
-			payload.Payload,
-			opts,
-			QueueCtrl,
-			args...,
-		)
 
 	return err
 }

@@ -20,10 +20,10 @@
 package ws
 
 import (
-	"time"
+	"go.breu.io/durex/dispatch"
+	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
-	"go.temporal.io/sdk/workflow"
 )
 
 const (
@@ -100,10 +100,9 @@ func ConnectionsHubWorkflow(ctx workflow.Context, conns *Connections) error {
 func SendMessageWorkflow(ctx workflow.Context, user_id string, message []byte) error {
 	logger := workflow.GetLogger(ctx)
 	activities := &Activities{}
-	opts := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
 	sent := false
 
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	err := workflow.ExecuteActivity(ctx, activities.SendMessage, user_id, message).Get(ctx, &sent)
 	if err != nil {
@@ -120,8 +119,8 @@ func SendMessageWorkflow(ctx workflow.Context, user_id string, message []byte) e
 
 func BroadcastMessageWorkflow(ctx workflow.Context, team_id string, message []byte) error {
 	logger := workflow.GetLogger(ctx)
-	ao := workflow.ActivityOptions{StartToCloseTimeout: time.Minute}
-	ctx = workflow.WithActivityOptions(ctx, ao)
+
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	activities := &Activities{}
 	response := &TeamUsersReponse{IDs: make([]string, 0)}

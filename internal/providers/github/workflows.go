@@ -21,7 +21,6 @@ package github
 
 import (
 	"log/slog"
-	"time"
 
 	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/workflow"
@@ -67,8 +66,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 	webhook := &InstallationEvent{}
 	request := &CompleteInstallationSignal{}
 	status := &InstallationWorkflowStatus{WebhookDone: false, RequestDone: false}
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	_ctx := workflow.WithActivityOptions(ctx, activityOpts)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	// setting up channels to receive signals
 	webhookChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInstallationEvent.String())
@@ -99,7 +97,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 		user := &auth.User{}
 		team := &auth.Team{}
 
-		if err := workflow.ExecuteActivity(_ctx, activities.GetUserByID, request.UserID.String()).Get(ctx, user); err != nil {
+		if err := workflow.ExecuteActivity(ctx, activities.GetUserByID, request.UserID.String()).Get(ctx, user); err != nil {
 			return nil, err
 		}
 
@@ -108,16 +106,16 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 
 			team.Name = webhook.Installation.Account.Login
 
-			_ = workflow.ExecuteActivity(_ctx, activities.CreateTeam, team).Get(ctx, team)
+			_ = workflow.ExecuteActivity(ctx, activities.CreateTeam, team).Get(ctx, team)
 
 			logger.Info("github/installation: team created, assigning to user ...")
 
 			user.TeamID = team.ID
-			_ = workflow.ExecuteActivity(_ctx, activities.SaveUser, user).Get(ctx, user)
+			_ = workflow.ExecuteActivity(ctx, activities.SaveUser, user).Get(ctx, user)
 		} else {
 			logger.Warn("github/installation: team already associated, fetching ...")
 
-			_ = workflow.ExecuteActivity(_ctx, activities.GetTeamByID, user.TeamID.String()).Get(ctx, team)
+			_ = workflow.ExecuteActivity(ctx, activities.GetTeamByID, user.TeamID.String()).Get(ctx, team)
 		}
 
 		// Finalizing the installation
@@ -132,8 +130,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 
 		logger.Info("github/installation: creating or updating installation ...")
 
-		if err := workflow.ExecuteActivity(_ctx, activities.CreateOrUpdateInstallation, installation).
-			Get(_ctx, installation); err != nil {
+		if err := workflow.ExecuteActivity(ctx, activities.CreateOrUpdateInstallation, installation).
+			Get(ctx, installation); err != nil {
 			logger.Error("github/installation: error saving installation ...", "error", err)
 		}
 
@@ -148,7 +146,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 			GithubUserID:  webhook.Sender.ID,
 		}
 
-		if err := workflow.ExecuteActivity(_ctx, activities.CreateMemberships, membership).Get(_ctx, nil); err != nil {
+		if err := workflow.ExecuteActivity(ctx, activities.CreateMemberships, membership).Get(ctx, nil); err != nil {
 			logger.Error("github/installation: error saving installation ...", "error", err)
 		}
 
@@ -169,7 +167,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 				TeamID:          installation.TeamID,
 			}
 
-			future := workflow.ExecuteActivity(_ctx, activities.CreateOrUpdateGithubRepo, repo)
+			future := workflow.ExecuteActivity(ctx, activities.CreateOrUpdateGithubRepo, repo)
 
 			// NOTE:  A new selector isn't necessary here because no new signals are expected;
 			// selector.Select will simply wait for the futures to complete.
@@ -203,8 +201,7 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 // adding new ones.
 func (w *Workflows) PostInstall(ctx workflow.Context, payload *Installation) error {
 	logger := workflow.GetLogger(ctx)
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	_ctx := workflow.WithActivityOptions(ctx, opts)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	logger.Info(
 		"github/installation/post: starting ...",
@@ -220,7 +217,7 @@ func (w *Workflows) PostInstall(ctx workflow.Context, payload *Installation) err
 		Owner:          payload.InstallationLogin,
 		TeamID:         payload.TeamID,
 	}
-	if err := workflow.ExecuteActivity(_ctx, activities.SyncReposFromGithub, sync).Get(_ctx, nil); err != nil {
+	if err := workflow.ExecuteActivity(ctx, activities.SyncReposFromGithub, sync).Get(ctx, nil); err != nil {
 		logger.Error("github/installation/post: error syncing repos ...", "error", err)
 	}
 
@@ -232,7 +229,7 @@ func (w *Workflows) PostInstall(ctx workflow.Context, payload *Installation) err
 		GithubOrgName:  payload.InstallationLogin,
 		GithubOrgID:    payload.InstallationLoginID,
 	}
-	if err := workflow.ExecuteActivity(_ctx, activities.SyncOrgUsersFromGithub, orgsync).Get(_ctx, nil); err != nil {
+	if err := workflow.ExecuteActivity(ctx, activities.SyncOrgUsersFromGithub, orgsync).Get(ctx, nil); err != nil {
 		logger.Error("github/installation/post: error syncing org users ...", "error", err)
 	}
 
@@ -441,12 +438,11 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 	logger.Info("received installation repositories event ...")
 
 	installation := &Installation{}
-	activityOpts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	actx := workflow.WithActivityOptions(ctx, activityOpts)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	err := workflow.
-		ExecuteActivity(actx, activities.GetInstallation, payload.Installation.ID).
-		Get(actx, installation)
+		ExecuteActivity(ctx, activities.GetInstallation, payload.Installation.ID).
+		Get(ctx, installation)
 	if err != nil {
 		logger.Error("error getting installation", "error", err)
 		return err
@@ -464,7 +460,7 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 			TeamID:         installation.TeamID,
 		}
 
-		future := workflow.ExecuteActivity(actx, activities.CreateOrUpdateGithubRepo, repo)
+		future := workflow.ExecuteActivity(ctx, activities.CreateOrUpdateGithubRepo, repo)
 		selector.AddFuture(future, on_repo_saved_future(ctx, repo))
 	}
 

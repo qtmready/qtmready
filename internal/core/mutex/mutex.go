@@ -22,8 +22,10 @@ package mutex
 import (
 	"time"
 
-	"go.breu.io/quantm/internal/core/defs"
+	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/workflow"
+
+	"go.breu.io/quantm/internal/core/defs"
 )
 
 const (
@@ -81,8 +83,7 @@ func (h *Handler) Prepare(ctx workflow.Context) error {
 
 	h.logger.info(h.Info.WorkflowExecution.ID, "prepare", "preparing mutex")
 
-	opts := workflow.ActivityOptions{StartToCloseTimeout: h.Timeout}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	exe := &workflow.Execution{}
 	if err := workflow.ExecuteActivity(ctx, PrepareMutexActivity, h).Get(ctx, exe); err != nil {
