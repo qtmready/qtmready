@@ -8,7 +8,7 @@ import (
 // RepoCtrlWorkflowOptions returns workflow options for RepoCtrl, designed for use with the Core Queue.
 // The workflow ID, when used with the Core Queue, is formatted as:
 //
-//	ai.ctrlplane.core.team.{team}.repo.{repo}.id.{repo_id}
+//	"ai.ctrlplane.core.team.{team}.repo.{repo}.id.{repo_id}"
 func RepoCtrlWorkflowOptions(team, repo string, id gocql.UUID) workflows.Options {
 	opts, _ := workflows.NewOptions(
 		workflows.WithBlock("team"),
@@ -25,7 +25,7 @@ func RepoCtrlWorkflowOptions(team, repo string, id gocql.UUID) workflows.Options
 // TrunkCtrlWorkflowOptions returns workflow options for TrunkCtrl, tailored for trunk-related workflows.
 // The workflow ID, when used with the Core Queue, is formatted as:
 //
-//	ai.ctrlplane.core.team.{team}.repo.{repo}.id.{repo_id}.trunk
+//	"ai.ctrlplane.core.team.{team}.repo.{repo}.id.{repo_id}.trunk"
 func TrunkCtrlWorkflowOptions(team, repo string, id gocql.UUID) workflows.Options {
 	opts, _ := workflows.NewOptions(
 		workflows.WithBlock("team"),
@@ -43,7 +43,7 @@ func TrunkCtrlWorkflowOptions(team, repo string, id gocql.UUID) workflows.Option
 // BranchCtrlWorkflowOptions returns workflow options for BranchCtrl, specifying a branch.
 // The workflow ID, when used with the Core Queue, is formatted as:
 //
-//	ai.ctrlplane.core.team.{team}.repo.{repo}.id.{repo_id}.branch.{branch}
+//	"ai.ctrlplane.core.team.{team}.repo.{repo}.id.{repo_id}.branch.{branch}"
 func BranchCtrlWorkflowOptions(team, repo string, id gocql.UUID, branch string) workflows.Options {
 	opts, _ := workflows.NewOptions(
 		workflows.WithBlock("team"),
@@ -61,7 +61,7 @@ func BranchCtrlWorkflowOptions(team, repo string, id gocql.UUID, branch string) 
 // QueueCtrlWorkflowOptions returns workflow options for QueueCtrl, used for queue-related workflows.
 // The workflow ID, when used with the Core Queue, is formatted as:
 //
-//	ai.ctrlplane.core.team.{team}.repo.{repo}.id.{repo_id}.queue
+//	"ai.ctrlplane.core.team.{team}.repo.{repo}.id.{repo_id}.queue"
 func QueueCtrlWorkflowOptions(team, repo string, id gocql.UUID) workflows.Options {
 	opts, _ := workflows.NewOptions(
 		workflows.WithBlock("team"),
