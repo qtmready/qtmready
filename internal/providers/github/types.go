@@ -302,6 +302,12 @@ const (
 )
 
 type (
+	RepoEventPayload struct {
+		RepoID         db.Int64 `json:"repo_id"`
+		RepoName       string   `json:"repo_name"`
+		InstallationID db.Int64 `json:"installation_id"`
+		SenderID       string   `json:"sender_id"`
+	}
 	RepoEventState struct {
 		CoreRepo *defs.Repo     `json:"core_repo"`
 		Repo     *Repo          `json:"repo"`
@@ -707,4 +713,13 @@ func (pre PullRequestReviewCommentEvent) normalize(
 	}
 
 	return event
+}
+
+func PrepareRepoEventPayload(event RepoEvent) *RepoEventPayload {
+	return &RepoEventPayload{
+		RepoID:         event.RepoID(),
+		RepoName:       event.RepoName(),
+		InstallationID: event.InstallationID(),
+		SenderID:       event.SenderID(),
+	}
 }

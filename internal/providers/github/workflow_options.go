@@ -2,6 +2,7 @@ package github
 
 import (
 	"go.breu.io/durex/workflows"
+	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/db"
 )
@@ -67,6 +68,15 @@ func InstallationWebhookWorkflowOptions(installation db.Int64, action string) wo
 		workflows.WithElementID(installation.String()),
 		workflows.WithMod("action"),
 		workflows.WithModID(action),
+	)
+
+	return opts
+}
+
+func PrepareRepoEventChildWorkflowOptions(ctx workflow.Context) workflows.Options {
+	opts, _ := workflows.NewOptions(
+		workflows.WithParent(ctx),
+		workflows.WithBlock("prepare"),
 	)
 
 	return opts
