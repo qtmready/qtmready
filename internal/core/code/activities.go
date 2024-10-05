@@ -31,7 +31,7 @@ import (
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/db"
-	"go.breu.io/quantm/internal/shared/queues"
+	"go.breu.io/quantm/internal/shared/queue"
 )
 
 type (
@@ -47,7 +47,7 @@ func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSigna
 	args := make([]any, 0)
 
 	if payload.Repo.DefaultBranch == payload.Branch {
-		_, err := queues.Core().SignalWithStartWorkflow(
+		_, err := queue.Core().SignalWithStartWorkflow(
 			ctx,
 			TrunkCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID),
 			payload.Signal,
@@ -59,7 +59,7 @@ func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSigna
 		return err
 	}
 
-	_, err := queues.Core().SignalWithStartWorkflow(
+	_, err := queue.Core().SignalWithStartWorkflow(
 		ctx,
 		BranchCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID, payload.Branch),
 		payload.Signal,
@@ -77,7 +77,7 @@ func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSigna
 func (a *Activities) SignalQueue(ctx context.Context, payload *defs.RepoIOSignalQueueCtrlPayload) error {
 	args := make([]any, 0)
 
-	_, err := queues.Core().SignalWithStartWorkflow(
+	_, err := queue.Core().SignalWithStartWorkflow(
 		ctx,
 		QueueCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID),
 		payload.Signal,

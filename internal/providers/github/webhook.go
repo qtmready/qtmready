@@ -25,7 +25,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	"go.breu.io/quantm/internal/shared/queues"
+	"go.breu.io/quantm/internal/shared/queue"
 )
 
 // handleInstallationEvent handles GitHub App installation event.
@@ -38,7 +38,7 @@ func handleInstallationEvent(ctx echo.Context) error {
 	slog.Info("installation event received ...", "action", payload.Action)
 
 	workflows := &Workflows{}
-	exe, err := queues.Providers().SignalWithStartWorkflow(
+	exe, err := queue.Providers().SignalWithStartWorkflow(
 		ctx.Request().Context(),
 		// TODO: we should probably take the action from the payload.
 		InstallationWebhookWorkflowOptions(payload.Installation.ID, "install"),
@@ -68,7 +68,7 @@ func handleInstallationRepositoriesEvent(ctx echo.Context) error {
 
 	w := &Workflows{}
 
-	exe, err := queues.Providers().ExecuteWorkflow(
+	exe, err := queue.Providers().ExecuteWorkflow(
 		ctx.Request().Context(),
 		InstallationWebhookWorkflowOptions(payload.Installation.ID, WebhookEventInstallationRepositories.String()),
 		w.OnInstallationRepositoriesEvent,
@@ -102,7 +102,7 @@ func handlePushEvent(ctx echo.Context) error {
 	event := WebhookEvent(ctx.Request().Header.Get("X-GitHub-Event"))
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
 
-	_, err := queues.Providers().ExecuteWorkflow(
+	_, err := queue.Providers().ExecuteWorkflow(
 		ctx.Request().Context(),
 		RepoWebhookWorkflowOptions(payload.Installation.ID, payload.Repository.Name, event.String(), delievery),
 		w.OnPushEvent,
@@ -135,7 +135,7 @@ func handleCreateOrDeleteEvent(ctx echo.Context) error {
 
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
 
-	_, err := queues.Providers().ExecuteWorkflow(
+	_, err := queue.Providers().ExecuteWorkflow(
 		ctx.Request().Context(),
 		RepoWebhookWorkflowOptions(payload.Installation.ID, payload.Repository.Name, event.String(), delievery),
 		w.OnCreateOrDeleteEvent,
@@ -162,7 +162,7 @@ func handlePullRequestEvent(ctx echo.Context) error {
 	w := &Workflows{}
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
 
-	_, err := queues.Providers().ExecuteWorkflow(
+	_, err := queue.Providers().ExecuteWorkflow(
 		ctx.Request().Context(),
 		RepoWebhookWorkflowOptions(payload.Installation.ID, payload.Repository.Name, WebhookEventPullRequest.String(), delievery),
 		w.OnPullRequestEvent,
@@ -189,7 +189,7 @@ func handlePullRequestReviewEvent(ctx echo.Context) error {
 	w := &Workflows{}
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
 
-	_, err := queues.Providers().ExecuteWorkflow(
+	_, err := queue.Providers().ExecuteWorkflow(
 		ctx.Request().Context(),
 		RepoWebhookWorkflowOptions(payload.Installation.ID, payload.Repository.Name, WebhookEventPullRequestReview.String(), delievery),
 		w.OnPullRequestReviewEvent,
@@ -216,7 +216,7 @@ func handlePullRequestReviewCommentEvent(ctx echo.Context) error {
 	w := &Workflows{}
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
 
-	_, err := queues.Providers().ExecuteWorkflow(
+	_, err := queue.Providers().ExecuteWorkflow(
 		ctx.Request().Context(),
 		RepoWebhookWorkflowOptions(
 			payload.Installation.ID, payload.Repository.Name, WebhookEventPullRequestReviewComment.String(), delievery,
@@ -246,7 +246,7 @@ func handleWorkflowRunEvent(ctx echo.Context) error {
 	workflows := &Workflows{}
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
 
-	exe, err := queues.Providers().ExecuteWorkflow(
+	exe, err := queue.Providers().ExecuteWorkflow(
 		ctx.Request().Context(),
 		RepoWebhookWorkflowOptions(payload.Installation.ID, payload.Repository.Name, WebhookEventWorkflowRun.String(), delievery),
 		workflows.OnWorkflowRunEvent,

@@ -31,7 +31,7 @@ import (
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/shared"
-	"go.breu.io/quantm/internal/shared/queues"
+	"go.breu.io/quantm/internal/shared/queue"
 )
 
 type (
@@ -104,7 +104,7 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 	workflows := &Workflows{}
 
 	{
-		exe, err := queues.Providers().SignalWithStartWorkflow(
+		exe, err := queue.Providers().SignalWithStartWorkflow(
 			ctx.Request().Context(),
 			InstallationWebhookWorkflowOptions(request.InstallationID, "install"),
 			WorkflowSignalCompleteInstallation,
@@ -119,7 +119,7 @@ func (s *ServerHandler) GithubCompleteInstallation(ctx echo.Context) error {
 		_ = exe.Get(ctx.Request().Context(), installation)
 	}
 
-	exe, err := queues.Providers().ExecuteWorkflow(
+	exe, err := queue.Providers().ExecuteWorkflow(
 		ctx.Request().Context(),
 		InstallationWebhookWorkflowOptions(request.InstallationID, "post_install"),
 		workflows.PostInstall,

@@ -28,7 +28,7 @@ import (
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db"
-	"go.breu.io/quantm/internal/shared/queues"
+	"go.breu.io/quantm/internal/shared/queue"
 )
 
 var (
@@ -245,7 +245,7 @@ func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, payload *CreateO
 
 	prepared := PrepareRepoEventPayload(payload)
 
-	future, err := queues.
+	future, err := queue.
 		Providers().
 		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), w.CollectRepoEventMetadata, prepared)
 	if err != nil {
@@ -283,7 +283,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 
 	prepared := PrepareRepoEventPayload(payload)
 
-	future, err := queues.
+	future, err := queue.
 		Providers().
 		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), w.CollectRepoEventMetadata, prepared)
 	if err != nil {
@@ -319,7 +319,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 
 	prepared := PrepareRepoEventPayload(payload)
 
-	future, err := queues.
+	future, err := queue.
 		Providers().
 		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), w.CollectRepoEventMetadata, prepared)
 	if err != nil {
@@ -364,7 +364,7 @@ func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRe
 
 	prepared := PrepareRepoEventPayload(event)
 
-	future, err := queues.
+	future, err := queue.
 		Providers().
 		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), w.CollectRepoEventMetadata, prepared)
 	if err != nil {
@@ -401,7 +401,7 @@ func (w *Workflows) OnPullRequestReviewCommentEvent(ctx workflow.Context, event 
 
 	prepared := PrepareRepoEventPayload(event)
 
-	future, err := queues.
+	future, err := queue.
 		Providers().
 		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), w.CollectRepoEventMetadata, prepared)
 	if err != nil {
@@ -480,7 +480,7 @@ func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, pl *GithubWorkflowR
 
 	prepared := PrepareRepoEventPayload(pl)
 
-	future, err := queues.
+	future, err := queue.
 		Providers().
 		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), w.CollectRepoEventMetadata, prepared)
 	if err != nil {

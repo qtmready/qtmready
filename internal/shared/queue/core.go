@@ -1,4 +1,4 @@
-package queues
+package queue
 
 import (
 	"log/slog"

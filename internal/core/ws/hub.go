@@ -260,7 +260,7 @@ func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
 		return nil
 	}
 
-	queue, err := h.query(ctx, user_id)
+	q, err := h.query(ctx, user_id)
 	if err != nil {
 		var hubErr *HubError
 		if errors.As(err, &hubErr) && hubErr.Code == ErrorCodeUserNotRegistered {
@@ -271,7 +271,7 @@ func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
 		return err
 	}
 
-	err = h.route(ctx, queue, user_id, message)
+	err = h.route(ctx, q, user_id, message)
 	if err != nil {
 		return err
 	}
@@ -350,8 +350,8 @@ func (h *hub) local(user_id string, message []byte) bool {
 //	if err != nil {
 //	    // handle error
 //	}
-func (h *hub) route(ctx context.Context, queue, user_id string, message []byte) error {
-	q := queues.New(queues.WithName(queue), queues.WithClient(shared.Temporal().Client()))
+func (h *hub) route(ctx context.Context, _queue, user_id string, message []byte) error {
+	q := queues.New(queues.WithName(_queue), queues.WithClient(shared.Temporal().Client()))
 
 	_, err := q.ExecuteWorkflow(ctx, opts_send(user_id), SendMessageWorkflow, user_id, message)
 	if err != nil {

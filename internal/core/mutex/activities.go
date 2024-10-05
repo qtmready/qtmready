@@ -24,7 +24,7 @@ import (
 
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/quantm/internal/shared/queues"
+	"go.breu.io/quantm/internal/shared/queue"
 )
 
 // PrepareMutexActivity prepares a mutex for a given resource.
@@ -41,7 +41,7 @@ func PrepareMutexActivity(ctx context.Context, payload *Handler) (*workflow.Exec
 		Persist: true,
 	}
 
-	exe, err := queues.Mutex().SignalWithStartWorkflow(
+	exe, err := queue.Mutex().SignalWithStartWorkflow(
 		ctx,
 		MutexWorkflowOptions(payload.ResourceID),
 		WorkflowSignalPrepare,

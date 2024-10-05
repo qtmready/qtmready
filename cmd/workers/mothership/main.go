@@ -35,7 +35,7 @@ import (
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
-	"go.breu.io/quantm/internal/shared/queues"
+	queue "go.breu.io/quantm/internal/shared/queue"
 )
 
 func main() {
@@ -62,9 +62,9 @@ func main() {
 	graceful.Go(ctx, ws.Queue().Start, rx_errors)
 
 	cleanups := []graceful.Cleanup{
-		queues.Core().Shutdown,
-		queues.Providers().Shutdown,
-		queues.Mutex().Shutdown,
+		queue.Core().Shutdown,
+		queue.Providers().Shutdown,
+		queue.Mutex().Shutdown,
 		ws.Queue().Shutdown,
 	}
 
