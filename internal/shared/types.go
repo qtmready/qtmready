@@ -21,33 +21,6 @@ package shared
 
 import (
 	"github.com/go-playground/validator/v10"
-
-	"go.breu.io/quantm/internal/shared/queue"
-)
-
-// workflow related shared types and contants.
-type (
-	WorkflowOption = queue.WorkflowOptions
-)
-
-var (
-	WithWorkflowParent    = queue.WithWorkflowParent    // Sets the parent workflow ID.
-	WithWorkflowBlock     = queue.WithWorkflowBlock     // Sets the block name for the workflow ID.
-	WithWorkflowBlockID   = queue.WithWorkflowBlockID   // Sets the block value for the workflow ID.
-	WithWorkflowElement   = queue.WithWorkflowElement   // Sets the element name for the workflow ID.
-	WithWorkflowElementID = queue.WithWorkflowElementID // Sets the element value for the workflow ID.
-	WithWorkflowMod       = queue.WithWorkflowMod       // Sets the modifier for the workflow ID.
-	WithWorkflowModID     = queue.WithWorkflowModID     // Sets the modifier value for the workflow ID.
-	WithWorkflowProp      = queue.WithWorkflowProp      // Sets the property for the workflow ID.
-	NewWorkflowOptions    = queue.NewWorkflowOptions    // Creates a new workflow ID. (see queue.NewWorkflowOptions)
-)
-
-// queue definitions.
-const (
-	CoreQueue      queue.Name = "core"      // core queue
-	ProvidersQueue queue.Name = "providers" // messaging related to providers
-	MutexQueue     queue.Name = "mutex"     // mutex workflow queue
-	WebSocketQueue queue.Name = "websocket" // websocket workflow queue
 )
 
 type (

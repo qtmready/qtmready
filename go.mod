@@ -28,7 +28,7 @@ require (
 	github.com/sethvargo/go-password v0.3.1
 	github.com/stretchr/testify v1.9.0
 	github.com/testcontainers/testcontainers-go v0.33.0
-	go.breu.io/durex v0.3.0
+	go.breu.io/durex v0.4.0
 	go.breu.io/graceful v0.0.1
 	go.opentelemetry.io/contrib/instrumentation/github.com/labstack/echo/otelecho v0.55.0
 	go.opentelemetry.io/otel v1.30.0
@@ -182,4 +182,4 @@ replace github.com/deepmap/oapi-codegen/v2 v2.1.0 => github.com/breuHQ/oapi-code
 
 // replace github.com/deepmap/oapi-codegen/v2 v2.1.0 => /Users/jay/Work/opensource/oapi-codegen
 
-replace go.breu.io/durex v0.3.0 => /Users/jay/Work/breu/durex
+// replace go.breu.io/durex v0.3.0 => /Users/jay/Work/breu/durex

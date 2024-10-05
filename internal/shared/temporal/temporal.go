@@ -29,8 +29,6 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
-
-	"go.breu.io/quantm/internal/shared/queue"
 )
 
 var (
@@ -40,7 +38,6 @@ var (
 type (
 	Temporal interface {
 		GetConnectionString() string
-		Queue(queue.Name) queue.Queue
 		Client() client.Client
 	}
 
@@ -57,7 +54,6 @@ type (
 		ServerHost string `env:"TEMPORAL_HOST" env-default:"temporal"`
 		ServerPort string `env:"TEMPORAL_PORT" env-default:"7233"`
 		client     client.Client
-		queues     queue.Queues
 		logger     *slog.Logger
 		retries    uint
 	}
@@ -67,10 +63,6 @@ type (
 
 func (t *Config) GetConnectionString() string {
 	return fmt.Sprintf("%s:%s", t.ServerHost, t.ServerPort)
-}
-
-func (t *Config) Queue(name queue.Name) queue.Queue {
-	return t.queues[name]
 }
 
 func (t *Config) Client() client.Client {
@@ -84,13 +76,6 @@ func (t *Config) Client() client.Client {
 
 func (t *Config) connect() {
 	slog.Info("temporal: connecting ...", slog.String("host", t.ServerHost), slog.String("port", t.ServerPort))
-
-	if len(t.queues) < 1 {
-		slog.Warn(
-			"temporal: no queues configured ...",
-			slog.String("host", t.ServerHost), slog.String("port", t.ServerPort),
-		)
-	}
 
 	if t.logger == nil {
 		slog.Warn("temporal: no logger configured, using default ...")
@@ -137,14 +122,6 @@ func (t *Config) retry() error {
 	return nil
 }
 
-// WithQueue adds a new queue and worker to the Config.
-func WithQueue(name queue.Name) ConfigOption {
-	return func(t *Config) {
-		slog.Info("temporal: configuring queue ...", "queue", name.String())
-		t.queues[name] = queue.NewQueue(queue.WithName(name))
-	}
-}
-
 // WithLogger sets the logger for the Config.
 func WithLogger(logger *slog.Logger) ConfigOption {
 	return func(t *Config) {
@@ -170,7 +147,7 @@ func WithClientCreation() ConfigOption {
 
 // New creates a new Temporal instance.
 func New(opts ...ConfigOption) Temporal {
-	t := &Config{queues: make(queue.Queues), retries: 10}
+	t := &Config{retries: 10}
 	for _, opt := range opts {
 		opt(t)
 	}
