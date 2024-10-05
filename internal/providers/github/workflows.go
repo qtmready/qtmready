@@ -52,15 +52,13 @@ type (
 	}
 )
 
-// OnInstallationEvent workflow is executed when we initiate the installation of GitHub defs.
+// OnInstallationEvent workflow is executed when we initiate the installation of GitHub.
 //
-// In an ideal world, the complete installation request would hit the API after the installation event has hit the
-// webhook, however, there can be number of things that can go wrong, and we can receive the complete installation
-// request before the push event. To handle this, we use temporal.io's signal API to provide two possible entry points
-// for the system. See the README.md for a detailed explanation on how this workflow works.
+// It handles the installation, creation of teams, and associated user information based on incoming signals (webhook,
+// complete installation request).  Critically, it synchronizes the GitHub installation with the internal system.
 //
-// NOTE: This workflow is only meant to be started with SignalWithStartWorkflow.
-// TODO: Refactor this workflow to reduce complexity.
+// NOTE: This workflow is designed to be started with SignalWithStartWorkflow.
+// TODO: Refactor for better code readability.  Reduce potential for code duplication and improve overall complexity.
 func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, error) { // nolint:funlen
 	// prelude
 	logger := workflow.GetLogger(ctx)
@@ -89,14 +87,14 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 
 	logger.Info("github/installation: required signals processed ...")
 
+	// NOTE: A GitHub organization typically has only one active installation. A new installation is treated as the
+	// initial app installation, and no pre-existing teams are assumed. This assumption holds under the constraint of one
+	// active installation per organization.
+
+	// TODO: Implement handling for app uninstallation and reinstallation. This requires adding a database field to mark
+	// installations as deleted. Subsequent installations should check for a deleted status and update the installation
+	// status accordingly to maintain data integrity.
 	switch webhook.Action {
-	// NOTE - Since a GitHub organization can only have one active installation at a time, when a new installation is created, it's
-	// considered the first app installation for the organization, and we assume no teams have been created yet within the organization.
-	//
-	// TODO - we need to handle the case when an the app uninstallation and reinstallation case.
-	//
-	// - when delete event is received, we need to add a db field to mark the installation as deleted.
-	// - on the subsequent installation, we need to check if the installation is deleted and update the installation status.
 	case "created":
 		user := &auth.User{}
 		team := &auth.Team{}
@@ -134,7 +132,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 
 		logger.Info("github/installation: creating or updating installation ...")
 
-		if err := workflow.ExecuteActivity(_ctx, activities.CreateOrUpdateInstallation, installation).Get(_ctx, installation); err != nil {
+		if err := workflow.ExecuteActivity(_ctx, activities.CreateOrUpdateInstallation, installation).
+			Get(_ctx, installation); err != nil {
 			logger.Error("github/installation: error saving installation ...", "error", err)
 		}
 
@@ -172,8 +171,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 
 			future := workflow.ExecuteActivity(_ctx, activities.CreateOrUpdateGithubRepo, repo)
 
-			// NOTE - ideally, we should use a new selector here, but since there will be no new signals comings in, we know that
-			// selector.Select will only be waiting for the futures to complete.
+			// NOTE:  A new selector isn't necessary here because no new signals are expected;
+			// selector.Select will simply wait for the futures to complete.
 			selector.AddFuture(future, on_repo_saved_future(ctx, repo))
 		}
 
@@ -195,11 +194,13 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 	return installation, nil
 }
 
-// PostInstall refresh the default branch for all repositories associated with the given teamID and gets orgs users.
-// NOTE - this workflow runs complete for the first time but when reinstall the github app and configure the same repos.
-// it will give the, It will give the access_token error: could not refresh installation id XXXXXXX's token error. TODO
-// - handle when the github app is reinstall and confgure the same repos, and also need to test when configure the same
-// repo or new repos.
+// PostInstall updates default branches for all repositories linked to the team and retrieves organization users.
+//
+// NOTE: This workflow completes successfully the first time but may fail upon reinstallation of the GitHub app
+// with the same repositories. This is due to access token refresh issues.
+//
+// TODO: Handle GitHub app reinstallation scenarios. Test cases should cover reconfiguring existing repositories and
+// adding new ones.
 func (w *Workflows) PostInstall(ctx workflow.Context, payload *Installation) error {
 	logger := workflow.GetLogger(ctx)
 	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
@@ -241,7 +242,7 @@ func (w *Workflows) PostInstall(ctx workflow.Context, payload *Installation) err
 // OnPushEvent is run when ever a repo event is received. Repo Event can be push event or a create event.
 func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, payload *CreateOrDeleteEvent) error {
 	logger := workflow.GetLogger(ctx)
-	state := &RepoEventState{}
+	state := &RepoEventMetadata{}
 
 	logger.Info("github/create-delete: fetching metadata ...")
 
@@ -249,7 +250,7 @@ func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, payload *CreateO
 
 	future, err := queues.
 		Providers().
-		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), PrepareRepoEventWorkflow, prepared)
+		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), CollectRepoEventMetadataWorkflow, prepared)
 	if err != nil {
 		return err
 	}
@@ -279,7 +280,7 @@ func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, payload *CreateO
 // OnPushEvent is run when ever a repo event is received. Repo Event can be push event or a create event.
 func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error {
 	logger := workflow.GetLogger(ctx)
-	state := &RepoEventState{}
+	state := &RepoEventMetadata{}
 
 	logger.Info("github/push: fetching metadata ...")
 
@@ -287,7 +288,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 
 	future, err := queues.
 		Providers().
-		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), PrepareRepoEventWorkflow, prepared)
+		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), CollectRepoEventMetadataWorkflow, prepared)
 	if err != nil {
 		return err
 	}
@@ -315,7 +316,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 // OnPullRequestEvent normalize the pull request event and then signal the core repo.
 func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullRequestEvent) error {
 	logger := workflow.GetLogger(ctx)
-	state := &RepoEventState{}
+	state := &RepoEventMetadata{}
 
 	logger.Info("github/pull_request: fetching metadata ...")
 
@@ -323,7 +324,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 
 	future, err := queues.
 		Providers().
-		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), PrepareRepoEventWorkflow, prepared)
+		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), CollectRepoEventMetadataWorkflow, prepared)
 	if err != nil {
 		return err
 	}
@@ -360,7 +361,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 // OnPullRequestReviewEvent normalize the pull request review event and then signal the core repo.
 func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRequestReviewEvent) error {
 	logger := workflow.GetLogger(ctx)
-	state := &RepoEventState{}
+	state := &RepoEventMetadata{}
 
 	logger.Info("github/pull_request_review: fetching metadata ...")
 
@@ -368,7 +369,7 @@ func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRe
 
 	future, err := queues.
 		Providers().
-		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), PrepareRepoEventWorkflow, prepared)
+		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), CollectRepoEventMetadataWorkflow, prepared)
 	if err != nil {
 		return err
 	}
@@ -397,7 +398,7 @@ func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRe
 // OnPullRequestReviewCommentEvent normalize the pull request review comment event and then signal the core repo.
 func (w *Workflows) OnPullRequestReviewCommentEvent(ctx workflow.Context, event *PullRequestReviewCommentEvent) error {
 	logger := workflow.GetLogger(ctx)
-	state := &RepoEventState{}
+	state := &RepoEventMetadata{}
 
 	logger.Info("github/pull_request_review_comment: fetching metadata ...")
 
@@ -405,7 +406,7 @@ func (w *Workflows) OnPullRequestReviewCommentEvent(ctx workflow.Context, event 
 
 	future, err := queues.
 		Providers().
-		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), PrepareRepoEventWorkflow, prepared)
+		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), CollectRepoEventMetadataWorkflow, prepared)
 	if err != nil {
 		return err
 	}
@@ -477,7 +478,7 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 
 func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, pl *GithubWorkflowRunEvent) error {
 	logger := workflow.GetLogger(ctx)
-	state := &RepoEventState{}
+	state := &RepoEventMetadata{}
 
 	logger.Info("github/workflow_run: fetching metadata ...")
 
@@ -485,7 +486,7 @@ func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, pl *GithubWorkflowR
 
 	future, err := queues.
 		Providers().
-		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), PrepareRepoEventWorkflow, prepared)
+		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), CollectRepoEventMetadataWorkflow, prepared)
 	if err != nil {
 		return err
 	}
@@ -560,59 +561,54 @@ func on_install_request_signal(
 	}
 }
 
-func PrepareRepoEventWorkflow(ctx workflow.Context, event *RepoEventPayload) (*RepoEventState, error) {
+// CollectRepoEventMetadataWorkflow retrieves metadata about a repository event, validating its existence and status.
+// It gathers the repository, associated core repository, and user details.  It's intended for use as a child workflow.
+func CollectRepoEventMetadataWorkflow(ctx workflow.Context, query *RepoEventMetadataQuery) (*RepoEventMetadata, error) {
 	logger := workflow.GetLogger(ctx)
-	logger.Info("github/repo_event: preparing ...")
+	logger.Info("github/repo_event: collecting metadata...")
 
 	acts := &Activities{}
-	state := &RepoEventState{}
+	meta := &RepoEventMetadata{}
 	ctx = dispatch.WithDefaultActivityContext(ctx)
+
+	// Retrieve repositories associated with the given installation and repository ID.  Returns an error if lookup fails.
 	repos := make([]Repo, 0)
-
-	/**
-	 * Get github repo for the installation.
-	 */
-
-	if err := workflow.ExecuteActivity(ctx, acts.GetReposForInstallation, event.InstallationID.String(), event.RepoID.String()).
+	if err := workflow.ExecuteActivity(ctx, acts.GetReposForInstallation, query.InstallationID.String(), query.RepoID.String()).
 		Get(ctx, &repos); err != nil {
-		return state, err
+		return nil, err
 	}
 
+	// Validate repository existence and uniqueness.  Returns specific errors if not found or multiple.
 	if len(repos) == 0 {
-		return state, NewRepoNotFoundRepoEventError(event.InstallationID, event.RepoID, event.RepoName)
+		return nil, NewRepoNotFoundRepoEventError(query.InstallationID, query.RepoID, query.RepoName)
 	}
 
 	if len(repos) > 1 {
-		return state, NewMultipleReposFoundRepoEventError(event.InstallationID, event.RepoID, event.RepoName)
+		return nil, NewMultipleReposFoundRepoEventError(query.InstallationID, query.RepoID, query.RepoName)
 	}
 
-	repo := &repos[0]
+	repo := repos[0]
 
+	// Validate the repository's active status and early warning system. Returns specific errors for these conditions.
 	if !repo.IsActive {
-		return state, NewInactiveRepoRepoEventError(event.InstallationID, event.RepoID, event.RepoName)
+		return nil, NewInactiveRepoRepoEventError(query.InstallationID, query.RepoID, query.RepoName)
 	}
 
 	if !repo.HasEarlyWarning {
-		return state, NewHasNoEarlyWarningRepoEventError(event.InstallationID, event.RepoID, event.RepoName)
+		return nil, NewHasNoEarlyWarningRepoEventError(query.InstallationID, query.RepoID, query.RepoName)
 	}
 
-	state.Repo = repo
+	meta.Repo = &repo
 
-	/**
-	 * Get the linked core repository.
-	 */
-
-	if err := workflow.ExecuteActivity(ctx, acts.GetCoreRepo, repo.ID.String()).Get(ctx, &state.CoreRepo); err != nil {
-		return state, err
+	// Fetch the associated core repository.  Returns an error if retrieval fails.
+	if err := workflow.ExecuteActivity(ctx, acts.GetCoreRepo, repo.ID.String()).Get(ctx, &meta.CoreRepo); err != nil {
+		return nil, err
 	}
 
-	/**
-	 * Get the user for the installation.
-	 */
-
-	if err := workflow.ExecuteActivity(ctx, acts.GetTeamUserByLoginID, event.InstallationID.String()).Get(ctx, &state.User); err != nil {
-		return state, err
+	// Fetch the user associated with the installation. Returns an error if retrieval fails.
+	if err := workflow.ExecuteActivity(ctx, acts.GetTeamUserByLoginID, query.InstallationID.String()).Get(ctx, &meta.User); err != nil {
+		return nil, err
 	}
 
-	return state, nil
+	return meta, nil
 }

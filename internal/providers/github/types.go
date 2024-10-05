@@ -302,13 +302,13 @@ const (
 )
 
 type (
-	RepoEventPayload struct {
+	RepoEventMetadataQuery struct {
 		RepoID         db.Int64 `json:"repo_id"`
 		RepoName       string   `json:"repo_name"`
 		InstallationID db.Int64 `json:"installation_id"`
 		SenderID       string   `json:"sender_id"`
 	}
-	RepoEventState struct {
+	RepoEventMetadata struct {
 		CoreRepo *defs.Repo     `json:"core_repo"`
 		Repo     *Repo          `json:"repo"`
 		User     *auth.TeamUser `json:"user"`
@@ -715,8 +715,8 @@ func (pre PullRequestReviewCommentEvent) normalize(
 	return event
 }
 
-func PrepareRepoEventPayload(event RepoEvent) *RepoEventPayload {
-	return &RepoEventPayload{
+func PrepareRepoEventPayload(event RepoEvent) *RepoEventMetadataQuery {
+	return &RepoEventMetadataQuery{
 		RepoID:         event.RepoID(),
 		RepoName:       event.RepoName(),
 		InstallationID: event.InstallationID(),
