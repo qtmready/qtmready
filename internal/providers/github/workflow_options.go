@@ -28,14 +28,14 @@ import (
 //	    w.OnInstallationEvent,
 //	    payload,
 //	  )
-func RepoWebhookWorkflowOptions(installation db.Int64, repo, event, event_id string) workflows.Options {
+func RepoWebhookWorkflowOptions(installation db.Int64, repo, action, event_id string) workflows.Options {
 	opts, _ := workflows.NewOptions(
 		workflows.WithBlock("github"),
 		workflows.WithElement("installation"),
 		workflows.WithElementID(installation.String()),
 		workflows.WithMod("repo"),
 		workflows.WithModID(repo),
-		workflows.WithProp("event", event),
+		workflows.WithProp("action", action),
 		workflows.WithProp("eventid", event_id),
 	)
 
