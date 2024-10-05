@@ -1,45 +1,42 @@
 package main
 
 import (
-	"go.temporal.io/sdk/client"
-
 	"go.breu.io/quantm/internal/core/code"
 	"go.breu.io/quantm/internal/core/mutex"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/providers/slack"
-	"go.breu.io/quantm/internal/shared/queue"
+	"go.breu.io/quantm/internal/shared/queues"
 )
 
-func configure_core(q queue.Queue, c client.Client) {
-	worker := q.Worker(c)
+func configure_core() {
+	queues.Core().RegisterWorkflow(code.RepoCtrl)
+	queues.Core().RegisterWorkflow(code.TrunkCtrl)
+	queues.Core().RegisterWorkflow(code.BranchCtrl)
+	queues.Core().RegisterWorkflow(code.QueueCtrl)
 
-	worker.RegisterWorkflow(code.RepoCtrl)
-	worker.RegisterWorkflow(code.TrunkCtrl)
-	worker.RegisterWorkflow(code.BranchCtrl)
-	worker.RegisterWorkflow(code.QueueCtrl)
+	queues.Core().RegisterActivity(&code.Activities{})
 
-	worker.RegisterActivity(&code.Activities{})
-
-	// TODO: this will not work if we have more than one provider.
-	worker.RegisterActivity(&github.RepoIO{})
-	worker.RegisterActivity(&slack.Activities{})
-
-	worker.RegisterActivity(mutex.PrepareMutexActivity)
+	queues.Core().RegisterActivity(&github.RepoIO{})
+	queues.Core().RegisterActivity(&slack.Activities{})
+	queues.Core().RegisterActivity(mutex.PrepareMutexActivity)
 }
 
-func configure_provider(q queue.Queue, c client.Client) {
-	worker := q.Worker(c)
-
+func configure_providers() {
 	github_workflows := &github.Workflows{}
 
-	worker.RegisterWorkflow(github_workflows.OnInstallationEvent)
-	worker.RegisterWorkflow(github_workflows.OnInstallationRepositoriesEvent)
-	worker.RegisterWorkflow(github_workflows.PostInstall)
-	worker.RegisterWorkflow(github_workflows.OnPushEvent)
-	worker.RegisterWorkflow(github_workflows.OnCreateOrDeleteEvent)
-	worker.RegisterWorkflow(github_workflows.OnPullRequestEvent)
-	worker.RegisterWorkflow(github_workflows.OnWorkflowRunEvent)
+	queues.Providers().RegisterWorkflow(github_workflows.OnInstallationEvent)
+	queues.Providers().RegisterWorkflow(github_workflows.OnInstallationRepositoriesEvent)
+	queues.Providers().RegisterWorkflow(github_workflows.PostInstall)
+	queues.Providers().RegisterWorkflow(github_workflows.OnPushEvent)
+	queues.Providers().RegisterWorkflow(github_workflows.OnCreateOrDeleteEvent)
+	queues.Providers().RegisterWorkflow(github_workflows.OnPullRequestEvent)
+	queues.Providers().RegisterWorkflow(github_workflows.CollectRepoEventMetadata)
+	queues.Providers().RegisterWorkflow(github_workflows.OnWorkflowRunEvent)
 
-	worker.RegisterActivity(&github.Activities{})
-	worker.RegisterActivity(&slack.Activities{})
+	queues.Providers().RegisterActivity(&github.Activities{})
+	queues.Providers().RegisterActivity(&slack.Activities{})
+}
+
+func configure_mutex() {
+	queues.Mutex().RegisterWorkflow(mutex.MutexWorkflow)
 }

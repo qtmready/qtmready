@@ -121,11 +121,10 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v4"
-	"go.temporal.io/sdk/worker"
+	"go.breu.io/durex/queues"
 
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/shared"
-	"go.breu.io/quantm/internal/shared/queue"
 )
 
 type (
@@ -210,7 +209,7 @@ type (
 		clients    map[*connection]bool
 		register   chan *connection
 		unregister chan *connection
-		queue      queue.Queue
+		queue      queues.Queue
 		mu         sync.RWMutex
 		stop       chan bool
 
@@ -261,7 +260,7 @@ func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
 		return nil
 	}
 
-	name, err := h.query(ctx, user_id)
+	queue, err := h.query(ctx, user_id)
 	if err != nil {
 		var hubErr *HubError
 		if errors.As(err, &hubErr) && hubErr.Code == ErrorCodeUserNotRegistered {
@@ -272,7 +271,7 @@ func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
 		return err
 	}
 
-	err = h.route(ctx, queue.Name(name), user_id, message)
+	err = h.route(ctx, queue, user_id, message)
 	if err != nil {
 		return err
 	}
@@ -281,17 +280,12 @@ func (h *hub) Send(ctx context.Context, user_id string, message []byte) error {
 }
 
 func (h *hub) Signal(ctx context.Context, signal defs.Signal, payload any) error {
-	opts := opts_hub()
-	_, err := shared.Temporal().
-		Client().
-		SignalWithStartWorkflow(
-			ctx, opts.ID, signal.String(), payload, opts, ConnectionsHubWorkflow, NewConnections(),
-		)
+	_, err := h.queue.SignalWithStartWorkflow(ctx, opts_hub(), signal, payload, ConnectionsHubWorkflow, NewConnections())
 
 	return err
 }
 
-func (h *hub) Stop(_ context.Context) error {
+func (h *hub) Stop(ctx context.Context) error {
 	h.stop <- true
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -301,7 +295,7 @@ func (h *hub) Stop(_ context.Context) error {
 		client.conn.Close()
 	}
 
-	if err := h.Signal(context.Background(), WorkflowSignalFlushQueue, RegisterOrFlush{Queue: h.queue.Name()}); err != nil {
+	if err := h.Signal(ctx, WorkflowSignalFlushQueue, RegisterOrFlush{Queue: h.queue.String()}); err != nil {
 		slog.Warn("ws/hub: failed to signal flush", "error", err.Error())
 	}
 
@@ -356,11 +350,10 @@ func (h *hub) local(user_id string, message []byte) bool {
 //	if err != nil {
 //	    // handle error
 //	}
-func (h *hub) route(ctx context.Context, q queue.Name, user_id string, message []byte) error {
-	// Use the retrieved queue name to create workflow options
-	opts := opts_send(queue.NewQueue(queue.WithName(q)), user_id)
+func (h *hub) route(ctx context.Context, queue, user_id string, message []byte) error {
+	q := queues.New(queues.WithName(queue), queues.WithClient(shared.Temporal().Client()))
 
-	_, err := shared.Temporal().Client().ExecuteWorkflow(ctx, opts, SendMessageWorkflow, user_id, message)
+	_, err := q.ExecuteWorkflow(ctx, opts_send(user_id), SendMessageWorkflow, user_id, message)
 	if err != nil {
 		return NewHubError(ErrorCodeWorkflowExecutionFailed, "failed to send message", err)
 	}
@@ -377,7 +370,7 @@ func (h *hub) route(ctx context.Context, q queue.Name, user_id string, message [
 //	    // handle error
 //	}
 func (h *hub) query(ctx context.Context, user_id string) (string, error) {
-	response, err := shared.Temporal().Client().QueryWorkflow(ctx, opts_hub().ID, "", QueryGetUserQueue, user_id)
+	response, err := Queue().QueryWorkflow(ctx, opts_hub(), QueryGetUserQueue, user_id)
 	if err != nil {
 		return "", NewHubError(ErrorCodeQueryFailed, "failed to query user queue", err)
 	}
@@ -424,30 +417,20 @@ func (h *hub) run() {
 func (h *hub) worker() {
 	slog.Info("ws/queue: starting worker ...")
 
-	worker := h.queue.Worker(shared.Temporal().Client())
+	h.queue.CreateWorker()
 
-	// Register workflows
-	worker.RegisterWorkflow(SendMessageWorkflow)
-	worker.RegisterWorkflow(BroadcastMessageWorkflow)
+	h.queue.RegisterWorkflow(ConnectionsHubWorkflow)
+	h.queue.RegisterWorkflow(BroadcastMessageWorkflow)
 
-	// Register activities
-	worker.RegisterActivity(&Activities{})
+	h.queue.RegisterActivity(&Activities{})
 
-	if err := worker.Start(); err != nil {
-		slog.Error("ws/queue: unable to start worker for the queue, shutdown ..", "error", err)
+	if err := h.queue.Start(); err != nil {
 		h.stop <- true
-	}
-
-	err := h.Signal(context.Background(), WorkflowSignalWorkerAdded, &RegisterOrFlush{Queue: h.queue.Name()})
-	if err != nil {
-		slog.Warn("ws/queue: failed to signal worker addition", "error", err)
-		panic(err)
 	}
 
 	<-h.stop
 
-	// Graceful shutdown
-	worker.Stop()
+	_ = h.queue.Shutdown(context.Background())
 }
 
 // client searches for a client with the given user_id.
@@ -483,7 +466,7 @@ func (h *hub) read(client *connection) {
 	h.register <- client
 
 	// Signal that a user has connected
-	if err := h.Signal(context.Background(), WorkflowSignalAddUser, QueueUser{UserID: client.user_id, Queue: h.queue.Name()}); err != nil {
+	if err := h.Signal(context.Background(), WorkflowSignalAddUser, User{UserID: client.user_id}); err != nil {
 		slog.Warn("ws/hub: failed to add client", "user_id", client.user_id, "error", err)
 		return
 	}
@@ -532,44 +515,27 @@ func (h *hub) write(client *connection) {
 	}
 }
 
-// ConnectionsHubWorker creates and configures a Temporal worker for handling WebSocket connections. It sets up a new
-// queue with the WebSocketQueue name and registers the ConnectionsHandlerWorkflow.
-//
-// Example usage:
-//
-//	worker := ws.ConnectionsHubWorker()
-//	err := worker.Start()
-//	if err != nil {
-//	    log.Fatalf("Failed to start worker: %v", err)
-//	}
-//	defer worker.Stop()
-func ConnectionsHubWorker() worker.Worker {
-	slog.Info("ws/hub: starting worker ...")
-
-	q := queue.NewQueue(queue.WithName(shared.WebSocketQueue))
-	worker := q.Worker(shared.Temporal().Client())
-
-	worker.RegisterWorkflow(ConnectionsHubWorkflow)
-
-	return worker
-}
-
-// Instance returns a singleton instance of the Hub. It initializes the hub if it hasn't been created yet, setting up
-// necessary channels, registering workflows and activities, and starting the worker and run loops. This method ensures
-// that only one hub instance is created and used throughout the application.
-//
-// Example usage:
-//
-//	hub := ws.Instance()
-//	// Use hub methods...
+// // Instance returns a singleton instance of the Hub. It initializes the hub if it hasn't been created yet, setting up
+// // necessary channels, registering workflows and activities, and starting the worker and run loops. This method ensures
+// // that only one hub instance is created and used throughout the application.
+// //
+// // Example usage:
+// //
+// //	hub := ws.Instance()
+// //	// Use hub methods...
 func Instance() Hub {
 	once.Do(func() {
 		instance = &hub{
+			// websocket connections
 			clients:    make(map[*connection]bool),
 			register:   make(chan *connection),
 			unregister: make(chan *connection),
-			queue:      queue.NewQueue(queue.WithName(container_id())),
-			stop:       make(chan bool, 1),
+			// temporal
+			queue: queues.New(
+				queues.WithName(container_id()),
+				queues.WithClient(shared.Temporal().Client()),
+			),
+			stop: make(chan bool, 1),
 			// authentication
 			auth:  noop,
 			param: "token",

@@ -247,7 +247,7 @@ func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, payload *CreateO
 
 	future, err := queues.
 		Providers().
-		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), CollectRepoEventMetadataWorkflow, prepared)
+		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), w.CollectRepoEventMetadata, prepared)
 	if err != nil {
 		return err
 	}
@@ -285,7 +285,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 
 	future, err := queues.
 		Providers().
-		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), CollectRepoEventMetadataWorkflow, prepared)
+		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), w.CollectRepoEventMetadata, prepared)
 	if err != nil {
 		return err
 	}
@@ -321,7 +321,7 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 
 	future, err := queues.
 		Providers().
-		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), CollectRepoEventMetadataWorkflow, prepared)
+		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), w.CollectRepoEventMetadata, prepared)
 	if err != nil {
 		return err
 	}
@@ -366,7 +366,7 @@ func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRe
 
 	future, err := queues.
 		Providers().
-		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), CollectRepoEventMetadataWorkflow, prepared)
+		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), w.CollectRepoEventMetadata, prepared)
 	if err != nil {
 		return err
 	}
@@ -403,7 +403,7 @@ func (w *Workflows) OnPullRequestReviewCommentEvent(ctx workflow.Context, event 
 
 	future, err := queues.
 		Providers().
-		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), CollectRepoEventMetadataWorkflow, prepared)
+		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), w.CollectRepoEventMetadata, prepared)
 	if err != nil {
 		return err
 	}
@@ -482,7 +482,7 @@ func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, pl *GithubWorkflowR
 
 	future, err := queues.
 		Providers().
-		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), CollectRepoEventMetadataWorkflow, prepared)
+		ExecuteChildWorkflow(ctx, PrepareRepoEventChildWorkflowOptions(ctx), w.CollectRepoEventMetadata, prepared)
 	if err != nil {
 		return err
 	}
@@ -510,56 +510,9 @@ func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, pl *GithubWorkflowR
 	return workflow.ExecuteActivity(ctx, activities.GithubWorkflowInfo, p).Get(ctx, winfo)
 }
 
-// on_repo_saved_future handles post-processing after a repository is saved against an installation.
-func on_repo_saved_future(ctx workflow.Context, payload *Repo) defs.FutureHandler {
-	logger := workflow.GetLogger(ctx)
-	return func(f workflow.Future) { logger.Info("repository saved ...", "repo", payload.GithubID) }
-}
-
-// on_install_webhook_signal handles webhook events for installation that is in progress.
-func on_install_webhook_signal(
-	ctx workflow.Context, installation *InstallationEvent, status *InstallationWorkflowStatus,
-) defs.ChannelHandler {
-	logger := workflow.GetLogger(ctx)
-
-	return func(channel workflow.ReceiveChannel, more bool) {
-		logger.Info("github/installation: webhook received ...", "action", installation.Action)
-		channel.Receive(ctx, installation)
-
-		status.WebhookDone = true
-
-		switch installation.Action {
-		case "deleted", "suspend", "unsuspend":
-			logger.Info("github/installation: installation removed ....", "action", installation.Action)
-
-			status.RequestDone = true
-		case "request":
-			logger.Info("github/installation: installation request ...", "action", installation.Action)
-
-			status.RequestDone = true
-		default:
-			logger.Info("github/installation: create action ...", "action", installation.Action)
-		}
-	}
-}
-
-// on_install_request_signal handles new http requests on an installation in progress.
-func on_install_request_signal(
-	ctx workflow.Context, installation *CompleteInstallationSignal, status *InstallationWorkflowStatus,
-) defs.ChannelHandler {
-	logger := workflow.GetLogger(ctx)
-
-	return func(channel workflow.ReceiveChannel, more bool) {
-		logger.Info("github/installation: received complete installation request ...")
-		channel.Receive(ctx, installation)
-
-		status.RequestDone = true
-	}
-}
-
-// CollectRepoEventMetadataWorkflow retrieves metadata about a repository event, validating its existence and status.
+// CollectRepoEventMetadata retrieves metadata about a repository event, validating its existence and status.
 // It gathers the repository, associated core repository, and user details.  It's intended for use as a child workflow.
-func CollectRepoEventMetadataWorkflow(ctx workflow.Context, query *RepoEventMetadataQuery) (*RepoEventMetadata, error) {
+func (w *Workflows) CollectRepoEventMetadata(ctx workflow.Context, query *RepoEventMetadataQuery) (*RepoEventMetadata, error) {
 	logger := workflow.GetLogger(ctx)
 	logger.Info("github/repo_event: collecting metadata...")
 
@@ -607,4 +560,51 @@ func CollectRepoEventMetadataWorkflow(ctx workflow.Context, query *RepoEventMeta
 	}
 
 	return meta, nil
+}
+
+// on_repo_saved_future handles post-processing after a repository is saved against an installation.
+func on_repo_saved_future(ctx workflow.Context, payload *Repo) defs.FutureHandler {
+	logger := workflow.GetLogger(ctx)
+	return func(f workflow.Future) { logger.Info("repository saved ...", "repo", payload.GithubID) }
+}
+
+// on_install_webhook_signal handles webhook events for installation that is in progress.
+func on_install_webhook_signal(
+	ctx workflow.Context, installation *InstallationEvent, status *InstallationWorkflowStatus,
+) defs.ChannelHandler {
+	logger := workflow.GetLogger(ctx)
+
+	return func(channel workflow.ReceiveChannel, more bool) {
+		logger.Info("github/installation: webhook received ...", "action", installation.Action)
+		channel.Receive(ctx, installation)
+
+		status.WebhookDone = true
+
+		switch installation.Action {
+		case "deleted", "suspend", "unsuspend":
+			logger.Info("github/installation: installation removed ....", "action", installation.Action)
+
+			status.RequestDone = true
+		case "request":
+			logger.Info("github/installation: installation request ...", "action", installation.Action)
+
+			status.RequestDone = true
+		default:
+			logger.Info("github/installation: create action ...", "action", installation.Action)
+		}
+	}
+}
+
+// on_install_request_signal handles new http requests on an installation in progress.
+func on_install_request_signal(
+	ctx workflow.Context, installation *CompleteInstallationSignal, status *InstallationWorkflowStatus,
+) defs.ChannelHandler {
+	logger := workflow.GetLogger(ctx)
+
+	return func(channel workflow.ReceiveChannel, more bool) {
+		logger.Info("github/installation: received complete installation request ...")
+		channel.Receive(ctx, installation)
+
+		status.RequestDone = true
+	}
 }

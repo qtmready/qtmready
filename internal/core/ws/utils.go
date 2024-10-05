@@ -21,13 +21,9 @@ package ws
 
 import (
 	"crypto/rand"
-	"fmt"
 
 	"github.com/google/uuid"
-	sdk_client "go.temporal.io/sdk/client"
-
-	"go.breu.io/quantm/internal/shared"
-	"go.breu.io/quantm/internal/shared/queue"
+	"go.breu.io/durex/workflows"
 )
 
 // idempotent creates an idempotent ID for a workflow element.
@@ -35,31 +31,36 @@ func idempotent() string {
 	return uuid.NewString()
 }
 
-// opts_send returns StartWorkflowOptions for sending a message to a specific user.
-func opts_send(q queue.Queue, user_id string) sdk_client.StartWorkflowOptions {
-	return q.WorkflowOptions(
-		queue.WithWorkflowBlock("user"),
-		queue.WithWorkflowBlockID(user_id),
-		queue.WithWorkflowElement("message"),
-		queue.WithWorkflowElementID(idempotent()),
+func opts_send(user_id string) workflows.Options {
+	opts, _ := workflows.NewOptions(
+		workflows.WithBlock("send"),
+		workflows.WithElement("user"),
+		workflows.WithElementID(user_id),
+		workflows.WithElement("message"),
+		workflows.WithElementID(idempotent()),
 	)
+
+	return opts
 }
 
-// opts_broadcast returns StartWorkflowOptions for broadcasting a message to a team.
-func opts_broadcast(q queue.Queue, team_id string) sdk_client.StartWorkflowOptions {
-	return q.WorkflowOptions(
-		queue.WithWorkflowBlock("team"),
-		queue.WithWorkflowBlockID(team_id),
-		queue.WithWorkflowElement("message"),
-		queue.WithWorkflowElementID(idempotent()),
+func opts_broadcast(team_id string) workflows.Options {
+	opts, _ := workflows.NewOptions(
+		workflows.WithBlock("broadcast"),
+		workflows.WithElement("team"),
+		workflows.WithElementID(team_id),
+		workflows.WithElement("message"),
+		workflows.WithElementID(idempotent()),
 	)
+
+	return opts
 }
 
-// opts_hub returns StartWorkflowOptions for the ConnectionsHubWorkflow.
-func opts_hub() sdk_client.StartWorkflowOptions {
-	return shared.Temporal().Queue(shared.WebSocketQueue).WorkflowOptions(
-		queue.WithWorkflowBlock("hub"),
+func opts_hub() workflows.Options {
+	opts, _ := workflows.NewOptions(
+		workflows.WithBlock("hub"),
 	)
+
+	return opts
 }
 
 // encode converts a byte slice into a 24-character string using base-32 encoding.
@@ -94,7 +95,7 @@ func encode(bytes []byte) string {
 // For scalability beyond a few hundred containers at a given time, a more complex algorithm or a larger namespace may
 // be necessary to
 // minimize collision risk.
-func container_id() queue.Name {
+func container_id() string {
 	length := 8
 	bytes := make([]byte, 8)
 
@@ -102,5 +103,5 @@ func container_id() queue.Name {
 
 	encoded := encode(bytes)
 
-	return queue.Name(fmt.Sprintf("%s.%s", shared.WebSocketQueue.String(), encoded[:length]))
+	return encoded[:length]
 }

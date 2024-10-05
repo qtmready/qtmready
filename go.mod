@@ -181,3 +181,5 @@ replace github.com/Guilospanck/igocqlx v1.0.0 => github.com/debuggerpk/igocqlx v
 replace github.com/deepmap/oapi-codegen/v2 v2.1.0 => github.com/breuHQ/oapi-codegen/v2 v2.1.1-breu
 
 // replace github.com/deepmap/oapi-codegen/v2 v2.1.0 => /Users/jay/Work/opensource/oapi-codegen
+
+replace go.breu.io/durex v0.3.0 => /Users/jay/Work/breu/durex
