@@ -22,9 +22,9 @@ package mutex
 import (
 	"time"
 
+	"go.breu.io/durex/queues"
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/durex/queues"
 	"go.breu.io/quantm/internal/core/defs"
 )
 
