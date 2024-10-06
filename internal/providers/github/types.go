@@ -560,24 +560,18 @@ func (pre PullRequestEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequ
 	event.SetScopePullRequest()
 
 	switch pre.Action {
-	case "opened":
-		event.SetActionCreated()
-	case "reopened":
+	case "opened", "reopened":
 		event.SetActionCreated()
 	case "closed":
 		event.SetActionClosed()
-	case "edited": //nolint
+
+		if pre.PullRequest.Merged {
+			event.SetActionMerged()
+		}
+	case "edited", "assigned", "unassigned", "synchronize": //nolint
 		event.SetActionUpdated()
-	case "assigned":
-		event.SetActionUpdated()
-	case "unassigned":
-		event.SetActionUpdated()
-	case "review_requested":
-		event.SetActionUpdated()
-	case "review_request_removed":
-		event.SetActionUpdated()
-	case "synchronized":
-		event.SetActionUpdated()
+	case "review_requested", "review_request_removed":
+		event.SetActionUpdated() // TODO: we should probably have a separate action for this
 	case "labeled":
 		event.SetActionAdded()
 		event.SetScopePullRequestLabel()
@@ -585,12 +579,7 @@ func (pre PullRequestEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequ
 		event.SetActionDeleted()
 		event.SetScopePullRequestLabel()
 	default:
-		return nil
-	}
-
-	// Determine "merged" action based on MergedCommitSHA
-	if pre.PullRequest.MergeCommitSha != nil {
-		event.SetActionMerged()
+		event.SetActionUnknown(pre.Action)
 	}
 
 	return event

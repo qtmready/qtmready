@@ -20,7 +20,6 @@
 package db
 
 import (
-	"log/slog"
 	"reflect"
 	"slices"
 	"time"
@@ -86,9 +85,6 @@ func Get[T Entity](entity T, params QueryParams) error {
 		AllowFiltering().
 		Columns(entity.GetTable().Metadata().M.Columns...).
 		Where(clause...)
-
-	stmnt, names := query.ToCql()
-	slog.Info("Get", "stmt", stmnt, "names", names)
 
 	return DB().Session.Query(query.ToCql()).GetRelease(entity)
 }

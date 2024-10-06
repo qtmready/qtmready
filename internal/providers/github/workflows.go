@@ -260,7 +260,7 @@ func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, payload *CreateO
 
 	event := payload.normalize(state.CoreRepo)
 	if state.User != nil {
-		event.SetUserID(state.User.ID)
+		event.SetUserID(state.User.UserID)
 	} else {
 		logger.Warn("github/create-delete: unable to set user id ...")
 	}
@@ -298,7 +298,7 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 
 	event := payload.normalize(state.CoreRepo)
 	if state.User != nil {
-		event.SetUserID(state.User.ID)
+		event.SetUserID(state.User.UserID)
 	} else {
 		logger.Warn("github/push: unable to set user id ...")
 	}
@@ -330,11 +330,10 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 		return err
 	}
 
-	logger.Info("github/pull_request: preparing event ...")
-
 	event := payload.normalize(state.CoreRepo)
+
 	if state.User != nil {
-		event.SetUserID(state.User.ID)
+		event.SetUserID(state.User.UserID)
 	} else {
 		logger.Warn("github/pull_request: unable to set user id ...")
 	}
@@ -379,7 +378,7 @@ func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRe
 
 	payload := event.normalize(state.CoreRepo)
 	if state.User != nil {
-		payload.SetUserID(state.User.ID)
+		payload.SetUserID(state.User.UserID)
 	} else {
 		logger.Warn("github/pull_request_review: unable to set user id ...")
 	}
@@ -416,7 +415,7 @@ func (w *Workflows) OnPullRequestReviewCommentEvent(ctx workflow.Context, event 
 
 	payload := event.normalize(state.CoreRepo)
 	if state.User != nil {
-		payload.SetUserID(state.User.ID)
+		payload.SetUserID(state.User.UserID)
 	} else {
 		logger.Warn("github/pull_request_review_comment: unable to set user id ...")
 	}

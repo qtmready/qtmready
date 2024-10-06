@@ -136,11 +136,23 @@ func (r *RepoIO) DetectChanges(ctx context.Context, payload *defs.RepoIODetectCh
 		return nil, err
 	}
 
-	comparison, _, err := client.
+	comparison, response, err := client.
 		Repositories.
 		CompareCommits(context.Background(), payload.RepoOwner, payload.RepoName, payload.DefaultBranch, payload.TargetBranch, nil)
+
 	if err != nil {
-		return nil, err
+		if response.StatusCode == http.StatusNotFound {
+			return &defs.RepoIOChanges{
+				Added:      0,
+				Removed:    0,
+				Modified:   []string{},
+				Delta:      0,
+				CompareUrl: "",
+				RepoUrl:    "",
+			}, err
+		} else {
+			return nil, err
+		}
 	}
 
 	var changes, additions, deletions int
