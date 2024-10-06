@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 
@@ -33,7 +34,6 @@ import (
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/core/timers"
 	"go.breu.io/quantm/internal/db"
-	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -78,7 +78,7 @@ func (state *BranchCtrlState) on_rebase(ctx workflow.Context) defs.ChannelHandle
 		event := &defs.Event[defs.Push, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
 
-		ctx = shared.WithDefaultActivityContext(ctx)
+		ctx = dispatch.WithDefaultActivityContext(ctx)
 
 		session := state.create_session(ctx)
 		defer state.finish_session(session)
@@ -212,7 +212,7 @@ func (state *BranchCtrlState) set_author(ctx workflow.Context, owner *auth.TeamU
 }
 
 func (state *BranchCtrlState) refresh_author(ctx workflow.Context, id db.Int64) {
-	ctx = shared.WithDefaultActivityContext(ctx)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 	user := &auth.TeamUser{}
 
 	_ = state.do(ctx, "refresh_author", state.activities.GetByLogin, id.String(), user)
@@ -239,7 +239,7 @@ func (state *BranchCtrlState) finish_session(ctx workflow.Context) {
 
 // clone_at_commit clones the repository at a specific commit.
 func (state *BranchCtrlState) clone_at_commit(ctx workflow.Context, push *defs.Push) *defs.RepoIOClonePayload {
-	ctx = shared.WithDefaultActivityContext(ctx)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	cloned := &defs.RepoIOClonePayload{Repo: state.repo, Push: push, Info: state.info, Branch: state.branch(ctx)}
 	_ = workflow.SideEffect(ctx, func(ctx workflow.Context) any { return "/tmp/" + uuid.New().String() }).Get(&cloned.Path)
@@ -251,14 +251,14 @@ func (state *BranchCtrlState) clone_at_commit(ctx workflow.Context, push *defs.P
 
 // fetch_default_branch fetches the default branch for the cloned repository.
 func (state *BranchCtrlState) fetch_default_branch(ctx workflow.Context, cloned *defs.RepoIOClonePayload) {
-	ctx = shared.WithDefaultActivityContext(ctx)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	_ = state.do(ctx, "fetch_branch", state.activities.FetchBranch, cloned, nil)
 }
 
 // rebase_at_commit rebases the branch at a specific commit.
 func (state *BranchCtrlState) rebase_at_commit(ctx workflow.Context, cloned *defs.RepoIOClonePayload) error {
-	ctx = shared.WithIgnoredErrorsContext(ctx, "RebaseError")
+	ctx = dispatch.WithIgnoredErrorsContext(ctx, "RebaseError")
 
 	response := &defs.RepoIORebaseAtCommitResponse{}
 
@@ -276,7 +276,7 @@ func (state *BranchCtrlState) rebase_at_commit(ctx workflow.Context, cloned *def
 
 // push_branch pushes the rebased branch to the remote repository.
 func (state *BranchCtrlState) push_branch(ctx workflow.Context, cloned *defs.RepoIOClonePayload) {
-	ctx = shared.WithDefaultActivityContext(ctx)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 	payload := &defs.RepoIOPushBranchPayload{Branch: cloned.Branch, Path: cloned.Path, Force: true}
 
 	_ = state.do(ctx, "push_branch", state.activities.Push, payload, nil)
@@ -284,7 +284,7 @@ func (state *BranchCtrlState) push_branch(ctx workflow.Context, cloned *defs.Rep
 
 // remove_cloned removes the cloned repository from the local filesystem.
 func (state *BranchCtrlState) remove_cloned(ctx workflow.Context, cloned *defs.RepoIOClonePayload) {
-	ctx = shared.WithDefaultActivityContext(ctx)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	_ = state.do(ctx, "remove_cloned", state.activities.RemoveClonedAtPath, cloned.Path, nil)
 }
@@ -304,7 +304,7 @@ func (state *BranchCtrlState) calculate_complexity(ctx workflow.Context) *defs.R
 		TargetBranch:   state.branch(ctx),
 	}
 
-	ctx = shared.WithDefaultActivityContext(ctx)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	_ = state.do(ctx, "calculate_complexity", kernel.Instance().RepoIO(state.repo.Provider).DetectChanges, detect, changes)
 
@@ -314,7 +314,7 @@ func (state *BranchCtrlState) calculate_complexity(ctx workflow.Context) *defs.R
 // warn_complexity sends a warning message if the complexity of changes exceeds the threshold.
 func (state *BranchCtrlState) warn_complexity(
 	ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider], complexity *defs.RepoIOChanges) {
-	ctx = shared.WithDefaultActivityContext(ctx)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	change := &defs.LineChanges{
 		Added:     complexity.Added,
@@ -339,14 +339,14 @@ func (state *BranchCtrlState) warn_stale(ctx workflow.Context) {
 	msg := comm.NewStaleBranchMessage(state.info, state.repo, state.branch(ctx))
 	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
 
-	ctx = shared.WithDefaultActivityContext(ctx)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	_ = state.do(ctx, "warn_stale", io.SendStaleBranchMessage, msg, nil)
 }
 
 // warn_conflict sends a warning message if there's a merge conflict during rebase.
 func (state *BranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider]) {
-	ctx = shared.WithDefaultActivityContext(ctx)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	conflict := comm.NewMergeConflictEvent(event, state.pr.HeadBranch, state.pr.BaseBranch, state.last_commit)
 

@@ -515,6 +515,14 @@ func (e *Event[T, P]) SetActionAdded() {
 	e.Context.Action = EventActionAdded
 }
 
+func (e *Event[T, P]) SetActionUnknown(in string) {
+	e.Context.Action = EventAction(in)
+}
+
+/**
+ * Set Scopes
+ */
+
 // SetScopeBranch sets the scope of the Event to EventScopeBranch.
 func (e *Event[T, P]) SetScopeBranch() {
 	e.Context.Scope = EventScopeBranch

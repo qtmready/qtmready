@@ -27,13 +27,15 @@ import (
 	"syscall"
 	"time"
 
+	"go.breu.io/graceful"
+
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/core/ws"
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
-	"go.breu.io/quantm/internal/shared/graceful"
+	queue "go.breu.io/quantm/internal/shared/queue"
 )
 
 func main() {
@@ -53,21 +55,21 @@ func main() {
 		kernel.WithMessageProvider(defs.MessageProviderSlack, &slack.Activities{}),
 	)
 
-	client := shared.Temporal().Client()
+	configure_core()
+	configure_providers()
+	configure_mutex()
 
-	core_queue := shared.Temporal().Queue(shared.CoreQueue)
-	configure_core(core_queue, client)
+	graceful.Go(ctx, queue.Core().Start, rx_errors)
+	graceful.Go(ctx, queue.Providers().Start, rx_errors)
+	graceful.Go(ctx, queue.Mutex().Start, rx_errors)
+	graceful.Go(ctx, ws.Queue().Start, rx_errors)
 
-	provider_queue := shared.Temporal().Queue(shared.ProvidersQueue)
-	configure_provider(provider_queue, client)
-
-	hub := ws.ConnectionsHubWorker()
-
-	cleanups := []graceful.Cleanup{}
-
-	graceful.Go(ctx, graceful.WrapRelease(core_queue.Listen, release), rx_errors)
-	graceful.Go(ctx, graceful.WrapRelease(provider_queue.Listen, release), rx_errors)
-	graceful.Go(ctx, graceful.WrapRelease(hub.Run, release), rx_errors)
+	cleanups := []graceful.Cleanup{
+		queue.Core().Shutdown,
+		queue.Providers().Shutdown,
+		queue.Mutex().Shutdown,
+		ws.Queue().Shutdown,
+	}
 
 	shared.Service().Banner()
 

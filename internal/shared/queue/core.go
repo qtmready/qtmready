@@ -1,4 +1,4 @@
-// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2023, 2024.
+// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2024.
 //
 // Functional Source License, Version 1.1, Apache 2.0 Future License
 //
@@ -17,19 +17,42 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-package shared
+package queue
 
 import (
-	"github.com/go-playground/validator/v10"
+	"log/slog"
+	"sync"
+
+	"go.breu.io/durex/queues"
+
+	"go.breu.io/quantm/internal/shared"
 )
 
-type (
-	// EchoValidator is a wrapper for the instantiated validator.
-	EchoValidator struct {
-		Validator *validator.Validate
-	}
+var (
+	core     queues.Queue // core queue instance.
+	coreonce sync.Once    // ensures initialization happens only once.
 )
 
-func (ev *EchoValidator) Validate(i any) error {
-	return ev.Validator.Struct(i)
+// Core returns a singleton instance of the core queue.
+//
+// Use this queue for all core-related operations. This queue is intended for use with a worker.
+//
+// Example Usage:
+//
+//	worker := queues.CreateWorker(queue.Core())
+//	// ... (RegisterWorkflows, RegisterActivities)
+//	queue.Core().Start()
+//
+// NOTE: Ensure a worker is running to process tasks.
+func Core() queues.Queue {
+	coreonce.Do(func() {
+		slog.Info("queues/core: initializing...")
+
+		core = queues.New(
+			queues.WithName("core"),                       // queue name.
+			queues.WithClient(shared.Temporal().Client()), // temporal client for communication.
+		)
+	})
+
+	return core
 }

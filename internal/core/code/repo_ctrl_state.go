@@ -20,6 +20,7 @@
 package code
 
 import (
+	"go.breu.io/durex/queues"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
@@ -110,7 +111,7 @@ func (state *RepoCtrlState) on_label(ctx workflow.Context) defs.ChannelHandler {
 // signal_or_stash either sets the parent for the event and signals the branch, or stashes the event if no parent is
 // found.
 func (state *RepoCtrlState) signal_or_stash(
-	ctx workflow.Context, branch string, signal defs.Signal, event RepoEvent[defs.RepoProvider],
+	ctx workflow.Context, branch string, signal queues.Signal, event RepoEvent[defs.RepoProvider],
 ) {
 	if branch == state.repo.DefaultBranch {
 		state.signal_branch(ctx, branch, signal, event)

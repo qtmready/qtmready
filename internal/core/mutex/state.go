@@ -22,6 +22,7 @@ package mutex
 import (
 	"time"
 
+	"go.breu.io/durex/queues"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
@@ -54,7 +55,7 @@ const (
 )
 
 const (
-	WorkflowQueryState defs.Signal = "query__mutex__state"
+	WorkflowQueryState queues.Signal = "query__mutex__state"
 )
 
 // set_query_state sets a query handler for the mutex workflow.

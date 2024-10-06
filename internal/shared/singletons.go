@@ -128,10 +128,6 @@ func Temporal() temporal.Temporal {
 			temporal.FromEnvironment(),
 			temporal.WithLogger(Logger()),
 			temporal.WithClientCreation(),
-			temporal.WithQueue(CoreQueue),
-			temporal.WithQueue(ProvidersQueue),
-			temporal.WithQueue(MutexQueue),
-			temporal.WithQueue(WebSocketQueue),
 		)
 	})
 

@@ -27,6 +27,7 @@ import (
 	"github.com/gocql/gocql"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/gommon/log"
+	"go.breu.io/durex/queues"
 
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
@@ -291,17 +292,23 @@ func (e WebhookEvent) String() string { return string(e) }
 
 // Workflow signal types.
 const (
-	WorkflowSignalInstallationEvent    defs.Signal = "installation_event"
-	WorkflowSignalCompleteInstallation defs.Signal = "complete_installation"
-	WorkflowSignalPullRequestProcessed defs.Signal = "pull_request_processed"
-	WorkflowSignalArtifactReady        defs.Signal = "artifact_ready"
-	WorkflowSignalActionResult         defs.Signal = "action_result"
-	WorkflowSignalPullRequestLabeled   defs.Signal = "pull_request_labeled"
-	WorkflowSignalPushEvent            defs.Signal = "push_event"
+	WorkflowSignalInstallationEvent    queues.Signal = "installation_event"
+	WorkflowSignalCompleteInstallation queues.Signal = "complete_installation"
+	WorkflowSignalPullRequestProcessed queues.Signal = "pull_request_processed"
+	WorkflowSignalArtifactReady        queues.Signal = "artifact_ready"
+	WorkflowSignalActionResult         queues.Signal = "action_result"
+	WorkflowSignalPullRequestLabeled   queues.Signal = "pull_request_labeled"
+	WorkflowSignalPushEvent            queues.Signal = "push_event"
 )
 
 type (
-	RepoEventState struct {
+	RepoEventMetadataQuery struct {
+		RepoID         db.Int64 `json:"repo_id"`
+		RepoName       string   `json:"repo_name"`
+		InstallationID db.Int64 `json:"installation_id"`
+		SenderID       string   `json:"sender_id"`
+	}
+	RepoEventMetadata struct {
 		CoreRepo *defs.Repo     `json:"core_repo"`
 		Repo     *Repo          `json:"repo"`
 		User     *auth.TeamUser `json:"user"`
@@ -553,24 +560,18 @@ func (pre PullRequestEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequ
 	event.SetScopePullRequest()
 
 	switch pre.Action {
-	case "opened":
-		event.SetActionCreated()
-	case "reopened":
+	case "opened", "reopened":
 		event.SetActionCreated()
 	case "closed":
 		event.SetActionClosed()
-	case "edited": //nolint
+
+		if pre.PullRequest.Merged {
+			event.SetActionMerged()
+		}
+	case "edited", "assigned", "unassigned", "synchronize": //nolint
 		event.SetActionUpdated()
-	case "assigned":
-		event.SetActionUpdated()
-	case "unassigned":
-		event.SetActionUpdated()
-	case "review_requested":
-		event.SetActionUpdated()
-	case "review_request_removed":
-		event.SetActionUpdated()
-	case "synchronized":
-		event.SetActionUpdated()
+	case "review_requested", "review_request_removed":
+		event.SetActionUpdated() // TODO: we should probably have a separate action for this
 	case "labeled":
 		event.SetActionAdded()
 		event.SetScopePullRequestLabel()
@@ -578,12 +579,7 @@ func (pre PullRequestEvent) normalize(repo *defs.Repo) *defs.Event[defs.PullRequ
 		event.SetActionDeleted()
 		event.SetScopePullRequestLabel()
 	default:
-		return nil
-	}
-
-	// Determine "merged" action based on MergedCommitSHA
-	if pre.PullRequest.MergeCommitSha != nil {
-		event.SetActionMerged()
+		event.SetActionUnknown(pre.Action)
 	}
 
 	return event
@@ -706,4 +702,13 @@ func (pre PullRequestReviewCommentEvent) normalize(
 	}
 
 	return event
+}
+
+func PrepareRepoEventPayload(event RepoEvent) *RepoEventMetadataQuery {
+	return &RepoEventMetadataQuery{
+		RepoID:         event.RepoID(),
+		RepoName:       event.RepoName(),
+		InstallationID: event.InstallationID(),
+		SenderID:       event.SenderID(),
+	}
 }

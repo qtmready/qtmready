@@ -21,16 +21,18 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	gh "github.com/google/go-github/v62/github"
+	"go.breu.io/durex/queues"
 	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/code"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db"
-	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/shared/queue"
 )
 
 type (
@@ -197,13 +199,13 @@ func (a *Activities) GetGithubRepo(ctx context.Context, payload *Repo) (*Repo, e
 func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*defs.Repo, error) {
 	r := &defs.Repo{}
 
-	// TODO: add provider name in query
 	params := db.QueryParams{
-		"provider_id": repo.GithubID.String(),
+		"provider_id": fmt.Sprintf("'%s'", repo.GithubID.String()), // TODO: why did it stop working?
 		"provider":    "'github'",
 	}
 
 	if err := db.Get(r, params); err != nil {
+		slog.Error("GetCoreRepo failed", "Error", err)
 		return r, err
 	}
 
@@ -351,17 +353,15 @@ func (a *Activities) GetCoreRepoByCtrlID(ctx context.Context, id string) (*defs.
 }
 
 // SignalCoreRepoCtrl signals the core repository control workflow with the given signal and payload.
-func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *defs.Repo, signal defs.Signal, payload any) error {
-	opts := shared.Temporal().
-		Queue(shared.CoreQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("repo"),
-			shared.WithWorkflowBlockID(repo.ID.String()),
-		)
-
-	_, err := shared.Temporal().
-		Client().
-		SignalWithStartWorkflow(context.Background(), opts.ID, signal.String(), payload, opts, code.RepoCtrl, repo)
+func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *defs.Repo, signal queues.Signal, payload any) error {
+	_, err := queue.Core().SignalWithStartWorkflow(
+		ctx,
+		code.RepoCtrlWorkflowOptions(repo.TeamID.String(), repo.Name, repo.ID),
+		signal,
+		payload,
+		code.RepoCtrl,
+		repo,
+	)
 
 	return err
 }

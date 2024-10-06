@@ -20,13 +20,12 @@
 package github
 
 import (
-	"context"
 	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 
-	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/shared/queue"
 )
 
 // handleInstallationEvent handles GitHub App installation event.
@@ -39,30 +38,48 @@ func handleInstallationEvent(ctx echo.Context) error {
 	slog.Info("installation event received ...", "action", payload.Action)
 
 	workflows := &Workflows{}
-	opts := shared.Temporal().
-		Queue(shared.ProvidersQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
-			shared.WithWorkflowElement(WebhookEventInstallation.String()),
-		)
-
-	exe, err := shared.Temporal().Client().SignalWithStartWorkflow(
+	exe, err := queue.Providers().SignalWithStartWorkflow(
 		ctx.Request().Context(),
-		opts.ID,
-		WorkflowSignalInstallationEvent.String(),
+		// TODO: we should probably take the action from the payload.
+		InstallationWebhookWorkflowOptions(payload.Installation.ID, "install"),
+		WorkflowSignalInstallationEvent,
 		payload,
-		opts,
 		workflows.OnInstallationEvent,
 	)
+
 	if err != nil {
-		slog.Error("unable to signal ...", "options", opts, "error", err)
-		return nil
+		slog.Error("unable to signal ...", "error", err)
+		return err
 	}
 
-	slog.Debug("installation event handled ...", "options", opts, "execution", exe.GetRunID())
+	slog.Debug("installation event handled ...", "execution", exe.GetRunID())
 
 	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})
+}
+
+// handleInstallationRepositoriesEvent handles GitHub installation repositories event.
+func handleInstallationRepositoriesEvent(ctx echo.Context) error {
+	payload := &InstallationRepositoriesEvent{}
+	if err := ctx.Bind(payload); err != nil {
+		return err
+	}
+
+	slog.Info("installation repositories event received...", "action", payload.Action)
+
+	w := &Workflows{}
+
+	exe, err := queue.Providers().ExecuteWorkflow(
+		ctx.Request().Context(),
+		InstallationWebhookWorkflowOptions(payload.Installation.ID, WebhookEventInstallationRepositories.String()),
+		w.OnInstallationRepositoriesEvent,
+		payload,
+	)
+	if err != nil {
+		slog.Error("error dispatching workflow", "error", err)
+		return err
+	}
+
+	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: exe.GetID(), Status: WorkflowStatusQueued})
 }
 
 // handlePushEvent handles GitHub push/create event.
@@ -84,21 +101,16 @@ func handlePushEvent(ctx echo.Context) error {
 	w := &Workflows{}
 	event := WebhookEvent(ctx.Request().Header.Get("X-GitHub-Event"))
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
-	opts := shared.Temporal().
-		Queue(shared.ProvidersQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
-			shared.WithWorkflowElement("repo"),
-			shared.WithWorkflowElementID(payload.Repository.ID.String()),
-			shared.WithWorkflowMod(event.String()),
-			shared.WithWorkflowModID(delievery),
-		)
 
-	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPushEvent, payload)
+	_, err := queue.Providers().ExecuteWorkflow(
+		ctx.Request().Context(),
+		RepoWebhookWorkflowOptions(payload.Installation.ID, payload.Repository.Name, event.String(), delievery),
+		w.OnPushEvent,
+		payload,
+	)
 	if err != nil {
-		slog.Error("unable to signal OnPushEvent ...", "options", opts, "error", err)
-		return nil
+		slog.Error("error dispatching workflow", "error", err, "event", event)
+		return err
 	}
 
 	return ctx.NoContent(http.StatusNoContent)
@@ -122,21 +134,16 @@ func handleCreateOrDeleteEvent(ctx echo.Context) error {
 	}
 
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
-	opts := shared.Temporal().
-		Queue(shared.ProvidersQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
-			shared.WithWorkflowElement("repo"),
-			shared.WithWorkflowElementID(payload.Repository.ID.String()),
-			shared.WithWorkflowMod(event.String()),
-			shared.WithWorkflowModID(delievery),
-		)
 
-	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnCreateOrDeleteEvent, payload)
+	_, err := queue.Providers().ExecuteWorkflow(
+		ctx.Request().Context(),
+		RepoWebhookWorkflowOptions(payload.Installation.ID, payload.Repository.Name, event.String(), delievery),
+		w.OnCreateOrDeleteEvent,
+		payload,
+	)
 	if err != nil {
-		slog.Error("unable to signal OnPushEvent ...", "options", opts, "error", err)
-		return nil
+		slog.Error("error dispatching workflow", "error", err, "event", event)
+		return err
 	}
 
 	return ctx.NoContent(http.StatusNoContent)
@@ -154,54 +161,19 @@ func handlePullRequestEvent(ctx echo.Context) error {
 
 	w := &Workflows{}
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
-	opts := shared.Temporal().
-		Queue(shared.ProvidersQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
-			shared.WithWorkflowElement("repo"),
-			shared.WithWorkflowElementID(payload.Repository.ID.String()),
-			shared.WithWorkflowMod(WebhookEventPullRequest.String()),
-			shared.WithWorkflowModID(payload.PullRequest.Number.String()),
-			shared.WithWorkflowProp("action", payload.Action),
-			shared.WithWorkflowProp("id", delievery),
-		)
 
-	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPullRequestEvent, payload)
+	_, err := queue.Providers().ExecuteWorkflow(
+		ctx.Request().Context(),
+		RepoWebhookWorkflowOptions(payload.Installation.ID, payload.Repository.Name, WebhookEventPullRequest.String(), delievery),
+		w.OnPullRequestEvent,
+		payload,
+	)
 	if err != nil {
-		slog.Error("unable to signal OnPullRequestEvent ...", "options", opts, "error", err)
-		return nil
-	}
-
-	return ctx.NoContent(http.StatusNoContent)
-}
-
-// handleInstallationRepositoriesEvent handles GitHub installation repositories event.
-func handleInstallationRepositoriesEvent(ctx echo.Context) error {
-	payload := &InstallationRepositoriesEvent{}
-	if err := ctx.Bind(payload); err != nil {
+		slog.Error("error dispatching workflow", "error", err, "event", WebhookEventPullRequest)
 		return err
 	}
 
-	slog.Info("installation repositories event received...", "action", payload.Action)
-
-	w := &Workflows{}
-	opts := shared.Temporal().
-		Queue(shared.ProvidersQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
-			shared.WithWorkflowElement(WebhookEventInstallationRepositories.String()),
-		)
-
-	exe, err := shared.Temporal().
-		Client().
-		ExecuteWorkflow(context.Background(), opts, w.OnInstallationRepositoriesEvent, payload)
-	if err != nil {
-		return shared.NewAPIError(http.StatusInternalServerError, err)
-	}
-
-	return ctx.JSON(http.StatusOK, &WorkflowResponse{RunID: exe.GetID(), Status: WorkflowStatusQueued})
+	return ctx.NoContent(http.StatusNoContent)
 }
 
 // handlePullRequestReviewEvent handles GitHub pull request review event.
@@ -216,23 +188,16 @@ func handlePullRequestReviewEvent(ctx echo.Context) error {
 
 	w := &Workflows{}
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
-	opts := shared.Temporal().
-		Queue(shared.ProvidersQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
-			shared.WithWorkflowElement("repo"),
-			shared.WithWorkflowElementID(payload.Repository.ID.String()),
-			shared.WithWorkflowMod(WebhookEventPullRequestReview.String()),
-			shared.WithWorkflowModID(payload.PullRequest.Number.String()),
-			shared.WithWorkflowProp("action", payload.Action),
-			shared.WithWorkflowProp("id", delievery),
-		)
 
-	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPullRequestReviewEvent, payload)
+	_, err := queue.Providers().ExecuteWorkflow(
+		ctx.Request().Context(),
+		RepoWebhookWorkflowOptions(payload.Installation.ID, payload.Repository.Name, WebhookEventPullRequestReview.String(), delievery),
+		w.OnPullRequestReviewEvent,
+		payload,
+	)
 	if err != nil {
-		slog.Error("unable to signal OnPullRequestReviewEvent ...", "options", opts, "error", err)
-		return nil
+		slog.Error("error dispatching workflow", "error", err, "event", WebhookEventPullRequestReview)
+		return err
 	}
 
 	return ctx.NoContent(http.StatusNoContent)
@@ -250,23 +215,18 @@ func handlePullRequestReviewCommentEvent(ctx echo.Context) error {
 
 	w := &Workflows{}
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
-	opts := shared.Temporal().
-		Queue(shared.ProvidersQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(payload.Installation.ID.String()),
-			shared.WithWorkflowElement("repo"),
-			shared.WithWorkflowElementID(payload.Repository.ID.String()),
-			shared.WithWorkflowMod(WebhookEventPullRequestReview.String()),
-			shared.WithWorkflowModID(payload.PullRequest.Number.String()),
-			shared.WithWorkflowProp("action", payload.Action),
-			shared.WithWorkflowProp("id", delievery),
-		)
 
-	_, err := shared.Temporal().Client().ExecuteWorkflow(context.Background(), opts, w.OnPullRequestReviewCommentEvent, payload)
+	_, err := queue.Providers().ExecuteWorkflow(
+		ctx.Request().Context(),
+		RepoWebhookWorkflowOptions(
+			payload.Installation.ID, payload.Repository.Name, WebhookEventPullRequestReviewComment.String(), delievery,
+		),
+		w.OnPullRequestReviewCommentEvent,
+		payload,
+	)
 	if err != nil {
-		slog.Error("unable to signal OnPullRequestReviewCommentEvent ...", "options", opts, "error", err)
-		return nil
+		slog.Error("error dispatching workflow", "error", err, "event", WebhookEventPullRequestReviewComment)
+		return err
 	}
 
 	return ctx.NoContent(http.StatusNoContent)
@@ -284,24 +244,17 @@ func handleWorkflowRunEvent(ctx echo.Context) error {
 	slog.Info("workflow run event received ...", "action", payload.Action)
 
 	workflows := &Workflows{}
-	opts := shared.Temporal().
-		Queue(shared.ProvidersQueue).
-		WorkflowOptions(
-			shared.WithWorkflowBlock("github"),
-			shared.WithWorkflowBlockID(payload.Repository.Name),
-			shared.WithWorkflowElement("workflow_run"),
-			shared.WithWorkflowElementID(payload.WR.ID.String()),
-		)
+	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
 
-	exe, err := shared.Temporal().Client().ExecuteWorkflow(
+	exe, err := queue.Providers().ExecuteWorkflow(
 		ctx.Request().Context(),
-		opts,
+		RepoWebhookWorkflowOptions(payload.Installation.ID, payload.Repository.Name, WebhookEventWorkflowRun.String(), delievery),
 		workflows.OnWorkflowRunEvent,
 		payload,
 	)
 	if err != nil {
-		slog.Error("unable to signal OnWorkflowRunEvent ...", "options", opts, "error", err)
-		return nil
+		slog.Error("error dispatching workflow", "error", err, "event", WebhookEventWorkflowRun)
+		return err
 	}
 
 	return ctx.JSON(http.StatusCreated, &WorkflowResponse{RunID: exe.GetRunID(), Status: WorkflowStatusQueued})

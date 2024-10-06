@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
+	"go.breu.io/graceful"
 
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
@@ -36,7 +37,6 @@ import (
 	"go.breu.io/quantm/internal/providers/github"
 	"go.breu.io/quantm/internal/providers/slack"
 	"go.breu.io/quantm/internal/shared"
-	"go.breu.io/quantm/internal/shared/graceful"
 )
 
 const (

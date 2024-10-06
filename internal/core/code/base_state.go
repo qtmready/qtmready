@@ -24,6 +24,8 @@ import (
 	"time"
 
 	"github.com/gocql/gocql"
+	"go.breu.io/durex/dispatch"
+	"go.breu.io/durex/queues"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
@@ -159,9 +161,8 @@ func (base *BaseState) remove_branch(ctx workflow.Context, branch string) {
 }
 
 // signal_branch sends a signal to a specific branch.
-func (base *BaseState) signal_branch(ctx workflow.Context, branch string, signal defs.Signal, payload any) {
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+func (base *BaseState) signal_branch(ctx workflow.Context, branch string, signal queues.Signal, payload any) {
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	next := &defs.RepoIOSignalBranchCtrlPayload{
 		Repo:    base.repo,
@@ -179,9 +180,8 @@ func (base *BaseState) signal_branch(ctx workflow.Context, branch string, signal
 
 // TODO - refine the logic.
 // signal_branch sends a signal to a specific branch.
-func (base *BaseState) signal_queue(ctx workflow.Context, branch string, signal defs.Signal, payload any) {
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+func (base *BaseState) signal_queue(ctx workflow.Context, branch string, signal queues.Signal, payload any) {
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	next := &defs.RepoIOSignalQueueCtrlPayload{
 		Repo:    base.repo,
@@ -206,8 +206,7 @@ func (base *BaseState) rx(ctx workflow.Context, channel workflow.ReceiveChannel,
 
 // refresh_info updates the provider information for the repository.
 func (base *BaseState) refresh_info(ctx workflow.Context) {
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	info := &defs.RepoIOProviderInfo{}
 	io := kernel.Instance().RepoIO(base.repo.Provider)
@@ -225,16 +224,14 @@ func (base *BaseState) refresh_branches(ctx workflow.Context) {
 	io := kernel.Instance().RepoIO(base.repo.Provider)
 	branches := []string{}
 
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	_ = base.do(ctx, "refresh_branches", io.GetAllBranches, base.info, &branches)
 	base.set_branches(ctx, branches)
 }
 
 func (base *BaseState) persist(ctx workflow.Context, event RepoEvent[defs.RepoProvider]) {
-	opts := workflow.ActivityOptions{StartToCloseTimeout: 60 * time.Second}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	flat, _ := event.Flatten()
 	_ = base.do(ctx, "persist", base.activities.SaveRepoEvent, flat, nil)

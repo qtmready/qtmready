@@ -1,4 +1,4 @@
-// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2023, 2024.
+// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2024.
 //
 // Functional Source License, Version 1.1, Apache 2.0 Future License
 //
@@ -17,19 +17,33 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-package shared
+package ws
 
 import (
-	"github.com/go-playground/validator/v10"
+	"sync"
+
+	"go.breu.io/durex/queues"
+
+	"go.breu.io/quantm/internal/shared"
 )
 
-type (
-	// EchoValidator is a wrapper for the instantiated validator.
-	EchoValidator struct {
-		Validator *validator.Validate
-	}
+var (
+	_q     queues.Queue
+	_qonce sync.Once
 )
 
-func (ev *EchoValidator) Validate(i any) error {
-	return ev.Validator.Struct(i)
+// Queue returns the default queue for the websockets. This queue is used to
+// manage the connections hub.
+func Queue() queues.Queue {
+	_qonce.Do(func() {
+		_q = queues.New(
+			queues.WithName("websockets"),
+			queues.WithClient(shared.Temporal().Client()),
+		)
+
+		_q.CreateWorker()
+		_q.RegisterWorkflow(ConnectionsHubWorkflow)
+	})
+
+	return _q
 }

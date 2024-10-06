@@ -102,21 +102,6 @@ func format_echo_error(err *echo.HTTPError) error {
 	return fmt.Errorf("%v", err.Message)
 }
 
-// handle_validation handles validation errors from validator.
-func handle_validation(apiErr *APIError) *APIError {
-	if validerr, ok := apiErr.Message.(validator.ValidationErrors); ok {
-		errs := ErrorMap{}
-		for _, fe := range validerr {
-			errs[fe.Field()] = tag_msg(fe.Tag())
-		}
-
-		// Return a new APIError with status 400 and validation message.
-		return NewAPIError(http.StatusBadRequest, ErrValidation).WithInternal(validerr).WithErrors(&errs)
-	}
-
-	return apiErr // Return the original APIError if no validation errors.
-}
-
 // to_api_error converts any error to an APIError.
 func to_api_error(err error) *APIError {
 	if apierr, ok := err.(*APIError); ok {

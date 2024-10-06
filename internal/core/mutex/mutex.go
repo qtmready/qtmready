@@ -22,7 +22,8 @@ package mutex
 import (
 	"time"
 
-	"go.breu.io/quantm/internal/core/defs"
+	"go.breu.io/durex/dispatch"
+	"go.breu.io/durex/queues"
 	"go.temporal.io/sdk/workflow"
 )
 
@@ -31,15 +32,15 @@ const (
 )
 
 const (
-	WorkflowSignalPrepare        defs.Signal = "mutex__prepare"
-	WorkflowSignalAcquire        defs.Signal = "mutex__acquire"
-	WorkflowSignalLocked         defs.Signal = "mutex__locked"
-	WorkflowSignalRelease        defs.Signal = "mutex__release"
-	WorkflowSignalReleased       defs.Signal = "mutex__released"
-	WorkflowSignalCleanup        defs.Signal = "mutex__cleanup"
-	WorkflowSignalCleanupDone    defs.Signal = "mutex__cleanup_done"
-	WorkflowSignalCleanupDoneAck defs.Signal = "mutex__cleanup_done_ack"
-	WorkflowSignalShutDown       defs.Signal = "mutex__shutdown"
+	WorkflowSignalPrepare        queues.Signal = "mutex__prepare"
+	WorkflowSignalAcquire        queues.Signal = "mutex__acquire"
+	WorkflowSignalLocked         queues.Signal = "mutex__locked"
+	WorkflowSignalRelease        queues.Signal = "mutex__release"
+	WorkflowSignalReleased       queues.Signal = "mutex__released"
+	WorkflowSignalCleanup        queues.Signal = "mutex__cleanup"
+	WorkflowSignalCleanupDone    queues.Signal = "mutex__cleanup_done"
+	WorkflowSignalCleanupDoneAck queues.Signal = "mutex__cleanup_done_ack"
+	WorkflowSignalShutDown       queues.Signal = "mutex__shutdown"
 )
 
 type (
@@ -81,8 +82,7 @@ func (h *Handler) Prepare(ctx workflow.Context) error {
 
 	h.logger.info(h.Info.WorkflowExecution.ID, "prepare", "preparing mutex")
 
-	opts := workflow.ActivityOptions{StartToCloseTimeout: h.Timeout}
-	ctx = workflow.WithActivityOptions(ctx, opts)
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	exe := &workflow.Execution{}
 	if err := workflow.ExecuteActivity(ctx, PrepareMutexActivity, h).Get(ctx, exe); err != nil {

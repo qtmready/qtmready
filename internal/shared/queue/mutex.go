@@ -1,4 +1,4 @@
-// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2023, 2024.
+// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2024.
 //
 // Functional Source License, Version 1.1, Apache 2.0 Future License
 //
@@ -17,19 +17,42 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-package shared
+package queue
 
 import (
-	"github.com/go-playground/validator/v10"
+	"log/slog"
+	"sync"
+
+	"go.breu.io/durex/queues"
+
+	"go.breu.io/quantm/internal/shared"
 )
 
-type (
-	// EchoValidator is a wrapper for the instantiated validator.
-	EchoValidator struct {
-		Validator *validator.Validate
-	}
+var (
+	mutex     queues.Queue // mutex queue instance.
+	mutexonce sync.Once    // ensures initialization happens only once.
 )
 
-func (ev *EchoValidator) Validate(i any) error {
-	return ev.Validator.Struct(i)
+// Mutex returns a singleton instance of the mutex queue.
+//
+// Use this queue for all mutex-related operations.  This queue is intended for use with a worker.
+//
+// Example Usage:
+//
+//	worker := queues.CreateWorker(queue.Mutex())
+//	// ... (RegisterWorkflows, RegisterActivities)
+//	queue.Mutex().Start()
+//
+// NOTE: Ensure a worker is running to when using the package mutex.
+func Mutex() queues.Queue {
+	mutexonce.Do(func() {
+		slog.Info("queues/mutex: initializing...")
+
+		mutex = queues.New(
+			queues.WithName("mutex"),                      // queue name.
+			queues.WithClient(shared.Temporal().Client()), // temporal client for communication.
+		)
+	})
+
+	return mutex
 }

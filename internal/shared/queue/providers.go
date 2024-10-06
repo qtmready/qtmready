@@ -1,4 +1,4 @@
-// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2023, 2024.
+// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2024.
 //
 // Functional Source License, Version 1.1, Apache 2.0 Future License
 //
@@ -20,25 +20,39 @@
 package queue
 
 import (
-	"errors"
-	"fmt"
+	"log/slog"
+	"sync"
+
+	"go.breu.io/durex/queues"
+
+	"go.breu.io/quantm/internal/shared"
 )
 
 var (
-	ErrParentNil = errors.New("parent workflow context is nil")
-	ErrNilWorker = errors.New("worker is nil")
+	provider     queues.Queue // provider queue instance.
+	provideronce sync.Once    // ensures initialization happens only once.
 )
 
-type (
-	duplicateIDPropError struct {
-		prop string
-	}
-)
+// Providers returns a singleton instance of the providers queue.
+//
+// Use this queue for all provider-related operations.  This queue is intended for use with a worker.
+//
+// Example Usage:
+//
+//	worker := queues.CreateWorker(queue.Providers())
+//	// ... (RegisterWorkflows, RegisterActivities)
+//	queue.Providers().Start()
+//
+// NOTE: Ensure a worker is running to process tasks.
+func Providers() queues.Queue {
+	provideronce.Do(func() {
+		slog.Info("queues/providers: initializing...")
 
-func (e *duplicateIDPropError) Error() string {
-	return fmt.Sprintf("duplicate %s", e.prop)
-}
+		provider = queues.New(
+			queues.WithName("providers"),                  // queue name.
+			queues.WithClient(shared.Temporal().Client()), // temporal client for communication.
+		)
+	})
 
-func NewDuplicateIDPropError(prop string) error {
-	return &duplicateIDPropError{prop: prop}
+	return provider
 }

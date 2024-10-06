@@ -1,4 +1,4 @@
-// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2023, 2024.
+// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2024.
 //
 // Functional Source License, Version 1.1, Apache 2.0 Future License
 //
@@ -17,19 +17,21 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-package shared
+package mutex
 
 import (
-	"github.com/go-playground/validator/v10"
+	"go.breu.io/durex/workflows"
 )
 
-type (
-	// EchoValidator is a wrapper for the instantiated validator.
-	EchoValidator struct {
-		Validator *validator.Validate
-	}
-)
+// MutexWorkflowOptions returns workflow options for mutex operations. When used with the mutex queue, the resulting
+// workflow ID will be
+//
+//	"ai.ctrlplane.mutex.resource.{resource_id}"
+func MutexWorkflowOptions(resource_id string) workflows.Options {
+	opts, _ := workflows.NewOptions(
+		workflows.WithBlock("resource"),
+		workflows.WithBlockID(resource_id),
+	)
 
-func (ev *EchoValidator) Validate(i any) error {
-	return ev.Validator.Struct(i)
+	return opts
 }

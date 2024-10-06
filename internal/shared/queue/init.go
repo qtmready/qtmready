@@ -1,4 +1,4 @@
-// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2023, 2024.
+// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2024.
 //
 // Functional Source License, Version 1.1, Apache 2.0 Future License
 //
@@ -17,19 +17,15 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-package shared
+package queue
 
 import (
-	"github.com/go-playground/validator/v10"
+	"log/slog"
+
+	"go.breu.io/durex/queues"
 )
 
-type (
-	// EchoValidator is a wrapper for the instantiated validator.
-	EchoValidator struct {
-		Validator *validator.Validate
-	}
-)
-
-func (ev *EchoValidator) Validate(i any) error {
-	return ev.Validator.Struct(i)
+func init() {
+	slog.Info("queues: init ...")
+	queues.SetDefaultPrefix("ai.ctrlplane.")
 }
