@@ -292,13 +292,13 @@ func (e WebhookEvent) String() string { return string(e) }
 
 // Workflow signal types.
 const (
-	WorkflowSignalInstallationEvent    queues.WorkflowSignal = "installation_event"
-	WorkflowSignalCompleteInstallation queues.WorkflowSignal = "complete_installation"
-	WorkflowSignalPullRequestProcessed queues.WorkflowSignal = "pull_request_processed"
-	WorkflowSignalArtifactReady        queues.WorkflowSignal = "artifact_ready"
-	WorkflowSignalActionResult         queues.WorkflowSignal = "action_result"
-	WorkflowSignalPullRequestLabeled   queues.WorkflowSignal = "pull_request_labeled"
-	WorkflowSignalPushEvent            queues.WorkflowSignal = "push_event"
+	WorkflowSignalInstallationEvent    queues.Signal = "installation_event"
+	WorkflowSignalCompleteInstallation queues.Signal = "complete_installation"
+	WorkflowSignalPullRequestProcessed queues.Signal = "pull_request_processed"
+	WorkflowSignalArtifactReady        queues.Signal = "artifact_ready"
+	WorkflowSignalActionResult         queues.Signal = "action_result"
+	WorkflowSignalPullRequestLabeled   queues.Signal = "pull_request_labeled"
+	WorkflowSignalPushEvent            queues.Signal = "push_event"
 )
 
 type (

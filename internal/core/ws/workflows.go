@@ -21,16 +21,15 @@ package ws
 
 import (
 	"go.breu.io/durex/dispatch"
+	"go.breu.io/durex/queues"
 	"go.temporal.io/sdk/workflow"
-
-	"go.breu.io/quantm/internal/core/defs"
 )
 
 const (
-	WorkflowSignalAddUser     defs.Signal = "orchestrate__add_user"
-	WorkflowSignalRemoveUser  defs.Signal = "orchestrate__remove_user"
-	WorkflowSignalFlushQueue  defs.Signal = "orchestrate__flush_queue"
-	WorkflowSignalWorkerAdded defs.Signal = "orchestrate__worker_added"
+	SignalUserConnected         queues.Signal = "user__connected"
+	SignalUserDisconnected      queues.Signal = "user__disconnected"
+	SingalContainerDisconnected queues.Signal = "container__connected"
+	SignalContainerConnected    queues.Signal = "container__disconnected"
 
 	QueryGetUserQueue = "get_user_queue"
 )
@@ -46,23 +45,16 @@ const (
 // The workflow: - Maintains a map of user connections and their associated API containers. - Handles signals for
 // adding/removing users, & flushing queues if the container goes down. - Provides a query handler for retrieving queue
 // which user is connected to, which is used by the Hub for message routing.
-//
-// Parameters:
-//   - ctx: The workflow context
-//   - conns: A pointer to the Connections struct that manages the connection state across containers
-//
-// Returns:
-//   - error: Any error that occurs during the workflow execution
 func ConnectionsHubWorkflow(ctx workflow.Context, conns *Connections) error {
 	conns.Restore(ctx)
 	selector := workflow.NewSelector(ctx)
 	info := workflow.GetInfo(ctx)
 
 	// Set up signal channels
-	add := workflow.GetSignalChannel(ctx, WorkflowSignalAddUser.String())
-	remove := workflow.GetSignalChannel(ctx, WorkflowSignalRemoveUser.String())
-	flush := workflow.GetSignalChannel(ctx, WorkflowSignalFlushQueue.String())
-	worker_added := workflow.GetSignalChannel(ctx, WorkflowSignalWorkerAdded.String())
+	add := workflow.GetSignalChannel(ctx, SignalUserConnected.String())
+	remove := workflow.GetSignalChannel(ctx, SignalUserDisconnected.String())
+	flush := workflow.GetSignalChannel(ctx, SingalContainerDisconnected.String())
+	worker_added := workflow.GetSignalChannel(ctx, SignalContainerConnected.String())
 
 	// Add signal handlers to the selector
 	selector.AddReceive(add, conns.on_add(ctx))

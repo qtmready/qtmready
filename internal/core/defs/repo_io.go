@@ -22,6 +22,8 @@ package defs
 import (
 	"time"
 
+	"go.breu.io/durex/queues"
+
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/db"
 )
@@ -32,18 +34,18 @@ type (
 
 // RepoIO signals.
 const (
-	RepoIOSignalPush               Signal = "repo_io__push"                 // signals a push event.
-	RepoIOSignalCreateOrDelete     Signal = "repo_io__create_or_delete"     // signals creation or deletion of a repo.
-	RepoIOSignalRebase             Signal = "repo_io__rebase"               // signals a rebase operation.
-	RepoIOSignalPullRequest        Signal = "repo_io__pull_request"         // signals a pull request event.
-	RepoIOSignalPullRequestLabel   Signal = "repo_io__pull_request_label"   // signals a pull request label event.
-	RepoIOSignalPullRequestComment Signal = "repo_io__pull_request_comment" // signals a pull request comment event.
-	RepoIOSignalPullRequestReview  Signal = "repo_io__pull_request_review"  // signals a pull request review event.
-	RepoIOSignalQueueAdd           Signal = "repo_io__queue__add"           // signals an add to the repo queue.
-	RepoIOSignalQueueRemove        Signal = "repo_io__queue__remove"        // signals a removal from the repo queue.
-	RepoIOSignalQueueAddPriority   Signal = "repo_io__queue__add__priority" // signals an add with priority to the queue.
-	RepoIOSignalQueuePromote       Signal = "repo_io__queue__promote"       // signals a promotion in the repo queue.
-	RepoIOSignalQueueDemote        Signal = "repo_io__queue__demote"        // signals a demotion in the repo queue.
+	RepoIOSignalPush               queues.Signal = "repo_io__push"                 // signals a push event.
+	RepoIOSignalCreateOrDelete     queues.Signal = "repo_io__create_or_delete"     // signals creation or deletion of a repo.
+	RepoIOSignalRebase             queues.Signal = "repo_io__rebase"               // signals a rebase operation.
+	RepoIOSignalPullRequest        queues.Signal = "repo_io__pull_request"         // signals a pull request event.
+	RepoIOSignalPullRequestLabel   queues.Signal = "repo_io__pull_request_label"   // signals a pull request label event.
+	RepoIOSignalPullRequestComment queues.Signal = "repo_io__pull_request_comment" // signals a pull request comment event.
+	RepoIOSignalPullRequestReview  queues.Signal = "repo_io__pull_request_review"  // signals a pull request review event.
+	RepoIOSignalQueueAdd           queues.Signal = "repo_io__queue__add"           // signals an add to the repo queue.
+	RepoIOSignalQueueRemove        queues.Signal = "repo_io__queue__remove"        // signals a removal from the repo queue.
+	RepoIOSignalQueueAddPriority   queues.Signal = "repo_io__queue__add__priority" // signals an add with priority to the queue.
+	RepoIOSignalQueuePromote       queues.Signal = "repo_io__queue__promote"       // signals a promotion in the repo queue.
+	RepoIOSignalQueueDemote        queues.Signal = "repo_io__queue__demote"        // signals a demotion in the repo queue.
 )
 
 type (
@@ -213,18 +215,18 @@ type (
 
 	// RepoIOSignalBranchCtrlPayload represents the payload for signaling a branch.
 	RepoIOSignalBranchCtrlPayload struct {
-		Repo    *Repo  `json:"repo"`    // Repo represents the database record of the repository.
-		Branch  string `json:"branch"`  // Branch represents the branch to signal.
-		Signal  Signal `json:"signal"`  // Signal represents the signal to send.
-		Payload any    `json:"payload"` // Payload represents the payload to send.
+		Repo    *Repo         `json:"repo"`    // Repo represents the database record of the repository.
+		Branch  string        `json:"branch"`  // Branch represents the branch to signal.
+		Signal  queues.Signal `json:"signal"`  // Signal represents the signal to send.
+		Payload any           `json:"payload"` // Payload represents the payload to send.
 	}
 
 	// RepoIOSignalQueueCtrlPayload represents the payload for signaling a queue.
 	RepoIOSignalQueueCtrlPayload struct {
-		Repo    *Repo  `json:"repo"`    // Repo represents the database record of the repository.
-		Branch  string `json:"branch"`  // Branch represents the branch to signal.
-		Signal  Signal `json:"signal"`  // Signal represents the signal to send.
-		Payload any    `json:"payload"` // Payload represents the payload to send.
+		Repo    *Repo         `json:"repo"`    // Repo represents the database record of the repository.
+		Branch  string        `json:"branch"`  // Branch represents the branch to signal.
+		Signal  queues.Signal `json:"signal"`  // Signal represents the signal to send.
+		Payload any           `json:"payload"` // Payload represents the payload to send.
 	}
 )
 

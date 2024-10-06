@@ -8,5 +8,5 @@ import (
 
 func init() {
 	slog.Info("queues: init ...")
-	queues.SetDefaultPrefix("ai.ctrlplane")
+	queues.SetDefaultPrefix("ai.ctrlplane.")
 }

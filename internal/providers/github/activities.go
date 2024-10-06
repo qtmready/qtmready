@@ -21,6 +21,7 @@ package github
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	gh "github.com/google/go-github/v62/github"
@@ -198,13 +199,13 @@ func (a *Activities) GetGithubRepo(ctx context.Context, payload *Repo) (*Repo, e
 func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*defs.Repo, error) {
 	r := &defs.Repo{}
 
-	// TODO: add provider name in query
 	params := db.QueryParams{
-		"provider_id": repo.GithubID.String(),
+		"provider_id": fmt.Sprintf("'%s'", repo.GithubID.String()), // TODO: why did it stop working?
 		"provider":    "'github'",
 	}
 
 	if err := db.Get(r, params); err != nil {
+		slog.Error("GetCoreRepo failed", "Error", err)
 		return r, err
 	}
 
@@ -352,7 +353,7 @@ func (a *Activities) GetCoreRepoByCtrlID(ctx context.Context, id string) (*defs.
 }
 
 // SignalCoreRepoCtrl signals the core repository control workflow with the given signal and payload.
-func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *defs.Repo, signal queues.WorkflowSignal, payload any) error {
+func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *defs.Repo, signal queues.Signal, payload any) error {
 	_, err := queue.Core().SignalWithStartWorkflow(
 		ctx,
 		code.RepoCtrlWorkflowOptions(repo.TeamID.String(), repo.Name, repo.ID),

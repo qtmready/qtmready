@@ -22,8 +22,9 @@ package ws
 import (
 	"context"
 
+	"go.breu.io/durex/queues"
+
 	"go.breu.io/quantm/internal/auth"
-	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db"
 )
 
@@ -43,7 +44,7 @@ func (a *Activities) RouteMessage(ctx context.Context, id string, message []byte
 	return instance.Send(ctx, id, message)
 }
 
-func (a *Activities) Signal(ctx context.Context, signal defs.Signal, payload any) error {
+func (a *Activities) Signal(ctx context.Context, signal queues.Signal, payload any) error {
 	return instance.Signal(ctx, signal, payload)
 }
 

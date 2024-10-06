@@ -550,12 +550,12 @@ func (w *Workflows) CollectRepoEventMetadata(ctx workflow.Context, query *RepoEv
 	meta.Repo = &repo
 
 	// Fetch the associated core repository.  Returns an error if retrieval fails.
-	if err := workflow.ExecuteActivity(ctx, acts.GetCoreRepo, repo.ID.String()).Get(ctx, &meta.CoreRepo); err != nil {
+	if err := workflow.ExecuteActivity(ctx, acts.GetCoreRepo, repo).Get(ctx, &meta.CoreRepo); err != nil {
 		return nil, err
 	}
 
 	// Fetch the user associated with the installation. Returns an error if retrieval fails.
-	if err := workflow.ExecuteActivity(ctx, acts.GetTeamUserByLoginID, query.InstallationID.String()).Get(ctx, &meta.User); err != nil {
+	if err := workflow.ExecuteActivity(ctx, acts.GetTeamUserByLoginID, query.SenderID).Get(ctx, &meta.User); err != nil {
 		return nil, err
 	}
 

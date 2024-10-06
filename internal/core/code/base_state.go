@@ -25,6 +25,7 @@ import (
 
 	"github.com/gocql/gocql"
 	"go.breu.io/durex/dispatch"
+	"go.breu.io/durex/queues"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
@@ -160,7 +161,7 @@ func (base *BaseState) remove_branch(ctx workflow.Context, branch string) {
 }
 
 // signal_branch sends a signal to a specific branch.
-func (base *BaseState) signal_branch(ctx workflow.Context, branch string, signal defs.Signal, payload any) {
+func (base *BaseState) signal_branch(ctx workflow.Context, branch string, signal queues.Signal, payload any) {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	next := &defs.RepoIOSignalBranchCtrlPayload{
@@ -179,7 +180,7 @@ func (base *BaseState) signal_branch(ctx workflow.Context, branch string, signal
 
 // TODO - refine the logic.
 // signal_branch sends a signal to a specific branch.
-func (base *BaseState) signal_queue(ctx workflow.Context, branch string, signal defs.Signal, payload any) {
+func (base *BaseState) signal_queue(ctx workflow.Context, branch string, signal queues.Signal, payload any) {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	next := &defs.RepoIOSignalQueueCtrlPayload{

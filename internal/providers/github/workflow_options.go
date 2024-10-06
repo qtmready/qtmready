@@ -36,7 +36,7 @@ func RepoWebhookWorkflowOptions(installation db.Int64, repo, action, event_id st
 		workflows.WithMod("repo"),
 		workflows.WithModID(repo),
 		workflows.WithProp("action", action),
-		workflows.WithProp("eventid", event_id),
+		workflows.WithProp("event_id", event_id),
 	)
 
 	return opts

@@ -21,6 +21,7 @@ package ws
 
 import (
 	"crypto/rand"
+	"fmt"
 
 	"github.com/google/uuid"
 	"go.breu.io/durex/workflows"
@@ -104,4 +105,8 @@ func container_id() string {
 	encoded := encode(bytes)
 
 	return encoded[:length]
+}
+
+func queue_name(id string) string {
+	return fmt.Sprintf("%s.%s", Queue().String(), id)
 }
