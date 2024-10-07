@@ -219,7 +219,7 @@ func (a *Activities) lines_exceed_fields(event *defs.Event[defs.LinesExceed, def
 			Short: true,
 		}, {
 			Title: "*Branch*",
-			Value: fmt.Sprintf("<%s/tree/%s|%s>", event.Context.Source, event.Payload.Commit, event.Payload.Branch),
+			Value: fmt.Sprintf("<%s/tree/%s|%s>", event.Context.Source, event.Payload.Branch, event.Payload.Branch),
 			Short: true,
 		}, {
 			Title: "*Threshold*",
