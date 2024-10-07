@@ -30,9 +30,8 @@ func RepoCtrl(ctx workflow.Context, repo *defs.Repo) error {
 	state := NewRepoCtrlState(ctx, repo)
 	selector := workflow.NewSelector(ctx)
 
-	// setup
-	state.refresh_info(ctx)
-	state.refresh_branches(ctx)
+	// queries
+	_ = state.setup_query__get_parent(ctx)
 
 	// channels
 	// push event
@@ -55,7 +54,7 @@ func RepoCtrl(ctx workflow.Context, repo *defs.Repo) error {
 	for state.is_active() {
 		selector.Select(ctx)
 
-		if state.needs_reset() {
+		if state.needs_reset(ctx) {
 			return state.as_new(ctx, "event history exceeded threshold", RepoCtrl, repo)
 		}
 	}

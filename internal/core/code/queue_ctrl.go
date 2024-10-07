@@ -87,7 +87,7 @@ func QueueCtrl(ctx workflow.Context, repo *defs.Repo, branch string, queues *Que
 		}
 
 		// check if reset is needed
-		if state.needs_reset() {
+		if state.needs_reset(ctx) {
 			queues := state.serialize(ctx)
 			return state.as_new(ctx, "resetting due to event threshold", QueueCtrl, repo, branch, queues)
 		}

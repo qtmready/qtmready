@@ -76,7 +76,7 @@ func BranchCtrl(ctx workflow.Context, repo *defs.Repo, branch string) error {
 			q_state.push(_ctx, state.pr, false) // TODO - handle priority
 		}
 
-		if state.needs_reset() {
+		if state.needs_reset(ctx) {
 			return state.as_new(ctx, "event history exceeded threshold", BranchCtrl, repo, branch)
 		}
 	}

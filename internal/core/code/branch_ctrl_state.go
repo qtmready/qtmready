@@ -62,7 +62,7 @@ func (state *BranchCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler 
 		}
 
 		complexity := state.calculate_complexity(ctx)
-		if complexity.Delta > state.repo.Threshold {
+		if complexity.Delta > state.Repo.Threshold {
 			// Set the user if it exist in database then send message to user other wise to channel.
 			state.refresh_author(ctx, event.Payload.SenderID)
 			state.warn_complexity(ctx, event, complexity)
@@ -241,7 +241,7 @@ func (state *BranchCtrlState) finish_session(ctx workflow.Context) {
 func (state *BranchCtrlState) clone_at_commit(ctx workflow.Context, push *defs.Push) *defs.RepoIOClonePayload {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	cloned := &defs.RepoIOClonePayload{Repo: state.repo, Push: push, Info: state.info, Branch: state.branch(ctx)}
+	cloned := &defs.RepoIOClonePayload{Repo: state.Repo, Push: push, Info: state.Info, Branch: state.branch(ctx)}
 	_ = workflow.SideEffect(ctx, func(ctx workflow.Context) any { return "/tmp/" + uuid.New().String() }).Get(&cloned.Path)
 
 	_ = state.do(ctx, "clone_at_commit", state.activities.CloneBranch, cloned, nil)
@@ -297,16 +297,16 @@ func (state *BranchCtrlState) remove_cloned(ctx workflow.Context, cloned *defs.R
 func (state *BranchCtrlState) calculate_complexity(ctx workflow.Context) *defs.RepoIOChanges {
 	changes := &defs.RepoIOChanges{}
 	detect := &defs.RepoIODetectChangesPayload{
-		InstallationID: state.info.InstallationID,
-		RepoName:       state.info.RepoName,
-		RepoOwner:      state.info.RepoOwner,
-		DefaultBranch:  state.repo.DefaultBranch,
+		InstallationID: state.Info.InstallationID,
+		RepoName:       state.Info.RepoName,
+		RepoOwner:      state.Info.RepoOwner,
+		DefaultBranch:  state.Repo.DefaultBranch,
 		TargetBranch:   state.branch(ctx),
 	}
 
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	_ = state.do(ctx, "calculate_complexity", kernel.Instance().RepoIO(state.repo.Provider).DetectChanges, detect, changes)
+	_ = state.do(ctx, "calculate_complexity", kernel.Instance().RepoIO(state.Repo.Provider).DetectChanges, detect, changes)
 
 	return changes
 }
@@ -320,7 +320,7 @@ func (state *BranchCtrlState) warn_complexity(
 		Added:     complexity.Added,
 		Removed:   complexity.Removed,
 		Delta:     complexity.Delta,
-		Threshold: state.repo.Threshold,
+		Threshold: state.Repo.Threshold,
 	}
 
 	excess := comm.NewLineExceedEvent(event, BranchNameFromRef(event.Payload.Ref), change)
@@ -328,7 +328,7 @@ func (state *BranchCtrlState) warn_complexity(
 		excess.SetUserID(state.author.UserID)
 	}
 
-	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
+	io := kernel.Instance().MessageIO(state.Repo.MessageProvider)
 
 	_ = state.do(ctx, "warn_complexity", io.NotifyLinesExceed, excess, nil)
 	state.persist(ctx, event)
@@ -336,8 +336,8 @@ func (state *BranchCtrlState) warn_complexity(
 
 // warn_stale sends a warning message if the branch is stale.
 func (state *BranchCtrlState) warn_stale(ctx workflow.Context) {
-	msg := comm.NewStaleBranchMessage(state.info, state.repo, state.branch(ctx))
-	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
+	msg := comm.NewStaleBranchMessage(state.Info, state.Repo, state.branch(ctx))
+	io := kernel.Instance().MessageIO(state.Repo.MessageProvider)
 
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
@@ -354,7 +354,7 @@ func (state *BranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Ev
 		conflict.SetUserID(state.author.UserID)
 	}
 
-	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
+	io := kernel.Instance().MessageIO(state.Repo.MessageProvider)
 
 	state.log(ctx, "warn_conflict").Info("message", "payload", conflict, "event", event)
 

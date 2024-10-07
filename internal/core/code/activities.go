@@ -46,6 +46,8 @@ import (
 	"os/exec"
 	"regexp"
 
+	"github.com/gocql/gocql"
+
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
@@ -243,4 +245,16 @@ func (a *Activities) GetByLogin(ctx context.Context, id string) (*auth.TeamUser,
 // It converts the event to a db.Entity using the Flatten method and saves it to the database.
 func (a *Activities) SaveRepoEvent(ctx context.Context, event *defs.FlatEvent[defs.RepoProvider]) error {
 	return db.CreateWithID(event, event.SubjectID)
+}
+
+func (a *Activities) GetParentForBranch(ctx context.Context, repo *defs.Repo, branch string) (gocql.UUID, error) {
+	id := gocql.UUID{}
+	opts := RepoCtrlWorkflowOptions(repo.TeamID.String(), repo.Name, repo.ID)
+
+	result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoGetParentForBranch, branch)
+	if err != nil {
+		return id, err
+	}
+
+	return id, result.Get(&id)
 }

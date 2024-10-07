@@ -42,14 +42,13 @@ type (
 	// BaseState represents the base state for repository operations. It provides common functionality for various
 	// repository control types.
 	BaseState struct {
-		kind       string                   // kind identifies the type of control (e.g., "repo", "branch")
+		Kind       string                   // kind identifies the type of control (e.g., "repo", "branch")
 		activities *Activities              // activities holds the repository activities
-		repo       *defs.Repo               // repo is a reference to the repository
-		info       *defs.RepoIOProviderInfo // info stores provider-specific information
+		Repo       *defs.Repo               // repo is a reference to the repository
+		Info       *defs.RepoIOProviderInfo // info stores provider-specific information
 		branches   []string                 // branches is a list of branches in the repository
 		mutex      workflow.Mutex           // mutex is used for thread-safe operations
-		active     bool                     // active indicates if the control is active
-		counter    int                      // counter counts the number of operations performed
+		active     bool                     // active indicates if the control is still active
 	}
 
 	// RepoEvent defines an interface for repository events. It simplifies working with repository events by
@@ -69,14 +68,9 @@ type (
 	}
 )
 
-// is_active returns the active status of the control.
-func (base *BaseState) is_active() bool {
-	return base.active
-}
-
 // needs_reset checks if the event count has reached the threshold for resetting.
-func (base *BaseState) needs_reset() bool {
-	return base.counter >= event_threshold
+func (base *BaseState) needs_reset(ctx workflow.Context) bool {
+	return workflow.GetInfo(ctx).GetContinueAsNewSuggested()
 }
 
 // branch returns the branch name associated with this control.
@@ -98,7 +92,7 @@ func (base *BaseState) set_info(ctx workflow.Context, info *defs.RepoIOProviderI
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
 
-	base.info = info
+	base.Info = info
 }
 
 // set_branches sets the list of branches associated with the control.
@@ -107,6 +101,10 @@ func (base *BaseState) set_branches(ctx workflow.Context, branches []string) {
 	defer base.mutex.Unlock()
 
 	base.branches = branches
+}
+
+func (base *BaseState) is_active() bool {
+	return base.active
 }
 
 // set_done marks the control as inactive.
@@ -129,20 +127,12 @@ func (base *BaseState) as_new(ctx workflow.Context, msg string, fn any, args ...
 	return workflow.NewContinueAsNewError(ctx, fn, args...)
 }
 
-// increment increases the operation counter by the specified number of steps.
-func (base *BaseState) increment(ctx workflow.Context, steps int) {
-	_ = base.mutex.Lock(ctx)
-	defer base.mutex.Unlock()
-
-	base.counter += steps
-}
-
 // add_branch adds a new branch to the list of branches.
 func (base *BaseState) add_branch(ctx workflow.Context, branch string) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
 
-	if branch != "" || branch != base.repo.DefaultBranch {
+	if branch != "" || branch != base.Repo.DefaultBranch {
 		base.branches = append(base.branches, branch)
 	}
 }
@@ -165,7 +155,7 @@ func (base *BaseState) signal_branch(ctx workflow.Context, branch string, signal
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	next := &defs.RepoIOSignalBranchCtrlPayload{
-		Repo:    base.repo,
+		Repo:    base.Repo,
 		Branch:  branch,
 		Signal:  signal,
 		Payload: payload,
@@ -184,7 +174,7 @@ func (base *BaseState) signal_queue(ctx workflow.Context, branch string, signal 
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	next := &defs.RepoIOSignalQueueCtrlPayload{
-		Repo:    base.repo,
+		Repo:    base.Repo,
 		Branch:  branch,
 		Signal:  signal,
 		Payload: payload,
@@ -209,24 +199,24 @@ func (base *BaseState) refresh_info(ctx workflow.Context) {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	info := &defs.RepoIOProviderInfo{}
-	io := kernel.Instance().RepoIO(base.repo.Provider)
+	io := kernel.Instance().RepoIO(base.Repo.Provider)
 
-	_ = base.do(ctx, "get_repo_info", io.GetProviderInfo, base.repo.CtrlID, info)
+	_ = base.do(ctx, "get_repo_info", io.GetProviderInfo, base.Repo.CtrlID, info)
 	base.set_info(ctx, info)
 }
 
 // refresh_branches updates the list of branches for the repository.
 func (base *BaseState) refresh_branches(ctx workflow.Context) {
-	if base.info == nil {
+	if base.Info == nil {
 		base.refresh_info(ctx)
 	}
 
-	io := kernel.Instance().RepoIO(base.repo.Provider)
+	io := kernel.Instance().RepoIO(base.Repo.Provider)
 	branches := []string{}
 
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	_ = base.do(ctx, "refresh_branches", io.GetAllBranches, base.info, &branches)
+	_ = base.do(ctx, "refresh_branches", io.GetAllBranches, base.Info, &branches)
 	base.set_branches(ctx, branches)
 }
 
@@ -239,7 +229,7 @@ func (base *BaseState) persist(ctx workflow.Context, event RepoEvent[defs.RepoPr
 
 // log creates a new logger for the current action.
 func (base *BaseState) log(ctx workflow.Context, action string) *RepoIOWorkflowLogger {
-	return NewRepoIOWorkflowLogger(ctx, base.repo, base.kind, base.branch(ctx), action)
+	return NewRepoIOWorkflowLogger(ctx, base.Repo, base.Kind, base.branch(ctx), action)
 }
 
 // do is helper is an activity executor. It logs the activity execution and increments the operation counter.
@@ -253,8 +243,6 @@ func (base *BaseState) do(ctx workflow.Context, action string, activity, payload
 	}
 
 	logger.Info("success", keyvals...)
-
-	base.increment(ctx, 10)
 
 	return nil
 }
@@ -282,41 +270,18 @@ func (base *BaseState) child(ctx workflow.Context, action, w_id string, fn, payl
 
 	logger.Info("success", keyvals...)
 
-	base.increment(ctx, 3)
-
 	return nil
-}
-
-// call_async executes an activity asynchronously and returns a Future.
-// If a WaitGroup is provided, it will be decremented when the operation completes.
-func (base *BaseState) call_async(ctx workflow.Context, action string, fn CallAsync, wg workflow.WaitGroup) workflow.Future {
-	logger := base.log(ctx, action)
-
-	future, setable := workflow.NewFuture(ctx)
-	workflow.Go(ctx, func(ctx workflow.Context) {
-		logger.Info("calling async ...")
-
-		if wg != nil {
-			defer wg.Done()
-		}
-
-		fn(ctx)
-		setable.Set(nil, nil)
-	})
-
-	return future
 }
 
 // NewBaseState creates a new base control instance and refreshes repository information and branches.
 func NewBaseState(ctx workflow.Context, kind string, repo *defs.Repo) *BaseState {
 	base := &BaseState{
-		kind:       kind,
+		Kind:       kind,
 		activities: &Activities{},
-		info:       &defs.RepoIOProviderInfo{},
-		repo:       repo,
+		Info:       &defs.RepoIOProviderInfo{},
+		Repo:       repo,
 		mutex:      workflow.NewMutex(ctx),
 		active:     true,
-		counter:    0,
 	}
 
 	base.refresh_info(ctx)

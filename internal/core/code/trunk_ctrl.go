@@ -48,7 +48,7 @@ func TrunkCtrl(ctx workflow.Context, repo *defs.Repo) error {
 	for state.is_active() {
 		selector.Select(ctx)
 
-		if state.needs_reset() {
+		if state.needs_reset(ctx) {
 			return state.as_new(ctx, "event history exceeded threshold", TrunkCtrl, repo)
 		}
 	}
