@@ -20,6 +20,7 @@
 package code
 
 import (
+	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
@@ -61,6 +62,18 @@ func (state *TrunkCtrlState) on_create_delete(ctx workflow.Context) defs.Channel
 			}
 		}
 	}
+}
+
+func (state *TrunkCtrlState) get_parent(ctx workflow.Context, branch string) (gocql.UUID, bool) {
+	id := gocql.UUID{}
+	payload := &GetParentForBranchPayload{Branch: branch, Repo: state.Repo}
+
+	err := state.do(ctx, "get_parent", state.activities.GetParentForBranch, payload, &id)
+	if err != nil {
+		return id, false
+	}
+
+	return id, true
 }
 
 func NewTrunkCtrlState(ctx workflow.Context, repo *defs.Repo) *TrunkCtrlState {

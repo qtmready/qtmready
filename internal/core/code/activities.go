@@ -58,6 +58,11 @@ import (
 type (
 	// Activities defines an interface for repository-related actions.
 	Activities struct{}
+
+	GetParentForBranchPayload struct {
+		Branch string
+		Repo   *defs.Repo
+	}
 )
 
 // SignalBranch signals a branch workflow for the given repository.
@@ -247,11 +252,12 @@ func (a *Activities) SaveRepoEvent(ctx context.Context, event *defs.FlatEvent[de
 	return db.CreateWithID(event, event.SubjectID)
 }
 
-func (a *Activities) GetParentForBranch(ctx context.Context, repo *defs.Repo, branch string) (gocql.UUID, error) {
+// GetParentForBranch retrieves the ID for the parent event for the given branch.
+func (a *Activities) GetParentForBranch(ctx context.Context, payload *GetParentForBranchPayload) (gocql.UUID, error) {
 	id := gocql.UUID{}
-	opts := RepoCtrlWorkflowOptions(repo.TeamID.String(), repo.Name, repo.ID)
+	opts := RepoCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID)
 
-	result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoGetParentForBranch, branch)
+	result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoGetParentForBranch, payload.Branch)
 	if err != nil {
 		return id, err
 	}
