@@ -60,9 +60,18 @@ type (
 	// Activities defines an interface for repository-related actions.
 	Activities struct{}
 
-	GetParentForBranchPayload struct {
+	// RepoCtrlQueryPayloadForBranchParent defines the payload for querying the RepoCtrl workflow for the parent event ID
+	// of a branch.
+	RepoCtrlQueryPayloadForBranchParent struct {
 		Branch string
 		Repo   *defs.Repo
+	}
+
+	// RepoCtrlQueryResultForBranchParent defines the result for querying the RepoCtrl workflow for the parent event ID.
+	// If the Found flag is false, the parent event ID was not found.
+	RepoCtrlQueryResultForBranchParent struct {
+		ID    gocql.UUID
+		Found bool
 	}
 )
 
@@ -250,23 +259,27 @@ func (a *Activities) SaveRepoEvent(ctx context.Context, event *defs.FlatEvent[de
 	return db.CreateWithID(event, event.SubjectID)
 }
 
-// QueryGetParentForBranch queries the RepoCtrl workflow for the parent event ID of a branch.
-func (a *Activities) QueryGetParentForBranch(ctx context.Context, payload *GetParentForBranchPayload) (gocql.UUID, error) {
-	id := gocql.UUID{}
+// QueryRepoCtrlForBranchParent queries the RepoCtrl workflow for the parent event ID of a branch.
+//
+// It looks the triggers map for the branch and returns the parent event ID, or an error if one occurred.
+func (a *Activities) QueryRepoCtrlForBranchParent(
+	ctx context.Context, payload *RepoCtrlQueryPayloadForBranchParent,
+) (*RepoCtrlQueryResultForBranchParent, error) {
+	result := &RepoCtrlQueryResultForBranchParent{}
 	opts := RepoCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID)
 
-	result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoCtrlForBranchTriggers, payload.Branch)
+	_result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoCtrlForBranchTriggers, payload.Branch)
 	if err != nil {
-		return id, err
+		return result, err
 	}
 
-	return id, result.Get(&id)
+	return result, _result.Get(result)
 }
 
-// QueryGetBranchTrigger queries the RepoCtrl workflow for the branch triggers map.
+// QueryRepoCtrlForBranchTriggers queries the RepoCtrl workflow for the branch triggers map.
 //
 // It returns a BranchTriggers, which is a map of branch names to event IDs, and an error if one occurred.
-func (a *Activities) QueryGetBranchTrigger(ctx context.Context, repo *defs.Repo) (BranchTriggers, error) {
+func (a *Activities) QueryRepoCtrlForBranchTriggers(ctx context.Context, repo *defs.Repo) (BranchTriggers, error) {
 	triggers := make(BranchTriggers)
 	opts := RepoCtrlWorkflowOptions(repo.TeamID.String(), repo.Name, repo.ID)
 

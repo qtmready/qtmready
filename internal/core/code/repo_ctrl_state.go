@@ -184,20 +184,24 @@ func (state *RepoCtrlState) setup_query__get_parents(ctx workflow.Context) error
 func (state *RepoCtrlState) setup_query__get_parent_for_branch(ctx workflow.Context) error {
 	logger := state.log(ctx, "query")
 
-	return workflow.SetQueryHandler(ctx, QueryRepoCtrlForBranchParentEventID.String(), func(branch string) gocql.UUID {
-		logger.Info("query/get_parent_for_branch ...", "branch", branch)
+	return workflow.SetQueryHandler(
+		ctx,
+		QueryRepoCtrlForBranchParentEventID.String(),
+		func(branch string) gocql.UUID {
+			logger.Info("query/get_parent_for_branch ...", "branch", branch)
 
-		parent, ok := state.triggers.get(branch)
-		if !ok {
-			logger.Warn("no parent found, this should never happen", "branch", branch)
+			parent, ok := state.triggers.get(branch)
+			if !ok {
+				logger.Warn("no parent found, this should never happen", "branch", branch)
+
+				return parent
+			}
+
+			logger.Info("success", "branch", branch, "parent", parent.String())
 
 			return parent
-		}
-
-		logger.Info("success", "branch", branch, "parent", parent.String())
-
-		return parent
-	})
+		},
+	)
 }
 
 // NewRepoCtrlState creates a new RepoCtrlState with the specified repo.

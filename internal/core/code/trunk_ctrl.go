@@ -40,10 +40,6 @@ func TrunkCtrl(ctx workflow.Context, repo *defs.Repo) error {
 	push := workflow.GetSignalChannel(ctx, defs.RepoIOSignalPush.String())
 	selector.AddReceive(push, state.on_push(ctx))
 
-	// create_delete
-	create_delete := workflow.GetSignalChannel(ctx, defs.RepoIOSignalCreateOrDelete.String())
-	selector.AddReceive(create_delete, state.on_create_delete(ctx))
-
 	// main event loop
 	for state.is_active() {
 		selector.Select(ctx)

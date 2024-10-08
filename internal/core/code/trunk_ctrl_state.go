@@ -20,7 +20,6 @@
 package code
 
 import (
-	"github.com/gocql/gocql"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
@@ -39,7 +38,7 @@ func (state *TrunkCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
 		push := &defs.Event[defs.Push, defs.RepoProvider]{} // Use Event type
 		state.rx(ctx, rx, push)
 
-		for _, branch := range state.branches {
+		for _, branch := range state.Branches {
 			if branch == BranchNameFromRef(push.Payload.Ref) {
 				continue
 			}
@@ -47,33 +46,6 @@ func (state *TrunkCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
 			state.signal_branch(ctx, branch, defs.RepoIOSignalRebase, push) // TODO: Fix the signal type
 		}
 	}
-}
-
-func (state *TrunkCtrlState) on_create_delete(ctx workflow.Context) defs.ChannelHandler {
-	return func(rx workflow.ReceiveChannel, more bool) {
-		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
-		state.rx(ctx, rx, event)
-
-		if event.Context.Scope == defs.EventScopeBranch {
-			if event.Context.Action == defs.EventActionCreated {
-				state.add_branch(ctx, event.Payload.Ref)
-			} else if event.Context.Action == defs.EventActionDeleted {
-				state.remove_branch(ctx, event.Payload.Ref)
-			}
-		}
-	}
-}
-
-func (state *TrunkCtrlState) get_parent(ctx workflow.Context, branch string) (gocql.UUID, bool) {
-	id := gocql.UUID{}
-	payload := &GetParentForBranchPayload{Branch: branch, Repo: state.Repo}
-
-	err := state.do(ctx, "get_parent", state.activities.QueryGetParentForBranch, payload, &id)
-	if err != nil {
-		return id, false
-	}
-
-	return id, true
 }
 
 func NewTrunkCtrlState(ctx workflow.Context, repo *defs.Repo) *TrunkCtrlState {

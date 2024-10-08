@@ -32,23 +32,18 @@ import (
 	"go.breu.io/quantm/internal/core/kernel"
 )
 
-const (
-	event_threshold = 4000
-)
-
 type (
-	CallAsync func(workflow.Context)
-
 	// BaseState represents the base state for repository operations. It provides common functionality for various
 	// repository control types.
 	BaseState struct {
-		Kind       string                   // kind identifies the type of control (e.g., "repo", "branch")
-		activities *Activities              // activities holds the repository activities
-		Repo       *defs.Repo               // repo is a reference to the repository
-		Info       *defs.RepoIOProviderInfo // info stores provider-specific information
-		branches   []string                 // branches is a list of branches in the repository
-		mutex      workflow.Mutex           // mutex is used for thread-safe operations
-		active     bool                     // active indicates if the control is still active
+		Kind     string                   `json:"kind"`     // kind identifies the type of control (e.g., "repo", "branch")
+		Repo     *defs.Repo               `json:"repo"`     // repo is a reference to the repository
+		Info     *defs.RepoIOProviderInfo `json:"info"`     // info stores provider-specific information
+		Branches []string                 `json:"branches"` // branches is a list of branches in the repository
+		Active   bool                     `json:"active"`   // active indicates if the control is still active
+
+		activities *Activities    // activities holds the repository activities
+		mutex      workflow.Mutex // mutex is used for thread-safe operations
 	}
 
 	// RepoEvent defines an interface for repository events. It simplifies working with repository events by
@@ -100,11 +95,11 @@ func (base *BaseState) set_branches(ctx workflow.Context, branches []string) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
 
-	base.branches = branches
+	base.Branches = branches
 }
 
 func (base *BaseState) is_active() bool {
-	return base.active
+	return base.Active
 }
 
 // set_done marks the control as inactive.
@@ -112,7 +107,7 @@ func (base *BaseState) set_done(ctx workflow.Context) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
 
-	base.active = false
+	base.Active = false
 }
 
 // terminate marks the control as done and logs the termination.
@@ -133,7 +128,7 @@ func (base *BaseState) add_branch(ctx workflow.Context, branch string) {
 	defer base.mutex.Unlock()
 
 	if branch != "" || branch != base.Repo.DefaultBranch {
-		base.branches = append(base.branches, branch)
+		base.Branches = append(base.Branches, branch)
 	}
 }
 
@@ -142,9 +137,9 @@ func (base *BaseState) remove_branch(ctx workflow.Context, branch string) {
 	_ = base.mutex.Lock(ctx)
 	defer base.mutex.Unlock()
 
-	for i, b := range base.branches {
+	for i, b := range base.Branches {
 		if b == branch {
-			base.branches = append(base.branches[:i], base.branches[i+1:]...)
+			base.Branches = append(base.Branches[:i], base.Branches[i+1:]...)
 			break
 		}
 	}
@@ -232,6 +227,30 @@ func (base *BaseState) log(ctx workflow.Context, action string) *RepoIOWorkflowL
 	return NewRepoIOWorkflowLogger(ctx, base.Repo, base.Kind, base.branch(ctx), action)
 }
 
+func (state *BaseState) query__parent_event_id(ctx workflow.Context, branch string) (gocql.UUID, bool) {
+	payload := &RepoCtrlQueryPayloadForBranchParent{Branch: branch, Repo: state.Repo}
+	result := &RepoCtrlQueryResultForBranchParent{}
+
+	err := state.do(ctx, "query__parent_event_id", state.activities.QueryRepoCtrlForBranchParent, payload, result)
+	if err != nil {
+		return result.ID, false
+	}
+
+	return result.ID, result.Found
+}
+
+func (state *BaseState) query__branch_triggers(ctx workflow.Context) BranchTriggers {
+	triggers := make(BranchTriggers)
+	repo := state.Repo
+
+	err := state.do(ctx, "query__branch_triggers", state.activities.QueryRepoCtrlForBranchTriggers, repo, &triggers)
+	if err != nil {
+		return triggers
+	}
+
+	return triggers
+}
+
 // do is helper is an activity executor. It logs the activity execution and increments the operation counter.
 func (base *BaseState) do(ctx workflow.Context, action string, activity, payload, result any, keyvals ...any) error {
 	logger := base.log(ctx, action)
@@ -281,7 +300,7 @@ func NewBaseState(ctx workflow.Context, kind string, repo *defs.Repo) *BaseState
 		Info:       &defs.RepoIOProviderInfo{},
 		Repo:       repo,
 		mutex:      workflow.NewMutex(ctx),
-		active:     true,
+		Active:     true,
 	}
 
 	base.refresh_info(ctx)
