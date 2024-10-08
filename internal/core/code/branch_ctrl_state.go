@@ -72,6 +72,25 @@ func (state *BranchCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler 
 	}
 }
 
+// on_pr handles pull request events for the branch.
+func (state *BranchCtrlState) on_pr(ctx workflow.Context) defs.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
+		state.rx(ctx, rx, event)
+
+		switch event.Context.Action { // nolint
+		case defs.EventActionCreated, defs.EventActionReopened:
+			state.set_pr(ctx, &event.Payload)
+			state.refresh_author(ctx, event.Payload.AuthorID)
+		case defs.EventActionClosed:
+			state.set_pr(ctx, nil)
+			state.set_author(ctx, nil)
+		default:
+			return
+		}
+	}
+}
+
 // on_rebase handles rebase events for the branch.
 func (state *BranchCtrlState) on_rebase(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
@@ -99,25 +118,6 @@ func (state *BranchCtrlState) on_rebase(ctx workflow.Context) defs.ChannelHandle
 
 		state.push_branch(session, cloned)
 		state.remove_cloned(session, cloned)
-	}
-}
-
-// on_pr handles pull request events for the branch.
-func (state *BranchCtrlState) on_pr(ctx workflow.Context) defs.ChannelHandler {
-	return func(rx workflow.ReceiveChannel, more bool) {
-		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
-		state.rx(ctx, rx, event)
-
-		switch event.Context.Action { // nolint
-		case defs.EventActionCreated, defs.EventActionReopened: // Or defs.EventActionOpened, if more appropriate
-			state.set_pr(ctx, &event.Payload)
-			state.refresh_author(ctx, event.Payload.AuthorID)
-		case defs.EventActionClosed:
-			state.set_pr(ctx, nil)
-			state.set_author(ctx, nil)
-		default:
-			return
-		}
 	}
 }
 
