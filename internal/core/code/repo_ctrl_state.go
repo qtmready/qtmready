@@ -45,20 +45,22 @@ func (state *RepoCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
 		event := &defs.Event[defs.Push, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
 
-		if !state.on_trunk(BranchNameFromRef(event.Payload.Ref)) {
-			if parent, ok := state.triggers.get(event.Payload.Ref); ok {
-				event.SetParent(parent)
-				state.signal_branch(ctx, event.Payload.Ref, defs.RepoIOSignalPush, event)
-				state.persist(ctx, event)
+		if state.on_trunk(BranchNameFromRef(event.Payload.Ref)) {
+			state.signal_branch(ctx, state.Repo.DefaultBranch, defs.RepoIOSignalPush, event)
+			state.persist(ctx, event)
 
-				return
-			}
-
-			state.stash.push(event.Payload.Ref, event)
+			return
 		}
 
-		state.signal_branch(ctx, state.Repo.DefaultBranch, defs.RepoIOSignalPush, event)
-		state.persist(ctx, event)
+		if parent, ok := state.triggers.get(event.Payload.Ref); ok {
+			event.SetParent(parent)
+			state.signal_branch(ctx, event.Payload.Ref, defs.RepoIOSignalPush, event)
+			state.persist(ctx, event)
+
+			return
+		}
+
+		state.stash.push(event.Payload.Ref, event)
 	}
 }
 
@@ -171,6 +173,7 @@ func (state *RepoCtrlState) on_trunk(branch string) bool {
 // dependencies between events.
 func (state *RepoCtrlState) setup_query__get_parents(ctx workflow.Context) error {
 	logger := state.log(ctx, "query/get_parents")
+	logger.Info("setup ...")
 
 	return workflow.SetQueryHandler(ctx, QueryRepoCtrlForBranchParentEventID.String(), func() BranchTriggers {
 		logger.Info("success")
@@ -182,13 +185,14 @@ func (state *RepoCtrlState) setup_query__get_parents(ctx workflow.Context) error
 // setup_query__get_parent_for_branch sets up a Temporal query handler for retrieving the parent event ID of a given
 // branch.
 func (state *RepoCtrlState) setup_query__get_parent_for_branch(ctx workflow.Context) error {
-	logger := state.log(ctx, "query")
+	logger := state.log(ctx, "query/get_parent_for_branch")
+	logger.Info("setup ...")
 
 	return workflow.SetQueryHandler(
 		ctx,
 		QueryRepoCtrlForBranchParentEventID.String(),
 		func(branch string) gocql.UUID {
-			logger.Info("query/get_parent_for_branch ...", "branch", branch)
+			logger.Info("querying ...", "branch", branch)
 
 			parent, ok := state.triggers.get(branch)
 			if !ok {
