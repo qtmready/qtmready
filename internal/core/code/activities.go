@@ -79,28 +79,28 @@ type (
 //
 // If the branch is the default branch, it signals the TrunkCtrl workflow. Otherwise, it signals the BranchCtrl workflow.
 func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSignalBranchCtrlPayload) error {
-	args := make([]any, 0)
-
 	if payload.Repo.DefaultBranch == payload.Branch {
+		state := NewTrunkCtrlState(ctx, payload.Repo, payload.Info)
 		_, err := queue.Core().SignalWithStartWorkflow(
 			ctx,
 			TrunkCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID),
 			payload.Signal,
 			payload.Payload,
 			TrunkCtrl,
-			append(args, payload.Repo)...,
+			state,
 		)
 
 		return err
 	}
 
+	ctx, state := NewBranchCtrlState(ctx, payload.Repo, payload.Info, payload.Branch)
 	_, err := queue.Core().SignalWithStartWorkflow(
 		ctx,
 		BranchCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID, payload.Branch),
 		payload.Signal,
 		payload.Payload,
 		BranchCtrl,
-		append(args, payload.Repo, payload.Branch)...,
+		state,
 	)
 
 	return err
@@ -268,12 +268,14 @@ func (a *Activities) QueryRepoCtrlForBranchParent(
 	result := &RepoCtrlQueryResultForBranchParent{}
 	opts := RepoCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID)
 
-	_result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoCtrlForBranchTriggers, payload.Branch)
-	if err != nil {
-		return result, err
-	}
+	slog.Info("querying repo ctrl for branch parent", "info", queue.Core().WorkflowID(opts)) // TODO: remove in production.
 
-	return result, _result.Get(result)
+	// _result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoCtrlForBranchTriggers, payload.Branch)
+	// if err != nil {
+	// 	return result, err
+	// }
+
+	return result, nil
 }
 
 // QueryRepoCtrlForBranchTriggers queries the RepoCtrl workflow for the branch triggers map.
@@ -283,10 +285,13 @@ func (a *Activities) QueryRepoCtrlForBranchTriggers(ctx context.Context, repo *d
 	triggers := make(BranchTriggers)
 	opts := RepoCtrlWorkflowOptions(repo.TeamID.String(), repo.Name, repo.ID)
 
-	result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoCtrlForBranchTriggers)
-	if err != nil {
-		return triggers, err
-	}
+	slog.Info("querying repo ctrl for branch parent", "info", queue.Core().WorkflowID(opts)) // TODO: remove in production.
 
-	return triggers, result.Get(&triggers)
+	// result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoCtrlForBranchTriggers)
+	// if err != nil {
+	// 	return triggers, err
+	// }
+
+	// return triggers, result.Get(&triggers)
+	return triggers, nil
 }

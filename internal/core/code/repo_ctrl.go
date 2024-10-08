@@ -26,8 +26,9 @@ import (
 )
 
 // RepoCtrl manages the event loop for a repository, acting as a central router to orchestrate repository workflows.
-func RepoCtrl(ctx workflow.Context, repo *defs.Repo) error {
-	state := NewRepoCtrlState(ctx, repo)
+func RepoCtrl(ctx workflow.Context, state *RepoCtrlState) error {
+	state.restore(ctx)
+
 	selector := workflow.NewSelector(ctx)
 
 	// queries
@@ -56,7 +57,7 @@ func RepoCtrl(ctx workflow.Context, repo *defs.Repo) error {
 		selector.Select(ctx)
 
 		if state.needs_reset(ctx) {
-			return state.as_new(ctx, "event history exceeded threshold", RepoCtrl, repo)
+			return state.as_new(ctx, "event history exceeded threshold", RepoCtrl, state)
 		}
 	}
 

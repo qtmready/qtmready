@@ -31,8 +31,8 @@ import (
 //
 //   - push
 //   - create_delete
-func TrunkCtrl(ctx workflow.Context, repo *defs.Repo) error {
-	state := NewTrunkCtrlState(ctx, repo)
+func TrunkCtrl(ctx workflow.Context, state *TrunkCtrlState) error {
+	state.restore(ctx)
 	selector := workflow.NewSelector(ctx)
 
 	// channels
@@ -45,7 +45,7 @@ func TrunkCtrl(ctx workflow.Context, repo *defs.Repo) error {
 		selector.Select(ctx)
 
 		if state.needs_reset(ctx) {
-			return state.as_new(ctx, "event history exceeded threshold", TrunkCtrl, repo)
+			return state.as_new(ctx, "event history exceeded threshold", TrunkCtrl, state)
 		}
 	}
 

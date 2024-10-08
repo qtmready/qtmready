@@ -23,6 +23,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	gh "github.com/google/go-github/v62/github"
 	"go.breu.io/durex/queues"
@@ -353,14 +354,23 @@ func (a *Activities) GetCoreRepoByCtrlID(ctx context.Context, id string) (*defs.
 }
 
 // SignalCoreRepoCtrl signals the core repository control workflow with the given signal and payload.
-func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, repo *defs.Repo, signal queues.Signal, payload any) error {
+func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, meta *RepoEventMetadata, signal queues.Signal, payload any) error {
+	info := &defs.RepoIOProviderInfo{
+		RepoName:       meta.Repo.Name,
+		DefaultBranch:  meta.Repo.DefaultBranch,
+		ProviderID:     meta.Repo.GithubID.String(),
+		RepoOwner:      strings.Split(meta.Repo.FullName, "/")[0],
+		InstallationID: meta.Repo.InstallationID,
+	}
+	state := code.NewRepoCtrlState(ctx, meta.CoreRepo, info)
+
 	_, err := queue.Core().SignalWithStartWorkflow(
 		ctx,
-		code.RepoCtrlWorkflowOptions(repo.TeamID.String(), repo.Name, repo.ID),
+		code.RepoCtrlWorkflowOptions(meta.Repo.TeamID.String(), meta.Repo.Name, meta.Repo.ID),
 		signal,
 		payload,
 		code.RepoCtrl,
-		repo,
+		state,
 	)
 
 	return err

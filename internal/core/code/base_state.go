@@ -20,6 +20,7 @@
 package code
 
 import (
+	"context"
 	"log/slog"
 	"time"
 
@@ -36,11 +37,12 @@ type (
 	// BaseState represents the base state for repository operations. It provides common functionality for various
 	// repository control types.
 	BaseState struct {
-		Kind     string                   `json:"kind"`     // kind identifies the type of control (e.g., "repo", "branch")
-		Repo     *defs.Repo               `json:"repo"`     // repo is a reference to the repository
-		Info     *defs.RepoIOProviderInfo `json:"info"`     // info stores provider-specific information
-		Branches []string                 `json:"branches"` // branches is a list of branches in the repository
-		Active   bool                     `json:"active"`   // active indicates if the control is still active
+		ActiveBranch string                   `json:"active_branch"` // active_branch is the branch currently being processed
+		Kind         string                   `json:"kind"`          // kind identifies the type of control (e.g., "repo", "branch")
+		Repo         *defs.Repo               `json:"repo"`          // repo is a reference to the repository
+		Info         *defs.RepoIOProviderInfo `json:"info"`          // info stores provider-specific information
+		Branches     []string                 `json:"branches"`      // branches is a list of branches in the repository
+		Active       bool                     `json:"active"`        // active indicates if the control is still active
 
 		activities *Activities    // activities holds the repository activities
 		mutex      workflow.Mutex // mutex is used for thread-safe operations
@@ -69,12 +71,8 @@ func (base *BaseState) needs_reset(ctx workflow.Context) bool {
 }
 
 // branch returns the branch name associated with this control.
-func (base *BaseState) branch(ctx workflow.Context) string {
-	if branch, ok := ctx.Value("active_branch").(string); ok {
-		return branch
-	}
-
-	return ""
+func (base *BaseState) branch(_ workflow.Context) string {
+	return base.ActiveBranch
 }
 
 // set_branch sets the active branch in the context.
@@ -151,6 +149,7 @@ func (base *BaseState) signal_branch(ctx workflow.Context, branch string, signal
 
 	next := &defs.RepoIOSignalBranchCtrlPayload{
 		Repo:    base.Repo,
+		Info:    base.Info,
 		Branch:  branch,
 		Signal:  signal,
 		Payload: payload,
@@ -224,10 +223,11 @@ func (base *BaseState) persist(ctx workflow.Context, event RepoEvent[defs.RepoPr
 
 // log creates a new logger for the current action.
 func (base *BaseState) log(ctx workflow.Context, action string) *RepoIOWorkflowLogger {
-	return NewRepoIOWorkflowLogger(ctx, base.Repo, base.Kind, base.branch(ctx), action)
+	return NewRepoIOWorkflowLogger(ctx, base.Repo, base.Kind, base.ActiveBranch, action)
 }
 
 func (state *BaseState) query__parent_event_id(ctx workflow.Context, branch string) (gocql.UUID, bool) {
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 	payload := &RepoCtrlQueryPayloadForBranchParent{Branch: branch, Repo: state.Repo}
 	result := &RepoCtrlQueryResultForBranchParent{}
 
@@ -240,6 +240,7 @@ func (state *BaseState) query__parent_event_id(ctx workflow.Context, branch stri
 }
 
 func (state *BaseState) query__branch_triggers(ctx workflow.Context) BranchTriggers {
+	ctx = dispatch.WithDefaultActivityContext(ctx)
 	triggers := make(BranchTriggers)
 	repo := state.Repo
 
@@ -292,19 +293,19 @@ func (base *BaseState) child(ctx workflow.Context, action, w_id string, fn, payl
 	return nil
 }
 
-// NewBaseState creates a new base control instance and refreshes repository information and branches.
-func NewBaseState(ctx workflow.Context, kind string, repo *defs.Repo) *BaseState {
-	base := &BaseState{
-		Kind:       kind,
-		activities: &Activities{},
-		Info:       &defs.RepoIOProviderInfo{},
-		Repo:       repo,
-		mutex:      workflow.NewMutex(ctx),
-		Active:     true,
+func (base *BaseState) restore(ctx workflow.Context) {
+	base.mutex = workflow.NewMutex(ctx)
+}
+
+// NewBaseState creates a new base control instance. This is the preferred method to create a new base control instance.
+func NewBaseState(ctx context.Context, kind string, repo *defs.Repo, info *defs.RepoIOProviderInfo, branch string) *BaseState {
+	return &BaseState{
+		activities:   &Activities{},
+		ActiveBranch: branch,
+		Kind:         kind,
+		Repo:         repo,
+		Info:         info,
+		Branches:     make([]string, 0),
+		Active:       true,
 	}
-
-	base.refresh_info(ctx)
-	base.refresh_branches(ctx)
-
-	return base
 }

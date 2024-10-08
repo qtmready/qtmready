@@ -31,12 +31,12 @@ type (
 	// This data structure facilitates event lineage tracing by providing the root event for each branch.
 	BranchTriggers map[string]gocql.UUID
 
-	// StashedEvents stores events that are awaiting processing.
+	// StashedPushEvents stores events that are awaiting processing.
 	//
 	// Events are typically stashed when the associated branch does not yet exist or the event requires a parent event
 	// (e.g., a push event needing a branch creation event) that has not yet been received. This scenario can arise due to
 	// the distributed nature of event arrival.
-	StashedEvents[P defs.RepoProvider] map[string][]RepoEvent[P]
+	StashedPushEvents[P defs.RepoProvider] map[string][]*defs.Event[defs.Push, P]
 )
 
 // add associates a branch with its triggering event ID.
@@ -59,9 +59,9 @@ func (b BranchTriggers) get(branch string) (gocql.UUID, bool) {
 }
 
 // push adds an event to the stash for the specified branch.
-func (s StashedEvents[P]) push(branch string, event RepoEvent[P]) {
+func (s StashedPushEvents[P]) push(branch string, event *defs.Event[defs.Push, P]) {
 	if _, ok := s[branch]; !ok {
-		s[branch] = make([]RepoEvent[P], 0)
+		s[branch] = make([]*defs.Event[defs.Push, P], 0)
 	}
 
 	s[branch] = append(s[branch], event)
@@ -70,7 +70,7 @@ func (s StashedEvents[P]) push(branch string, event RepoEvent[P]) {
 // pop retrieves and removes the oldest event from the stash for the specified branch.
 //
 // Returns the event and a boolean indicating whether an event was present.
-func (s StashedEvents[P]) all(branch string) ([]RepoEvent[P], bool) {
+func (s StashedPushEvents[P]) all(branch string) ([]*defs.Event[defs.Push, P], bool) {
 	events, ok := s[branch]
 	if !ok || len(events) == 0 {
 		return events, false
@@ -79,6 +79,6 @@ func (s StashedEvents[P]) all(branch string) ([]RepoEvent[P], bool) {
 	return events, true
 }
 
-func (s StashedEvents[P]) clear(branch string) {
+func (s StashedPushEvents[P]) clear(branch string) {
 	delete(s, branch)
 }

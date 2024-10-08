@@ -215,10 +215,11 @@ type (
 
 	// RepoIOSignalBranchCtrlPayload represents the payload for signaling a branch.
 	RepoIOSignalBranchCtrlPayload struct {
-		Repo    *Repo         `json:"repo"`    // Repo represents the database record of the repository.
-		Branch  string        `json:"branch"`  // Branch represents the branch to signal.
-		Signal  queues.Signal `json:"signal"`  // Signal represents the signal to send.
-		Payload any           `json:"payload"` // Payload represents the payload to send.
+		Repo    *Repo               `json:"repo"`    // Repo represents the database record of the repository.
+		Info    *RepoIOProviderInfo `json:"info"`    // Info represents the repository information from the provider.
+		Branch  string              `json:"branch"`  // Branch represents the branch to signal.
+		Signal  queues.Signal       `json:"signal"`  // Signal represents the signal to send.
+		Payload any                 `json:"payload"` // Payload represents the payload to send.
 	}
 
 	// RepoIOSignalQueueCtrlPayload represents the payload for signaling a queue.

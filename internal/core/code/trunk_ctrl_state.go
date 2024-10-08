@@ -20,6 +20,8 @@
 package code
 
 import (
+	"context"
+
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
@@ -28,7 +30,6 @@ import (
 type (
 	TrunkCtrlState struct {
 		*BaseState
-		active_branch string
 	}
 )
 
@@ -38,19 +39,26 @@ func (state *TrunkCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
 		push := &defs.Event[defs.Push, defs.RepoProvider]{} // Use Event type
 		state.rx(ctx, rx, push)
 
-		for _, branch := range state.Branches {
-			if branch == BranchNameFromRef(push.Payload.Ref) {
-				continue
-			}
+		// for _, branch := range state.Branches {
+		// 	if branch == BranchNameFromRef(push.Payload.Ref) {
+		// 		continue
+		// 	}
 
-			state.signal_branch(ctx, branch, defs.RepoIOSignalRebase, push) // TODO: Fix the signal type
-		}
+		// 	state.signal_branch(ctx, branch, defs.RepoIOSignalRebase, push) // TODO: Fix the signal type
+		// }
+
+		triggers := state.query__branch_triggers(ctx)
+
+		state.log(ctx, "on_push").Info("triggers", triggers)
 	}
 }
 
-func NewTrunkCtrlState(ctx workflow.Context, repo *defs.Repo) *TrunkCtrlState {
+func (state *TrunkCtrlState) restore(ctx workflow.Context) {
+	state.BaseState.restore(ctx)
+}
+
+func NewTrunkCtrlState(ctx context.Context, repo *defs.Repo, info *defs.RepoIOProviderInfo) *TrunkCtrlState {
 	return &TrunkCtrlState{
-		BaseState:     NewBaseState(ctx, "trunk_ctrl", repo),
-		active_branch: repo.DefaultBranch,
+		BaseState: NewBaseState(ctx, "trunk_ctrl", repo, info, repo.DefaultBranch),
 	}
 }
