@@ -26,7 +26,9 @@ import (
 	"go.breu.io/quantm/internal/core/defs"
 )
 
-// RepoCtrlState defines the state for RepoWorkflows.RepoCtrl. It embeds base_ctrl to inherit common functionality.
+// RepoCtrlState defines the state for RepoWorkflows.RepoCtrl.
+//
+// It embeds BaseState to inherit common workflow logic.
 type (
 	RepoCtrlState struct {
 		*BaseState                                  // Embedded base state for common workflow logic.
@@ -35,8 +37,9 @@ type (
 	}
 )
 
-// on_push is a channel handler that processes push events for the repository. It receives a RepoIOSignalPushPayload and
-// signals the corresponding branch.
+// on_push is a channel handler that processes push events for the repository.
+//
+// It receives a RepoIOSignalPushPayload and signals the corresponding branch.
 func (state *RepoCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.Push, defs.RepoProvider]{}
@@ -59,9 +62,10 @@ func (state *RepoCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
 	}
 }
 
-// on_create_delete is a channel handler that processes create or delete events for the repository. It receives a
-// defs.Event[defs.BranchOrTag, defs.RepoProvider], signals the corresponding branch, and updates the branch list in the
-// state.
+// on_create_delete is a channel handler that processes create or delete events for the repository.
+//
+// It receives a defs.Event[defs.BranchOrTag, defs.RepoProvider], signals the corresponding branch, and updates the
+// branch list in the state.
 func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
@@ -83,8 +87,9 @@ func (state *RepoCtrlState) on_create_delete(ctx workflow.Context) defs.ChannelH
 	}
 }
 
-// on_pr is a channel handler that processes pull request events for the repository. It receives a
-// RepoIOSignalPullRequestPayload and signals the corresponding branch.
+// on_pr is a channel handler that processes pull request events for the repository.
+//
+// It receives a RepoIOSignalPullRequestPayload and signals the corresponding branch.
 func (state *RepoCtrlState) on_pr(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
@@ -102,8 +107,9 @@ func (state *RepoCtrlState) on_pr(ctx workflow.Context) defs.ChannelHandler {
 	}
 }
 
-// on_label is a channel handler that processes label events for the repository. It receives a
-// RepoIOSignalPullRequestLabelPayload and signals the corresponding branch.
+// on_label is a channel handler that processes label events for the repository.
+//
+// It receives a RepoIOSignalPullRequestLabelPayload and signals the corresponding branch.
 func (state *RepoCtrlState) on_label(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &defs.Event[defs.PullRequestLabel, defs.RepoProvider]{}
@@ -120,6 +126,10 @@ func (state *RepoCtrlState) on_label(ctx workflow.Context) defs.ChannelHandler {
 	}
 }
 
+// on_branch_create handles the creation of a new branch.
+//
+// It adds the new branch to the state's list of branches and associates the branch with the current event ID in the
+// triggers map. If there are any stashed events for the new branch, they are processed and persisted.
 func (state *RepoCtrlState) on_branch_create(ctx workflow.Context, event *defs.Event[defs.BranchOrTag, defs.RepoProvider]) {
 	state.add_branch(ctx, event.Payload.Ref)
 	state.triggers.add(event.Payload.Ref, event.ID)
@@ -134,6 +144,10 @@ func (state *RepoCtrlState) on_branch_create(ctx workflow.Context, event *defs.E
 	}
 }
 
+// on_branch_delete handles the deletion of a branch.
+//
+// It removes the branch from the state's list of branches. If the branch has a parent in the triggers map, the deletion
+// event is set to have the parent and persisted.
 func (state *RepoCtrlState) on_branch_delete(ctx workflow.Context, event *defs.Event[defs.BranchOrTag, defs.RepoProvider]) {
 	state.remove_branch(ctx, event.Payload.Ref)
 
@@ -146,30 +160,49 @@ func (state *RepoCtrlState) on_branch_delete(ctx workflow.Context, event *defs.E
 	state.triggers.del(event.Payload.Ref)
 }
 
+// on_trunk checks if the provided branch name is the default branch for the repository.
 func (state *RepoCtrlState) on_trunk(branch string) bool {
 	return branch == state.Repo.DefaultBranch
 }
 
-func (state *RepoCtrlState) setup_query__get_parent(ctx workflow.Context) error {
+// setup_query__get_parents sets up a Temporal query handler for retrieving the branch triggers map.
+//
+// This map stores the relationship between branch names and event IDs, allowing the workflow to determine the
+// dependencies between events.
+func (state *RepoCtrlState) setup_query__get_parents(ctx workflow.Context) error {
+	logger := state.log(ctx, "query/get_parents")
+
+	return workflow.SetQueryHandler(ctx, QueryRepoCtrlForBranchParentEventID.String(), func() BranchTriggers {
+		logger.Info("success")
+
+		return state.triggers
+	})
+}
+
+// setup_query__get_parent_for_branch sets up a Temporal query handler for retrieving the parent event ID of a given
+// branch.
+func (state *RepoCtrlState) setup_query__get_parent_for_branch(ctx workflow.Context) error {
 	logger := state.log(ctx, "query")
 
-	return workflow.SetQueryHandler(ctx, QueryRepoGetParentForBranch.String(), func(branch string) gocql.UUID {
-		logger.Info("getting parent ...", "branch", branch)
+	return workflow.SetQueryHandler(ctx, QueryRepoCtrlForBranchParentEventID.String(), func(branch string) gocql.UUID {
+		logger.Info("query/get_parent_for_branch ...", "branch", branch)
 
 		parent, ok := state.triggers.get(branch)
 		if !ok {
-			logger.Warn("no parent found for branch", "branch", branch)
+			logger.Warn("no parent found, this should never happen", "branch", branch)
 
 			return parent
 		}
 
-		logger.Info("parent found", "branch", branch, "parent", parent)
+		logger.Info("success", "branch", branch, "parent", parent.String())
 
 		return parent
 	})
 }
 
-// NewRepoCtrlState creates a new RepoCtrlState with the specified repo. Embedded BaseState is initialized using NewBaseState.
+// NewRepoCtrlState creates a new RepoCtrlState with the specified repo.
+//
+// Embedded BaseState is initialized using NewBaseState.
 func NewRepoCtrlState(ctx workflow.Context, repo *defs.Repo) *RepoCtrlState {
 	return &RepoCtrlState{
 		BaseState: NewBaseState(ctx, "repo_ctrl", repo),

@@ -68,7 +68,7 @@ func (state *TrunkCtrlState) get_parent(ctx workflow.Context, branch string) (go
 	id := gocql.UUID{}
 	payload := &GetParentForBranchPayload{Branch: branch, Repo: state.Repo}
 
-	err := state.do(ctx, "get_parent", state.activities.GetParentForBranch, payload, &id)
+	err := state.do(ctx, "get_parent", state.activities.QueryGetParentForBranch, payload, &id)
 	if err != nil {
 		return id, false
 	}

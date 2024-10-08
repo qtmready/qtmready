@@ -35,6 +35,7 @@
 // Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
+
 package code
 
 import (
@@ -67,8 +68,7 @@ type (
 
 // SignalBranch signals a branch workflow for the given repository.
 //
-// If the branch is the default branch, it signals the TrunkCtrl workflow.
-// Otherwise, it signals the BranchCtrl workflow.
+// If the branch is the default branch, it signals the TrunkCtrl workflow. Otherwise, it signals the BranchCtrl workflow.
 func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSignalBranchCtrlPayload) error {
 	args := make([]any, 0)
 
@@ -117,9 +117,8 @@ func (a *Activities) SignalQueue(ctx context.Context, payload *defs.RepoIOSignal
 
 // CloneBranch clones a repository branch to a temporary location.
 //
-// It retrieves the clone URL, including an OAuth token, using the RepoIO interface.
-//
-// If an error occurs while retrieving the clone URL, it is returned.
+// It retrieves the clone URL, including an OAuth token, using the RepoIO interface. If an error occurs while
+// retrieving the clone URL, it is returned.
 func (a *Activities) CloneBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
 	url, err := kernel.Instance().RepoIO(payload.Repo.Provider).TokenizedCloneURL(ctx, payload.Info)
 	if err != nil {
@@ -162,9 +161,8 @@ func (a Activities) FetchBranch(ctx context.Context, payload *defs.RepoIOClonePa
 
 // RebaseAtCommit attempts to rebase the repository at the given commit.
 //
-// It returns the SHA and error message of the failed commit if the rebase fails.
-//
-// If the rebase is in progress, it returns an InProgress flag.
+// It returns the SHA and error message of the failed commit if the rebase fails. If the rebase is in progress, it
+// returns an InProgress flag.
 func (a *Activities) RebaseAtCommit(ctx context.Context, payload *defs.RepoIOClonePayload) (*defs.RepoIORebaseAtCommitResponse, error) {
 	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "rebase", payload.Push.After) // nolint
 
@@ -252,15 +250,30 @@ func (a *Activities) SaveRepoEvent(ctx context.Context, event *defs.FlatEvent[de
 	return db.CreateWithID(event, event.SubjectID)
 }
 
-// GetParentForBranch retrieves the ID for the parent event for the given branch.
-func (a *Activities) GetParentForBranch(ctx context.Context, payload *GetParentForBranchPayload) (gocql.UUID, error) {
+// QueryGetParentForBranch queries the RepoCtrl workflow for the parent event ID of a branch.
+func (a *Activities) QueryGetParentForBranch(ctx context.Context, payload *GetParentForBranchPayload) (gocql.UUID, error) {
 	id := gocql.UUID{}
 	opts := RepoCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID)
 
-	result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoGetParentForBranch, payload.Branch)
+	result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoCtrlForBranchTriggers, payload.Branch)
 	if err != nil {
 		return id, err
 	}
 
 	return id, result.Get(&id)
+}
+
+// QueryGetBranchTrigger queries the RepoCtrl workflow for the branch triggers map.
+//
+// It returns a BranchTriggers, which is a map of branch names to event IDs, and an error if one occurred.
+func (a *Activities) QueryGetBranchTrigger(ctx context.Context, repo *defs.Repo) (BranchTriggers, error) {
+	triggers := make(BranchTriggers)
+	opts := RepoCtrlWorkflowOptions(repo.TeamID.String(), repo.Name, repo.ID)
+
+	result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoCtrlForBranchTriggers)
+	if err != nil {
+		return triggers, err
+	}
+
+	return triggers, result.Get(&triggers)
 }

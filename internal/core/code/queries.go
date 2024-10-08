@@ -5,5 +5,6 @@ import (
 )
 
 const (
-	QueryRepoGetParentForBranch queues.Query = "repo_ctrl_get_parent" // query repo ctrl to get get the parent event for a branch.
+	QueryRepoCtrlForBranchTriggers      queues.Query = "repo_ctrl__branch_triggers"        // get all the branches for a repo.
+	QueryRepoCtrlForBranchParentEventID queues.Query = "repo_ctrl__branch_parent_event_id" // get the parent event ID for a branch.
 )
