@@ -44,8 +44,8 @@ func (b BranchTriggers) add(branch string, id gocql.UUID) {
 	b[branch] = id
 }
 
-// del removes the association between a branch and its triggering event ID.
-func (b BranchTriggers) del(branch string) {
+// clear removes the association between a branch and its triggering event ID.
+func (b BranchTriggers) clear(branch string) {
 	delete(b, branch)
 }
 
@@ -77,4 +77,8 @@ func (s StashedEvents[P]) all(branch string) ([]RepoEvent[P], bool) {
 	}
 
 	return events, true
+}
+
+func (s StashedEvents[P]) clear(branch string) {
+	delete(s, branch)
 }

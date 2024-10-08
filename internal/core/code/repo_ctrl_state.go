@@ -45,22 +45,28 @@ func (state *RepoCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
 		event := &defs.Event[defs.Push, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
 
-		if state.on_trunk(BranchNameFromRef(event.Payload.Ref)) {
+		branch := BranchNameFromRef(event.Payload.Ref)
+
+		// check if the branch is the default branch. if so, signal the trunk.
+		if state.on_trunk(BranchNameFromRef(branch)) {
 			state.signal_branch(ctx, state.Repo.DefaultBranch, defs.RepoIOSignalPush, event)
 			state.persist(ctx, event)
 
 			return
 		}
 
-		if parent, ok := state.triggers.get(event.Payload.Ref); ok {
+		// if not, check if the branch has a parent. if so, signal the branch.
+		if parent, ok := state.triggers.get(branch); ok {
 			event.SetParent(parent)
-			state.signal_branch(ctx, event.Payload.Ref, defs.RepoIOSignalPush, event)
+			state.signal_branch(ctx, branch, defs.RepoIOSignalPush, event)
 			state.persist(ctx, event)
 
 			return
 		}
 
-		state.stash.push(event.Payload.Ref, event)
+		// if the branch has no parent, stash the event. We need to do this because we can't signal a branch without a
+		// parent, and github sends the push event before the branch created event.
+		state.stash.push(branch, event)
 	}
 }
 
@@ -137,12 +143,15 @@ func (state *RepoCtrlState) on_branch_create(ctx workflow.Context, event *defs.E
 	state.triggers.add(event.Payload.Ref, event.ID)
 
 	events, ok := state.stash.all(event.Payload.Ref)
+
 	if ok {
 		for _, each := range events {
 			each.SetParent(event.ID)
 			state.signal_branch(ctx, event.Payload.Ref, defs.RepoIOSignalPush, each)
 			state.persist(ctx, each)
 		}
+
+		state.stash.clear(event.Payload.Ref)
 	}
 }
 
@@ -159,7 +168,7 @@ func (state *RepoCtrlState) on_branch_delete(ctx workflow.Context, event *defs.E
 		state.persist(ctx, event)
 	}
 
-	state.triggers.del(event.Payload.Ref)
+	state.triggers.clear(event.Payload.Ref)
 }
 
 // on_trunk checks if the provided branch name is the default branch for the repository.
