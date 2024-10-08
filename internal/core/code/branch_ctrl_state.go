@@ -348,7 +348,27 @@ func (state *BranchCtrlState) warn_stale(ctx workflow.Context) {
 func (state *BranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider]) {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	conflict := comm.NewMergeConflictEvent(event, state.pr.HeadBranch, state.pr.BaseBranch, state.last_commit)
+	head := ""
+	base := ""
+
+	// Handle case where state.pr is nil (direct push to trunk)
+	if state.pr == nil {
+		// Use the event's payload ref for both head and base when state.pr is nil
+		base = BranchNameFromRef(event.Payload.Ref)
+		head = BranchNameFromRef(event.Payload.Ref)
+	} else {
+		// Use head and base from state.pr when available
+		base = state.pr.BaseBranch
+		head = state.pr.HeadBranch
+	}
+
+	// Select the last commit to use: either from the state or from the event
+	commit := state.last_commit
+	if commit == nil {
+		commit = event.Payload.Commits.Latest() // Use the latest commit from the event
+	}
+
+	conflict := comm.NewMergeConflictEvent(event, head, base, commit)
 
 	if state.author != nil {
 		conflict.SetUserID(state.author.UserID)
