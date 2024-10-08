@@ -28,16 +28,20 @@ import (
 	"go.breu.io/quantm/internal/core/defs"
 )
 
-// RepoCtrlState defines the state for RepoWorkflows.RepoCtrl.
-//
-// It embeds BaseState to inherit common workflow logic.
+// --- RepoCtrlState ---
+
 type (
+	// RepoCtrlState defines the state for RepoWorkflows.RepoCtrl.
+	//
+	// It embeds BaseState to inherit common workflow logic.
 	RepoCtrlState struct {
 		*BaseState                                         // Embedded base state for common workflow logic.
 		StashedEvents StashedPushEvents[defs.RepoProvider] // Storage for events that have no parent yet.
 		Triggers      BranchTriggers                       // Map of branch names to event IDs, used to track event dependencies.
 	}
 )
+
+// --- Event Handlers ---
 
 // on_push is a channel handler that processes push events for the repository.
 //
@@ -136,6 +140,8 @@ func (state *RepoCtrlState) on_label(ctx workflow.Context) defs.ChannelHandler {
 	}
 }
 
+// --- Branch Management ---
+
 // on_branch_create handles the creation of a new branch.
 //
 // It adds the new branch to the state's list of branches and associates the branch with the current event ID in the
@@ -177,6 +183,8 @@ func (state *RepoCtrlState) on_branch_delete(ctx workflow.Context, event *defs.E
 func (state *RepoCtrlState) on_trunk(branch string) bool {
 	return branch == state.Repo.DefaultBranch
 }
+
+// --- Temporal Query Handlers ---
 
 // setup_query__get_parents sets up a Temporal query handler for retrieving the branch triggers map.
 //
@@ -222,9 +230,13 @@ func (state *RepoCtrlState) setup_query__get_parent_for_branch(ctx workflow.Cont
 	)
 }
 
+// --- Workflow Utilities ---
+
 func (state *RepoCtrlState) restore(ctx workflow.Context) {
 	state.BaseState.restore(ctx)
 }
+
+// --- Instantiation ---
 
 func NewRepoCtrlState(ctx context.Context, repo *defs.Repo, info *defs.RepoIOProviderInfo) *RepoCtrlState {
 	return &RepoCtrlState{

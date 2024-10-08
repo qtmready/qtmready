@@ -41,10 +41,9 @@ type (
 	Activities struct{}
 )
 
+// --- User and Team Management ---
+
 // GetUserByID retrieves a user from the database by their ID.
-// The context.Context parameter is used for cancellation and timeouts.
-// The id parameter is the unique identifier of the user to retrieve.
-// Returns the retrieved user and any error that occurred.
 func (a *Activities) GetUserByID(ctx context.Context, id string) (*auth.User, error) {
 	params := db.QueryParams{"id": id}
 
@@ -62,17 +61,11 @@ func (a *Activities) CreateTeam(ctx context.Context, team *auth.Team) (*auth.Tea
 }
 
 // GetTeamByID retrieves a team by its ID.
-// ctx is the context for the operation.
-// id is the ID of the team to retrieve.
-// Returns the retrieved team, or an error if the team could not be found or retrieved.
 func (a *Activities) GetTeamByID(ctx context.Context, id string) (*auth.Team, error) {
 	return auth.TeamIO().GetByID(ctx, id)
 }
 
-// GetTeamByID retrieves a user by github user id.
-// ctx is the context for the operation.
-// id is the ID of the login id provided by github.
-// Returns the retrieved team user with message provider data if user not exist return the error and team_user both nil.
+// GetTeamUserByLoginID retrieves a user by their GitHub login ID.
 func (a *Activities) GetTeamUserByLoginID(ctx context.Context, loginID string) (*auth.TeamUser, error) {
 	teamuser, err := auth.TeamUserIO().GetByLogin(ctx, loginID)
 
@@ -84,8 +77,6 @@ func (a *Activities) GetTeamUserByLoginID(ctx context.Context, loginID string) (
 }
 
 // CreateMemberships creates a new team membership for the given user and team.
-// If the user is already a member of the team, the membership is updated to reflect the provided admin status.
-// If the user is not already a member of the organization associated with the team, a new organization membership is created.
 func (a *Activities) CreateMemberships(ctx context.Context, payload *CreateMembershipsPayload) error {
 	orgusr := &OrgUser{}
 	teamuser := &auth.TeamUser{
@@ -121,7 +112,9 @@ func (a *Activities) CreateMemberships(ctx context.Context, payload *CreateMembe
 	return nil
 }
 
-// CreateOrUpdateInstallation creates or update the Installation.
+// --- Installation Management ---
+
+// CreateOrUpdateInstallation creates or updates an Installation.
 func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *Installation) (*Installation, error) {
 	installation, err := a.GetInstallation(ctx, payload.InstallationID, payload.InstallationLogin)
 
@@ -151,7 +144,9 @@ func (a *Activities) GetInstallation(ctx context.Context, id db.Int64, login str
 	return installation, nil
 }
 
-// CreateOrUpdateGithubRepo creates a single row for Repo.
+// --- Repository Management ---
+
+// CreateOrUpdateGithubRepo creates or updates a single row for Repo.
 func (a *Activities) CreateOrUpdateGithubRepo(ctx context.Context, payload *Repo) error {
 	log := activity.GetLogger(ctx)
 	repo, err := a.GetGithubRepo(ctx, payload)
@@ -213,6 +208,7 @@ func (a *Activities) GetCoreRepo(ctx context.Context, repo *Repo) (*defs.Repo, e
 	return r, nil
 }
 
+// GetRepoByProviderID retrieves a RepoProviderData struct based on the provided provider ID.
 func (a *Activities) GetRepoByProviderID(
 	ctx context.Context, payload *defs.RepoIOGetRepoByProviderIDPayload,
 ) (*defs.RepoProviderData, error) {
@@ -234,7 +230,8 @@ func (a *Activities) GetRepoByProviderID(
 	return data, nil
 }
 
-func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *defs.RepoIOGetRepoByProviderIDPayload) error {
+// UpdateRepoHasRarlyWarning updates the "HasEarlyWarning" flag of a repository based on its provider ID.
+func (a *Activities) UpdateRepoHasRarlWarning(ctx context.Context, payload *defs.RepoIOGetRepoByProviderIDPayload) error {
 	repo := &Repo{}
 
 	if err := db.Get(repo, db.QueryParams{"id": payload.ProviderID}); err != nil {
@@ -253,9 +250,9 @@ func (a *Activities) UpdateRepoHasRarlyWarning(ctx context.Context, payload *def
 	return nil
 }
 
-// SyncReposFromGithub syncs repos from github.
-// TODO: We will get rate limiting errors here because of when we scale.
-// TODO: if the repo has has_early_warning, we will need to update core repo too.
+// --- GitHub Synchronization ---
+
+// SyncReposFromGithub syncs repositories from GitHub.
 func (a *Activities) SyncReposFromGithub(ctx context.Context, payload *SyncReposFromGithubPayload) error {
 	repos := make([]Repo, 0)
 	params := db.QueryParams{"installation_id": payload.InstallationID.String(), "team_id": payload.TeamID.String()}
@@ -286,9 +283,7 @@ func (a *Activities) SyncReposFromGithub(ctx context.Context, payload *SyncRepos
 	return nil
 }
 
-// SyncOrgUsersFromGithub syncs orgainzation users from github.
-// NOTE - working only for public org members
-// TODO - ifor private org mambers.
+// SyncOrgUsersFromGithub synchronizes organization users from GitHub.
 func (a *Activities) SyncOrgUsersFromGithub(ctx context.Context, payload *SyncOrgUsersFromGithubPayload) error {
 	if client, err := Instance().GetClientForInstallationID(payload.InstallationID); err != nil {
 		return err
@@ -327,8 +322,9 @@ func (a *Activities) SyncOrgUsersFromGithub(ctx context.Context, payload *SyncOr
 	return nil
 }
 
+// --- Repository Retrieval ---
+
 // GetRepoForInstallation filters repositories by installation ID and GitHub ID.
-// A repo on GitHub can be associated with multiple installations. This function is used to get the repo for a specific installation.
 func (a *Activities) GetReposForInstallation(ctx context.Context, installationID, githubID string) ([]Repo, error) {
 	var repos []Repo
 	err := db.Filter(&Repo{}, &repos, db.QueryParams{
@@ -353,6 +349,8 @@ func (a *Activities) GetCoreRepoByCtrlID(ctx context.Context, id string) (*defs.
 	return repo, nil
 }
 
+// --- Core Repository Signaling ---
+
 // SignalCoreRepoCtrl signals the core repository control workflow with the given signal and payload.
 func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, meta *RepoEventMetadata, signal queues.Signal, payload any) error {
 	info := &defs.RepoIOProviderInfo{
@@ -375,6 +373,8 @@ func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, meta *RepoEventMeta
 
 	return err
 }
+
+// --- Workflow Information ---
 
 func (a *Activities) GithubWorkflowInfo(ctx context.Context, payload *defs.RepoIOWorkflowActionPayload) (*defs.RepoIOWorkflowInfo, error) {
 	client, err := Instance().GetClientForInstallationID(payload.InstallationID)

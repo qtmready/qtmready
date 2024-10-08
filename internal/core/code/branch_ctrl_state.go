@@ -51,7 +51,7 @@ type (
 	}
 )
 
-// Event handlers
+// --- Event Handlers ---
 
 // on_push handles push events for the branch.
 func (state *BranchCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
@@ -157,7 +157,7 @@ func (state *BranchCtrlState) on_create_delete(ctx workflow.Context) defs.Channe
 	}
 }
 
-// Core methods
+// --- Core Methods ---
 
 // set_created_at sets the creation time of the branch.
 func (state *BranchCtrlState) set_created_at(ctx workflow.Context, t time.Time) {
@@ -225,7 +225,7 @@ func (state *BranchCtrlState) refresh_author(ctx workflow.Context, id db.Int64) 
 	state.set_author(ctx, user)
 }
 
-// Git operations
+// --- Git Operations ---
 
 // create_session creates a new workflow session for Git operations.
 func (state *BranchCtrlState) create_session(ctx workflow.Context) workflow.Context {
@@ -294,11 +294,9 @@ func (state *BranchCtrlState) remove_cloned(ctx workflow.Context, cloned *defs.R
 	_ = state.do(ctx, "remove_cloned", state.activities.RemoveClonedAtPath, cloned.Path, nil)
 }
 
-// Complexity and warning methods
+// --- Complexity and Warning Methods ---
 
 // calculate_complexity calculates the complexity of changes in a push event.
-//
-// TODO: we should compare the default branch head commit and the push's latest commit.
 func (state *BranchCtrlState) calculate_complexity(ctx workflow.Context) *defs.RepoIOChanges {
 	changes := &defs.RepoIOChanges{}
 	detect := &defs.RepoIODetectChangesPayload{
@@ -366,6 +364,8 @@ func (state *BranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Ev
 	_ = state.do(ctx, "warn_merge_conflict", io.NotifyMergeConflict, conflict, nil)
 	state.persist(ctx, event)
 }
+
+// --- Workflow State Management ---
 
 func (state *BranchCtrlState) restore(ctx workflow.Context) {
 	state.BaseState.restore(ctx)

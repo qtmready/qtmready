@@ -51,6 +51,8 @@ type (
 	}
 )
 
+// --- Installation Workflow ---
+
 // OnInstallationEvent workflow is executed when we initiate the installation of GitHub.
 //
 // It handles the installation, creation of teams, and associated user information based on incoming signals (webhook,
@@ -59,7 +61,7 @@ type (
 // NOTE: This workflow is designed to be started with SignalWithStartWorkflow.
 // TODO: Refactor for better code readability.  Reduce potential for code duplication and improve overall complexity.
 func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, error) { // nolint:funlen
-	// prelude
+	// Prelude
 	logger := workflow.GetLogger(ctx)
 	selector := workflow.NewSelector(ctx)
 	installation := &Installation{}
@@ -68,17 +70,17 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 	status := &InstallationWorkflowStatus{WebhookDone: false, RequestDone: false}
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	// setting up channels to receive signals
+	// Setting up channels to receive signals
 	webhookChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInstallationEvent.String())
 	requestChannel := workflow.GetSignalChannel(ctx, WorkflowSignalCompleteInstallation.String())
 
-	// setting up callbacks for the channels
+	// Setting up callbacks for the channels
 	selector.AddReceive(webhookChannel, on_install_webhook_signal(ctx, webhook, status))
 	selector.AddReceive(requestChannel, on_install_request_signal(ctx, request, status))
 
 	logger.Info("github/installation: waiting for webhook and complete installation request signals ...")
 
-	// keep listening for signals until we have received both the installation id and the team id
+	// Keep listening for signals until we have received both the installation id and the team id
 	for !(status.WebhookDone && status.RequestDone) {
 		selector.Select(ctx)
 	}
@@ -192,6 +194,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 	return installation, nil
 }
 
+// --- Post-Installation Workflow ---
+
 // PostInstall updates default branches for all repositories linked to the team and retrieves organization users.
 //
 // NOTE: This workflow completes successfully the first time but may fail upon reinstallation of the GitHub app
@@ -236,7 +240,9 @@ func (w *Workflows) PostInstall(ctx workflow.Context, payload *Installation) err
 	return nil
 }
 
-// OnPushEvent is run when ever a repo event is received. Repo Event can be push event or a create event.
+// --- Repository Event Handlers ---
+
+// OnCreateOrDeleteEvent is run when ever a repo event is received. Repo Event can be push event or a create event.
 func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, payload *CreateOrDeleteEvent) error {
 	logger := workflow.GetLogger(ctx)
 	meta := &RepoEventMetadata{}
@@ -354,6 +360,8 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 		Get(ctx, nil)
 }
 
+// --- Review Event Handlers ---
+
 // OnPullRequestReviewEvent normalize the pull request review event and then signal the core repo.
 func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRequestReviewEvent) error {
 	logger := workflow.GetLogger(ctx)
@@ -429,6 +437,8 @@ func (w *Workflows) OnPullRequestReviewCommentEvent(ctx workflow.Context, event 
 		Get(ctx, nil)
 }
 
+// --- Installation Repository Event Handler ---
+
 // OnInstallationRepositoriesEvent is responsible when a repository is added or removed from an installation.
 func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payload *InstallationRepositoriesEvent) error {
 	logger := workflow.GetLogger(ctx)
@@ -471,6 +481,8 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 	return nil
 }
 
+// --- Workflow Run Event Handler ---
+
 func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, pl *GithubWorkflowRunEvent) error {
 	logger := workflow.GetLogger(ctx)
 	state := &RepoEventMetadata{}
@@ -508,6 +520,8 @@ func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, pl *GithubWorkflowR
 
 	return workflow.ExecuteActivity(ctx, activities.GithubWorkflowInfo, p).Get(ctx, winfo)
 }
+
+// --- Metadata Collection Workflow ---
 
 // CollectRepoEventMetadata retrieves metadata about a repository event, validating its existence and status.
 // It gathers the repository, associated core repository, and user details.  It's intended for use as a child workflow.
@@ -560,6 +574,8 @@ func (w *Workflows) CollectRepoEventMetadata(ctx workflow.Context, query *RepoEv
 
 	return meta, nil
 }
+
+// --- Event Handlers ---
 
 // on_repo_saved_future handles post-processing after a repository is saved against an installation.
 func on_repo_saved_future(ctx workflow.Context, payload *Repo) defs.FutureHandler {

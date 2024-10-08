@@ -65,6 +65,8 @@ type (
 	}
 )
 
+// --- State Management ---
+
 // needs_reset checks if the event count has reached the threshold for resetting.
 func (base *BaseState) needs_reset(ctx workflow.Context) bool {
 	return workflow.GetInfo(ctx).GetContinueAsNewSuggested()
@@ -108,6 +110,8 @@ func (base *BaseState) set_done(ctx workflow.Context) {
 	base.Active = false
 }
 
+// --- Workflow Control ---
+
 // terminate marks the control as done and logs the termination.
 func (base *BaseState) terminate(ctx workflow.Context) {
 	base.set_done(ctx)
@@ -119,6 +123,8 @@ func (base *BaseState) as_new(ctx workflow.Context, msg string, fn any, args ...
 	base.log(ctx, "as_new").Warn(msg)
 	return workflow.NewContinueAsNewError(ctx, fn, args...)
 }
+
+// --- Branch Management ---
 
 // add_branch adds a new branch to the list of branches.
 func (base *BaseState) add_branch(ctx workflow.Context, branch string) {
@@ -143,6 +149,8 @@ func (base *BaseState) remove_branch(ctx workflow.Context, branch string) {
 	}
 }
 
+// --- Event Handling ---
+
 // signal_branch sends a signal to a specific branch.
 func (base *BaseState) signal_branch(ctx workflow.Context, branch string, signal queues.Signal, payload any) {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
@@ -162,7 +170,6 @@ func (base *BaseState) signal_branch(ctx workflow.Context, branch string, signal
 	)
 }
 
-// TODO - refine the logic.
 // signal_branch sends a signal to a specific branch.
 func (base *BaseState) signal_queue(ctx workflow.Context, branch string, signal queues.Signal, payload any) {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
@@ -181,12 +188,16 @@ func (base *BaseState) signal_queue(ctx workflow.Context, branch string, signal 
 	)
 }
 
+// --- Workflow Communication ---
+
 // rx receives a message from a channel and logs the event.
 func (base *BaseState) rx(ctx workflow.Context, channel workflow.ReceiveChannel, target any) {
 	base.log(ctx, "rx").Info(channel.Name())
 
 	channel.Receive(ctx, target)
 }
+
+// --- Repository Information ---
 
 // refresh_info updates the provider information for the repository.
 func (base *BaseState) refresh_info(ctx workflow.Context) {
@@ -214,6 +225,8 @@ func (base *BaseState) refresh_branches(ctx workflow.Context) {
 	base.set_branches(ctx, branches)
 }
 
+// --- Event Persistence ---
+
 func (base *BaseState) persist(ctx workflow.Context, event RepoEvent[defs.RepoProvider]) {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
@@ -221,10 +234,14 @@ func (base *BaseState) persist(ctx workflow.Context, event RepoEvent[defs.RepoPr
 	_ = base.do(ctx, "persist", base.activities.SaveRepoEvent, flat, nil)
 }
 
+// --- Logging ---
+
 // log creates a new logger for the current action.
 func (base *BaseState) log(ctx workflow.Context, action string) *RepoIOWorkflowLogger {
 	return NewRepoIOWorkflowLogger(ctx, base.Repo, base.Kind, base.ActiveBranch, action)
 }
+
+// --- Querying ---
 
 func (state *BaseState) query__parent_event_id(ctx workflow.Context, branch string) (gocql.UUID, bool) {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
@@ -248,13 +265,10 @@ func (state *BaseState) query__branch_triggers(ctx workflow.Context) BranchTrigg
 
 	_ = state.do(ctx, "hello", state.activities.QueryRepoCtrlForBranchTriggers, repo, triggers)
 
-	// err := state.do(ctx, "query__branch_triggers", state.activities.QueryRepoCtrlForBranchTriggers, repo, &triggers)
-	// if err != nil {
-	// 	return triggers
-	// }
-
 	return triggers
 }
+
+// --- Workflow Execution ---
 
 // do is helper is an activity executor. It logs the activity execution and increments the operation counter.
 func (base *BaseState) do(ctx workflow.Context, action string, activity, payload, result any, keyvals ...any) error {
@@ -300,6 +314,8 @@ func (base *BaseState) child(ctx workflow.Context, action, w_id string, fn, payl
 func (base *BaseState) restore(ctx workflow.Context) {
 	base.mutex = workflow.NewMutex(ctx)
 }
+
+// --- Instantiation ---
 
 // NewBaseState creates a new base control instance. This is the preferred method to create a new base control instance.
 func NewBaseState(ctx context.Context, kind string, repo *defs.Repo, info *defs.RepoIOProviderInfo, branch string) *BaseState {
