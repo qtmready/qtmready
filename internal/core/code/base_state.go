@@ -244,10 +244,14 @@ func (state *BaseState) query__branch_triggers(ctx workflow.Context) BranchTrigg
 	triggers := make(BranchTriggers)
 	repo := state.Repo
 
-	err := state.do(ctx, "query__branch_triggers", state.activities.QueryRepoCtrlForBranchTriggers, repo, &triggers)
-	if err != nil {
-		return triggers
-	}
+	state.log(ctx, "query__branch_triggers").Info("querying ...", "repo", repo)
+
+	_ = state.do(ctx, "hello", state.activities.QueryRepoCtrlForBranchTriggers, repo, triggers)
+
+	// err := state.do(ctx, "query__branch_triggers", state.activities.QueryRepoCtrlForBranchTriggers, repo, &triggers)
+	// if err != nil {
+	// 	return triggers
+	// }
 
 	return triggers
 }

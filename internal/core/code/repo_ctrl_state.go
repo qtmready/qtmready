@@ -182,39 +182,42 @@ func (state *RepoCtrlState) on_trunk(branch string) bool {
 //
 // This map stores the relationship between branch names and event IDs, allowing the workflow to determine the
 // dependencies between events.
-func (state *RepoCtrlState) setup_query__get_parents(ctx workflow.Context) error {
+func (state *RepoCtrlState) setup_query__get_parents(ctx workflow.Context) {
 	logger := state.log(ctx, "query/get_parents")
 	logger.Info("setup ...")
 
-	return workflow.SetQueryHandler(ctx, QueryRepoCtrlForBranchParentEventID.String(), func() BranchTriggers {
-		logger.Info("success")
+	_ = workflow.SetQueryHandler(
+		ctx,
+		QueryRepoCtrlForBranchTriggers.String(),
+		func() (BranchTriggers, error) {
+			logger.Info("success")
 
-		return state.Triggers
-	})
+			return state.Triggers, nil
+		})
 }
 
 // setup_query__get_parent_for_branch sets up a Temporal query handler for retrieving the parent event ID of a given
 // branch.
-func (state *RepoCtrlState) setup_query__get_parent_for_branch(ctx workflow.Context) error {
+func (state *RepoCtrlState) setup_query__get_parent_for_branch(ctx workflow.Context) {
 	logger := state.log(ctx, "query/get_parent_for_branch")
 	logger.Info("setup ...")
 
-	return workflow.SetQueryHandler(
+	_ = workflow.SetQueryHandler(
 		ctx,
 		QueryRepoCtrlForBranchParentEventID.String(),
-		func(branch string) gocql.UUID {
+		func(branch string) (gocql.UUID, error) {
 			logger.Info("querying ...", "branch", branch)
 
 			parent, ok := state.Triggers.get(branch)
 			if !ok {
 				logger.Warn("no parent found, this should never happen", "branch", branch)
 
-				return parent
+				return parent, nil
 			}
 
 			logger.Info("success", "branch", branch, "parent", parent.String())
 
-			return parent
+			return parent, nil
 		},
 	)
 }

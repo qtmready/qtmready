@@ -287,11 +287,10 @@ func (a *Activities) QueryRepoCtrlForBranchTriggers(ctx context.Context, repo *d
 
 	slog.Info("querying repo ctrl for branch parent", "info", queue.Core().WorkflowID(opts)) // TODO: remove in production.
 
-	// result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoCtrlForBranchTriggers)
-	// if err != nil {
-	// 	return triggers, err
-	// }
+	result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoCtrlForBranchTriggers)
+	if err != nil {
+		return triggers, err
+	}
 
-	// return triggers, result.Get(&triggers)
-	return triggers, nil
+	return triggers, result.Get(&triggers)
 }

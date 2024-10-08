@@ -32,8 +32,8 @@ func RepoCtrl(ctx workflow.Context, state *RepoCtrlState) error {
 	selector := workflow.NewSelector(ctx)
 
 	// queries
-	_ = state.setup_query__get_parents(ctx)
-	_ = state.setup_query__get_parent_for_branch(ctx)
+	state.setup_query__get_parents(ctx)
+	state.setup_query__get_parent_for_branch(ctx)
 
 	// channels
 	// push event

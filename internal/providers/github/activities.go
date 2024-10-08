@@ -366,7 +366,7 @@ func (a *Activities) SignalCoreRepoCtrl(ctx context.Context, meta *RepoEventMeta
 
 	_, err := queue.Core().SignalWithStartWorkflow(
 		ctx,
-		code.RepoCtrlWorkflowOptions(meta.Repo.TeamID.String(), meta.Repo.Name, meta.Repo.ID),
+		code.RepoCtrlWorkflowOptions(meta.CoreRepo.TeamID.String(), meta.CoreRepo.Name, meta.CoreRepo.ID),
 		signal,
 		payload,
 		code.RepoCtrl,
