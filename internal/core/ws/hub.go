@@ -202,7 +202,7 @@ func (h *hub) Stop(ctx context.Context) error {
 		client.conn.Close()
 	}
 
-	if err := h.Signal(ctx, SingalContainerDisconnected, RegisterOrFlush{Queue: h.queue.String()}); err != nil {
+	if err := h.Signal(ctx, SingalContainerDisconnected, RegisterOrFlush{Container: h.queue.String()}); err != nil {
 		slog.Warn("ws/hub: failed to signal flush", "error", err.Error())
 	}
 
@@ -335,7 +335,7 @@ func (h *hub) worker() {
 		h.stop <- true
 	}
 
-	err := h.Signal(context.Background(), SignalContainerConnected, &RegisterOrFlush{Queue: h.queue.String()})
+	err := h.Signal(context.Background(), SignalContainerConnected, &RegisterOrFlush{Container: h.queue.String()})
 	if err != nil {
 		slog.Warn("ws/queue: failed to signal worker addition", "error", err)
 		panic(err)
@@ -446,7 +446,7 @@ func Instance() Hub {
 			// temporal: to provide better visibility, we prefix the container id with websockets queue, so that our id for
 			// tasks on the queue worker will look like "io.ctrlplane.{websockets_queue_name}.{container_id}""
 			queue: queues.New(
-				queues.WithName(queue_name(container_id())),
+				queues.WithName(queue_name(idempotent())),
 				queues.WithClient(shared.Temporal().Client()),
 			),
 			stop: make(chan bool, 1),
