@@ -99,7 +99,7 @@ func (a Activities) FetchBranch(ctx context.Context, payload *defs.RepoIOClonePa
 
 // RebaseAtCommit attempts to rebase the repository at the given commit.
 func (a *Activities) RebaseAtCommit(ctx context.Context, payload *defs.RepoIOClonePayload) (*defs.RepoIORebaseAtCommitResponse, error) {
-	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "rebase", payload.Push.After) // nolint
+	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "rebase", payload.Rebase.After) // nolint
 
 	var exerr *exec.ExitError
 

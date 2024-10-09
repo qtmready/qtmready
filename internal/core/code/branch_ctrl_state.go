@@ -99,7 +99,7 @@ func (state *BranchCtrlState) on_pr(ctx workflow.Context) defs.ChannelHandler {
 // on_rebase handles rebase events for the branch.
 func (state *BranchCtrlState) on_rebase(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		event := &defs.Event[defs.Push, defs.RepoProvider]{}
+		event := &defs.Event[defs.Rebase, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
 
 		ctx = dispatch.WithDefaultActivityContext(ctx)
@@ -111,8 +111,6 @@ func (state *BranchCtrlState) on_rebase(ctx workflow.Context) defs.ChannelHandle
 		if cloned == nil {
 			return
 		}
-
-		state.fetch_default_branch(session, cloned)
 
 		if err := state.rebase_at_commit(session, cloned); err != nil {
 			state.warn_conflict(session, event)
@@ -243,10 +241,10 @@ func (state *BranchCtrlState) finish_session(ctx workflow.Context) {
 }
 
 // clone_at_commit clones the repository at a specific commit.
-func (state *BranchCtrlState) clone_at_commit(ctx workflow.Context, push *defs.Push) *defs.RepoIOClonePayload {
+func (state *BranchCtrlState) clone_at_commit(ctx workflow.Context, rebase *defs.Rebase) *defs.RepoIOClonePayload {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	cloned := &defs.RepoIOClonePayload{Repo: state.Repo, Push: push, Info: state.Info, Branch: state.branch(ctx)}
+	cloned := &defs.RepoIOClonePayload{Repo: state.Repo, Rebase: rebase, Info: state.Info, Branch: state.branch(ctx)}
 	_ = workflow.SideEffect(ctx, func(ctx workflow.Context) any { return "/tmp/" + uuid.New().String() }).Get(&cloned.Path)
 
 	_ = state.do(ctx, "clone_at_commit", state.activities.CloneBranch, cloned, nil)
@@ -270,7 +268,7 @@ func (state *BranchCtrlState) rebase_at_commit(ctx workflow.Context, cloned *def
 	if err := state.do(ctx, "rebase_at_commit", state.activities.RebaseAtCommit, cloned, response); err != nil {
 		var apperr *temporal.ApplicationError
 		if errors.As(err, &apperr) && apperr.Type() == "RebaseError" {
-			return NewRebaseError(cloned.Push.After, "fetch the commit message here") // TODO: fill the right info
+			return NewRebaseError(cloned.Rebase.After, "fetch the commit message here") // TODO: fill the right info
 		}
 
 		return nil
@@ -348,10 +346,10 @@ func (state *BranchCtrlState) warn_stale(ctx workflow.Context) {
 }
 
 // warn_conflict sends a warning message if there's a merge conflict during rebase.
-func (state *BranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider]) {
+func (state *BranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Event[defs.Rebase, defs.RepoProvider]) {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	conflict := comm.NewMergeConflictEvent(event, state.PullRequest.HeadBranch, state.PullRequest.BaseBranch, state.LastCommit)
+	conflict := comm.NewMergeConflictEvent(event, state.LastCommit)
 
 	if state.Author != nil {
 		conflict.SetUserID(state.Author.UserID)

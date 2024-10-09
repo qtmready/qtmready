@@ -143,11 +143,21 @@ type (
 		Timestamp time.Time   `json:"timestamp"`  // Timestamp is the timestamp of the merge conflict.
 	}
 
+	Rebase struct {
+		Ref        string    `json:"ref"`         // Ref is the ref that was pushed to.
+		Before     string    `json:"before"`      // Before is the SHA of the commit before the push.
+		After      string    `json:"after"`       // After is the SHA of the commit after the push.
+		HeadBranch string    `json:"head_branch"` // HeadBranch is the name of the head branch.
+		HeadCommit Commit    `json:"head_commit"` // HeadCommit is the last commit on the head branch before rebasing.
+		BaseBranch string    `json:"base_branch"` // BaseBranch is the name of the base branch.
+		BaseCommit Commit    `json:"base_commit"` // BaseCommit is the last commit on the base branch before rebasing.
+		Timestamp  time.Time `json:"timestamp"`   // Timestamp is the timestamp of the merge conflict.
+	}
+
 	// EventPayload represents all available event payloads.
 	EventPayload interface {
 		BranchOrTag |
-			Push |
-			PullRequest | PullRequestReview | PullRequestLabel | PullRequestComment | PullRequestThread |
+			Push | Rebase | PullRequest | PullRequestReview | PullRequestLabel | PullRequestComment | PullRequestThread |
 			MergeConflict | LinesExceed
 	}
 )
@@ -232,6 +242,7 @@ const (
 	EventScopeTag                EventScope = "tag"                  // EventScopeTag scopes tag event.
 	EventScopeCommit             EventScope = "commit"               // EventScopeCommit scopes commit event.
 	EventScopePush               EventScope = "push"                 // EventScopePush scopes push event.
+	EventScopeRebase             EventScope = "rebase"               // EventScopePush scopes push event.
 	EventScopePullRequest        EventScope = "pull_request"         // EventScopePullRequest scopes PR event.
 	EventScopePullRequestLabel   EventScope = "pull_request_label"   // EventScopePullRequestLabel scopes PR label event.
 	EventScopePullRequestReview  EventScope = "pull_request_review"  // EventScopePullRequestReview scopes PR review event.
@@ -401,6 +412,8 @@ func (e *Event[T, P]) UnmarshalJSON(data []byte) error {
 		payload = any(MergeConflict{}).(T)
 	case EventScopeLineExceed:
 		payload = any(LinesExceed{}).(T)
+	case EventScopeRebase:
+		payload = any(Rebase{}).(T)
 	default:
 		return fmt.Errorf("unsupported event scope: %s", e.Context.Scope)
 	}
@@ -569,6 +582,10 @@ func (e *Event[T, P]) SetScopeMergeConflict() {
 
 func (e *Event[T, P]) SetScopeLineExceed() {
 	e.Context.Scope = EventScopeLineExceed
+}
+
+func (e *Event[T, P]) SetScopeRebase() {
+	e.Context.Scope = EventScopeRebase
 }
 
 // Latest returns the latest commit based on the timestamp. It iterates through the Commits slice and returns the commit with the latest

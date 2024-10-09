@@ -39,17 +39,15 @@ func (state *TrunkCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
 		push := &defs.Event[defs.Push, defs.RepoProvider]{} // Use Event type
 		state.rx(ctx, rx, push)
 
-		// for _, branch := range state.Branches {
-		// 	if branch == BranchNameFromRef(push.Payload.Ref) {
-		// 		continue
-		// 	}
-
-		// 	state.signal_branch(ctx, branch, defs.RepoIOSignalRebase, push) // TODO: Fix the signal type
-		// }
-
 		triggers := state.query__branch_triggers(ctx)
 
 		state.log(ctx, "on_push").Info("triggers", triggers)
+
+		for branch, parent_id := range triggers {
+			rebase := ToRebaseEvent(ctx, push, branch, parent_id)
+			state.signal_branch(ctx, branch, defs.RepoIOSignalRebase, rebase) // TODO: Fix the signal type
+			state.persist(ctx, rebase)
+		}
 	}
 }
 

@@ -263,7 +263,7 @@ func (state *BaseState) query__branch_triggers(ctx workflow.Context) BranchTrigg
 
 	state.log(ctx, "query__branch_triggers").Info("querying ...", "repo", repo)
 
-	_ = state.do(ctx, "hello", state.activities.QueryRepoCtrlForBranchTriggers, repo, triggers)
+	_ = state.do(ctx, "query__branch_triggers", state.activities.QueryRepoCtrlForBranchTriggers, repo, &triggers)
 
 	return triggers
 }

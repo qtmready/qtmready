@@ -21,6 +21,13 @@ package code
 
 import (
 	"strings"
+	"time"
+
+	"github.com/gocql/gocql"
+	"go.temporal.io/sdk/workflow"
+
+	"go.breu.io/quantm/internal/core/defs"
+	"go.breu.io/quantm/internal/db"
 )
 
 // BranchNameFromRef takes a full Git reference string and returns the branch name.
@@ -51,4 +58,43 @@ func IsQuantmRef(ref string) bool {
 // This is a helper function used to identify branches that are part of the Quantm project.
 func IsQuantmBranch(branch string) bool {
 	return strings.HasPrefix(branch, "qtm/")
+}
+
+// ToRebaseEvent handles the creation and setup of a rebase event.
+func ToRebaseEvent(
+	ctx workflow.Context,
+	push *defs.Event[defs.Push, defs.RepoProvider],
+	branch string,
+	parent_id gocql.UUID,
+) *defs.Event[defs.Rebase, defs.RepoProvider] {
+	// Generate new UUID for the event
+	id, _ := db.NewUUID()
+	now := time.Now()
+
+	// Create the rebase payload
+	r := defs.Rebase{
+		Ref:        push.Payload.Ref,
+		Before:     push.Payload.Before,
+		After:      push.Payload.After,
+		HeadBranch: BranchNameFromRef(push.Payload.Ref),
+		BaseBranch: branch,
+		HeadCommit: *push.Payload.Commits.Latest(),
+	}
+
+	// Create a new rebase event
+	rebase := &defs.Event[defs.Rebase, defs.RepoProvider]{
+		Version: push.Version,
+		ID:      id,
+		Context: push.Context,
+		Subject: push.Subject,
+		Payload: r,
+	}
+
+	// Update the event with metadata
+	rebase.SetParent(parent_id)
+	rebase.SetScopeRebase()
+	rebase.SetActionCreated()
+	rebase.SetTimestamp(now)
+
+	return rebase
 }

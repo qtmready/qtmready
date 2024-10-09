@@ -118,7 +118,7 @@ type (
 	// RepoIOClonePayload represents the payload for cloning a repository.
 	RepoIOClonePayload struct {
 		Repo   *Repo               `json:"repo"`   // Repo represents the database record of the repository.
-		Push   *Push               `json:"push"`   // Push represents the push event payload.
+		Rebase *Rebase             `json:"rebase"` // Rebase represents the rebase event payload.
 		Info   *RepoIOProviderInfo `json:"info"`   // Info represents the repository information from the provider.
 		Branch string              `json:"branch"` // Branch represents the branch to clone.
 		Path   string              `json:"path"`   // Path represents the path to clone the repository to.
