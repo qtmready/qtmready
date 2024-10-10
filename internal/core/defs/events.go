@@ -39,14 +39,6 @@ type (
 		DefaultBranch string `json:"default_branch"` // DefaultBranch is the name of the default branch.
 	}
 
-	// TODO - set the event payload.
-	LineChanges struct {
-		Added     db.Int64 `json:"added"`     // Number of lines added in the commit.
-		Removed   db.Int64 `json:"removed"`   // Number of lines removed in the commit.
-		Threshold db.Int64 `json:"threshold"` // Set threshold for PR.
-		Delta     db.Int64 `json:"delta"`     // Net change in lines (added - removed).
-	}
-
 	// Commit represents a git commit.
 	Commit struct {
 		SHA       string    `json:"sha"`       // SHA is the SHA of the commit.
@@ -126,6 +118,14 @@ type (
 		Timestamp         time.Time  `json:"timestamp"`           // Timestamp is the timestamp of the thread.
 	}
 
+	// TODO - set the event payload.
+	Diff struct {
+		Added     db.Int64 `json:"added"`     // Number of lines added in the commit.
+		Removed   db.Int64 `json:"removed"`   // Number of lines removed in the commit.
+		Threshold db.Int64 `json:"threshold"` // Set threshold for PR.
+		Delta     db.Int64 `json:"delta"`     // Net change in lines (added - removed).
+	}
+
 	// MergeConflict represents a git merge conflict.
 	MergeConflict struct {
 		HeadBranch string    `json:"head_branch"` // HeadBranch is the name of the head branch.
@@ -137,10 +137,10 @@ type (
 	}
 
 	LinesExceed struct {
-		Branch    string      `json:"branch"`     // Branch is the name of the head or feature branch.
-		Commit    Commit      `json:"commit"`     // Commit is the last commit on the head branch.
-		LineStats LineChanges `json:"line_stats"` // LineStats contains details about lines added, removed, and the delta.
-		Timestamp time.Time   `json:"timestamp"`  // Timestamp is the timestamp of the merge conflict.
+		Branch    string    `json:"branch"`    // Branch is the name of the head or feature branch.
+		Commit    Commit    `json:"commit"`    // Commit is the last commit on the head branch.
+		Diff      Diff      `json:"diff"`      // LineStats contains details about lines added, removed, and the delta.
+		Timestamp time.Time `json:"timestamp"` // Timestamp is the timestamp of the merge conflict.
 	}
 
 	Rebase struct {
@@ -156,9 +156,9 @@ type (
 
 	// EventPayload represents all available event payloads.
 	EventPayload interface {
-		BranchOrTag |
-			Push | Rebase | PullRequest | PullRequestReview | PullRequestLabel | PullRequestComment | PullRequestThread |
-			MergeConflict | LinesExceed
+		BranchOrTag | Push | Rebase | // actions
+			PullRequest | PullRequestReview | PullRequestLabel | PullRequestComment | PullRequestThread | // activities
+			MergeConflict | LinesExceed // errors or results
 	}
 )
 
@@ -471,7 +471,7 @@ func (e *Event[T, P]) SetSource(src string) { e.Context.Source = src }
 // Example usage:
 //
 //	event := &Event[EventPayload, EventProvider]{}
-//	event.SetParent(gocql.TimeUUID())
+//	event.SetParent(db.MustUUID())
 func (e *Event[T, P]) SetParent(id gocql.UUID) { e.Context.ParentID = id }
 
 func (e *Event[T, P]) SetTimestamp(t time.Time) { e.Context.Timestamp = t }
@@ -645,7 +645,7 @@ func (bt *BranchOrTag) ToEvent(
 ) *Event[BranchOrTag, RepoProvider] {
 	event := &Event[BranchOrTag, RepoProvider]{
 		Version: EventVersionDefault,
-		ID:      gocql.TimeUUID(),
+		ID:      db.MustUUID(),
 		Context: EventContext[RepoProvider]{
 			Provider:  provider,
 			Scope:     scope,
@@ -693,7 +693,7 @@ func (p *Push) ToEvent(
 ) *Event[Push, RepoProvider] {
 	event := &Event[Push, RepoProvider]{
 		Version: EventVersionDefault,
-		ID:      gocql.TimeUUID(),
+		ID:      db.MustUUID(),
 		Context: EventContext[RepoProvider]{
 			Provider:  provider,
 			Scope:     EventScopePush,
@@ -739,7 +739,7 @@ func (pr *PullRequest) ToEvent(
 ) *Event[PullRequest, RepoProvider] {
 	event := &Event[PullRequest, RepoProvider]{
 		Version: EventVersionDefault,
-		ID:      gocql.TimeUUID(),
+		ID:      db.MustUUID(),
 		Context: EventContext[RepoProvider]{
 			Provider:  provider,
 			Scope:     EventScopePullRequest,
@@ -786,7 +786,7 @@ func (prr *PullRequestReview) ToEvent(
 ) *Event[PullRequestReview, RepoProvider] {
 	event := &Event[PullRequestReview, RepoProvider]{
 		Version: EventVersionDefault,
-		ID:      gocql.TimeUUID(),
+		ID:      db.MustUUID(),
 		Context: EventContext[RepoProvider]{
 			Provider:  provider,
 			Scope:     EventScopePullRequestReview,
@@ -833,7 +833,7 @@ func (prl *PullRequestLabel) ToEvent(
 ) *Event[PullRequestLabel, RepoProvider] {
 	event := &Event[PullRequestLabel, RepoProvider]{
 		Version: EventVersionDefault,
-		ID:      gocql.TimeUUID(),
+		ID:      db.MustUUID(),
 		Context: EventContext[RepoProvider]{
 			Provider:  provider,
 			Scope:     EventScopePullRequestLabel,
@@ -883,7 +883,7 @@ func (prc *PullRequestComment) ToEvent(
 ) *Event[PullRequestComment, RepoProvider] {
 	event := &Event[PullRequestComment, RepoProvider]{
 		Version: EventVersionDefault,
-		ID:      gocql.TimeUUID(),
+		ID:      db.MustUUID(),
 		Context: EventContext[RepoProvider]{
 			Provider:  provider,
 			Scope:     EventScopePullRequestComment,
@@ -931,7 +931,7 @@ func (prt *PullRequestThread) ToEvent(
 ) *Event[PullRequestThread, RepoProvider] {
 	event := &Event[PullRequestThread, RepoProvider]{
 		Version: EventVersionDefault,
-		ID:      gocql.TimeUUID(),
+		ID:      db.MustUUID(),
 		Context: EventContext[RepoProvider]{
 			Provider:  provider,
 			Scope:     EventScopePullRequestThread,

@@ -317,7 +317,7 @@ func (state *BranchCtrlState) warn_complexity(
 	ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider], complexity *defs.RepoIOChanges) {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	change := &defs.LineChanges{
+	change := &defs.Diff{
 		Added:     complexity.Added,
 		Removed:   complexity.Removed,
 		Delta:     complexity.Delta,

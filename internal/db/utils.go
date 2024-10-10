@@ -24,8 +24,6 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/gocql/gocql"
-	"github.com/google/uuid"
 	"github.com/gosimple/slug"
 )
 
@@ -47,10 +45,4 @@ func suffix(length int) string {
 
 func CreateSlug(s string) string {
 	return slug.Make(s) + "-" + suffix(4)
-}
-
-// NewUUID generates a new NewUUID v7 but returns it as a gocql.NewUUID type.
-func NewUUID() (gocql.UUID, error) {
-	id, _ := uuid.NewV7()
-	return gocql.UUIDFromBytes(id[:])
 }

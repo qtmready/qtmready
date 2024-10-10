@@ -64,7 +64,7 @@ func NewMergeConflictEvent(
 
 // NewLineExceedEvent creates a new defs.Event instance for a line exceed.
 func NewLineExceedEvent(
-	event *defs.Event[defs.Push, defs.RepoProvider], head string, lc *defs.LineChanges,
+	event *defs.Event[defs.Push, defs.RepoProvider], head string, lc *defs.Diff,
 ) *defs.Event[defs.LinesExceed, defs.RepoProvider] {
 	id, _ := db.NewUUID()
 	now := time.Now()
@@ -73,7 +73,7 @@ func NewLineExceedEvent(
 	exceed := defs.LinesExceed{
 		Branch:    head,
 		Commit:    *event.Payload.Commits.Latest(),
-		LineStats: *lc,
+		Diff:      *lc,
 		Timestamp: now,
 	}
 
