@@ -1,6 +1,8 @@
 package events
 
-import "go.breu.io/quantm/internal/core/defs"
+import (
+	"go.breu.io/quantm/internal/core/defs"
+)
 
 type (
 	RepoProvider    = defs.RepoProvider
