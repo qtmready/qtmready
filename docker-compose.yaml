@@ -63,7 +63,7 @@ services:
     environment:
       TEMPORAL_ADDRESS: temporal:7233
       TEMPORAL_CORS_ORIGINS: http://localhost:3000
-    image: temporalio/ui:2.29.0
+    image: temporalio/ui:2.31.0
     ports:
       - 8080:8080
     networks:
@@ -175,7 +175,6 @@ services:
       - worker-mothership-build-cache:/root/.cache/go-build
     networks:
       - ctrlplane
-
 
 networks:
   ctrlplane: {}

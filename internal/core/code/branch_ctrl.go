@@ -33,14 +33,11 @@ import (
 //   - rebase
 //   - create_delete
 //   - pr
-func BranchCtrl(ctx workflow.Context, repo *defs.Repo, branch string) error {
-	selector := workflow.NewSelector(ctx)
-	ctx, state := NewBranchCtrlState(ctx, repo, branch)
-
-	// start the stale check coroutine.
+func BranchCtrl(ctx workflow.Context, state *BranchCtrlState) error {
+	state.restore(ctx)
 	state.check_stale(ctx)
 
-	// setup signals
+	selector := workflow.NewSelector(ctx)
 
 	// push event signal.
 	// detect changes. if changes are greater than threshold, send early warning message.
@@ -69,15 +66,8 @@ func BranchCtrl(ctx workflow.Context, repo *defs.Repo, branch string) error {
 	for state.is_active() {
 		selector.Select(ctx)
 
-		// TODO - need to optimize
-		// TODO - remove
-		if state.pr != nil {
-			_ctx, q_state := NewQueueCtrlState(ctx, repo, branch)
-			q_state.push(_ctx, state.pr, false) // TODO - handle priority
-		}
-
-		if state.needs_reset() {
-			return state.as_new(ctx, "event history exceeded threshold", BranchCtrl, repo, branch)
+		if state.needs_reset(ctx) {
+			return state.as_new(ctx, "event history exceeded threshold", BranchCtrl, state.Repo, state.Repo)
 		}
 	}
 

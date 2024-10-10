@@ -53,24 +53,24 @@ func ConnectionsHubWorkflow(ctx workflow.Context, conns *Connections) error {
 	// Set up signal channels
 	add := workflow.GetSignalChannel(ctx, SignalUserConnected.String())
 	remove := workflow.GetSignalChannel(ctx, SignalUserDisconnected.String())
-	flush := workflow.GetSignalChannel(ctx, SingalContainerDisconnected.String())
+	drop := workflow.GetSignalChannel(ctx, SingalContainerDisconnected.String())
 	worker_added := workflow.GetSignalChannel(ctx, SignalContainerConnected.String())
 
 	// Add signal handlers to the selector
 	selector.AddReceive(add, conns.on_add(ctx))
 	selector.AddReceive(remove, conns.on_remove(ctx))
-	selector.AddReceive(flush, conns.on_flush(ctx))
-	selector.AddReceive(worker_added, conns.on_worker_added(ctx))
+	selector.AddReceive(drop, conns.on_drop(ctx))
+	selector.AddReceive(worker_added, conns.on_container_connected(ctx))
 
 	// Set up query handler for getting user queue
-	_ = workflow.SetQueryHandler(ctx, QueryGetUserQueue, func(user_id string) string {
-		q, ok := conns.GetQueueForUser(ctx, user_id)
+	_ = workflow.SetQueryHandler(ctx, QueryGetUserQueue, func(user_id string) (string, error) {
+		q, ok := conns.GetContainerForUser(ctx, user_id)
 
 		if ok {
-			return q
+			return q, nil
 		}
 
-		return ""
+		return "", nil
 	})
 
 	// Main loop: continuously handle signals

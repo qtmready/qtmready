@@ -164,7 +164,7 @@ func (a *Activities) NotifyMergeConflict(ctx context.Context, event *defs.Event[
 
 	attachment := slack.Attachment{
 		Color: "warning",
-		Pretext: fmt.Sprintf(`We've detected a merge conflict in your feature branch, <%s/tree/%s|%s>. 
+		Pretext: fmt.Sprintf(`We've detected a merge conflict in your feature branch, <%s/tree/%s|%s>.
     This means there are changes in your branch that clash with recent updates on the main branch (trunk).`,
 			event.Context.Source, event.Payload.HeadBranch, event.Payload.HeadBranch),
 		Fallback:   "Merge Conflict Detected",
@@ -223,19 +223,19 @@ func (a *Activities) lines_exceed_fields(event *defs.Event[defs.LinesExceed, def
 			Short: true,
 		}, {
 			Title: "*Threshold*",
-			Value: fmt.Sprintf("%d", event.Payload.LineStats.Threshold),
+			Value: fmt.Sprintf("%d", event.Payload.Diff.Threshold),
 			Short: true,
 		}, {
 			Title: "*Total Lines Count*",
-			Value: fmt.Sprintf("%d", event.Payload.LineStats.Delta),
+			Value: fmt.Sprintf("%d", event.Payload.Diff.Delta),
 			Short: true,
 		}, {
 			Title: "*Lines Added*",
-			Value: fmt.Sprintf("%d", event.Payload.LineStats.Added),
+			Value: fmt.Sprintf("%d", event.Payload.Diff.Added),
 			Short: true,
 		}, {
 			Title: "*Lines Deleted*",
-			Value: fmt.Sprintf("%d", event.Payload.LineStats.Removed),
+			Value: fmt.Sprintf("%d", event.Payload.Diff.Removed),
 			Short: true,
 		}, {
 			Title: "Affected Files",

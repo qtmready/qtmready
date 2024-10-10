@@ -81,7 +81,6 @@
 //
 // # Future Work:
 //
-//   - Implement authentication and authorization for WebSocket connections.
 //   - Implement broadcast functionality to send messages to multiple users or teams.
 //   - Implement a mechanism to handle users connected to multiple containers.
 //   - Implement robust monitoring and alerting for the WebSocket management system, tracking key metrics like

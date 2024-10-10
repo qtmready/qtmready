@@ -29,172 +29,193 @@ import (
 )
 
 type (
-	// Connections represents the state of websocket connections,
-	// managing the relationship between users and queues.
+	// Connections represents the state of websocket connections, managing the relationship between users and containers.
 	Connections struct {
-		UserQueue  map[string]string              `json:"user_queue"`
-		QueueUsers map[string]map[string]struct{} `json:"queue_users"`
-		mu         workflow.Mutex
-		logger     log.Logger
+		UserContainer        map[string]string              `json:"user_container"`
+		ContainerConnections map[string]map[string]struct{} `json:"container_connections"`
+		mu                   workflow.Mutex
+		logger               log.Logger
 	}
 
-	QueueUser struct {
-		UserID string
-		Queue  string
+	// UserContainer represents a signal containing user ID and container name.
+	UserContainer struct {
+		UserID    string
+		Container string
 	}
 
+	// User represents a signal containing user ID.
 	User struct {
 		UserID string
 	}
 
+	// RegisterOrFlush represents a signal containing a container name.
 	RegisterOrFlush struct {
-		Queue string
+		Container string
 	}
 )
 
-// GetQueueForUser returns the queue name for a given user ID.
-//
-// Example:
-//
-//	queue, exists := connections.GetQueueForUser(ctx, "user123")
-//	if exists {
-//	    fmt.Printf("User is in queue: %s\n", queue)
-//	}
-func (con *Connections) GetQueueForUser(ctx workflow.Context, user_id string) (string, bool) {
-	con.info("get queue for user", "user_id", user_id)
+// -- Channel Handlers --
+
+// on_add is a channel handler triggered when a new user connection is registered.
+func (con *Connections) on_add(ctx workflow.Context) defs.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		var signal UserContainer
+
+		rx.Receive(ctx, &signal)
+
+		if err := con.ConnectUser(ctx, signal.UserID, signal.Container); err != nil {
+			con.error("connection registration failed", "user_id", signal.UserID, "container", signal.Container, "error", err)
+		} else {
+			con.info("connection registered", "user_id", signal.UserID, "container", signal.Container)
+		}
+	}
+}
+
+// on_remove is a channel handler triggered when a user connection is dropped.
+func (con *Connections) on_remove(ctx workflow.Context) defs.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		var signal User
+
+		rx.Receive(ctx, &signal)
+
+		if err := con.DropUserConnection(ctx, signal.UserID); err != nil {
+			con.error("failed to drop connection", "user_id", signal.UserID, "error", err)
+		} else {
+			con.info("connection dropped", "user_id", signal.UserID)
+		}
+	}
+}
+
+// on_drop is a channel handler triggered when a container is disconnected.
+func (con *Connections) on_drop(ctx workflow.Context) defs.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		var signal RegisterOrFlush
+
+		rx.Receive(ctx, &signal)
+
+		if err := con.DropContainer(ctx, signal.Container); err != nil {
+			con.error("failed to drop container", "container", signal.Container, "error", err)
+		} else {
+			con.info("container disconnected", "container", signal.Container)
+		}
+	}
+}
+
+// on_container_connected is a channel handler triggered when a container is connected.
+func (con *Connections) on_container_connected(ctx workflow.Context) defs.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		var signal RegisterOrFlush
+
+		rx.Receive(ctx, &signal)
+
+		con.info("container connected", "container", signal.Container)
+	}
+}
+
+// -- Connection Management --
+
+// GetContainerForUser returns the container name for a given user ID. It returns `false` if the user is not connected
+// to any container.
+func (con *Connections) GetContainerForUser(ctx workflow.Context, user_id string) (string, bool) {
+	con.info("get container for user", "user_id", user_id)
 
 	if err := con.mu.Lock(ctx); err != nil {
 		return "", false
 	}
 	defer con.mu.Unlock()
 
-	queue, exists := con.UserQueue[user_id]
+	container, exists := con.UserContainer[user_id]
 
 	if exists {
-		con.info("queue found", "user_id", user_id, "queue", queue)
+		con.info("container found", "user_id", user_id, "container", container)
 	} else {
-		con.warn("no queue found for user", "user_id", user_id)
+		con.warn("no container found for user", "user_id", user_id)
 	}
 
-	return queue, exists
+	return container, exists
 }
 
-// AddUserToQueue adds a user to a specified queue.
-// If the user is already in a queue, they are removed from the old queue first.
-//
-// Example:
-//
-//	err := connections.AddUserToQueue(ctx, "user123", "queue1")
-//	if err != nil {
-//	    log.Printf("Failed to add user to queue: %v", err)
-//	}
-func (con *Connections) AddUserToQueue(ctx workflow.Context, user_id, queue string) error {
+// ConnectUser registers a user to a specific container. If the user is already connected to a different container, the
+// connection is updated.
+func (con *Connections) ConnectUser(ctx workflow.Context, user_id, container string) error {
 	if err := con.mu.Lock(ctx); err != nil {
 		return err
 	}
 	defer con.mu.Unlock()
 
-	if old, exists := con.UserQueue[user_id]; exists {
-		delete(con.QueueUsers[old], user_id)
+	if old, exists := con.UserContainer[user_id]; exists {
+		delete(con.ContainerConnections[old], user_id)
 
-		if len(con.QueueUsers[old]) == 0 {
-			delete(con.QueueUsers, old)
+		if len(con.ContainerConnections[old]) == 0 {
+			delete(con.ContainerConnections, old)
 		}
 	}
 
-	con.UserQueue[user_id] = queue
-	if _, exists := con.QueueUsers[queue]; !exists {
-		con.QueueUsers[queue] = make(map[string]struct{})
+	con.UserContainer[user_id] = container
+	if _, exists := con.ContainerConnections[container]; !exists {
+		con.ContainerConnections[container] = make(map[string]struct{})
 	}
 
-	con.QueueUsers[queue][user_id] = struct{}{}
+	con.ContainerConnections[container][user_id] = struct{}{}
 
 	return nil
 }
 
-// RemoveUserFromQueue removes a user from their current queue.
-//
-// Example:
-//
-//	err := connections.RemoveUserFromQueue(ctx, "user123")
-//	if err != nil {
-//	    log.Printf("Failed to remove user from queue: %v", err)
-//	}
-func (con *Connections) RemoveUserFromQueue(ctx workflow.Context, user_id string) error {
+// DropUserConnection removes a user from the connection list. If the user is not connected, no action is taken.
+func (con *Connections) DropUserConnection(ctx workflow.Context, user_id string) error {
 	if err := con.mu.Lock(ctx); err != nil {
 		return err
 	}
 	defer con.mu.Unlock()
 
-	if q, exists := con.UserQueue[user_id]; exists {
-		delete(con.UserQueue, user_id)
-		delete(con.QueueUsers[q], user_id)
+	if container, exists := con.UserContainer[user_id]; exists {
+		delete(con.UserContainer, user_id)
+		delete(con.ContainerConnections[container], user_id)
 
-		if len(con.QueueUsers[q]) == 0 {
-			delete(con.QueueUsers, q)
+		if len(con.ContainerConnections[container]) == 0 {
+			delete(con.ContainerConnections, container)
 		}
 	}
 
 	return nil
 }
 
-// GetUsersInQueue returns a list of user IDs in a specified queue.
-//
-// Example:
-//
-//	users, err := connections.GetUsersInQueue(ctx, "queue1")
-//	if err != nil {
-//	    log.Printf("Failed to get users in queue: %v", err)
-//	} else {
-//	    fmt.Printf("Users in queue: %v\n", users)
-//	}
-func (con *Connections) GetUsersInQueue(ctx workflow.Context, queue string) ([]string, error) {
+// GetContainerUser returns a list of user IDs connected to a specific container.
+func (con *Connections) GetContainerUser(ctx workflow.Context, container string) ([]string, error) {
 	if err := con.mu.Lock(ctx); err != nil {
 		return nil, err
 	}
 	defer con.mu.Unlock()
 
-	users := make([]string, 0, len(con.QueueUsers[queue]))
-	for user_id := range con.QueueUsers[queue] {
+	users := make([]string, 0, len(con.ContainerConnections[container]))
+	for user_id := range con.ContainerConnections[container] {
 		users = append(users, user_id)
 	}
 
 	return users, nil
 }
 
-// ClearQueue removes all users from a specified queue.
-//
-// Example:
-//
-//	err := connections.ClearQueue(ctx, "queue1")
-//	if err != nil {
-//	    log.Printf("Failed to clear queue: %v", err)
-//	}
-func (con *Connections) ClearQueue(ctx workflow.Context, queue string) error {
+// DropContainer removes all users connected to a container and the container itself from the connection list.
+func (con *Connections) DropContainer(ctx workflow.Context, container string) error {
 	if err := con.mu.Lock(ctx); err != nil {
 		return err
 	}
 	defer con.mu.Unlock()
 
-	if users, exists := con.QueueUsers[queue]; exists {
+	if users, exists := con.ContainerConnections[container]; exists {
 		for user_id := range users {
-			delete(con.UserQueue, user_id)
+			delete(con.UserContainer, user_id)
 		}
 
-		delete(con.QueueUsers, queue)
+		delete(con.ContainerConnections, container)
 	}
 
 	return nil
 }
 
-// Restore reinitializes the mutex.
-// This should be called when deserializing the Connections struct.
-//
-// Example:
-//
-//	var connections Connections
-//	// ... deserialize connections ...
-//	connections.Restore(ctx)
+// -- Utility Functions --
+
+// Restore reinitializes the mutex and logger. This should be called when deserializing the Connections struct.
 func (con *Connections) Restore(ctx workflow.Context) {
 	con.mu = workflow.NewMutex(ctx)
 	con.logger = workflow.GetLogger(ctx)
@@ -220,67 +241,12 @@ func (con *Connections) error(msg string, keyvals ...any) {
 	con.logger.Error(con.prefixed(msg), keyvals...)
 }
 
-func (con *Connections) on_add(ctx workflow.Context) defs.ChannelHandler {
-	return func(rx workflow.ReceiveChannel, more bool) {
-		var signal QueueUser
-
-		rx.Receive(ctx, &signal)
-
-		if err := con.AddUserToQueue(ctx, signal.UserID, signal.Queue); err != nil {
-			con.error("connection registration failed", "user_id", signal.UserID, "queue", signal.Queue, "error", err)
-		} else {
-			con.info("connection registered", "user_id", signal.UserID, "queue", signal.Queue)
-		}
-	}
-}
-
-func (con *Connections) on_remove(ctx workflow.Context) defs.ChannelHandler {
-	return func(rx workflow.ReceiveChannel, more bool) {
-		var signal User
-
-		rx.Receive(ctx, &signal)
-
-		if err := con.RemoveUserFromQueue(ctx, signal.UserID); err != nil {
-			con.error("failed to drop connection", "user_id", signal.UserID, "error", err)
-		} else {
-			con.info("connection dropped", "user_id", signal.UserID)
-		}
-	}
-}
-
-func (con *Connections) on_flush(ctx workflow.Context) defs.ChannelHandler {
-	return func(rx workflow.ReceiveChannel, more bool) {
-		var signal RegisterOrFlush
-
-		rx.Receive(ctx, &signal)
-
-		if err := con.ClearQueue(ctx, signal.Queue); err != nil {
-			con.error("failed to drop container", "queue", signal.Queue, "error", err)
-		} else {
-			con.info("container disconnected", "queue", signal.Queue)
-		}
-	}
-}
-
-func (con *Connections) on_worker_added(ctx workflow.Context) defs.ChannelHandler {
-	return func(rx workflow.ReceiveChannel, more bool) {
-		var signal RegisterOrFlush
-
-		rx.Receive(ctx, &signal)
-
-		con.info("container connected", "queue", signal.Queue)
-	}
-}
+// -- Construction --
 
 // NewConnections creates a new Connections instance.
-//
-// Example:
-//
-//	connections := NewConnections()
-//	connections.Restore(ctx) // restore if using inside the workflow.
 func NewConnections() *Connections {
 	return &Connections{
-		UserQueue:  make(map[string]string),
-		QueueUsers: make(map[string]map[string]struct{}),
+		UserContainer:        make(map[string]string),
+		ContainerConnections: make(map[string]map[string]struct{}),
 	}
 }

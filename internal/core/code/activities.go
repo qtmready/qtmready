@@ -17,24 +17,6 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-// Crafted with ❤ at Breu, Inc. <info@breu.io>, Copyright © 2024.
-//
-// # Functional Source License, Version 1.1, Apache 2.0 Future License
-//
-// We hereby irrevocably grant you an additional license to use the Software under the Apache License, Version 2.0 that
-// is effective on the second anniversary of the date we make the Software available. On or after that date, you may use
-// the Software under the Apache License, Version 2.0, in which case the following will apply:
-//
-// Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
-// the License.
-//
-// # You may obtain a copy of the License at
-//
-// http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
-// an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
-// specific language governing permissions and limitations under the License.
 package code
 
 import (
@@ -46,6 +28,8 @@ import (
 	"os/exec"
 	"regexp"
 
+	"github.com/gocql/gocql"
+
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/core/kernel"
@@ -56,63 +40,25 @@ import (
 type (
 	// Activities defines an interface for repository-related actions.
 	Activities struct{}
-)
 
-// SignalBranch signals a branch workflow for the given repository.
-//
-// If the branch is the default branch, it signals the TrunkCtrl workflow.
-// Otherwise, it signals the BranchCtrl workflow.
-func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSignalBranchCtrlPayload) error {
-	args := make([]any, 0)
-
-	if payload.Repo.DefaultBranch == payload.Branch {
-		_, err := queue.Core().SignalWithStartWorkflow(
-			ctx,
-			TrunkCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID),
-			payload.Signal,
-			payload.Payload,
-			TrunkCtrl,
-			append(args, payload.Repo)...,
-		)
-
-		return err
+	// RepoCtrlQueryPayloadForBranchParent defines the payload for querying the RepoCtrl workflow for the parent event ID
+	// of a branch.
+	RepoCtrlQueryPayloadForBranchParent struct {
+		Branch string
+		Repo   *defs.Repo
 	}
 
-	_, err := queue.Core().SignalWithStartWorkflow(
-		ctx,
-		BranchCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID, payload.Branch),
-		payload.Signal,
-		payload.Payload,
-		BranchCtrl,
-		append(args, payload.Repo, payload.Branch)...,
-	)
+	// RepoCtrlQueryResultForBranchParent defines the result for querying the RepoCtrl workflow for the parent event ID.
+	// If the Found flag is false, the parent event ID was not found.
+	RepoCtrlQueryResultForBranchParent struct {
+		ID    gocql.UUID
+		Found bool
+	}
+)
 
-	return err
-}
-
-// SignalQueue signals a queue workflow for the given repository.
-//
-// It signals the QueueCtrl workflow with the repository, branch, and a serialized queue state.
-func (a *Activities) SignalQueue(ctx context.Context, payload *defs.RepoIOSignalQueueCtrlPayload) error {
-	args := make([]any, 0)
-
-	_, err := queue.Core().SignalWithStartWorkflow(
-		ctx,
-		QueueCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID),
-		payload.Signal,
-		payload.Payload,
-		QueueCtrl,
-		append(args, payload.Repo, payload.Branch, &QueueCtrlSerializedState{})...,
-	)
-
-	return err
-}
+// --- Git Operations ---
 
 // CloneBranch clones a repository branch to a temporary location.
-//
-// It retrieves the clone URL, including an OAuth token, using the RepoIO interface.
-//
-// If an error occurs while retrieving the clone URL, it is returned.
 func (a *Activities) CloneBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
 	url, err := kernel.Instance().RepoIO(payload.Repo.Provider).TokenizedCloneURL(ctx, payload.Info)
 	if err != nil {
@@ -140,8 +86,6 @@ func (a *Activities) CloneBranch(ctx context.Context, payload *defs.RepoIOCloneP
 }
 
 // FetchBranch fetches the given branch from the origin.
-//
-// TODO: currently fetches the default branch, but should be made generic.
 func (a Activities) FetchBranch(ctx context.Context, payload *defs.RepoIOClonePayload) error {
 	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "fetch", "origin", payload.Repo.DefaultBranch) //nolint
 
@@ -154,12 +98,8 @@ func (a Activities) FetchBranch(ctx context.Context, payload *defs.RepoIOClonePa
 }
 
 // RebaseAtCommit attempts to rebase the repository at the given commit.
-//
-// It returns the SHA and error message of the failed commit if the rebase fails.
-//
-// If the rebase is in progress, it returns an InProgress flag.
 func (a *Activities) RebaseAtCommit(ctx context.Context, payload *defs.RepoIOClonePayload) (*defs.RepoIORebaseAtCommitResponse, error) {
-	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "rebase", payload.Push.After) // nolint
+	cmd := exec.CommandContext(ctx, "git", "-C", payload.Path, "rebase", payload.Rebase.After) // nolint
 
 	var exerr *exec.ExitError
 
@@ -197,8 +137,6 @@ func (a *Activities) RebaseAtCommit(ctx context.Context, payload *defs.RepoIOClo
 }
 
 // Push pushes the contents of the repository at the given path to the remote.
-//
-// If force is true, the push will be forced (--force).
 func (a *Activities) Push(ctx context.Context, payload *defs.RepoIOPushBranchPayload) error {
 	args := []string{"-C", payload.Path, "push", "origin", payload.Branch}
 	if payload.Force {
@@ -216,8 +154,6 @@ func (a *Activities) Push(ctx context.Context, payload *defs.RepoIOPushBranchPay
 }
 
 // RemoveClonedAtPath removes the repository cloned at the given path.
-//
-// If the path does not exist, RemoveClonedAtPath returns a nil.
 func (a *Activities) RemoveClonedAtPath(ctx context.Context, path string) error {
 	if err := os.RemoveAll(path); err != nil {
 		return err
@@ -226,9 +162,9 @@ func (a *Activities) RemoveClonedAtPath(ctx context.Context, path string) error 
 	return nil
 }
 
+// --- DB Operations ---
+
 // GetByLogin retrieves a team user by their login ID.
-//
-// It calls the auth TeamUserIO to retrieve the user.
 func (a *Activities) GetByLogin(ctx context.Context, id string) (*auth.TeamUser, error) {
 	team_user, err := auth.TeamUserIO().GetByLogin(ctx, id)
 	if err != nil {
@@ -239,8 +175,80 @@ func (a *Activities) GetByLogin(ctx context.Context, id string) (*auth.TeamUser,
 }
 
 // SaveRepoEvent persists a repository event to the database.
-//
-// It converts the event to a db.Entity using the Flatten method and saves it to the database.
 func (a *Activities) SaveRepoEvent(ctx context.Context, event *defs.FlatEvent[defs.RepoProvider]) error {
 	return db.CreateWithID(event, event.SubjectID)
+}
+
+// --- Workflow Operations ---
+
+// SignalBranch signals a branch workflow for the given repository.
+func (a *Activities) SignalBranch(ctx context.Context, payload *defs.RepoIOSignalBranchCtrlPayload) error {
+	if payload.Repo.DefaultBranch == payload.Branch {
+		state := NewTrunkCtrlState(ctx, payload.Repo, payload.Info)
+		_, err := queue.Core().SignalWithStartWorkflow(
+			ctx,
+			TrunkCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID),
+			payload.Signal,
+			payload.Payload,
+			TrunkCtrl,
+			state,
+		)
+
+		return err
+	}
+
+	ctx, state := NewBranchCtrlState(ctx, payload.Repo, payload.Info, payload.Branch)
+	_, err := queue.Core().SignalWithStartWorkflow(
+		ctx,
+		BranchCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID, payload.Branch),
+		payload.Signal,
+		payload.Payload,
+		BranchCtrl,
+		state,
+	)
+
+	return err
+}
+
+// SignalQueue signals a queue workflow for the given repository.
+func (a *Activities) SignalQueue(ctx context.Context, payload *defs.RepoIOSignalQueueCtrlPayload) error {
+	args := make([]any, 0)
+
+	_, err := queue.Core().SignalWithStartWorkflow(
+		ctx,
+		QueueCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID),
+		payload.Signal,
+		payload.Payload,
+		QueueCtrl,
+		append(args, payload.Repo, payload.Branch, &QueueCtrlSerializedState{})...,
+	)
+
+	return err
+}
+
+// QueryRepoCtrlForBranchParent queries the RepoCtrl workflow for the parent event ID of a branch.
+func (a *Activities) QueryRepoCtrlForBranchParent(
+	ctx context.Context, payload *RepoCtrlQueryPayloadForBranchParent,
+) (*RepoCtrlQueryResultForBranchParent, error) {
+	result := &RepoCtrlQueryResultForBranchParent{}
+	opts := RepoCtrlWorkflowOptions(payload.Repo.TeamID.String(), payload.Repo.Name, payload.Repo.ID)
+
+	slog.Info("querying repo ctrl for branch parent", "info", queue.Core().WorkflowID(opts)) // TODO: remove in production.
+
+	return result, nil
+}
+
+// QueryRepoCtrlForBranchTriggers queries the RepoCtrl workflow for the branch triggers map.
+func (a *Activities) QueryRepoCtrlForBranchTriggers(ctx context.Context, repo *defs.Repo) (BranchTriggers, error) {
+	triggers := make(BranchTriggers)
+	opts := RepoCtrlWorkflowOptions(repo.TeamID.String(), repo.Name, repo.ID)
+
+	slog.Info("querying repo ctrl for branch parent", "info", queue.Core().WorkflowID(opts)) // TODO: remove in production.
+
+	result, err := queue.Core().QueryWorkflow(ctx, opts, QueryRepoCtrlForBranchTriggers)
+	if err != nil {
+		return triggers, err
+	}
+
+	return triggers, result.Get(&triggers)
 }

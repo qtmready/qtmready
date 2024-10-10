@@ -29,16 +29,16 @@ import (
 
 // NewMergeConflictEvent creates a new defs.Event instance for a merge conflict.
 func NewMergeConflictEvent(
-	event *defs.Event[defs.Push, defs.RepoProvider], head, base string, base_commit *defs.Commit,
+	event *defs.Event[defs.Rebase, defs.RepoProvider], base_commit *defs.Commit,
 ) *defs.Event[defs.MergeConflict, defs.RepoProvider] {
 	id, _ := db.NewUUID()
 	now := time.Now()
 
 	// creating payload
 	conflict := defs.MergeConflict{
-		HeadBranch: head,
-		HeadCommit: *event.Payload.Commits.Latest(),
-		BaseBranch: base,
+		HeadBranch: event.Payload.HeadBranch,
+		HeadCommit: event.Payload.HeadCommit,
+		BaseBranch: event.Payload.BaseBranch,
 		BaseCommit: *base_commit,
 		Files:      make([]string, 0),
 		Timestamp:  now,
@@ -64,7 +64,7 @@ func NewMergeConflictEvent(
 
 // NewLineExceedEvent creates a new defs.Event instance for a line exceed.
 func NewLineExceedEvent(
-	event *defs.Event[defs.Push, defs.RepoProvider], head string, lc *defs.LineChanges,
+	event *defs.Event[defs.Push, defs.RepoProvider], head string, lc *defs.Diff,
 ) *defs.Event[defs.LinesExceed, defs.RepoProvider] {
 	id, _ := db.NewUUID()
 	now := time.Now()
@@ -73,7 +73,7 @@ func NewLineExceedEvent(
 	exceed := defs.LinesExceed{
 		Branch:    head,
 		Commit:    *event.Payload.Commits.Latest(),
-		LineStats: *lc,
+		Diff:      *lc,
 		Timestamp: now,
 	}
 

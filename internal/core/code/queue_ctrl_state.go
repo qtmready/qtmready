@@ -573,9 +573,9 @@ func NewQueue(ctx workflow.Context) Queue {
 //	ctx, state := NewQueueCtrlState(ctx, repo, branch)
 func NewQueueCtrlState(ctx workflow.Context, repo *defs.Repo, branch string) (workflow.Context, *QueueCtrlState) {
 	ctrl := &QueueCtrlState{
-		BaseState: NewBaseState(ctx, "queue_ctrl", repo),
-		primary:   NewQueue(ctx),
-		priority:  NewQueue(ctx),
+		// BaseState: NewBaseState(ctx, "queue_ctrl", repo),
+		primary:  NewQueue(ctx),
+		priority: NewQueue(ctx),
 	}
 
 	return ctrl.set_branch(ctx, branch), ctrl

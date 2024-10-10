@@ -20,6 +20,7 @@
 package code
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -39,16 +40,18 @@ import (
 type (
 	// BranchCtrlState represents the state of a branch control workflow.
 	BranchCtrlState struct {
-		*BaseState                    // base_ctrl is the embedded struct with common functionality for repo controls.
-		created_at  time.Time         // created_at is the time when the branch was created.
-		last_commit *defs.Commit      // last_commit is the most recent commit on the branch.
-		pr          *defs.PullRequest // pr is the pull request associated with the branch, if any.
-		interval    timers.Interval   // interval is the stale check duration.
-		author      *auth.TeamUser    // owner is owner of the pull request.
+		*BaseState // base_ctrl is the embedded struct with common functionality for repo controls.
+
+		CreatedAt   time.Time         // created_at is the time when the branch was created.
+		LastCommit  *defs.Commit      // last_commit is the most recent commit on the branch.
+		PullRequest *defs.PullRequest // pr is the pull request associated with the branch, if any.
+		Author      *auth.TeamUser    // owner is owner of the pull request.
+
+		interval timers.Interval // interval is the stale check duration.
 	}
 )
 
-// Event handlers
+// --- Event Handlers ---
 
 // on_push handles push events for the branch.
 func (state *BranchCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
@@ -62,7 +65,7 @@ func (state *BranchCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler 
 		}
 
 		complexity := state.calculate_complexity(ctx)
-		if complexity.Delta > state.repo.Threshold {
+		if complexity.Delta > state.Repo.Threshold {
 			// Set the user if it exist in database then send message to user other wise to channel.
 			state.refresh_author(ctx, event.Payload.SenderID)
 			state.warn_complexity(ctx, event, complexity)
@@ -72,10 +75,31 @@ func (state *BranchCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler 
 	}
 }
 
+// on_pr handles pull request events for the branch.
+func (state *BranchCtrlState) on_pr(ctx workflow.Context) defs.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
+		state.rx(ctx, rx, event)
+
+		state.interval.Restart(ctx)
+
+		switch event.Context.Action { // nolint
+		case defs.EventActionCreated, defs.EventActionReopened:
+			state.set_pr(ctx, &event.Payload)
+			state.refresh_author(ctx, event.Payload.AuthorID)
+		case defs.EventActionClosed:
+			state.set_pr(ctx, nil)
+			state.set_author(ctx, nil)
+		default:
+			return
+		}
+	}
+}
+
 // on_rebase handles rebase events for the branch.
 func (state *BranchCtrlState) on_rebase(ctx workflow.Context) defs.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		event := &defs.Event[defs.Push, defs.RepoProvider]{}
+		event := &defs.Event[defs.Rebase, defs.RepoProvider]{}
 		state.rx(ctx, rx, event)
 
 		ctx = dispatch.WithDefaultActivityContext(ctx)
@@ -88,8 +112,6 @@ func (state *BranchCtrlState) on_rebase(ctx workflow.Context) defs.ChannelHandle
 			return
 		}
 
-		state.fetch_default_branch(session, cloned)
-
 		if err := state.rebase_at_commit(session, cloned); err != nil {
 			state.warn_conflict(session, event)
 			state.remove_cloned(session, cloned)
@@ -99,25 +121,6 @@ func (state *BranchCtrlState) on_rebase(ctx workflow.Context) defs.ChannelHandle
 
 		state.push_branch(session, cloned)
 		state.remove_cloned(session, cloned)
-	}
-}
-
-// on_pr handles pull request events for the branch.
-func (state *BranchCtrlState) on_pr(ctx workflow.Context) defs.ChannelHandler {
-	return func(rx workflow.ReceiveChannel, more bool) {
-		event := &defs.Event[defs.PullRequest, defs.RepoProvider]{}
-		state.rx(ctx, rx, event)
-
-		switch event.Context.Action { // nolint
-		case defs.EventActionCreated, defs.EventActionReopened: // Or defs.EventActionOpened, if more appropriate
-			state.set_pr(ctx, &event.Payload)
-			state.refresh_author(ctx, event.Payload.AuthorID)
-		case defs.EventActionClosed:
-			state.set_pr(ctx, nil)
-			state.set_author(ctx, nil)
-		default:
-			return
-		}
 	}
 }
 
@@ -152,42 +155,42 @@ func (state *BranchCtrlState) on_create_delete(ctx workflow.Context) defs.Channe
 	}
 }
 
-// Core methods
+// --- Core Methods ---
 
 // set_created_at sets the creation time of the branch.
 func (state *BranchCtrlState) set_created_at(ctx workflow.Context, t time.Time) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 
-	state.created_at = t
+	state.CreatedAt = t
 }
 
 // set_commit updates the last commit of the branch.
 func (state *BranchCtrlState) set_commit(ctx workflow.Context, commit *defs.Commit) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
-	state.last_commit = commit
+	state.LastCommit = commit
 }
 
 // set_pr sets the pull request associated with the branch.
 func (state *BranchCtrlState) set_pr(ctx workflow.Context, pr *defs.PullRequest) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
-	state.pr = pr
+	state.PullRequest = pr
 }
 
 // has_pr checks if the branch has an associated pull request.
 func (state *BranchCtrlState) has_pr() bool {
-	return state.pr != nil
+	return state.PullRequest != nil
 }
 
 // last_active returns the timestamp of the last activity on the branch.
 func (state *BranchCtrlState) last_active() time.Time {
-	if state.last_commit == nil {
-		return state.created_at
+	if state.LastCommit == nil {
+		return state.CreatedAt
 	}
 
-	return state.last_commit.Timestamp
+	return state.LastCommit.Timestamp
 }
 
 // check_stale periodically checks if the branch is stale and sends warnings.
@@ -201,14 +204,14 @@ func (state *BranchCtrlState) check_stale(ctx workflow.Context) {
 }
 
 func (state *BranchCtrlState) has_author() bool {
-	return state.author != nil
+	return state.Author != nil
 }
 
 func (state *BranchCtrlState) set_author(ctx workflow.Context, owner *auth.TeamUser) {
 	_ = state.mutex.Lock(ctx)
 	defer state.mutex.Unlock()
 
-	state.author = owner
+	state.Author = owner
 }
 
 func (state *BranchCtrlState) refresh_author(ctx workflow.Context, id db.Int64) {
@@ -220,7 +223,7 @@ func (state *BranchCtrlState) refresh_author(ctx workflow.Context, id db.Int64) 
 	state.set_author(ctx, user)
 }
 
-// Git operations
+// --- Git Operations ---
 
 // create_session creates a new workflow session for Git operations.
 func (state *BranchCtrlState) create_session(ctx workflow.Context) workflow.Context {
@@ -238,10 +241,10 @@ func (state *BranchCtrlState) finish_session(ctx workflow.Context) {
 }
 
 // clone_at_commit clones the repository at a specific commit.
-func (state *BranchCtrlState) clone_at_commit(ctx workflow.Context, push *defs.Push) *defs.RepoIOClonePayload {
+func (state *BranchCtrlState) clone_at_commit(ctx workflow.Context, rebase *defs.Rebase) *defs.RepoIOClonePayload {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	cloned := &defs.RepoIOClonePayload{Repo: state.repo, Push: push, Info: state.info, Branch: state.branch(ctx)}
+	cloned := &defs.RepoIOClonePayload{Repo: state.Repo, Rebase: rebase, Info: state.Info, Branch: state.branch(ctx)}
 	_ = workflow.SideEffect(ctx, func(ctx workflow.Context) any { return "/tmp/" + uuid.New().String() }).Get(&cloned.Path)
 
 	_ = state.do(ctx, "clone_at_commit", state.activities.CloneBranch, cloned, nil)
@@ -265,7 +268,7 @@ func (state *BranchCtrlState) rebase_at_commit(ctx workflow.Context, cloned *def
 	if err := state.do(ctx, "rebase_at_commit", state.activities.RebaseAtCommit, cloned, response); err != nil {
 		var apperr *temporal.ApplicationError
 		if errors.As(err, &apperr) && apperr.Type() == "RebaseError" {
-			return NewRebaseError(cloned.Push.After, "fetch the commit message here") // TODO: fill the right info
+			return NewRebaseError(cloned.Rebase.After, "fetch the commit message here") // TODO: fill the right info
 		}
 
 		return nil
@@ -289,24 +292,22 @@ func (state *BranchCtrlState) remove_cloned(ctx workflow.Context, cloned *defs.R
 	_ = state.do(ctx, "remove_cloned", state.activities.RemoveClonedAtPath, cloned.Path, nil)
 }
 
-// Complexity and warning methods
+// --- Complexity and Warning Methods ---
 
 // calculate_complexity calculates the complexity of changes in a push event.
-//
-// TODO: we should compare the default branch head commit and the push's latest commit.
 func (state *BranchCtrlState) calculate_complexity(ctx workflow.Context) *defs.RepoIOChanges {
 	changes := &defs.RepoIOChanges{}
 	detect := &defs.RepoIODetectChangesPayload{
-		InstallationID: state.info.InstallationID,
-		RepoName:       state.info.RepoName,
-		RepoOwner:      state.info.RepoOwner,
-		DefaultBranch:  state.repo.DefaultBranch,
+		InstallationID: state.Info.InstallationID,
+		RepoName:       state.Info.RepoName,
+		RepoOwner:      state.Info.RepoOwner,
+		DefaultBranch:  state.Repo.DefaultBranch,
 		TargetBranch:   state.branch(ctx),
 	}
 
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	_ = state.do(ctx, "calculate_complexity", kernel.Instance().RepoIO(state.repo.Provider).DetectChanges, detect, changes)
+	_ = state.do(ctx, "calculate_complexity", kernel.Instance().RepoIO(state.Repo.Provider).DetectChanges, detect, changes)
 
 	return changes
 }
@@ -316,19 +317,19 @@ func (state *BranchCtrlState) warn_complexity(
 	ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider], complexity *defs.RepoIOChanges) {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	change := &defs.LineChanges{
+	change := &defs.Diff{
 		Added:     complexity.Added,
 		Removed:   complexity.Removed,
 		Delta:     complexity.Delta,
-		Threshold: state.repo.Threshold,
+		Threshold: state.Repo.Threshold,
 	}
 
 	excess := comm.NewLineExceedEvent(event, BranchNameFromRef(event.Payload.Ref), change)
-	if state.author != nil {
-		excess.SetUserID(state.author.UserID)
+	if state.Author != nil {
+		excess.SetUserID(state.Author.UserID)
 	}
 
-	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
+	io := kernel.Instance().MessageIO(state.Repo.MessageProvider)
 
 	_ = state.do(ctx, "warn_complexity", io.NotifyLinesExceed, excess, nil)
 	state.persist(ctx, event)
@@ -336,8 +337,8 @@ func (state *BranchCtrlState) warn_complexity(
 
 // warn_stale sends a warning message if the branch is stale.
 func (state *BranchCtrlState) warn_stale(ctx workflow.Context) {
-	msg := comm.NewStaleBranchMessage(state.info, state.repo, state.branch(ctx))
-	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
+	msg := comm.NewStaleBranchMessage(state.Info, state.Repo, state.branch(ctx))
+	io := kernel.Instance().MessageIO(state.Repo.MessageProvider)
 
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
@@ -345,16 +346,16 @@ func (state *BranchCtrlState) warn_stale(ctx workflow.Context) {
 }
 
 // warn_conflict sends a warning message if there's a merge conflict during rebase.
-func (state *BranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Event[defs.Push, defs.RepoProvider]) {
+func (state *BranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Event[defs.Rebase, defs.RepoProvider]) {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	conflict := comm.NewMergeConflictEvent(event, state.pr.HeadBranch, state.pr.BaseBranch, state.last_commit)
+	conflict := comm.NewMergeConflictEvent(event, state.LastCommit)
 
-	if state.author != nil {
-		conflict.SetUserID(state.author.UserID)
+	if state.Author != nil {
+		conflict.SetUserID(state.Author.UserID)
 	}
 
-	io := kernel.Instance().MessageIO(state.repo.MessageProvider)
+	io := kernel.Instance().MessageIO(state.Repo.MessageProvider)
 
 	state.log(ctx, "warn_conflict").Info("message", "payload", conflict, "event", event)
 
@@ -362,13 +363,24 @@ func (state *BranchCtrlState) warn_conflict(ctx workflow.Context, event *defs.Ev
 	state.persist(ctx, event)
 }
 
-// NewBranchCtrlState creates a new RepoIOBranchCtrlState instance.
-func NewBranchCtrlState(ctx workflow.Context, repo *defs.Repo, branch string) (workflow.Context, *BranchCtrlState) {
-	base := &BranchCtrlState{
-		BaseState:  NewBaseState(ctx, "branch_ctrl", repo),
-		created_at: timers.Now(ctx),
-		interval:   timers.NewInterval(ctx, repo.StaleDuration.Duration),
+// --- Workflow State Management ---
+
+func (state *BranchCtrlState) restore(ctx workflow.Context) {
+	state.BaseState.restore(ctx)
+
+	if state.CreatedAt.IsZero() {
+		state.CreatedAt = timers.Now(ctx)
 	}
 
-	return base.set_branch(ctx, branch), base
+	if state.interval == nil {
+		state.interval = timers.NewInterval(ctx, state.Repo.StaleDuration.Duration)
+	}
+}
+
+func NewBranchCtrlState(
+	ctx context.Context, repo *defs.Repo, info *defs.RepoIOProviderInfo, branch string,
+) (context.Context, *BranchCtrlState) {
+	ctx = context.WithValue(ctx, "active_branch", branch)
+
+	return ctx, &BranchCtrlState{BaseState: NewBaseState(ctx, "branch_ctrl", repo, info, branch)}
 }

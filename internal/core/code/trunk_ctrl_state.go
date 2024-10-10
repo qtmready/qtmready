@@ -20,6 +20,8 @@
 package code
 
 import (
+	"context"
+
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/defs"
@@ -28,7 +30,6 @@ import (
 type (
 	TrunkCtrlState struct {
 		*BaseState
-		active_branch string
 	}
 )
 
@@ -38,34 +39,24 @@ func (state *TrunkCtrlState) on_push(ctx workflow.Context) defs.ChannelHandler {
 		push := &defs.Event[defs.Push, defs.RepoProvider]{} // Use Event type
 		state.rx(ctx, rx, push)
 
-		for _, branch := range state.branches {
-			if branch == BranchNameFromRef(push.Payload.Ref) {
-				continue
-			}
+		triggers := state.query__branch_triggers(ctx)
 
-			state.signal_branch(ctx, branch, defs.RepoIOSignalRebase, push) // TODO: Fix the signal type
+		state.log(ctx, "on_push").Info("triggers", triggers)
+
+		for branch, parent_id := range triggers {
+			rebase := ToRebaseEvent(ctx, push, branch, parent_id)
+			state.signal_branch(ctx, branch, defs.RepoIOSignalRebase, rebase) // TODO: Fix the signal type
+			state.persist(ctx, rebase)
 		}
 	}
 }
 
-func (state *TrunkCtrlState) on_create_delete(ctx workflow.Context) defs.ChannelHandler {
-	return func(rx workflow.ReceiveChannel, more bool) {
-		event := &defs.Event[defs.BranchOrTag, defs.RepoProvider]{}
-		state.rx(ctx, rx, event)
-
-		if event.Context.Scope == defs.EventScopeBranch {
-			if event.Context.Action == defs.EventActionCreated {
-				state.add_branch(ctx, event.Payload.Ref)
-			} else if event.Context.Action == defs.EventActionDeleted {
-				state.remove_branch(ctx, event.Payload.Ref)
-			}
-		}
-	}
+func (state *TrunkCtrlState) restore(ctx workflow.Context) {
+	state.BaseState.restore(ctx)
 }
 
-func NewTrunkCtrlState(ctx workflow.Context, repo *defs.Repo) *TrunkCtrlState {
+func NewTrunkCtrlState(ctx context.Context, repo *defs.Repo, info *defs.RepoIOProviderInfo) *TrunkCtrlState {
 	return &TrunkCtrlState{
-		BaseState:     NewBaseState(ctx, "trunk_ctrl", repo),
-		active_branch: repo.DefaultBranch,
+		BaseState: NewBaseState(ctx, "trunk_ctrl", repo, info, repo.DefaultBranch),
 	}
 }

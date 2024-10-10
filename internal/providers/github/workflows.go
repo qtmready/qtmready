@@ -51,6 +51,8 @@ type (
 	}
 )
 
+// --- Installation Workflow ---
+
 // OnInstallationEvent workflow is executed when we initiate the installation of GitHub.
 //
 // It handles the installation, creation of teams, and associated user information based on incoming signals (webhook,
@@ -59,7 +61,7 @@ type (
 // NOTE: This workflow is designed to be started with SignalWithStartWorkflow.
 // TODO: Refactor for better code readability.  Reduce potential for code duplication and improve overall complexity.
 func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, error) { // nolint:funlen
-	// prelude
+	// Prelude
 	logger := workflow.GetLogger(ctx)
 	selector := workflow.NewSelector(ctx)
 	installation := &Installation{}
@@ -68,17 +70,17 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 	status := &InstallationWorkflowStatus{WebhookDone: false, RequestDone: false}
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	// setting up channels to receive signals
+	// Setting up channels to receive signals
 	webhookChannel := workflow.GetSignalChannel(ctx, WorkflowSignalInstallationEvent.String())
 	requestChannel := workflow.GetSignalChannel(ctx, WorkflowSignalCompleteInstallation.String())
 
-	// setting up callbacks for the channels
+	// Setting up callbacks for the channels
 	selector.AddReceive(webhookChannel, on_install_webhook_signal(ctx, webhook, status))
 	selector.AddReceive(requestChannel, on_install_request_signal(ctx, request, status))
 
 	logger.Info("github/installation: waiting for webhook and complete installation request signals ...")
 
-	// keep listening for signals until we have received both the installation id and the team id
+	// Keep listening for signals until we have received both the installation id and the team id
 	for !(status.WebhookDone && status.RequestDone) {
 		selector.Select(ctx)
 	}
@@ -192,6 +194,8 @@ func (w *Workflows) OnInstallationEvent(ctx workflow.Context) (*Installation, er
 	return installation, nil
 }
 
+// --- Post-Installation Workflow ---
+
 // PostInstall updates default branches for all repositories linked to the team and retrieves organization users.
 //
 // NOTE: This workflow completes successfully the first time but may fail upon reinstallation of the GitHub app
@@ -236,10 +240,12 @@ func (w *Workflows) PostInstall(ctx workflow.Context, payload *Installation) err
 	return nil
 }
 
-// OnPushEvent is run when ever a repo event is received. Repo Event can be push event or a create event.
+// --- Repository Event Handlers ---
+
+// OnCreateOrDeleteEvent is run when ever a repo event is received. Repo Event can be push event or a create event.
 func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, payload *CreateOrDeleteEvent) error {
 	logger := workflow.GetLogger(ctx)
-	state := &RepoEventMetadata{}
+	meta := &RepoEventMetadata{}
 
 	logger.Info("github/create-delete: fetching metadata ...")
 
@@ -252,15 +258,15 @@ func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, payload *CreateO
 		return err
 	}
 
-	if err := future.Get(ctx, state); err != nil {
+	if err := future.Get(ctx, meta); err != nil {
 		return err
 	}
 
 	logger.Info("github/create-delete: preparing event ...")
 
-	event := payload.normalize(state.CoreRepo)
-	if state.User != nil {
-		event.SetUserID(state.User.UserID)
+	event := payload.normalize(meta.CoreRepo)
+	if meta.User != nil {
+		event.SetUserID(meta.User.UserID)
 	} else {
 		logger.Warn("github/create-delete: unable to set user id ...")
 	}
@@ -270,14 +276,14 @@ func (w *Workflows) OnCreateOrDeleteEvent(ctx workflow.Context, payload *CreateO
 	logger.Info("github/create-delete: dispatching event ...")
 
 	return workflow.
-		ExecuteActivity(ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalCreateOrDelete, event).
+		ExecuteActivity(ctx, activities.SignalCoreRepoCtrl, meta, defs.RepoIOSignalCreateOrDelete, event).
 		Get(ctx, nil)
 }
 
 // OnPushEvent is run when ever a repo event is received. Repo Event can be push event or a create event.
 func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error {
 	logger := workflow.GetLogger(ctx)
-	state := &RepoEventMetadata{}
+	meta := &RepoEventMetadata{}
 
 	logger.Info("github/push: fetching metadata ...")
 
@@ -290,15 +296,15 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 		return err
 	}
 
-	if err := future.Get(ctx, state); err != nil {
+	if err := future.Get(ctx, meta); err != nil {
 		return err
 	}
 
 	logger.Info("github/push: preparing event ...")
 
-	event := payload.normalize(state.CoreRepo)
-	if state.User != nil {
-		event.SetUserID(state.User.UserID)
+	event := payload.normalize(meta.CoreRepo)
+	if meta.User != nil {
+		event.SetUserID(meta.User.UserID)
 	} else {
 		logger.Warn("github/push: unable to set user id ...")
 	}
@@ -307,13 +313,13 @@ func (w *Workflows) OnPushEvent(ctx workflow.Context, payload *PushEvent) error 
 
 	logger.Info("github/push: dispatching event ...")
 
-	return workflow.ExecuteActivity(ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPush, event).Get(ctx, nil)
+	return workflow.ExecuteActivity(ctx, activities.SignalCoreRepoCtrl, meta, defs.RepoIOSignalPush, event).Get(ctx, nil)
 }
 
 // OnPullRequestEvent normalize the pull request event and then signal the core repo.
 func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullRequestEvent) error {
 	logger := workflow.GetLogger(ctx)
-	state := &RepoEventMetadata{}
+	meta := &RepoEventMetadata{}
 
 	logger.Info("github/pull_request: fetching metadata ...")
 
@@ -326,14 +332,14 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 		return err
 	}
 
-	if err := future.Get(ctx, state); err != nil {
+	if err := future.Get(ctx, meta); err != nil {
 		return err
 	}
 
-	event := payload.normalize(state.CoreRepo)
+	event := payload.normalize(meta.CoreRepo)
 
-	if state.User != nil {
-		event.SetUserID(state.User.UserID)
+	if meta.User != nil {
+		event.SetUserID(meta.User.UserID)
 	} else {
 		logger.Warn("github/pull_request: unable to set user id ...")
 	}
@@ -346,18 +352,20 @@ func (w *Workflows) OnPullRequestEvent(ctx workflow.Context, payload *PullReques
 
 	if label == nil {
 		return workflow.
-			ExecuteActivity(ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequest, event).Get(ctx, nil)
+			ExecuteActivity(ctx, activities.SignalCoreRepoCtrl, meta, defs.RepoIOSignalPullRequest, event).Get(ctx, nil)
 	}
 
 	return workflow.
-		ExecuteActivity(ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestLabel, label).
+		ExecuteActivity(ctx, activities.SignalCoreRepoCtrl, meta, defs.RepoIOSignalPullRequestLabel, label).
 		Get(ctx, nil)
 }
+
+// --- Review Event Handlers ---
 
 // OnPullRequestReviewEvent normalize the pull request review event and then signal the core repo.
 func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRequestReviewEvent) error {
 	logger := workflow.GetLogger(ctx)
-	state := &RepoEventMetadata{}
+	meta := &RepoEventMetadata{}
 
 	logger.Info("github/pull_request_review: fetching metadata ...")
 
@@ -370,15 +378,15 @@ func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRe
 		return err
 	}
 
-	if err := future.Get(ctx, state); err != nil {
+	if err := future.Get(ctx, meta); err != nil {
 		return err
 	}
 
 	logger.Info("github/pull_request_review: preparing event ...")
 
-	payload := event.normalize(state.CoreRepo)
-	if state.User != nil {
-		payload.SetUserID(state.User.UserID)
+	payload := event.normalize(meta.CoreRepo)
+	if meta.User != nil {
+		payload.SetUserID(meta.User.UserID)
 	} else {
 		logger.Warn("github/pull_request_review: unable to set user id ...")
 	}
@@ -388,7 +396,7 @@ func (w *Workflows) OnPullRequestReviewEvent(ctx workflow.Context, event *PullRe
 	logger.Info("github/pull_request_review: dispatching event ...")
 
 	return workflow.
-		ExecuteActivity(ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestReview, payload).Get(ctx, nil)
+		ExecuteActivity(ctx, activities.SignalCoreRepoCtrl, meta, defs.RepoIOSignalPullRequestReview, payload).Get(ctx, nil)
 }
 
 // OnPullRequestReviewCommentEvent normalize the pull request review comment event and then signal the core repo.
@@ -428,6 +436,8 @@ func (w *Workflows) OnPullRequestReviewCommentEvent(ctx workflow.Context, event 
 		ExecuteActivity(ctx, activities.SignalCoreRepoCtrl, state.CoreRepo, defs.RepoIOSignalPullRequestComment, payload).
 		Get(ctx, nil)
 }
+
+// --- Installation Repository Event Handler ---
 
 // OnInstallationRepositoriesEvent is responsible when a repository is added or removed from an installation.
 func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payload *InstallationRepositoriesEvent) error {
@@ -471,6 +481,8 @@ func (w *Workflows) OnInstallationRepositoriesEvent(ctx workflow.Context, payloa
 	return nil
 }
 
+// --- Workflow Run Event Handler ---
+
 func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, pl *GithubWorkflowRunEvent) error {
 	logger := workflow.GetLogger(ctx)
 	state := &RepoEventMetadata{}
@@ -508,6 +520,8 @@ func (w *Workflows) OnWorkflowRunEvent(ctx workflow.Context, pl *GithubWorkflowR
 
 	return workflow.ExecuteActivity(ctx, activities.GithubWorkflowInfo, p).Get(ctx, winfo)
 }
+
+// --- Metadata Collection Workflow ---
 
 // CollectRepoEventMetadata retrieves metadata about a repository event, validating its existence and status.
 // It gathers the repository, associated core repository, and user details.  It's intended for use as a child workflow.
@@ -560,6 +574,8 @@ func (w *Workflows) CollectRepoEventMetadata(ctx workflow.Context, query *RepoEv
 
 	return meta, nil
 }
+
+// --- Event Handlers ---
 
 // on_repo_saved_future handles post-processing after a repository is saved against an installation.
 func on_repo_saved_future(ctx workflow.Context, payload *Repo) defs.FutureHandler {
