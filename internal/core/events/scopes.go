@@ -19,7 +19,9 @@ func (e *EventScope) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &s); err != nil {
 		return err
 	}
+
 	*e = EventScope(s)
+
 	return nil
 }
 

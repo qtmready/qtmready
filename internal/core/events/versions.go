@@ -32,6 +32,7 @@ func (ev EventVersion) String() string {
 
 const (
 	Version_0_1_0 EventVersion = "0.1.0" // version 0.1.0.
+	Version_0_1_1 EventVersion = "0.1.1" // version 0.1.1.
 )
 
 const (

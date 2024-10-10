@@ -1,4 +1,4 @@
-package: github
+package: defs
 generate:
   models: true
   echo-server: true
@@ -7,7 +7,7 @@ import-mapping:
   "../../auth/v1/schema.yaml": go.breu.io/quantm/internal/auth
 compatibility:
   always-prefix-enum-values: true
-output: openapi.gen.go
+output: defs/openapi.gen.go
 output-options:
   skip-prune: true
   user-templates-dir: ../../shared/templates

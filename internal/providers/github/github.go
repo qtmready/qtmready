@@ -52,9 +52,8 @@ type (
 
 var (
 	// instance stores the singleton instance of the GitHub configuration.
-	instance               *Config
-	once                   sync.Once
-	actionWorkflowStatuses map[string]map[string]string
+	instance *Config
+	once     sync.Once
 )
 
 // NewGithub creates a new instance of the GitHub configuration with the provided options.
@@ -66,8 +65,6 @@ func NewGithub(options ...ConfigOption) *Config {
 	for _, option := range options {
 		option(g)
 	}
-
-	actionWorkflowStatuses = make(map[string]map[string]string)
 
 	return g
 }

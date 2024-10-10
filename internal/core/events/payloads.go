@@ -30,8 +30,8 @@ type (
 type (
 	// BranchOrTag represents a git branch or tag.
 	BranchOrTag struct {
-		Ref           string `json:"ref"`            // Ref is the name of the branch or tag.
-		DefaultBranch string `json:"default_branch"` // DefaultBranch is the name of the default branch.
+		Ref  string `json:"ref"`  // Ref is the name of the branch or tag.
+		Kind string `json:"kind"` // Kind is the kind of the ref (branch or tag).
 	}
 
 	// Push represents a git push.
@@ -216,19 +216,12 @@ func (bt *BranchOrTag) ToEvent(
 //	  },
 //	  EventActionCreated,
 //	)
-func (p *Push) ToEvent(
-	provider RepoProvider, subject EventSubject, action EventAction,
-) *Event[Push, RepoProvider] {
+func (p *Push) ToEvent() *Event[Push, RepoProvider] {
 	event := &Event[Push, RepoProvider]{
 		Version: EventVersionDefault,
-		ID:      db.MustUUID(),
-		Context: EventContext[RepoProvider]{
-			Provider:  provider,
-			Scope:     EventScopePush,
-			Action:    action,
-			Timestamp: p.Timestamp,
+		Subject: EventSubject{
+			Name: "repos",
 		},
-		Subject: subject,
 		Payload: *p,
 	}
 
