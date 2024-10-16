@@ -20,6 +20,7 @@ require (
 	github.com/google/go-github/v62 v62.0.0
 	github.com/gosimple/slug v1.14.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
+	github.com/jackc/pgx/v5 v5.5.4
 	github.com/jxskiss/base62 v1.1.0
 	github.com/labstack/echo-contrib v0.17.1
 	github.com/labstack/echo/v4 v4.12.0
@@ -38,6 +39,11 @@ require (
 	go.temporal.io/sdk v1.29.0
 	golang.org/x/crypto v0.27.0
 	gopkg.in/yaml.v2 v2.4.0
+)
+
+require (
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a // indirect
 )
 
 require (
