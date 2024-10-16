@@ -176,7 +176,7 @@ func (a *Activities) GetByLogin(ctx context.Context, id string) (*auth.TeamUser,
 
 // SaveRepoEvent persists a repository event to the database.
 func (a *Activities) SaveRepoEvent(ctx context.Context, event *defs.FlatEvent[defs.RepoProvider]) error {
-	return db.CreateWithID(event, event.SubjectID)
+	return db.CreateWithID(event, event.ID)
 }
 
 // --- Workflow Operations ---
