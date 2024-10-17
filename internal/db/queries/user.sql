@@ -1,4 +1,4 @@
--- name: GetAuthor :one
+-- name: GetUser :one
 
 SELECT *
 FROM users

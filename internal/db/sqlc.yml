@@ -2,11 +2,12 @@ version: "2"
 sql:
   - engine: "postgresql"
     schema:
-      - "./entities/schema.sql"
+      - "./migrations/000001_setup.up.sql"
     queries:
-      - "./entities/query/user.sql"
+      - "./queries/user.sql"
+      - "./queries/team.sql"
     gen:
       go:
-        package: "db"
-        out: "./entities/sqlc"
+        package: "entities"
+        out: "./entities"
         sql_package: "pgx/v5"
