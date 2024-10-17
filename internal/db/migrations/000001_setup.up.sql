@@ -156,3 +156,27 @@ create table messaging (
     link_to uuid not null,
     data jsonb not null
 );
+
+-- events
+
+create type event_provider as enum (
+    'github',
+    'slack'
+);
+
+create table flat_events (
+    id UUID primary key default uuid_generate_v7(),
+    version text not null,
+    parent_id UUID,
+    provider event_provider not null,
+    scope text not null,
+    action text not null,
+    source text not null,
+    subject_id UUID not null,
+    subject_name text not null,
+    payload JSONB,
+    team_id uuid not null references teams (id),
+    user_id uuid not null references users (id),
+    created_at timestamp without time zone not null,
+    updated_at timestamp without time zone not null
+);
