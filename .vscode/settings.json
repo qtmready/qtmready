@@ -36,5 +36,9 @@
     "titleBar.inactiveForeground": "#e7e7e799"
   },
   "peacock.color": "#2c3047",
-  "sqltools.autoOpenSessionFiles": false
+  "sqltools.autoOpenSessionFiles": false,
+  "Prettier-SQL.expressionWidth": 120,
+  "Prettier-SQL.indentStyle": "tabularLeft",
+  "Prettier-SQL.linesBetweenQueries": 2,
+  "Prettier-SQL.SQLFlavourOverride": "postgresql"
 }
