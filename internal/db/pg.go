@@ -22,7 +22,7 @@ var (
 
 type (
 	pg struct {
-		Host      string `env:"DB__HOST" env-default:"pg"`
+		Host      string `env:"DB__HOST" env-default:"db"`
 		Name      string `env:"DB__NAME" env-default:"ctrlplane"`
 		Port      int    `env:"DB__PORT" env-default:"5432"`
 		User      string `env:"DB__USER" env-default:"postgres"`

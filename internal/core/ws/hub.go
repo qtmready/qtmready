@@ -446,7 +446,7 @@ func Instance() Hub {
 			// temporal: to provide better visibility, we prefix the container id with websockets queue, so that our id for
 			// tasks on the queue worker will look like "io.ctrlplane.{websockets_queue_name}.{container_id}""
 			queue: queues.New(
-				queues.WithName(queue_name(idempotent())),
+				queues.WithName(queue_name(Idempotent())),
 				queues.WithClient(shared.Temporal().Client()),
 			),
 			stop: make(chan bool, 1),
