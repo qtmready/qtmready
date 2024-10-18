@@ -7,6 +7,8 @@ package entities
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const createOrg = `-- name: CreateOrg :one
@@ -22,6 +24,42 @@ type CreateOrgParams struct {
 
 func (q *Queries) CreateOrg(ctx context.Context, arg CreateOrgParams) (Org, error) {
 	row := q.db.QueryRow(ctx, createOrg, arg.Name, arg.Slug)
+	var i Org
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Slug,
+	)
+	return i, err
+}
+
+const deleteOrg = `-- name: DeleteOrg :exec
+DELETE FROM orgs 
+WHERE id = $1
+`
+
+func (q *Queries) DeleteOrg(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, deleteOrg, id)
+	return err
+}
+
+const updateOrg = `-- name: UpdateOrg :one
+UPDATE orgs 
+SET name = $2, slug = $3
+WHERE id = $1 
+RETURNING id, created_at, updated_at, name, slug
+`
+
+type UpdateOrgParams struct {
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
+	Slug string    `json:"slug"`
+}
+
+func (q *Queries) UpdateOrg(ctx context.Context, arg UpdateOrgParams) (Org, error) {
+	row := q.db.QueryRow(ctx, updateOrg, arg.ID, arg.Name, arg.Slug)
 	var i Org
 	err := row.Scan(
 		&i.ID,
