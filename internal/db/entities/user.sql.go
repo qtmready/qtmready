@@ -7,6 +7,7 @@ package entities
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -84,19 +85,19 @@ GROUP BY
 `
 
 type GetUserByEmailFullRow struct {
-	ID            uuid.UUID
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
-	OrgID         uuid.UUID
-	Email         string
-	FirstName     pgtype.Text
-	LastName      pgtype.Text
-	Password      pgtype.Text
-	IsActive      bool
-	IsVerified    bool
-	Teams         interface{}
-	OauthAccounts interface{}
-	Orgs          interface{}
+	ID            uuid.UUID   `json:"id"`
+	CreatedAt     time.Time   `json:"created_at"`
+	UpdatedAt     time.Time   `json:"updated_at"`
+	OrgID         uuid.UUID   `json:"org_id"`
+	Email         string      `json:"email"`
+	FirstName     pgtype.Text `json:"first_name"`
+	LastName      pgtype.Text `json:"last_name"`
+	Password      pgtype.Text `json:"password"`
+	IsActive      bool        `json:"is_active"`
+	IsVerified    bool        `json:"is_verified"`
+	Teams         interface{} `json:"teams"`
+	OauthAccounts interface{} `json:"oauth_accounts"`
+	Orgs          interface{} `json:"orgs"`
 }
 
 func (q *Queries) GetUserByEmailFull(ctx context.Context, email string) (GetUserByEmailFullRow, error) {
