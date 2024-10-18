@@ -1,6 +1,7 @@
 -- custom functions
 
-create or replace function uuid_generate_v7() returns uuid as $$ begin -- use random v4 uuid as starting point (which has the same variant we need)
+create or replace function uuid_generate_v7() returns uuid as $$ begin
+    -- use random v4 uuid as starting point (which has the same variant we need)
     -- then overlay timestamp
     -- then set version 7 by flipping the 2 and 1 bit in the version 4 string
     return encode(
@@ -32,10 +33,28 @@ end $$ language plpgsql volatile;
 
 -- auth
 
+create table orgs (
+    id uuid primary key default uuid_generate_v7(),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null,
+    org_id uuid not null references orgs (id),
+    name text not null,
+    slug text not null
+);
+
+create table teams (
+    id uuid primary key default uuid_generate_v7(),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null,
+    org_id uuid not null references orgs (id),
+    name text not null,
+    slug text not null
+);
+
 create table users (
     id uuid primary key default uuid_generate_v7(),
-    created_at timestamp without time zone not null,
-    updated_at timestamp without time zone not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null,
     org_id uuid not null references orgs (id),
     email text not null,
     first_name text,
@@ -44,36 +63,22 @@ create table users (
     is_active boolean not null default true,
     is_verified boolean not null default false
 );
-create table teams (
-    id uuid primary key default uuid_generate_v7(),
-    created_at timestamp without time zone not null,
-    updated_at timestamp without time zone not null,
-    org_id uuid not null references orgs (id),
-    name text not null,
-    slug text not null
-);
+
 create table oauth_accounts (
     id uuid primary key default uuid_generate_v7(),
-    created_at timestamp without time zone not null,
-    updated_at timestamp without time zone not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null,
     user_id uuid not null references users (id),
     provider text not null,
     provider_account_id text not null,
-    expires_at timestamp without time zone,
+    expires_at timestamptz,
     type text
 );
-create table orgs (
-    id uuid primary key default uuid_generate_v7(),
-    created_at timestamp without time zone not null,
-    updated_at timestamp without time zone not null,
-    org_id uuid not null references orgs (id),
-    name text not null,
-    slug text not null
-);
+
 create table team_users (
     id uuid primary key default uuid_generate_v7(),
-    created_at timestamp without time zone not null,
-    updated_at timestamp without time zone not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null,
     team_id uuid not null references teams (id),
     user_id uuid not null references users (id),
     role text,
@@ -85,8 +90,8 @@ create table team_users (
 
 create table repos (
     id uuid primary key default uuid_generate_v7(),
-    created_at timestamp without time zone not null,
-    updated_at timestamp without time zone not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null,
     org_id uuid not null references orgs (id),
     name text not null,
     provider text not null,
@@ -101,8 +106,8 @@ create table repos (
 
 create table github_installations (
     id uuid primary key default uuid_generate_v7(),
-    created_at timestamp without time zone not null,
-    updated_at timestamp without time zone not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null,
     org_id uuid not null references orgs (id),
     installation_id bigint not null,
     installation_login text not null,
@@ -117,8 +122,8 @@ create unique index github_installations_installation_id_idx on github_installat
 
 create table github_orgs (
     id uuid primary key default uuid_generate_v7(),
-    created_at timestamp without time zone not null,
-    updated_at timestamp without time zone not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null,
     installation_id uuid not null references github_installations (id),
     github_org_id bigint not null,
     name text not null
@@ -128,8 +133,8 @@ create index github_orgs_installation_id_idx on github_orgs (installation_id);
 
 create table github_users (
     id uuid primary key default uuid_generate_v7(),
-    created_at timestamp without time zone not null,
-    updated_at timestamp without time zone not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null,
     user_id uuid references users (id),
     github_id bigint not null,
     github_org_id uuid not null references github_orgs (id),
@@ -138,8 +143,8 @@ create table github_users (
 
 create table github_repos (
     id uuid primary key default uuid_generate_v7(),
-    created_at timestamp without time zone not null,
-    updated_at timestamp without time zone not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null,
     repo_id uuid not null references repos (id),
     installation_id uuid not null references github_installations (id),
     github_id bigint not null,
@@ -155,8 +160,8 @@ create index github_repos_installation_id_idx on github_repos (installation_id);
 
 create table messaging (
     id uuid primary key default uuid_generate_v7(),
-    created_at timestamp without time zone not null,
-    updated_at timestamp without time zone not null,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null,
     provider text not null,
     kind text not null,
     link_to uuid not null,
@@ -183,6 +188,6 @@ create table flat_events (
     payload JSONB,
     team_id uuid not null references teams (id),
     user_id uuid not null references users (id),
-    created_at timestamp without time zone not null,
-    updated_at timestamp without time zone not null
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null
 );
