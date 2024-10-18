@@ -8,6 +8,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -54,27 +55,27 @@ func (ns NullEventProvider) Value() (driver.Value, error) {
 }
 
 type FlatEvent struct {
-	ID          pgtype.UUID
+	ID          uuid.UUID
 	Version     string
 	ParentID    pgtype.UUID
 	Provider    EventProvider
 	Scope       string
 	Action      string
 	Source      string
-	SubjectID   pgtype.UUID
+	SubjectID   uuid.UUID
 	SubjectName string
 	Payload     []byte
-	TeamID      pgtype.UUID
-	UserID      pgtype.UUID
-	CreatedAt   pgtype.Timestamp
-	UpdatedAt   pgtype.Timestamp
+	TeamID      uuid.UUID
+	UserID      uuid.UUID
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 }
 
 type GithubInstallation struct {
-	ID                  pgtype.UUID
-	CreatedAt           pgtype.Timestamp
-	UpdatedAt           pgtype.Timestamp
-	OrgID               pgtype.UUID
+	ID                  uuid.UUID
+	CreatedAt           pgtype.Timestamptz
+	UpdatedAt           pgtype.Timestamptz
+	OrgID               uuid.UUID
 	InstallationID      int64
 	InstallationLogin   string
 	InstallationLoginID int64
@@ -85,20 +86,20 @@ type GithubInstallation struct {
 }
 
 type GithubOrg struct {
-	ID             pgtype.UUID
-	CreatedAt      pgtype.Timestamp
-	UpdatedAt      pgtype.Timestamp
-	InstallationID pgtype.UUID
+	ID             uuid.UUID
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	InstallationID uuid.UUID
 	GithubOrgID    int64
 	Name           string
 }
 
 type GithubRepo struct {
-	ID             pgtype.UUID
-	CreatedAt      pgtype.Timestamp
-	UpdatedAt      pgtype.Timestamp
-	RepoID         pgtype.UUID
-	InstallationID pgtype.UUID
+	ID             uuid.UUID
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	RepoID         uuid.UUID
+	InstallationID uuid.UUID
 	GithubID       int64
 	Name           string
 	FullName       string
@@ -107,50 +108,50 @@ type GithubRepo struct {
 }
 
 type GithubUser struct {
-	ID          pgtype.UUID
-	CreatedAt   pgtype.Timestamp
-	UpdatedAt   pgtype.Timestamp
+	ID          uuid.UUID
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
 	UserID      pgtype.UUID
 	GithubID    int64
-	GithubOrgID pgtype.UUID
+	GithubOrgID uuid.UUID
 	Login       string
 }
 
 type Messaging struct {
-	ID        pgtype.UUID
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
+	ID        uuid.UUID
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
 	Provider  string
 	Kind      string
-	LinkTo    pgtype.UUID
+	LinkTo    uuid.UUID
 	Data      []byte
 }
 
 type OauthAccount struct {
-	ID                pgtype.UUID
-	CreatedAt         pgtype.Timestamp
-	UpdatedAt         pgtype.Timestamp
-	UserID            pgtype.UUID
+	ID                uuid.UUID
+	CreatedAt         pgtype.Timestamptz
+	UpdatedAt         pgtype.Timestamptz
+	UserID            uuid.UUID
 	Provider          string
 	ProviderAccountID string
-	ExpiresAt         pgtype.Timestamp
+	ExpiresAt         pgtype.Timestamptz
 	Type              pgtype.Text
 }
 
 type Org struct {
-	ID        pgtype.UUID
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
-	OrgID     pgtype.UUID
+	ID        uuid.UUID
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+	OrgID     uuid.UUID
 	Name      string
 	Slug      string
 }
 
 type Repo struct {
-	ID            pgtype.UUID
-	CreatedAt     pgtype.Timestamp
-	UpdatedAt     pgtype.Timestamp
-	OrgID         pgtype.UUID
+	ID            uuid.UUID
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	OrgID         uuid.UUID
 	Name          string
 	Provider      string
 	ProviderID    string
@@ -161,30 +162,30 @@ type Repo struct {
 }
 
 type Team struct {
-	ID        pgtype.UUID
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
-	OrgID     pgtype.UUID
+	ID        uuid.UUID
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+	OrgID     uuid.UUID
 	Name      string
 	Slug      string
 }
 
 type TeamUser struct {
-	ID        pgtype.UUID
-	CreatedAt pgtype.Timestamp
-	UpdatedAt pgtype.Timestamp
-	TeamID    pgtype.UUID
-	UserID    pgtype.UUID
+	ID        uuid.UUID
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+	TeamID    uuid.UUID
+	UserID    uuid.UUID
 	Role      pgtype.Text
 	IsActive  bool
 	IsAdmin   bool
 }
 
 type User struct {
-	ID         pgtype.UUID
-	CreatedAt  pgtype.Timestamp
-	UpdatedAt  pgtype.Timestamp
-	OrgID      pgtype.UUID
+	ID         uuid.UUID
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+	OrgID      uuid.UUID
 	Email      string
 	FirstName  pgtype.Text
 	LastName   pgtype.Text

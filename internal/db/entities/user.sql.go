@@ -8,19 +8,127 @@ package entities
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getUser = `-- name: GetUser :one
-
 SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
 FROM users
 WHERE id = $1
 LIMIT 1
 `
 
-func (q *Queries) GetUser(ctx context.Context, id pgtype.UUID) (User, error) {
+func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 	row := q.db.QueryRow(ctx, getUser, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OrgID,
+		&i.Email,
+		&i.FirstName,
+		&i.LastName,
+		&i.Password,
+		&i.IsActive,
+		&i.IsVerified,
+	)
+	return i, err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
+FROM users
+WHERE email = $1
+LIMIT 1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OrgID,
+		&i.Email,
+		&i.FirstName,
+		&i.LastName,
+		&i.Password,
+		&i.IsActive,
+		&i.IsVerified,
+	)
+	return i, err
+}
+
+const getUserByEmailFull = `-- name: GetUserByEmailFull :one
+SELECT
+  u.id, u.created_at, u.updated_at, u.org_id, u.email, u.first_name, u.last_name, u.password, u.is_active, u.is_verified,
+  array_agg(t.*) AS teams,
+  array_agg(oa.*) AS oauth_accounts,
+  array_agg(o.*) AS orgs
+FROM users AS u
+LEFT JOIN team_users AS tu
+  ON u.id = tu.user_id
+LEFT JOIN teams AS t
+  ON tu.team_id = t.id
+LEFT JOIN oauth_accounts AS oa
+  ON u.id = oa.user_id
+LEFT JOIN orgs AS o
+  ON u.org_id = o.id
+WHERE
+  u.email = $1
+GROUP BY
+  u.id
+`
+
+type GetUserByEmailFullRow struct {
+	ID            uuid.UUID
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+	OrgID         uuid.UUID
+	Email         string
+	FirstName     pgtype.Text
+	LastName      pgtype.Text
+	Password      pgtype.Text
+	IsActive      bool
+	IsVerified    bool
+	Teams         interface{}
+	OauthAccounts interface{}
+	Orgs          interface{}
+}
+
+func (q *Queries) GetUserByEmailFull(ctx context.Context, email string) (GetUserByEmailFullRow, error) {
+	row := q.db.QueryRow(ctx, getUserByEmailFull, email)
+	var i GetUserByEmailFullRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OrgID,
+		&i.Email,
+		&i.FirstName,
+		&i.LastName,
+		&i.Password,
+		&i.IsActive,
+		&i.IsVerified,
+		&i.Teams,
+		&i.OauthAccounts,
+		&i.Orgs,
+	)
+	return i, err
+}
+
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
+FROM users
+WHERE id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
