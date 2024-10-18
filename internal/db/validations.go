@@ -71,7 +71,7 @@ func UniqueField(fl validator.FieldLevel) bool {
 		Columns("id", fl.FieldName()).
 		Where(clause)
 
-	err := DB().
+	err := Cassandra().
 		Session.
 		Query(query.ToCql()).
 		Iter().

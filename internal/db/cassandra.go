@@ -314,8 +314,8 @@ func NewMockSession(session *gocqlxmock.SessionxMock) {
 	db = NewSession(WithMockSession(session))
 }
 
-// DB returns the singleton database session.
-func DB() *Config {
+// Cassandra returns the singleton database session.
+func Cassandra() *Config {
 	if db == nil {
 		slog.Info("db: creating new session")
 		once.Do(func() {
