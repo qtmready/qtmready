@@ -3,7 +3,6 @@ create table orgs (
   id uuid primary key default uuid_generate_v7(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  org_id uuid not null references orgs (id),
   name varchar(255) not null,
   slug varchar(255) not null
 );
@@ -220,7 +219,7 @@ create table flat_events (
   source varchar(255) not null,
   subject_id uuid not null,
   subject_name varchar(255) not null,
-  payload jsonb,
+  payload jsonb not null,
   team_id uuid not null references teams (id),
   user_id uuid not null references users (id),
   created_at timestamptz not null default now(),

@@ -6,7 +6,9 @@ package entities
 
 import (
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -32,8 +34,8 @@ func (e *EventProvider) Scan(src interface{}) error {
 }
 
 type NullEventProvider struct {
-	EventProvider EventProvider
-	Valid         bool // Valid is true if EventProvider is not NULL
+	EventProvider EventProvider `json:"event_provider"`
+	Valid         bool          `json:"valid"` // Valid is true if EventProvider is not NULL
 }
 
 // Scan implements the Scanner interface.
@@ -55,141 +57,140 @@ func (ns NullEventProvider) Value() (driver.Value, error) {
 }
 
 type FlatEvent struct {
-	ID          uuid.UUID
-	Version     string
-	ParentID    pgtype.UUID
-	Provider    EventProvider
-	Scope       string
-	Action      string
-	Source      string
-	SubjectID   uuid.UUID
-	SubjectName string
-	Payload     []byte
-	TeamID      uuid.UUID
-	UserID      uuid.UUID
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	ID          uuid.UUID       `json:"id"`
+	Version     string          `json:"version"`
+	ParentID    pgtype.UUID     `json:"parent_id"`
+	Provider    EventProvider   `json:"provider"`
+	Scope       string          `json:"scope"`
+	Action      string          `json:"action"`
+	Source      string          `json:"source"`
+	SubjectID   uuid.UUID       `json:"subject_id"`
+	SubjectName string          `json:"subject_name"`
+	Payload     json.RawMessage `json:"payload"`
+	TeamID      uuid.UUID       `json:"team_id"`
+	UserID      uuid.UUID       `json:"user_id"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
 }
 
 type GithubInstallation struct {
-	ID                  uuid.UUID
-	CreatedAt           pgtype.Timestamptz
-	UpdatedAt           pgtype.Timestamptz
-	OrgID               uuid.UUID
-	InstallationID      int64
-	InstallationLogin   string
-	InstallationLoginID int64
-	InstallationType    pgtype.Text
-	SenderID            int64
-	SenderLogin         string
-	Status              pgtype.Text
+	ID                  uuid.UUID   `json:"id"`
+	CreatedAt           time.Time   `json:"created_at"`
+	UpdatedAt           time.Time   `json:"updated_at"`
+	OrgID               uuid.UUID   `json:"org_id"`
+	InstallationID      int64       `json:"installation_id"`
+	InstallationLogin   string      `json:"installation_login"`
+	InstallationLoginID int64       `json:"installation_login_id"`
+	InstallationType    pgtype.Text `json:"installation_type"`
+	SenderID            int64       `json:"sender_id"`
+	SenderLogin         string      `json:"sender_login"`
+	Status              pgtype.Text `json:"status"`
 }
 
 type GithubOrg struct {
-	ID             uuid.UUID
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	InstallationID uuid.UUID
-	GithubOrgID    int64
-	Name           string
+	ID             uuid.UUID `json:"id"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	InstallationID uuid.UUID `json:"installation_id"`
+	GithubOrgID    int64     `json:"github_org_id"`
+	Name           string    `json:"name"`
 }
 
 type GithubRepo struct {
-	ID             uuid.UUID
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	RepoID         uuid.UUID
-	InstallationID uuid.UUID
-	GithubID       int64
-	Name           string
-	FullName       string
-	Url            string
-	IsActive       pgtype.Bool
+	ID             uuid.UUID   `json:"id"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+	RepoID         uuid.UUID   `json:"repo_id"`
+	InstallationID uuid.UUID   `json:"installation_id"`
+	GithubID       int64       `json:"github_id"`
+	Name           string      `json:"name"`
+	FullName       string      `json:"full_name"`
+	Url            string      `json:"url"`
+	IsActive       pgtype.Bool `json:"is_active"`
 }
 
 type GithubUser struct {
-	ID          uuid.UUID
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
-	UserID      pgtype.UUID
-	GithubID    int64
-	GithubOrgID uuid.UUID
-	Login       string
+	ID          uuid.UUID   `json:"id"`
+	CreatedAt   time.Time   `json:"created_at"`
+	UpdatedAt   time.Time   `json:"updated_at"`
+	UserID      pgtype.UUID `json:"user_id"`
+	GithubID    int64       `json:"github_id"`
+	GithubOrgID uuid.UUID   `json:"github_org_id"`
+	Login       string      `json:"login"`
 }
 
 type Messaging struct {
-	ID        uuid.UUID
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
-	Provider  string
-	Kind      string
-	LinkTo    uuid.UUID
-	Data      []byte
+	ID        uuid.UUID       `json:"id"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
+	Provider  string          `json:"provider"`
+	Kind      string          `json:"kind"`
+	LinkTo    uuid.UUID       `json:"link_to"`
+	Data      json.RawMessage `json:"data"`
 }
 
 type OauthAccount struct {
-	ID                uuid.UUID
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
-	UserID            uuid.UUID
-	Provider          string
-	ProviderAccountID string
-	ExpiresAt         pgtype.Timestamptz
-	Type              pgtype.Text
+	ID                uuid.UUID          `json:"id"`
+	CreatedAt         time.Time          `json:"created_at"`
+	UpdatedAt         time.Time          `json:"updated_at"`
+	UserID            uuid.UUID          `json:"user_id"`
+	Provider          string             `json:"provider"`
+	ProviderAccountID string             `json:"provider_account_id"`
+	ExpiresAt         pgtype.Timestamptz `json:"expires_at"`
+	Type              pgtype.Text        `json:"type"`
 }
 
 type Org struct {
-	ID        uuid.UUID
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
-	OrgID     uuid.UUID
-	Name      string
-	Slug      string
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
 }
 
 type Repo struct {
-	ID            uuid.UUID
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
-	OrgID         uuid.UUID
-	Name          string
-	Provider      string
-	ProviderID    string
-	DefaultBranch pgtype.Text
-	IsMonorepo    pgtype.Bool
-	Threshold     pgtype.Int4
-	StaleDuration pgtype.Interval
+	ID            uuid.UUID       `json:"id"`
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
+	OrgID         uuid.UUID       `json:"org_id"`
+	Name          string          `json:"name"`
+	Provider      string          `json:"provider"`
+	ProviderID    string          `json:"provider_id"`
+	DefaultBranch pgtype.Text     `json:"default_branch"`
+	IsMonorepo    pgtype.Bool     `json:"is_monorepo"`
+	Threshold     pgtype.Int4     `json:"threshold"`
+	StaleDuration pgtype.Interval `json:"stale_duration"`
 }
 
 type Team struct {
-	ID        uuid.UUID
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
-	OrgID     uuid.UUID
-	Name      string
-	Slug      string
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	OrgID     uuid.UUID `json:"org_id"`
+	Name      string    `json:"name"`
+	Slug      string    `json:"slug"`
 }
 
 type TeamUser struct {
-	ID        uuid.UUID
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
-	TeamID    uuid.UUID
-	UserID    uuid.UUID
-	Role      pgtype.Text
-	IsActive  bool
-	IsAdmin   bool
+	ID        uuid.UUID   `json:"id"`
+	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
+	TeamID    uuid.UUID   `json:"team_id"`
+	UserID    uuid.UUID   `json:"user_id"`
+	Role      pgtype.Text `json:"role"`
+	IsActive  bool        `json:"is_active"`
+	IsAdmin   bool        `json:"is_admin"`
 }
 
 type User struct {
-	ID         uuid.UUID
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
-	OrgID      uuid.UUID
-	Email      string
-	FirstName  pgtype.Text
-	LastName   pgtype.Text
-	Password   pgtype.Text
-	IsActive   bool
-	IsVerified bool
+	ID         uuid.UUID   `json:"id"`
+	CreatedAt  time.Time   `json:"created_at"`
+	UpdatedAt  time.Time   `json:"updated_at"`
+	OrgID      uuid.UUID   `json:"org_id"`
+	Email      string      `json:"email"`
+	FirstName  pgtype.Text `json:"first_name"`
+	LastName   pgtype.Text `json:"last_name"`
+	Password   pgtype.Text `json:"password"`
+	IsActive   bool        `json:"is_active"`
+	IsVerified bool        `json:"is_verified"`
 }
