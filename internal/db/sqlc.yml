@@ -2,7 +2,10 @@ version: "2"
 sql:
   - engine: "postgresql"
     schema:
-      - "./migrations/000001_setup.up.sql"
+      # sqlc supports migrations.
+      #
+      # https://docs.sqlc.dev/en/stable/howto/ddl.html
+      - "./migrations/postgres"
     queries:
       - "./queries/user.sql"
       - "./queries/team.sql"
