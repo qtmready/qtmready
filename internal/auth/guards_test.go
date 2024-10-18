@@ -116,7 +116,7 @@ func testSave(args, want any) func(*testing.T) {
 		stmt, names := arg.Guard.GetTable().Insert()
 		qmock := &gocqlxmock.QueryxMock{Ctx: context.Background(), Stmt: stmt, Names: names}
 
-		db.NewMockSession(smock)
+		db.NewCassandraMockSession(smock)
 		smock.On("Query", stmt, names).Return(qmock)
 		qmock.On("BindStruct", arg.Guard).Return(qmock)
 		smock.On("Close").Return()
@@ -148,7 +148,7 @@ func testVerifyAPIKey(args, want any) func(*testing.T) {
 			ToCql()
 		qmock := &gocqlxmock.QueryxMock{Ctx: context.Background(), Stmt: stmt, Names: names}
 
-		db.NewMockSession(smock)
+		db.NewCassandraMockSession(smock)
 		smock.On("Close").Return()
 		smock.On("Query", stmt, names).Return(qmock)
 		qmock.On("GetRelease", arg.Guard).Return(nil)

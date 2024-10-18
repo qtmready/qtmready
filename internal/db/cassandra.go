@@ -51,19 +51,18 @@ const (
 )
 
 var (
-	db   *Config
-	once sync.Once
+	cass     *CassandraConfig
+	cassonce sync.Once
 )
 
 var (
-	//go:embed migrations/*.cql
-	src embed.FS
+	//go:embed migrations/cassandra/*.cql
+	cql embed.FS
 )
 
 type (
-	// Config holds the information about the database.
-	// Config holds the information about the database.
-	Config struct {
+	// CassandraConfig holds the information about the database.
+	CassandraConfig struct {
 		Session            igocqlx.ISessionx // Initialized session.
 		Hosts              []string          `env:"CASSANDRA_HOSTS" env-default:"database"`     // List of Cassandra nodes to connect to.
 		Port               int               `env:"CASSANDRA_PORT" env-default:"9042"`          // Port of the Cassandra cluster.
@@ -79,7 +78,7 @@ type (
 		*gocqlxmock.SessionxMock
 	}
 
-	ConfigOption func(*Config)
+	CassandraConfigOption func(*CassandraConfig)
 
 	MigrationLogger struct{}
 )
@@ -102,49 +101,49 @@ func (mc *MockConfig) Session() *igocqlx.Session {
 func (mc *MockConfig) SetMapper(mapper *reflectx.Mapper) {}
 
 // Shutdown closes the database session.
-func (c *Config) Shutdown(ctx context.Context) error {
+func (c *CassandraConfig) Shutdown(ctx context.Context) error {
 	c.Session.Session().S.Session.Close()
 
 	return nil
 }
 
-// WithHosts sets the hosts.
-func WithHosts(hosts []string) ConfigOption {
-	return func(c *Config) { c.Hosts = hosts }
+// WithCassandraHosts sets the hosts.
+func WithCassandraHosts(hosts []string) CassandraConfigOption {
+	return func(c *CassandraConfig) { c.Hosts = hosts }
 }
 
-// WithPort sets the port.
-func WithPort(port int) ConfigOption {
-	return func(c *Config) { c.Port = port }
+// WithCassandraPort sets the port.
+func WithCassandraPort(port int) CassandraConfigOption {
+	return func(c *CassandraConfig) { c.Port = port }
 }
 
-// WithKeyspace sets the keyspace.
-func WithKeyspace(keyspace string) ConfigOption {
-	return func(c *Config) { c.Keyspace = keyspace }
+// WithCassandraKeyspace sets the keyspace.
+func WithCassandraKeyspace(keyspace string) CassandraConfigOption {
+	return func(c *CassandraConfig) { c.Keyspace = keyspace }
 }
 
-// WithMigrationSourceURL sets the migration source URL.
-func WithMigrationSourceURL(url string) ConfigOption {
-	return func(c *Config) { c.MigrationSourceURL = url }
+// WithCassandraMigrationSourceURL sets the migration source URL.
+func WithCassandraMigrationSourceURL(url string) CassandraConfigOption {
+	return func(c *CassandraConfig) { c.MigrationSourceURL = url }
 }
 
-// WithTimeout sets the timeout.
-func WithTimeout(timeout time.Duration) ConfigOption {
-	return func(c *Config) { c.Timeout = timeout }
+// WithCassandraTimeout sets the timeout.
+func WithCassandraTimeout(timeout time.Duration) CassandraConfigOption {
+	return func(c *CassandraConfig) { c.Timeout = timeout }
 }
 
-// FromEnvironment reads the configuration from the environment.
-func FromEnvironment() ConfigOption {
-	return func(c *Config) {
+// WithCassandraFromEnv reads the configuration from the environment.
+func WithCassandraFromEnv() CassandraConfigOption {
+	return func(c *CassandraConfig) {
 		if err := cleanenv.ReadEnv(c); err != nil {
 			panic(fmt.Errorf("db: unable to read environment variables, %v", err))
 		}
 	}
 }
 
-// WithSessionCreation initializes the session.
-func WithSessionCreation() ConfigOption {
-	return func(c *Config) {
+// WithCassandraSession initializes the session.
+func WithCassandraSession() CassandraConfigOption {
+	return func(c *CassandraConfig) {
 		if c.Hosts == nil || c.Keyspace == "" {
 			panic(fmt.Errorf("db: hosts & keyspace not set, please set them before initializing session"))
 		}
@@ -189,15 +188,15 @@ func WithSessionCreation() ConfigOption {
 	}
 }
 
-// WithE2ESession initializes the session for end-to-end tests.
+// WithCassandraSessionForE2E initializes the session for end-to-end tests.
 //
 // NOTE: It might appear that the client throws error as explained at [issue], which will eventially point to [gocql github],
 // but IRL, it will work. This is a known issue with gocql and it's not a problem for us.
 //
 // [issue]: https://app.shortcut.com/ctrlplane/story/2509/migrate-testing-to-use-test-containers-instead-of-mocks#activity-2749
 // [gocql github]: https://github.com/gocql/gocql/issues/575
-func WithE2ESession() ConfigOption {
-	return func(c *Config) {
+func WithCassandraSessionForE2E() CassandraConfigOption {
+	return func(c *CassandraConfig) {
 		cluster := gocql.NewCluster(c.Hosts...)
 		cluster.Keyspace = c.Keyspace
 		cluster.Timeout = 10 * time.Minute
@@ -220,17 +219,17 @@ func WithE2ESession() ConfigOption {
 	}
 }
 
-// WithMockSession sets the mock session.
-func WithMockSession(session *gocqlxmock.SessionxMock) ConfigOption {
-	return func(c *Config) {
+// WithCassandraMockSession sets the mock session.
+func WithCassandraMockSession(session *gocqlxmock.SessionxMock) CassandraConfigOption {
+	return func(c *CassandraConfig) {
 		c.Session = &MockConfig{session}
 	}
 }
 
-// WithMigrations runs the migrations after the session has been initialized.
-func WithMigrations() ConfigOption {
-	return func(c *Config) {
-		dir, err := iofs.New(src, "migrations")
+// WithCassandraMigrations runs the migrations after the session has been initialized.
+func WithCassandraMigrations() CassandraConfigOption {
+	return func(c *CassandraConfig) {
+		dir, err := iofs.New(cql, "migrations/cassandra")
 		if err != nil {
 			slog.Error("db: failed to initialize migrations ...", "error", err)
 			return
@@ -274,58 +273,58 @@ func WithMigrations() ConfigOption {
 	}
 }
 
-// WithValidator registers a validator function.
-func WithValidator(name string, validator validator.Func) ConfigOption {
+// WithCassandraValidators registers a validator function.
+func WithCassandraValidators(name string, validator validator.Func) CassandraConfigOption {
 	slog.Info("db: registering validator", "name", name)
 
-	return func(c *Config) {
+	return func(c *CassandraConfig) {
 		if err := shared.Validator().RegisterValidation(name, validator); err != nil {
 			panic(fmt.Errorf("db: failed to register validator %s, %v", name, err))
 		}
 	}
 }
 
-// NewSession creates a new session with the given options.
-func NewSession(opts ...ConfigOption) *Config {
-	db = &Config{}
+// NewCassandraSession creates a new session with the given options.
+func NewCassandraSession(opts ...CassandraConfigOption) *CassandraConfig {
+	cass = &CassandraConfig{}
 	for _, opt := range opts {
-		opt(db)
+		opt(cass)
 	}
 
-	return db
+	return cass
 }
 
-// NewE2ESession creates a new session for end-to-end tests.
-func NewE2ESession(port int, migrationPath string) {
-	db = NewSession(
-		WithHosts([]string{"localhost"}),
-		WithKeyspace("ctrlplane_test"),
-		WithPort(port),
-		WithMigrationSourceURL(migrationPath),
-		WithTimeout(10*time.Minute),
-		WithE2ESession(),
-		WithMigrations(),
-		WithValidator("db_unique", UniqueField),
+// NewCassasndraSessionE2E creates a new session for end-to-end tests.
+func NewCassasndraSessionE2E(port int, migrationPath string) {
+	cass = NewCassandraSession(
+		WithCassandraHosts([]string{"localhost"}),
+		WithCassandraKeyspace("ctrlplane_test"),
+		WithCassandraPort(port),
+		WithCassandraMigrationSourceURL(migrationPath),
+		WithCassandraTimeout(10*time.Minute),
+		WithCassandraSessionForE2E(),
+		WithCassandraMigrations(),
+		WithCassandraValidators("db_unique", UniqueField),
 	)
 }
 
-// NewMockSession creates a new mock session.
-func NewMockSession(session *gocqlxmock.SessionxMock) {
-	db = NewSession(WithMockSession(session))
+// NewCassandraMockSession creates a new mock session.
+func NewCassandraMockSession(session *gocqlxmock.SessionxMock) {
+	cass = NewCassandraSession(WithCassandraMockSession(session))
 }
 
 // Cassandra returns the singleton database session.
-func Cassandra() *Config {
-	if db == nil {
+func Cassandra() *CassandraConfig {
+	if cass == nil {
 		slog.Info("db: creating new session")
-		once.Do(func() {
-			db = NewSession(
-				FromEnvironment(),
-				WithSessionCreation(),
-				WithValidator("db_unique", UniqueField),
+		cassonce.Do(func() {
+			cass = NewCassandraSession(
+				WithCassandraFromEnv(),
+				WithCassandraSession(),
+				WithCassandraValidators("db_unique", UniqueField),
 			)
 		})
 	}
 
-	return db
+	return cass
 }

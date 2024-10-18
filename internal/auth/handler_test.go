@@ -117,7 +117,7 @@ func (s *ServerHandlerTestSuite) SetupContainers() {
 		s.T().Fatalf("failed to get mapped db port: %v", err)
 	}
 
-	db.NewE2ESession(port.Int(), "file://../db/migrations")
+	db.NewCassasndraSessionE2E(port.Int(), "file://../db/migrations")
 
 	// _ = db.DB.InitSessionForTests(port.Int(), "file://../db/migrations")
 
