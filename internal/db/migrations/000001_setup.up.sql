@@ -112,7 +112,9 @@ create table github_installations (
     sender_login text not null,
     status text
 );
+
 create unique index github_installations_installation_id_idx on github_installations (installation_id);
+
 create table github_orgs (
     id uuid primary key default uuid_generate_v7(),
     created_at timestamp without time zone not null,
@@ -121,7 +123,9 @@ create table github_orgs (
     github_org_id bigint not null,
     name text not null
 );
+
 create index github_orgs_installation_id_idx on github_orgs (installation_id);
+
 create table github_users (
     id uuid primary key default uuid_generate_v7(),
     created_at timestamp without time zone not null,
@@ -131,6 +135,7 @@ create table github_users (
     github_org_id uuid not null references github_orgs (id),
     login text not null
 );
+
 create table github_repos (
     id uuid primary key default uuid_generate_v7(),
     created_at timestamp without time zone not null,
@@ -143,6 +148,7 @@ create table github_repos (
     url text not null,
     is_active boolean
 );
+
 create index github_repos_installation_id_idx on github_repos (installation_id);
 
 -- messaging
