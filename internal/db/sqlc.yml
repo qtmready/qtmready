@@ -10,6 +10,13 @@ sql:
       - "./queries/org.sql"
       - "./queries/user.sql"
       - "./queries/team.sql"
+      - "./queries/team_user.sql"
+      - "./queries/oauth_account.sql"
+      - "./queries/repo.sql"
+      - "./queries/github_installation.sql"
+      - "./queries/github_org.sql"
+      - "./queries/github_user.sql"
+      - "./queries/github_repo.sql"
     gen:
       go:
         package: "entities"

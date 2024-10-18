@@ -16,6 +16,7 @@ FROM users
 WHERE email = $1
 LIMIT 1;
 
+
 -- name: GetUserByEmailFull :one
 SELECT
   u.*,
@@ -35,3 +36,21 @@ WHERE
   u.email = $1
 GROUP BY
   u.id;
+
+-- name: CreateUser :one
+INSERT INTO users (first_name, last_name, email, password) 
+VALUES ($1, $2, $3, $4) 
+RETURNING id, first_name, last_name, email;
+
+-- name: GetUsersByEmail :many
+SELECT *
+FROM users
+WHERE email = $1;
+
+-- name: GetUserByProviderAccount :one
+SELECT 
+  u.*, 
+  array_agg(oa.*) AS oauth_accounts
+FROM users u
+INNER JOIN oauth_accounts a ON u.id = a.user_id
+WHERE a.provider = $1 AND a.provider_account_id = $2;

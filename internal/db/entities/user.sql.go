@@ -13,6 +13,43 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createUser = `-- name: CreateUser :one
+INSERT INTO users (first_name, last_name, email, password) 
+VALUES ($1, $2, $3, $4) 
+RETURNING id, first_name, last_name, email
+`
+
+type CreateUserParams struct {
+	FirstName pgtype.Text `json:"first_name"`
+	LastName  pgtype.Text `json:"last_name"`
+	Email     string      `json:"email"`
+	Password  pgtype.Text `json:"password"`
+}
+
+type CreateUserRow struct {
+	ID        uuid.UUID   `json:"id"`
+	FirstName pgtype.Text `json:"first_name"`
+	LastName  pgtype.Text `json:"last_name"`
+	Email     string      `json:"email"`
+}
+
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
+	row := q.db.QueryRow(ctx, createUser,
+		arg.FirstName,
+		arg.LastName,
+		arg.Email,
+		arg.Password,
+	)
+	var i CreateUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.FirstName,
+		&i.LastName,
+		&i.Email,
+	)
+	return i, err
+}
+
 const getUser = `-- name: GetUser :one
 SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
 FROM users
@@ -144,4 +181,88 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.IsVerified,
 	)
 	return i, err
+}
+
+const getUserByProviderAccount = `-- name: GetUserByProviderAccount :one
+SELECT 
+  u.id, u.created_at, u.updated_at, u.org_id, u.email, u.first_name, u.last_name, u.password, u.is_active, u.is_verified, 
+  array_agg(oa.*) AS oauth_accounts
+FROM users u
+INNER JOIN oauth_accounts a ON u.id = a.user_id
+WHERE a.provider = $1 AND a.provider_account_id = $2
+`
+
+type GetUserByProviderAccountParams struct {
+	Provider          string `json:"provider"`
+	ProviderAccountID string `json:"provider_account_id"`
+}
+
+type GetUserByProviderAccountRow struct {
+	ID            uuid.UUID   `json:"id"`
+	CreatedAt     time.Time   `json:"created_at"`
+	UpdatedAt     time.Time   `json:"updated_at"`
+	OrgID         uuid.UUID   `json:"org_id"`
+	Email         string      `json:"email"`
+	FirstName     pgtype.Text `json:"first_name"`
+	LastName      pgtype.Text `json:"last_name"`
+	Password      pgtype.Text `json:"password"`
+	IsActive      bool        `json:"is_active"`
+	IsVerified    bool        `json:"is_verified"`
+	OauthAccounts interface{} `json:"oauth_accounts"`
+}
+
+func (q *Queries) GetUserByProviderAccount(ctx context.Context, arg GetUserByProviderAccountParams) (GetUserByProviderAccountRow, error) {
+	row := q.db.QueryRow(ctx, getUserByProviderAccount, arg.Provider, arg.ProviderAccountID)
+	var i GetUserByProviderAccountRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OrgID,
+		&i.Email,
+		&i.FirstName,
+		&i.LastName,
+		&i.Password,
+		&i.IsActive,
+		&i.IsVerified,
+		&i.OauthAccounts,
+	)
+	return i, err
+}
+
+const getUsersByEmail = `-- name: GetUsersByEmail :many
+SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
+FROM users
+WHERE email = $1
+`
+
+func (q *Queries) GetUsersByEmail(ctx context.Context, email string) ([]User, error) {
+	rows, err := q.db.Query(ctx, getUsersByEmail, email)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []User
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OrgID,
+			&i.Email,
+			&i.FirstName,
+			&i.LastName,
+			&i.Password,
+			&i.IsActive,
+			&i.IsVerified,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
