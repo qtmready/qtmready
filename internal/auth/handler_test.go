@@ -77,7 +77,7 @@ func (c *Containers) shutdown(ctx context.Context) {
 	_ = c.db.ShutdownCassandra()
 	_ = c.network.Remove(ctx)
 
-	db.DB().Session.Close()
+	db.Cassandra().Session.Close()
 	slog.Info("graceful shutdown complete.")
 }
 

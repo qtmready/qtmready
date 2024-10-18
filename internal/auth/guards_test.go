@@ -131,7 +131,7 @@ func testSave(args, want any) func(*testing.T) {
 		}
 
 		t.Cleanup(func() {
-			db.DB().Session.Close()
+			db.Cassandra().Session.Close()
 		})
 	}
 }
@@ -160,7 +160,7 @@ func testVerifyAPIKey(args, want any) func(*testing.T) {
 		}
 
 		t.Cleanup(func() {
-			db.DB().Session.Close()
+			db.Cassandra().Session.Close()
 		})
 	}
 }

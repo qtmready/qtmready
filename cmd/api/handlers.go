@@ -41,7 +41,7 @@ func healthz(ctx echo.Context) error {
 		return shared.NewAPIError(http.StatusInternalServerError, err)
 	}
 
-	if db.DB().Session.Session().S.Closed() {
+	if db.Cassandra().Session.Session().S.Closed() {
 		return shared.NewAPIError(http.StatusInternalServerError, errors.New("database connection is closed"))
 	}
 

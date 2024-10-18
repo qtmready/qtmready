@@ -86,7 +86,7 @@ func Get[T Entity](entity T, params QueryParams) error {
 		Columns(entity.GetTable().Metadata().M.Columns...).
 		Where(clause...)
 
-	return DB().Session.Query(query.ToCql()).GetRelease(entity)
+	return Cassandra().Session.Query(query.ToCql()).GetRelease(entity)
 }
 
 // Filter retrieves all entities matching the given query parameters.
@@ -122,7 +122,7 @@ func Filter(entity Entity, dest any, params QueryParams) error {
 		Columns(entity.GetTable().Metadata().M.Columns...).
 		Where(clause...)
 
-	return DB().Session.Query(query.ToCql()).SelectRelease(dest)
+	return Cassandra().Session.Query(query.ToCql()).SelectRelease(dest)
 }
 
 // Save saves the entity to the database.
@@ -197,7 +197,7 @@ func CreateWithID[T Entity](entity T, pk gocql.UUID) error {
 		return err
 	}
 
-	query := DB().Session.Query(entity.GetTable().Insert()).BindStruct(entity)
+	query := Cassandra().Session.Query(entity.GetTable().Insert()).BindStruct(entity)
 
 	return query.ExecRelease()
 }
@@ -230,7 +230,7 @@ func Update[T Entity](entity T) error {
 		Where(clause...).
 		ToCql()
 
-	query := DB().Session.Query(stmnt, names)
+	query := Cassandra().Session.Query(stmnt, names)
 	query = query.BindStruct(entity)
 
 	return query.ExecRelease()
@@ -256,7 +256,7 @@ func Update[T Entity](entity T) error {
 func Delete[T Entity](entity T) error {
 	tbl := entity.GetTable()
 	stmnt, names := qb.Delete(tbl.Name()).Where(qb.Eq("id")).ToCql()
-	query := DB().Session.Query(stmnt, names)
+	query := Cassandra().Session.Query(stmnt, names)
 
 	return query.BindStruct(entity).ExecRelease()
 }

@@ -82,7 +82,7 @@ func main() {
 		otelshutdown,
 		api.Shutdown,
 		metrics.Shutdown,
-		db.DB().Shutdown,
+		db.Cassandra().Shutdown,
 		hub.Stop,
 	}
 

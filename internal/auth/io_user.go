@@ -164,7 +164,7 @@ func (a *usrio) GetTeams(ctx context.Context, user *User) ([]Team, error) {
 		SelectBuilder(entity.GetTable().Name()).
 		Where(qb.In("id"))
 
-	err = db.DB().
+	err = db.Cassandra().
 		Session.
 		Query(query.ToCql()).BindMap(qb.M{"id": ids}).
 		GetRelease(teams)

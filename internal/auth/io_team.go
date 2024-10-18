@@ -124,7 +124,7 @@ func (a *teamio) GetUsers(ctx context.Context, team *Team) ([]User, error) {
 		SelectBuilder(entity.GetTable().Name()).
 		Where(qb.In("id"))
 
-	err = db.DB().
+	err = db.Cassandra().
 		Session.
 		Query(query.ToCql()).BindMap(qb.M{"id": ids}).
 		GetRelease(users)

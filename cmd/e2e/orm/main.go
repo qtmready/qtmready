@@ -30,7 +30,7 @@ import (
 func main() {
 	shared.Service().SetName("orm")
 
-	defer db.DB().Session.Close()
+	defer db.Cassandra().Session.Close()
 
 	team, _ := db.NewUUID()
 	provider, _ := db.NewUUID()
