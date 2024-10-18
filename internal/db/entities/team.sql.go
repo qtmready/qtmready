@@ -8,7 +8,7 @@ package entities
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/google/uuid"
 )
 
 const getTeam = `-- name: GetTeam :one
@@ -19,7 +19,7 @@ WHERE id = $1
 LIMIT 1
 `
 
-func (q *Queries) GetTeam(ctx context.Context, id pgtype.UUID) (Team, error) {
+func (q *Queries) GetTeam(ctx context.Context, id uuid.UUID) (Team, error) {
 	row := q.db.QueryRow(ctx, getTeam, id)
 	var i Team
 	err := row.Scan(

@@ -35,5 +35,6 @@
     "titleBar.inactiveBackground": "#2c304799",
     "titleBar.inactiveForeground": "#e7e7e799"
   },
-  "peacock.color": "#2c3047"
+  "peacock.color": "#2c3047",
+  "sqltools.autoOpenSessionFiles": false
 }
