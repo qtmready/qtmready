@@ -7,26 +7,32 @@ package entities
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 )
 
 const createTeam = `-- name: CreateTeam :one
-INSERT INTO teams (name) 
-VALUES ($1) 
-RETURNING id, name
+INSERT INTO teams (name, org_id)
+VALUES ($1, $2)
+RETURNING id, created_at, updated_at, org_id, name, slug
 `
 
-type CreateTeamRow struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
+type CreateTeamParams struct {
+	Name  string    `json:"name"`
+	OrgID uuid.UUID `json:"org_id"`
 }
 
-func (q *Queries) CreateTeam(ctx context.Context, name string) (CreateTeamRow, error) {
-	row := q.db.QueryRow(ctx, createTeam, name)
-	var i CreateTeamRow
-	err := row.Scan(&i.ID, &i.Name)
+func (q *Queries) CreateTeam(ctx context.Context, arg CreateTeamParams) (Team, error) {
+	row := q.db.QueryRow(ctx, createTeam, arg.Name, arg.OrgID)
+	var i Team
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OrgID,
+		&i.Name,
+		&i.Slug,
+	)
 	return i, err
 }
 
@@ -61,56 +67,44 @@ func (q *Queries) GetTeam(ctx context.Context, id uuid.UUID) (Team, error) {
 	return i, err
 }
 
-const getTeamByName = `-- name: GetTeamByName :one
-SELECT id, name 
-FROM teams 
-WHERE name = $1
+const getTeamBySlug = `-- name: GetTeamBySlug :one
+SELECT id, name
+FROM teams
+WHERE slug = $1
 `
 
-type GetTeamByNameRow struct {
+type GetTeamBySlugRow struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
 }
 
-func (q *Queries) GetTeamByName(ctx context.Context, name string) (GetTeamByNameRow, error) {
-	row := q.db.QueryRow(ctx, getTeamByName, name)
-	var i GetTeamByNameRow
+func (q *Queries) GetTeamBySlug(ctx context.Context, slug string) (GetTeamBySlugRow, error) {
+	row := q.db.QueryRow(ctx, getTeamBySlug, slug)
+	var i GetTeamBySlugRow
 	err := row.Scan(&i.ID, &i.Name)
 	return i, err
 }
 
 const updateTeam = `-- name: UpdateTeam :one
 UPDATE teams
-SET org_id = $2, name = $3, slug = $4
+SET name = $2
 WHERE id = $1
-RETURNING id, created_at, name, slug
+RETURNING id, created_at, updated_at, org_id, name, slug
 `
 
 type UpdateTeamParams struct {
-	ID    uuid.UUID `json:"id"`
-	OrgID uuid.UUID `json:"org_id"`
-	Name  string    `json:"name"`
-	Slug  string    `json:"slug"`
+	ID   uuid.UUID `json:"id"`
+	Name string    `json:"name"`
 }
 
-type UpdateTeamRow struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	Name      string    `json:"name"`
-	Slug      string    `json:"slug"`
-}
-
-func (q *Queries) UpdateTeam(ctx context.Context, arg UpdateTeamParams) (UpdateTeamRow, error) {
-	row := q.db.QueryRow(ctx, updateTeam,
-		arg.ID,
-		arg.OrgID,
-		arg.Name,
-		arg.Slug,
-	)
-	var i UpdateTeamRow
+func (q *Queries) UpdateTeam(ctx context.Context, arg UpdateTeamParams) (Team, error) {
+	row := q.db.QueryRow(ctx, updateTeam, arg.ID, arg.Name)
+	var i Team
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OrgID,
 		&i.Name,
 		&i.Slug,
 	)

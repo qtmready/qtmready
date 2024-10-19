@@ -36,7 +36,7 @@ func (q *Queries) CreateOrg(ctx context.Context, arg CreateOrgParams) (Org, erro
 }
 
 const deleteOrg = `-- name: DeleteOrg :exec
-DELETE FROM orgs 
+DELETE FROM orgs
 WHERE id = $1
 `
 
@@ -46,20 +46,19 @@ func (q *Queries) DeleteOrg(ctx context.Context, id uuid.UUID) error {
 }
 
 const updateOrg = `-- name: UpdateOrg :one
-UPDATE orgs 
-SET name = $2, slug = $3
-WHERE id = $1 
+UPDATE orgs
+SET name = $2
+WHERE id = $1
 RETURNING id, created_at, updated_at, name, slug
 `
 
 type UpdateOrgParams struct {
 	ID   uuid.UUID `json:"id"`
 	Name string    `json:"name"`
-	Slug string    `json:"slug"`
 }
 
 func (q *Queries) UpdateOrg(ctx context.Context, arg UpdateOrgParams) (Org, error) {
-	row := q.db.QueryRow(ctx, updateOrg, arg.ID, arg.Name, arg.Slug)
+	row := q.db.QueryRow(ctx, updateOrg, arg.ID, arg.Name)
 	var i Org
 	err := row.Scan(
 		&i.ID,
