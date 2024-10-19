@@ -1,5 +1,5 @@
 -- name: GetUserByID :one
-SELECT *
+SELECT id, created_at, updated_at, first_name, last_name, email, org_id
 FROM users
 WHERE id = $1
 LIMIT 1;
@@ -11,15 +11,14 @@ WHERE id = $1
 LIMIT 1;
 
 -- name: GetUserByEmail :one
-SELECT *
+SELECT id, created_at, updated_at, first_name, last_name, email, org_id
 FROM users
-WHERE email = $1
-LIMIT 1;
+WHERE email = $1;
 
 
 -- name: GetUserByEmailFull :one
 SELECT
-  u.*,
+  u.id, u.created_at, u.updated_at, u.first_name, u.last_name, u.email, u.org_id,
   array_agg(t.*) AS teams,
   array_agg(oa.*) AS oauth_accounts,
   array_agg(o.*) AS orgs
@@ -38,19 +37,16 @@ GROUP BY
   u.id;
 
 -- name: CreateUser :one
-INSERT INTO users (first_name, last_name, email, password) 
-VALUES ($1, $2, $3, $4) 
-RETURNING id, first_name, last_name, email;
-
--- name: GetUsersByEmail :many
-SELECT *
-FROM users
-WHERE email = $1;
+INSERT INTO users (first_name, last_name, email, password)
+VALUES ($1, $2, $3, $4)
+RETURNING id, created_at, updated_at, first_name, last_name, email, org_id;
 
 -- name: GetUserByProviderAccount :one
-SELECT 
-  u.*, 
-  array_agg(oa.*) AS oauth_accounts
+SELECT
+  u.id, u.created_at, u.updated_at, u.first_name, u.last_name, u.email, u.org_id
 FROM users u
-INNER JOIN oauth_accounts a ON u.id = a.user_id
-WHERE a.provider = $1 AND a.provider_account_id = $2;
+WHERE u.id IN (
+  SELECT user_id
+  FROM oauth_accounts
+  WHERE provider = $1 AND provider_account_id = $2
+);

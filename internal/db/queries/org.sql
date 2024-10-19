@@ -4,11 +4,11 @@ VALUES ($1, $2)
 RETURNING *;
 
 -- name: UpdateOrg :one
-UPDATE orgs 
-SET name = $2, slug = $3
-WHERE id = $1 
-RETURNING id, created_at, updated_at, name, slug;
+UPDATE orgs
+SET name = $2
+WHERE id = $1
+RETURNING *;
 
 -- name: DeleteOrg :exec
-DELETE FROM orgs 
+DELETE FROM orgs
 WHERE id = $1;

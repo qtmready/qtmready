@@ -14,9 +14,9 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (first_name, last_name, email, password) 
-VALUES ($1, $2, $3, $4) 
-RETURNING id, first_name, last_name, email
+INSERT INTO users (first_name, last_name, email, password)
+VALUES ($1, $2, $3, $4)
+RETURNING id, created_at, updated_at, first_name, last_name, email, org_id
 `
 
 type CreateUserParams struct {
@@ -28,9 +28,12 @@ type CreateUserParams struct {
 
 type CreateUserRow struct {
 	ID        uuid.UUID   `json:"id"`
+	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
 	FirstName pgtype.Text `json:"first_name"`
 	LastName  pgtype.Text `json:"last_name"`
 	Email     string      `json:"email"`
+	OrgID     uuid.UUID   `json:"org_id"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
@@ -43,9 +46,12 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 	var i CreateUserRow
 	err := row.Scan(
 		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.FirstName,
 		&i.LastName,
 		&i.Email,
+		&i.OrgID,
 	)
 	return i, err
 }
@@ -76,33 +82,39 @@ func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
+SELECT id, created_at, updated_at, first_name, last_name, email, org_id
 FROM users
 WHERE email = $1
-LIMIT 1
 `
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+type GetUserByEmailRow struct {
+	ID        uuid.UUID   `json:"id"`
+	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
+	FirstName pgtype.Text `json:"first_name"`
+	LastName  pgtype.Text `json:"last_name"`
+	Email     string      `json:"email"`
+	OrgID     uuid.UUID   `json:"org_id"`
+}
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
 	row := q.db.QueryRow(ctx, getUserByEmail, email)
-	var i User
+	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.OrgID,
-		&i.Email,
 		&i.FirstName,
 		&i.LastName,
-		&i.Password,
-		&i.IsActive,
-		&i.IsVerified,
+		&i.Email,
+		&i.OrgID,
 	)
 	return i, err
 }
 
 const getUserByEmailFull = `-- name: GetUserByEmailFull :one
 SELECT
-  u.id, u.created_at, u.updated_at, u.org_id, u.email, u.first_name, u.last_name, u.password, u.is_active, u.is_verified,
+  u.id, u.created_at, u.updated_at, u.first_name, u.last_name, u.email, u.org_id,
   array_agg(t.*) AS teams,
   array_agg(oa.*) AS oauth_accounts,
   array_agg(o.*) AS orgs
@@ -125,13 +137,10 @@ type GetUserByEmailFullRow struct {
 	ID            uuid.UUID   `json:"id"`
 	CreatedAt     time.Time   `json:"created_at"`
 	UpdatedAt     time.Time   `json:"updated_at"`
-	OrgID         uuid.UUID   `json:"org_id"`
-	Email         string      `json:"email"`
 	FirstName     pgtype.Text `json:"first_name"`
 	LastName      pgtype.Text `json:"last_name"`
-	Password      pgtype.Text `json:"password"`
-	IsActive      bool        `json:"is_active"`
-	IsVerified    bool        `json:"is_verified"`
+	Email         string      `json:"email"`
+	OrgID         uuid.UUID   `json:"org_id"`
 	Teams         interface{} `json:"teams"`
 	OauthAccounts interface{} `json:"oauth_accounts"`
 	Orgs          interface{} `json:"orgs"`
@@ -144,13 +153,10 @@ func (q *Queries) GetUserByEmailFull(ctx context.Context, email string) (GetUser
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.OrgID,
-		&i.Email,
 		&i.FirstName,
 		&i.LastName,
-		&i.Password,
-		&i.IsActive,
-		&i.IsVerified,
+		&i.Email,
+		&i.OrgID,
 		&i.Teams,
 		&i.OauthAccounts,
 		&i.Orgs,
@@ -159,37 +165,46 @@ func (q *Queries) GetUserByEmailFull(ctx context.Context, email string) (GetUser
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
+SELECT id, created_at, updated_at, first_name, last_name, email, org_id
 FROM users
 WHERE id = $1
 LIMIT 1
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+type GetUserByIDRow struct {
+	ID        uuid.UUID   `json:"id"`
+	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
+	FirstName pgtype.Text `json:"first_name"`
+	LastName  pgtype.Text `json:"last_name"`
+	Email     string      `json:"email"`
+	OrgID     uuid.UUID   `json:"org_id"`
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (GetUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getUserByID, id)
-	var i User
+	var i GetUserByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.OrgID,
-		&i.Email,
 		&i.FirstName,
 		&i.LastName,
-		&i.Password,
-		&i.IsActive,
-		&i.IsVerified,
+		&i.Email,
+		&i.OrgID,
 	)
 	return i, err
 }
 
 const getUserByProviderAccount = `-- name: GetUserByProviderAccount :one
-SELECT 
-  u.id, u.created_at, u.updated_at, u.org_id, u.email, u.first_name, u.last_name, u.password, u.is_active, u.is_verified, 
-  array_agg(oa.*) AS oauth_accounts
+SELECT
+  u.id, u.created_at, u.updated_at, u.first_name, u.last_name, u.email, u.org_id
 FROM users u
-INNER JOIN oauth_accounts a ON u.id = a.user_id
-WHERE a.provider = $1 AND a.provider_account_id = $2
+WHERE u.id IN (
+  SELECT user_id
+  FROM oauth_accounts
+  WHERE provider = $1 AND provider_account_id = $2
+)
 `
 
 type GetUserByProviderAccountParams struct {
@@ -198,17 +213,13 @@ type GetUserByProviderAccountParams struct {
 }
 
 type GetUserByProviderAccountRow struct {
-	ID            uuid.UUID   `json:"id"`
-	CreatedAt     time.Time   `json:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at"`
-	OrgID         uuid.UUID   `json:"org_id"`
-	Email         string      `json:"email"`
-	FirstName     pgtype.Text `json:"first_name"`
-	LastName      pgtype.Text `json:"last_name"`
-	Password      pgtype.Text `json:"password"`
-	IsActive      bool        `json:"is_active"`
-	IsVerified    bool        `json:"is_verified"`
-	OauthAccounts interface{} `json:"oauth_accounts"`
+	ID        uuid.UUID   `json:"id"`
+	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
+	FirstName pgtype.Text `json:"first_name"`
+	LastName  pgtype.Text `json:"last_name"`
+	Email     string      `json:"email"`
+	OrgID     uuid.UUID   `json:"org_id"`
 }
 
 func (q *Queries) GetUserByProviderAccount(ctx context.Context, arg GetUserByProviderAccountParams) (GetUserByProviderAccountRow, error) {
@@ -218,51 +229,10 @@ func (q *Queries) GetUserByProviderAccount(ctx context.Context, arg GetUserByPro
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.OrgID,
-		&i.Email,
 		&i.FirstName,
 		&i.LastName,
-		&i.Password,
-		&i.IsActive,
-		&i.IsVerified,
-		&i.OauthAccounts,
+		&i.Email,
+		&i.OrgID,
 	)
 	return i, err
-}
-
-const getUsersByEmail = `-- name: GetUsersByEmail :many
-SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
-FROM users
-WHERE email = $1
-`
-
-func (q *Queries) GetUsersByEmail(ctx context.Context, email string) ([]User, error) {
-	rows, err := q.db.Query(ctx, getUsersByEmail, email)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []User
-	for rows.Next() {
-		var i User
-		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.OrgID,
-			&i.Email,
-			&i.FirstName,
-			&i.LastName,
-			&i.Password,
-			&i.IsActive,
-			&i.IsVerified,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }
