@@ -1,28 +1,37 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"os"
 
-	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/getkin/kin-openapi/openapi3gen"
-	"go.breu.io/quantm/internal/db/entities"
+	"github.com/a-h/rest"
+	"gopkg.in/yaml.v3"
 )
 
 func main() {
-	schemas := make(openapi3.Schemas)
-	ref, _ := openapi3gen.NewSchemaRefForValue(&entities.CreateOrgParams{}, schemas)
+	api := rest.NewAPI("Quantm REST API", rest.WithApplyCustomSchemaToType(custom))
+	api.StripPkgPaths = []string{
+		"go.breu.io/quantm/internal/db/entities",
+		"go.breu.io/quantm/internal/shared",
+		"main",
+	}
 
-	data, err := json.MarshalIndent(schemas, "", "  ")
+	models_shared(api)
+
+	orgs(api)
+	// teams(api)
+
+	spec, err := api.Spec()
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Printf("schemas: %s\n", data)
+	spec.Info.Description = "Quantm REST API"
+	spec.Info.Version = "0.1.0"
 
-	if data, err = json.MarshalIndent(ref, "", "  "); err != nil {
+	enc := yaml.NewEncoder(os.Stdout)
+	enc.SetIndent(2)
+
+	if err := enc.Encode(spec); err != nil {
 		panic(err)
 	}
-
-	fmt.Printf("schemaRef: %s\n", data)
 }

@@ -5,20 +5,20 @@ WHERE id = $1
 LIMIT 1;
 
 -- name: CreateTeam :one
-INSERT INTO teams (name) 
-VALUES ($1) 
-RETURNING id, name;
+INSERT INTO teams (name, org_id)
+VALUES ($1, $2)
+RETURNING *;
 
--- name: GetTeamByName :one
-SELECT id, name 
-FROM teams 
-WHERE name = $1;
+-- name: GetTeamBySlug :one
+SELECT id, name
+FROM teams
+WHERE slug = $1;
 
 -- name: UpdateTeam :one
 UPDATE teams
-SET org_id = $2, name = $3, slug = $4
+SET name = $2
 WHERE id = $1
-RETURNING id, created_at, name, slug;
+RETURNING *;
 
 -- name: DeleteTeam :exec
 DELETE FROM teams

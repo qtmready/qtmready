@@ -10,26 +10,6 @@ import (
 	"strings"
 )
 
-// APIError defines the structure of an API error response
-type APIError struct {
-	Code     int       `json:"code"`
-	Errors   *ErrorMap `json:"errors,omitempty"`
-	Internal error     `json:"-"`
-	Message  error     `json:"message"`
-}
-
-// BadRequest defines the structure of an API error response
-type BadRequest = APIError
-
-// InternalServerError defines the structure of an API error response
-type InternalServerError = APIError
-
-// NotFound defines the structure of an API error response
-type NotFound = APIError
-
-// Unauthorized defines the structure of an API error response
-type Unauthorized = APIError
-
 // RequestEditorFn  is the function signature for the RequestEditor callback function
 type RequestEditorFn func(ctx context.Context, req *http.Request) error
 

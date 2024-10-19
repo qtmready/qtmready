@@ -41,8 +41,27 @@ var (
 )
 
 type (
+	// APIError defines the structure of an API error response.
+	APIError struct {
+		Code     int       `json:"code"`
+		Errors   *ErrorMap `json:"errors,omitempty"`
+		internal error     `json:"-"`
+		Message  string    `json:"message"`
+	}
 	// ErrorMap is a map of error messages keyed by field names.
 	ErrorMap map[string]string
+
+	// BadRequest defines the structure of an API error response.
+	BadRequest = APIError
+
+	// InternalServerError defines the structure of an API error response.
+	InternalServerError = APIError
+
+	// NotFound defines the structure of an API error response.
+	NotFound = APIError
+
+	// Unauthorized defines the structure of an API error response.
+	Unauthorized = APIError
 )
 
 // Get retrieves a value from an ErrorMap by key.
@@ -54,8 +73,8 @@ func (e *ErrorMap) Get(key string) (string, bool) {
 // format formats the APIError for JSON serialization.
 func (e *APIError) format() *APIError {
 	// Message is always an error, so no need to convert.
-	if e.Internal != nil && e.Errors == nil {
-		e.Errors = &ErrorMap{"internal": e.Internal.Error()}
+	if e.internal != nil && e.Errors == nil {
+		e.Errors = &ErrorMap{"internal": e.internal.(error).Error()}
 	}
 
 	return e
@@ -63,17 +82,17 @@ func (e *APIError) format() *APIError {
 
 // Error returns a string representation of the APIError.
 func (e *APIError) Error() string {
-	return fmt.Sprintf("%d: %s", e.Code, e.Message.Error())
+	return fmt.Sprintf("%d: %s", e.Code, e.Message)
 }
 
 // SetInternal sets the internal error for this APIError.
 func (e *APIError) SetInternal(err error) {
-	e.Internal = err
+	e.internal = err
 }
 
 // WithInternal returns a new APIError with the given internal error.
 func (e *APIError) WithInternal(err error) *APIError {
-	e.Internal = err
+	e.internal = err
 	return e
 }
 
@@ -157,8 +176,8 @@ func respond(ctx echo.Context, err *APIError) error {
 // NewAPIError creates a new APIError instance.
 func NewAPIError(code int, message error) *APIError {
 	return &APIError{
-		Message:  echo.NewHTTPError(code, message),
-		Internal: nil,
+		// Message:  echo.NewHTTPError(code, message),
+		internal: nil,
 		Code:     code, // Set the Code
 	}
 }
