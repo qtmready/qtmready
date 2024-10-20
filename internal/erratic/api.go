@@ -1,4 +1,4 @@
-package rest
+package erratic
 
 import (
 	"github.com/go-playground/validator/v10"
@@ -63,6 +63,7 @@ func (e *APIError) AddInfo(key, value string) *APIError {
 	}
 
 	e.Info[key] = value
+
 	return e
 }
 
@@ -85,6 +86,22 @@ func (e *APIError) FormatValidationError(err error) *APIError {
 	}
 
 	return e
+}
+
+func (e *APIError) NotLoggedIn() *APIError {
+	return e.AddInfo("reason", "are you logged in?")
+}
+
+func (e *APIError) IllegalAccess() *APIError {
+	return e.AddInfo("reason", "you are not allowed to access this resource")
+}
+
+func (e *APIError) DataBaseError(err error) *APIError {
+	return e.AddInfo("reason", "database error").AddInfo("internal", err.Error())
+}
+
+func (e *APIError) SetInternal(err error) *APIError {
+	return e.AddInfo("internal", err.Error())
 }
 
 // NewAPIError creates a new APIError instance.
