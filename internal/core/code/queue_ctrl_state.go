@@ -334,11 +334,11 @@ func (q *Queue) deserialize(ctx workflow.Context, members QueueMembers) {
 	q.tail = nil
 	q.index = make(map[int64]*Node)
 
-	prev := &Node{}
-
-	for _, member := range members {
+	var prev *Node
+	for i, member := range members {
 		node := &Node{pr: member.PR}
-		if prev == nil {
+
+		if i == 0 {
 			q.head = node
 		} else {
 			prev.next = node
