@@ -20,6 +20,7 @@
 package auth
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -135,4 +136,12 @@ func Derive() []byte {
 	_, _ = io.ReadFull(kdf, key)
 
 	return key
+}
+
+func GeneratePassword(length int) (string, error) {
+	b := make([]byte, length)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(b), nil
 }
