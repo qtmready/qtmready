@@ -1,6 +1,6 @@
 -- name: CreateOrg :one
-INSERT INTO orgs (name, slug)
-VALUES ($1, $2)
+INSERT INTO orgs (name, domain, slug)
+VALUES ($1, $2, $3)
 RETURNING *;
 
 -- name: UpdateOrg :one
