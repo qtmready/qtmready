@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
 )
@@ -21,7 +22,7 @@ type (
 	UpdateTeamRequest = entities.UpdateTeamParams
 )
 
-// CreateTeam Create a new team
+// CreateTeam Create a new team.
 func CreateTeam(ctx context.Context, req CreateTeamRequest) (entities.Team, error) {
 	val := ctx.Value("org_id")
 	orgID, ok := val.(uuid.UUID)
@@ -31,7 +32,7 @@ func CreateTeam(ctx context.Context, req CreateTeamRequest) (entities.Team, erro
 	return db.Queries().CreateTeam(ctx, entities.CreateTeamParams{Name: req.Name, OrgID: orgID})
 }
 
-// GetTeam Get a team by ID
+// GetTeam Get a team by ID.
 func GetTeam(ctx context.Context, req GetTeamRequest) (entities.Team, error) {
 	team, err := db.Queries().GetTeam(ctx, req.ID)
 	if err != nil {
@@ -51,7 +52,7 @@ func GetTeam(ctx context.Context, req GetTeamRequest) (entities.Team, error) {
 	return team, nil
 }
 
-// UpdateTeam Update a team by ID
+// UpdateTeam Update a team by ID.
 func UpdateTeam(ctx context.Context, req UpdateTeamRequest) (entities.Team, error) {
 	team, err := db.Queries().UpdateTeam(ctx, req)
 	if err != nil {

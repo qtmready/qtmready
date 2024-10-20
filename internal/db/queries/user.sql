@@ -13,7 +13,7 @@ LIMIT 1;
 -- name: GetUserByEmail :one
 SELECT id, created_at, updated_at, first_name, last_name, email, org_id
 FROM users
-WHERE email = $1;
+WHERE email = LOWER($1);
 
 
 -- name: GetUserByEmailFull :one
@@ -32,7 +32,7 @@ LEFT JOIN oauth_accounts AS oa
 LEFT JOIN orgs AS o
   ON u.org_id = o.id
 WHERE
-  u.email = $1
+  u.email = LOWER($1)
 GROUP BY
   u.id;
 
@@ -50,3 +50,15 @@ WHERE u.id IN (
   FROM oauth_accounts
   WHERE provider = $1 AND provider_account_id = $2
 );
+
+-- name: UpdateUser :one
+UPDATE users
+SET first_name = $2, last_name = $3, email = LOWER($4), org_id = $5
+WHERE id = $1
+RETURNING id, created_at, updated_at, first_name, last_name, email, org_id;
+
+-- name: UpdateUserPassword :one
+UPDATE users
+SET password = $2
+WHERE id = $1
+RETURNING id, created_at, updated_at, first_name, last_name, email, org_id;
