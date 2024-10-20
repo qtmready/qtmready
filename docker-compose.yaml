@@ -1,42 +1,39 @@
 services:
-  # common
-  database:
-    container_name: database
-    image: scylladb/scylla:6.1.1
-    ports:
-      - "9042:9042"
-    volumes:
-      - db-data:/var/lib/scylla
-    command: --smp 1 --skip-wait-for-gossip-to-settle 0
-    networks:
-      - ctrlplane
-
-  database-init:
-    container_name: ctrlplane-db-init
-    image: scylladb/scylla-cqlsh:v6.0.20
-    depends_on:
-      - database
-    volumes:
-      - ./deploy/cassandra/keyspace.cql:/keyspace.cql
-    command: database -f /keyspace.cql
-    deploy:
-      restart_policy:
-        condition: on-failure
-        delay: 5s
-        max_attempts: 10
-        window: 120s
-    networks:
-      - ctrlplane
+  ################################
+  # required services
+  #
+  # - temporal: for workflow management
+  # - zitadel: for identity and access management
+  ################################
 
   # temporal.io
+
+  temporal-db:
+    container_name: temporal-db
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${TEMPORAL__DB_USER}
+      POSTGRES_PASSWORD: ${TEMPORAL__DB_PASS}
+      POSTGRES_DB: ${TEMPORAL__DB_NAME}
+    volumes:
+      - temporal-db-data:/var/lib/postgresql/data
+    networks:
+      - ctrlplane
+
   temporal:
     container_name: temporal
     depends_on:
-      - database
+      - temporal-db
     environment:
-      - CASSANDRA_SEEDS=database
-      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-cass.yaml
-    image: temporalio/auto-setup:1.23.0
+      DB: postgres12_pgx
+      SQL_HOST_NAME: temporal-db
+      DBNAME: ${TEMPORAL__DB_NAME}
+      DB_PORT: 5432
+      POSTGRES_USER: ${TEMPORAL__DB_USER}
+      POSTGRES_PWD: ${TEMPORAL__DB_PASS}
+      POSTGRES_SEEDS: temporal-db
+      DYNAMIC_CONFIG_FILE_PATH: config/dynamicconfig/development.yaml
+    image: temporalio/auto-setup:1.25.1
     ports:
       - "7233:7233"
     volumes:
@@ -44,146 +41,220 @@ services:
     networks:
       - ctrlplane
 
-  temporal-admin-tools:
-    container_name: temporal-admin-tools
-    depends_on:
-      - temporal
-    environment:
-      - TEMPORAL_CLI_ADDRESS=temporal:7233
-    image: temporalio/admin-tools:1.23.0
-    stdin_open: true
-    tty: true
-    networks:
-      - ctrlplane
+  ################################
+  # quantm.io ctrlplane
+  ################################
 
-  temporal-ui:
-    container_name: temporal-ui
-    depends_on:
-      - temporal
-    environment:
-      TEMPORAL_ADDRESS: temporal:7233
-      TEMPORAL_CORS_ORIGINS: http://localhost:3000
-    image: temporalio/ui:2.31.0
+  ctrlplane-db:
+    container_name: ctrlplane-db
+    image: postgres:16
     ports:
-      - 8080:8080
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${DB__USER}
+      POSTGRES_PASSWORD: ${DB__PASS}
+      POSTGRES_DB: ${DB__NAME}
+    volumes:
+      - ctrlplane-db-data:/var/lib/postgresql/data
     networks:
       - ctrlplane
 
-  # quantm.io
-  ctrlplane-job-migrate:
-    profiles:
-      - full
-      - api
-      - mothership
-      - migrate
-    container_name: ctrlplane-job-migrate
-    image: cosmtrek/air:v1.52.3
-    environment:
-      GOTOOLCHAIN: auto
-      SERVICE_NAME: migrate
-      CASSANDRA_MIGRATION_SOURCE_URL: file:///migrate/internal/db/migrations
-    env_file:
-      - ./.env
-    volumes:
-      - ./deploy/air/migrate.toml:/migrate/.air.toml
-      - ./:/migrate/
-      - job-migrate-go-pkg-mod:/go/pkg/mod
-      - job-migrate-build-cache:/root/.cache/go-build
-    working_dir: /migrate
-    networks:
-      - ctrlplane
-
-  ctrlplane-api:
-    profiles:
-      - full
-      - api
-    container_name: ctrlplane-api
-    image: cosmtrek/air:v1.52.3
-    environment:
-      GOTOOLCHAIN: auto
-      SERVICE_NAME: api
-    env_file:
-      - ./.env
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./deploy/air/api.toml:/api/.air.toml
-      - ./:/api/
-      - api-go-pkg-mod:/go/pkg/mod
-      - api-build-cache:/root/.cache/go-build
-    working_dir: /api
-    networks:
-      - ctrlplane
-
-  ctrlplane-worker--mothership:
-    container_name: ctrlplane-worker--mothership
-    profiles:
-      - mothership
-      - full
-    image: cosmtrek/air:v1.52.3
-    environment:
-      GOTOOLCHAIN: auto
-      SERVICE_NAME: mothership
-      LOG_SKIPPER: 2
-    env_file:
-      - ./.env
-    volumes:
-      - ./deploy/air/mothership.toml:/mothership/.air.toml
-      - ./:/mothership/
-      - worker-mothership-go-pkg-mod:/go/pkg/mod
-      - worker-mothership-build-cache:/root/.cache/go-build
-    working_dir: /mothership
-    networks:
-      - ctrlplane
-
-  prod-api:
-    container_name: prod-api
-    profiles:
-      - prod
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: api
-    environment:
-      TEMPORAL_HOST: temporal
-      CASSANDRA_HOSTS: database
-    env_file:
-      - ./.env
-    ports:
-      - "8000:8000"
-    volumes:
-      - api-go-pkg-mod:/root/go/pkg/mod
-      - api-build-cache:/root/.cache/go-build
-    networks:
-      - ctrlplane
-
-  prod-worker-mothership:
-    container_name: prod-worker-mothership
-    profiles:
-      - prod
-    build:
-      context: .
-      dockerfile: Dockerfile
-      target: mothership
-    environment:
-      TEMPORAL_HOST: temporal
-      CASSANDRA_HOSTS: database
-    env_file:
-      - ./.env
-    volumes:
-      - worker-mothership-go-pkg-mod:/root/go/pkg/mod
-      - worker-mothership-build-cache:/root/.cache/go-build
-    networks:
-      - ctrlplane
+################################
+# network and storage
+################################
 
 networks:
   ctrlplane: {}
 
 volumes:
-  db-data: {}
-  api-go-pkg-mod: {}
-  api-build-cache: {}
-  worker-mothership-go-pkg-mod: {}
-  worker-mothership-build-cache: {}
-  job-migrate-go-pkg-mod: {}
-  job-migrate-build-cache: {}
+  temporal-db-data: {}
+  ctrlplane-db-data: {}
+# services:
+#   # common
+#   cass:
+#     container_name: cass
+#     image: scylladb/scylla:6.1.1
+#     ports:
+#       - "9042:9042"
+#     volumes:
+#       - cass-data:/var/lib/scylla
+#     command: --smp 1 --skip-wait-for-gossip-to-settle 0
+#     networks:
+#       - ctrlplane
+
+#   cass-init:
+#     container_name: ctrlplane-db-init
+#     image: scylladb/scylla-cqlsh:v6.0.20
+#     depends_on:
+#       - cass
+#     volumes:
+#       - ./deploy/cassandra/keyspace.cql:/keyspace.cql
+#     command: cass -f /keyspace.cql
+#     deploy:
+#       restart_policy:
+#         condition: on-failure
+#         delay: 5s
+#         max_attempts: 10
+#         window: 120s
+#     networks:
+#       - ctrlplane
+
+#   # temporal.io
+#   temporal:
+#     container_name: temporal
+#     depends_on:
+#       - cass
+#     environment:
+#       - CASSANDRA_SEEDS=cass
+#       - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-cass.yaml
+#     image: temporalio/auto-setup:1.23.0
+#     ports:
+#       - "7233:7233"
+#     volumes:
+#       - ./deploy/temporal/dynamicconfig/:/etc/temporal/config/dynamicconfig/
+#     networks:
+#       - ctrlplane
+
+#   temporal-admin-tools:
+#     container_name: temporal-admin-tools
+#     depends_on:
+#       - temporal
+#     environment:
+#       - TEMPORAL_CLI_ADDRESS=temporal:7233
+#     image: temporalio/admin-tools:1.23.0
+#     stdin_open: true
+#     tty: true
+#     networks:
+#       - ctrlplane
+
+#   temporal-ui:
+#     container_name: temporal-ui
+#     depends_on:
+#       - temporal
+#     environment:
+#       TEMPORAL_ADDRESS: temporal:7233
+#       TEMPORAL_CORS_ORIGINS: http://localhost:3000
+#     image: temporalio/ui:2.31.0
+#     ports:
+#       - 8080:8080
+#     networks:
+#       - ctrlplane
+
+#   # quantm.io
+#   ctrlplane-job-migrate:
+#     profiles:
+#       - full
+#       - api
+#       - mothership
+#       - migrate
+#     container_name: ctrlplane-job-migrate
+#     image: cosmtrek/air:v1.52.3
+#     environment:
+#       GOTOOLCHAIN: auto
+#       SERVICE_NAME: migrate
+#       CASSANDRA_MIGRATION_SOURCE_URL: file:///migrate/internal/db/migrations
+#     env_file:
+#       - ./.env
+#     volumes:
+#       - ./deploy/air/migrate.toml:/migrate/.air.toml
+#       - ./:/migrate/
+#       - job-migrate-go-pkg-mod:/go/pkg/mod
+#       - job-migrate-build-cache:/root/.cache/go-build
+#     working_dir: /migrate
+#     networks:
+#       - ctrlplane
+
+#   ctrlplane-api:
+#     profiles:
+#       - full
+#       - api
+#     container_name: ctrlplane-api
+#     image: cosmtrek/air:v1.52.3
+#     environment:
+#       GOTOOLCHAIN: auto
+#       SERVICE_NAME: api
+#     env_file:
+#       - ./.env
+#     ports:
+#       - "8000:8000"
+#     volumes:
+#       - ./deploy/air/api.toml:/api/.air.toml
+#       - ./:/api/
+#       - api-go-pkg-mod:/go/pkg/mod
+#       - api-build-cache:/root/.cache/go-build
+#     working_dir: /api
+#     networks:
+#       - ctrlplane
+
+#   ctrlplane-worker--mothership:
+#     container_name: ctrlplane-worker--mothership
+#     profiles:
+#       - mothership
+#       - full
+#     image: cosmtrek/air:v1.52.3
+#     environment:
+#       GOTOOLCHAIN: auto
+#       SERVICE_NAME: mothership
+#       LOG_SKIPPER: 2
+#     env_file:
+#       - ./.env
+#     volumes:
+#       - ./deploy/air/mothership.toml:/mothership/.air.toml
+#       - ./:/mothership/
+#       - worker-mothership-go-pkg-mod:/go/pkg/mod
+#       - worker-mothership-build-cache:/root/.cache/go-build
+#     working_dir: /mothership
+#     networks:
+#       - ctrlplane
+
+#   prod-api:
+#     container_name: prod-api
+#     profiles:
+#       - prod
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#       target: api
+#     environment:
+#       TEMPORAL_HOST: temporal
+#       CASSANDRA_HOSTS: cass
+#     env_file:
+#       - ./.env
+#     ports:
+#       - "8000:8000"
+#     volumes:
+#       - api-go-pkg-mod:/root/go/pkg/mod
+#       - api-build-cache:/root/.cache/go-build
+#     networks:
+#       - ctrlplane
+
+#   prod-worker-mothership:
+#     container_name: prod-worker-mothership
+#     profiles:
+#       - prod
+#     build:
+#       context: .
+#       dockerfile: Dockerfile
+#       target: mothership
+#     environment:
+#       TEMPORAL_HOST: temporal
+#       CASSANDRA_HOSTS: cass
+#     env_file:
+#       - ./.env
+#     volumes:
+#       - worker-mothership-go-pkg-mod:/root/go/pkg/mod
+#       - worker-mothership-build-cache:/root/.cache/go-build
+#     networks:
+#       - ctrlplane
+
+# networks:
+#   ctrlplane: {}
+
+# volumes:
+#   cass-data: {}
+#   api-go-pkg-mod: {}
+#   api-build-cache: {}
+#   worker-mothership-go-pkg-mod: {}
+#   worker-mothership-build-cache: {}
+#   job-migrate-go-pkg-mod: {}
+#   job-migrate-build-cache: {}
