@@ -84,7 +84,7 @@ func (q *Queries) GetUser(ctx context.Context, id uuid.UUID) (User, error) {
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, created_at, updated_at, first_name, last_name, email, org_id
 FROM users
-WHERE email = $1
+WHERE email = LOWER($1)
 `
 
 type GetUserByEmailRow struct {
@@ -97,8 +97,8 @@ type GetUserByEmailRow struct {
 	OrgID     uuid.UUID   `json:"org_id"`
 }
 
-func (q *Queries) GetUserByEmail(ctx context.Context, email string) (GetUserByEmailRow, error) {
-	row := q.db.QueryRow(ctx, getUserByEmail, email)
+func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (GetUserByEmailRow, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, lower)
 	var i GetUserByEmailRow
 	err := row.Scan(
 		&i.ID,
@@ -128,7 +128,7 @@ LEFT JOIN oauth_accounts AS oa
 LEFT JOIN orgs AS o
   ON u.org_id = o.id
 WHERE
-  u.email = $1
+  u.email = LOWER($1)
 GROUP BY
   u.id
 `
@@ -146,8 +146,8 @@ type GetUserByEmailFullRow struct {
 	Orgs          interface{} `json:"orgs"`
 }
 
-func (q *Queries) GetUserByEmailFull(ctx context.Context, email string) (GetUserByEmailFullRow, error) {
-	row := q.db.QueryRow(ctx, getUserByEmailFull, email)
+func (q *Queries) GetUserByEmailFull(ctx context.Context, lower string) (GetUserByEmailFullRow, error) {
+	row := q.db.QueryRow(ctx, getUserByEmailFull, lower)
 	var i GetUserByEmailFullRow
 	err := row.Scan(
 		&i.ID,
@@ -225,6 +225,89 @@ type GetUserByProviderAccountRow struct {
 func (q *Queries) GetUserByProviderAccount(ctx context.Context, arg GetUserByProviderAccountParams) (GetUserByProviderAccountRow, error) {
 	row := q.db.QueryRow(ctx, getUserByProviderAccount, arg.Provider, arg.ProviderAccountID)
 	var i GetUserByProviderAccountRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FirstName,
+		&i.LastName,
+		&i.Email,
+		&i.OrgID,
+	)
+	return i, err
+}
+
+const updateUser = `-- name: UpdateUser :one
+UPDATE users
+SET first_name = $2, last_name = $3, email = LOWER($4), org_id = $5
+WHERE id = $1
+RETURNING id, created_at, updated_at, first_name, last_name, email, org_id
+`
+
+type UpdateUserParams struct {
+	ID        uuid.UUID   `json:"id"`
+	FirstName pgtype.Text `json:"first_name"`
+	LastName  pgtype.Text `json:"last_name"`
+	Lower     string      `json:"lower"`
+	OrgID     uuid.UUID   `json:"org_id"`
+}
+
+type UpdateUserRow struct {
+	ID        uuid.UUID   `json:"id"`
+	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
+	FirstName pgtype.Text `json:"first_name"`
+	LastName  pgtype.Text `json:"last_name"`
+	Email     string      `json:"email"`
+	OrgID     uuid.UUID   `json:"org_id"`
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (UpdateUserRow, error) {
+	row := q.db.QueryRow(ctx, updateUser,
+		arg.ID,
+		arg.FirstName,
+		arg.LastName,
+		arg.Lower,
+		arg.OrgID,
+	)
+	var i UpdateUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FirstName,
+		&i.LastName,
+		&i.Email,
+		&i.OrgID,
+	)
+	return i, err
+}
+
+const updateUserPassword = `-- name: UpdateUserPassword :one
+UPDATE users
+SET password = $2
+WHERE id = $1
+RETURNING id, created_at, updated_at, first_name, last_name, email, org_id
+`
+
+type UpdateUserPasswordParams struct {
+	ID       uuid.UUID   `json:"id"`
+	Password pgtype.Text `json:"password"`
+}
+
+type UpdateUserPasswordRow struct {
+	ID        uuid.UUID   `json:"id"`
+	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
+	FirstName pgtype.Text `json:"first_name"`
+	LastName  pgtype.Text `json:"last_name"`
+	Email     string      `json:"email"`
+	OrgID     uuid.UUID   `json:"org_id"`
+}
+
+func (q *Queries) UpdateUserPassword(ctx context.Context, arg UpdateUserPasswordParams) (UpdateUserPasswordRow, error) {
+	row := q.db.QueryRow(ctx, updateUserPassword, arg.ID, arg.Password)
+	var i UpdateUserPasswordRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
