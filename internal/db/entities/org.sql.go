@@ -12,24 +12,26 @@ import (
 )
 
 const createOrg = `-- name: CreateOrg :one
-INSERT INTO orgs (name, slug)
-VALUES ($1, $2)
-RETURNING id, created_at, updated_at, name, slug
+INSERT INTO orgs (name, domain, slug)
+VALUES ($1, $2, $3)
+RETURNING id, created_at, updated_at, name, domain, slug
 `
 
 type CreateOrgParams struct {
-	Name string `json:"name"`
-	Slug string `json:"slug"`
+	Name   string `json:"name"`
+	Domain string `json:"domain"`
+	Slug   string `json:"slug"`
 }
 
 func (q *Queries) CreateOrg(ctx context.Context, arg CreateOrgParams) (Org, error) {
-	row := q.db.QueryRow(ctx, createOrg, arg.Name, arg.Slug)
+	row := q.db.QueryRow(ctx, createOrg, arg.Name, arg.Domain, arg.Slug)
 	var i Org
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Name,
+		&i.Domain,
 		&i.Slug,
 	)
 	return i, err
@@ -49,7 +51,7 @@ const updateOrg = `-- name: UpdateOrg :one
 UPDATE orgs
 SET name = $2
 WHERE id = $1
-RETURNING id, created_at, updated_at, name, slug
+RETURNING id, created_at, updated_at, name, domain, slug
 `
 
 type UpdateOrgParams struct {
@@ -65,6 +67,7 @@ func (q *Queries) UpdateOrg(ctx context.Context, arg UpdateOrgParams) (Org, erro
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Name,
+		&i.Domain,
 		&i.Slug,
 	)
 	return i, err
