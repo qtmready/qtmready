@@ -110,13 +110,13 @@ type GithubRepo struct {
 }
 
 type GithubUser struct {
-	ID          uuid.UUID   `json:"id"`
-	CreatedAt   time.Time   `json:"created_at"`
-	UpdatedAt   time.Time   `json:"updated_at"`
-	UserID      pgtype.UUID `json:"user_id"`
-	GithubID    int64       `json:"github_id"`
-	GithubOrgID uuid.UUID   `json:"github_org_id"`
-	Login       string      `json:"login"`
+	ID          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	UserID      uuid.UUID `json:"user_id"`
+	GithubID    int64     `json:"github_id"`
+	GithubOrgID uuid.UUID `json:"github_org_id"`
+	Login       string    `json:"login"`
 }
 
 type Messaging struct {
@@ -130,14 +130,14 @@ type Messaging struct {
 }
 
 type OauthAccount struct {
-	ID                uuid.UUID          `json:"id"`
-	CreatedAt         time.Time          `json:"created_at"`
-	UpdatedAt         time.Time          `json:"updated_at"`
-	UserID            uuid.UUID          `json:"user_id"`
-	Provider          string             `json:"provider"`
-	ProviderAccountID string             `json:"provider_account_id"`
-	ExpiresAt         pgtype.Timestamptz `json:"expires_at"`
-	Type              pgtype.Text        `json:"type"`
+	ID                uuid.UUID   `json:"id"`
+	CreatedAt         time.Time   `json:"created_at"`
+	UpdatedAt         time.Time   `json:"updated_at"`
+	UserID            uuid.UUID   `json:"user_id"`
+	Provider          string      `json:"provider"`
+	ProviderAccountID string      `json:"provider_account_id"`
+	ExpiresAt         time.Time   `json:"expires_at"`
+	Type              pgtype.Text `json:"type"`
 }
 
 type Org struct {
@@ -145,6 +145,7 @@ type Org struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Name      string    `json:"name"`
+	Domain    string    `json:"domain"`
 	Slug      string    `json:"slug"`
 }
 
@@ -156,9 +157,9 @@ type Repo struct {
 	Name          string          `json:"name"`
 	Provider      string          `json:"provider"`
 	ProviderID    string          `json:"provider_id"`
-	DefaultBranch pgtype.Text     `json:"default_branch"`
-	IsMonorepo    pgtype.Bool     `json:"is_monorepo"`
-	Threshold     pgtype.Int4     `json:"threshold"`
+	DefaultBranch string          `json:"default_branch"`
+	IsMonorepo    bool            `json:"is_monorepo"`
+	Threshold     int32           `json:"threshold"`
 	StaleDuration pgtype.Interval `json:"stale_duration"`
 }
 

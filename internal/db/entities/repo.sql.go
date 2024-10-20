@@ -23,9 +23,9 @@ type CreateRepoParams struct {
 	Name          string          `json:"name"`
 	Provider      string          `json:"provider"`
 	ProviderID    string          `json:"provider_id"`
-	DefaultBranch pgtype.Text     `json:"default_branch"`
-	IsMonorepo    pgtype.Bool     `json:"is_monorepo"`
-	Threshold     pgtype.Int4     `json:"threshold"`
+	DefaultBranch string          `json:"default_branch"`
+	IsMonorepo    bool            `json:"is_monorepo"`
+	Threshold     int32           `json:"threshold"`
 	StaleDuration pgtype.Interval `json:"stale_duration"`
 }
 
@@ -150,9 +150,9 @@ type UpdateRepoParams struct {
 	Name          string          `json:"name"`
 	Provider      string          `json:"provider"`
 	ProviderID    string          `json:"provider_id"`
-	DefaultBranch pgtype.Text     `json:"default_branch"`
-	IsMonorepo    pgtype.Bool     `json:"is_monorepo"`
-	Threshold     pgtype.Int4     `json:"threshold"`
+	DefaultBranch string          `json:"default_branch"`
+	IsMonorepo    bool            `json:"is_monorepo"`
+	Threshold     int32           `json:"threshold"`
 	StaleDuration pgtype.Interval `json:"stale_duration"`
 }
 

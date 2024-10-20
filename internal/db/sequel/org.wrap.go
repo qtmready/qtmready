@@ -11,7 +11,8 @@ import (
 
 type (
 	CreateOrgRequest struct {
-		Name string `json:"name" validate:"required"`
+		Name   string `json:"name" validate:"required"`
+		Domain string `json:"domain" validate:"required"`
 	}
 
 	UpdateOrgRequest = entities.UpdateOrgParams
@@ -23,7 +24,7 @@ func CreateOrg(ctx context.Context, req CreateOrgRequest) (entities.Org, error) 
 		return entities.Org{}, erratic.NewBadRequestError().FormatValidationError(err)
 	}
 
-	org, err := db.Queries().CreateOrg(ctx, entities.CreateOrgParams{Name: req.Name, Slug: db.CreateSlug(req.Name)})
+	org, err := db.Queries().CreateOrg(ctx, entities.CreateOrgParams{Name: req.Name, Domain: req.Domain, Slug: db.CreateSlug(req.Name)})
 	if err != nil {
 		return entities.Org{}, erratic.NewInternalServerError().DataBaseError(err)
 	}

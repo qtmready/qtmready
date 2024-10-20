@@ -4,8 +4,8 @@ create table orgs (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   name varchar(255) not null,
-  slug varchar(255) not null,
-  domain varchar(255) not null
+  domain varchar(255) not null,
+  slug varchar(255) not null
 );
 
 -- auth::orgs::trigger
@@ -58,7 +58,7 @@ create table oauth_accounts (
   user_id uuid not null references users (id),
   provider varchar(255) not null,
   provider_account_id varchar(255) not null,
-  expires_at timestamptz,
+  expires_at timestamptz not null,
   type varchar(255)
 );
 
@@ -95,10 +95,10 @@ create table repos (
   name varchar(255) not null,
   provider varchar(255) not null,
   provider_id varchar(255) not null,
-  default_branch varchar(255),
-  is_monorepo boolean,
-  threshold integer,
-  stale_duration interval
+  default_branch varchar(255) not null default 'main',
+  is_monorepo boolean not null default false,
+  threshold integer not null default 500,
+  stale_duration interval default '2 days'
 );
 
 -- core::repos::trigger
@@ -136,7 +136,7 @@ create table github_orgs (
   id uuid primary key default uuid_generate_v7(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  installation_id uuid not null references github_installations (id),
+  installation_id uuid not null references github_installations (id) not null,
   github_org_id bigint not null,
   name varchar(255) not null
 );
@@ -155,7 +155,7 @@ create table github_users (
   id uuid primary key default uuid_generate_v7(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  user_id uuid references users (id),
+  user_id uuid references users (id) not null,
   github_id bigint not null,
   github_org_id uuid not null references github_orgs (id),
   login varchar(255) not null

@@ -9,7 +9,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createGithubUser = `-- name: CreateGithubUser :one
@@ -19,10 +18,10 @@ RETURNING id, created_at, updated_at, user_id, github_id, github_org_id, login
 `
 
 type CreateGithubUserParams struct {
-	UserID      pgtype.UUID `json:"user_id"`
-	GithubID    int64       `json:"github_id"`
-	GithubOrgID uuid.UUID   `json:"github_org_id"`
-	Login       string      `json:"login"`
+	UserID      uuid.UUID `json:"user_id"`
+	GithubID    int64     `json:"github_id"`
+	GithubOrgID uuid.UUID `json:"github_org_id"`
+	Login       string    `json:"login"`
 }
 
 func (q *Queries) CreateGithubUser(ctx context.Context, arg CreateGithubUserParams) (GithubUser, error) {
@@ -147,7 +146,7 @@ FROM github_users
 WHERE user_id = $1
 `
 
-func (q *Queries) GetGithubUserByUserID(ctx context.Context, userID pgtype.UUID) (GithubUser, error) {
+func (q *Queries) GetGithubUserByUserID(ctx context.Context, userID uuid.UUID) (GithubUser, error) {
 	row := q.db.QueryRow(ctx, getGithubUserByUserID, userID)
 	var i GithubUser
 	err := row.Scan(
@@ -170,11 +169,11 @@ RETURNING id, created_at, updated_at, user_id, github_id, github_org_id, login
 `
 
 type UpdateGithubUserParams struct {
-	ID          uuid.UUID   `json:"id"`
-	UserID      pgtype.UUID `json:"user_id"`
-	GithubID    int64       `json:"github_id"`
-	GithubOrgID uuid.UUID   `json:"github_org_id"`
-	Login       string      `json:"login"`
+	ID          uuid.UUID `json:"id"`
+	UserID      uuid.UUID `json:"user_id"`
+	GithubID    int64     `json:"github_id"`
+	GithubOrgID uuid.UUID `json:"github_org_id"`
+	Login       string    `json:"login"`
 }
 
 func (q *Queries) UpdateGithubUser(ctx context.Context, arg UpdateGithubUserParams) (GithubUser, error) {
