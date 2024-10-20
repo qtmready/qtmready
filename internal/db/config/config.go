@@ -1,4 +1,4 @@
-package db
+package config
 
 import (
 	"context"
@@ -15,13 +15,13 @@ import (
 )
 
 var (
-	_pg     *pg
-	queries *entities.Queries
-	once    sync.Once
+	_conf *config
+	_qry  *entities.Queries
+	once  sync.Once
 )
 
 type (
-	pg struct {
+	config struct {
 		Host      string `env:"DB__HOST" env-default:"db"`
 		Name      string `env:"DB__NAME" env-default:"ctrlplane"`
 		Port      int    `env:"DB__PORT" env-default:"5432"`
@@ -32,10 +32,10 @@ type (
 		conn *pgx.Conn
 	}
 
-	Option func(*pg)
+	Option func(*config)
 )
 
-func (c *pg) ConnectionString() string {
+func (c *config) ConnectionString() string {
 	ssl := "disable"
 	if c.EnableSSL {
 		ssl = "require"
@@ -47,7 +47,7 @@ func (c *pg) ConnectionString() string {
 	)
 }
 
-func (c *pg) retryfn() error {
+func (c *config) retryfn() error {
 	conn, err := pgx.Connect(context.Background(), c.ConnectionString())
 
 	if err != nil {
@@ -59,7 +59,7 @@ func (c *pg) retryfn() error {
 	return nil
 }
 
-func (c *pg) connect() {
+func (c *config) connect() {
 	if c.conn != nil {
 		slog.Warn("db: already connected")
 	}
@@ -96,7 +96,7 @@ func (c *pg) connect() {
 }
 
 func WithConfigFromEnvironment() Option {
-	return func(c *pg) {
+	return func(c *config) {
 		if err := cleanenv.ReadEnv(c); err != nil {
 			panic(fmt.Errorf("db: unable to read environment variables, %v", err))
 		}
@@ -104,16 +104,16 @@ func WithConfigFromEnvironment() Option {
 }
 
 func WithConnect() Option {
-	return func(c *pg) {
+	return func(c *config) {
 		c.connect()
 	}
 }
 
 func Close() {
-	if _pg != nil && _pg.conn != nil {
+	if _conf != nil && _conf.conn != nil {
 		slog.Info("db: closing connection ...")
 
-		_pg.conn.Close(context.Background())
+		_conf.conn.Close(context.Background())
 	}
 }
 
@@ -121,22 +121,22 @@ func Queries() *entities.Queries {
 	once.Do(func() {
 		slog.Info("db: initializing queries ...")
 
-		_pg, _ = NewConfig(
+		_conf, _ = NewConfig(
 			WithConfigFromEnvironment(),
 			WithConnect(),
 		)
 
-		queries = entities.New(_pg.conn)
+		_qry = entities.New(_conf.conn)
 	})
 
-	return queries
+	return _qry
 }
 
-func NewConfig(opts ...Option) (*pg, error) {
-	_pg = &pg{}
+func NewConfig(opts ...Option) (*config, error) {
+	_conf = &config{}
 	for _, opt := range opts {
-		opt(_pg)
+		opt(_conf)
 	}
 
-	return _pg, nil
+	return _conf, nil
 }

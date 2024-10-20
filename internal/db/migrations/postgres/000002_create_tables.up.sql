@@ -4,7 +4,8 @@ create table orgs (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   name varchar(255) not null,
-  slug varchar(255) not null
+  slug varchar(255) not null,
+  domain varchar(255) not null
 );
 
 -- auth::orgs::trigger
