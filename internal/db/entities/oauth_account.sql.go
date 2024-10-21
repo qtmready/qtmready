@@ -71,39 +71,31 @@ func (q *Queries) GetOAuthAccountByID(ctx context.Context, id uuid.UUID) (OauthA
 	return i, err
 }
 
-const getOAuthAccountsByProviderAccountID = `-- name: GetOAuthAccountsByProviderAccountID :many
+const getOAuthAccountsByProviderAccountID = `-- name: GetOAuthAccountsByProviderAccountID :one
 SELECT id, created_at, updated_at, user_id, provider, provider_account_id, expires_at, type
 FROM oauth_accounts
-WHERE provider_account_id = $1
+WHERE provider_account_id = $1 and provider = $2
 `
 
-func (q *Queries) GetOAuthAccountsByProviderAccountID(ctx context.Context, providerAccountID string) ([]OauthAccount, error) {
-	rows, err := q.db.Query(ctx, getOAuthAccountsByProviderAccountID, providerAccountID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []OauthAccount
-	for rows.Next() {
-		var i OauthAccount
-		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.UserID,
-			&i.Provider,
-			&i.ProviderAccountID,
-			&i.ExpiresAt,
-			&i.Type,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+type GetOAuthAccountsByProviderAccountIDParams struct {
+	ProviderAccountID string `json:"provider_account_id"`
+	Provider          string `json:"provider"`
+}
+
+func (q *Queries) GetOAuthAccountsByProviderAccountID(ctx context.Context, arg GetOAuthAccountsByProviderAccountIDParams) (OauthAccount, error) {
+	row := q.db.QueryRow(ctx, getOAuthAccountsByProviderAccountID, arg.ProviderAccountID, arg.Provider)
+	var i OauthAccount
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.UserID,
+		&i.Provider,
+		&i.ProviderAccountID,
+		&i.ExpiresAt,
+		&i.Type,
+	)
+	return i, err
 }
 
 const getOAuthAccountsByUserID = `-- name: GetOAuthAccountsByUserID :many

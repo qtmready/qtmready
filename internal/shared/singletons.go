@@ -30,7 +30,6 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/sethvargo/go-password/password"
 
-	"go.breu.io/quantm/internal/shared/cli"
 	"go.breu.io/quantm/internal/shared/logger"
 	"go.breu.io/quantm/internal/shared/service"
 	"go.breu.io/quantm/internal/shared/temporal"
@@ -48,9 +47,6 @@ var (
 
 	tmprl     temporal.Temporal // Global temporal instance.
 	tmprlOnce sync.Once         // Global temporal instance initializer
-
-	ci      cli.Cli   // Global cli instance
-	cliOnce sync.Once // Global cli instance initializer
 )
 
 // Service returns the global service instance.
@@ -144,15 +140,4 @@ func InitServiceForTest() {
 			service.WithSecret(secret),
 		)
 	})
-}
-
-// CLI returns the global CLI instance.
-func CLI() cli.Cli {
-	cliOnce.Do(func() {
-		ci = cli.New(
-			cli.FromEnvironment(),
-		)
-	})
-
-	return ci
 }
