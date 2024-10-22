@@ -3,11 +3,17 @@ package convert
 import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
-	"go.breu.io/quantm/internal/db/entities"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"go.breu.io/quantm/internal/db/entities"
 	authv1 "go.breu.io/quantm/internal/nomad/proto/ctrlplane/auth/v1"
 	commonv1 "go.breu.io/quantm/internal/nomad/proto/ctrlplane/common/v1"
+)
+
+const (
+	AccountProviderUnknown = "unknown"
+	AccountProviderGithub  = "github"
+	AccountProviderGoogle  = "google"
 )
 
 // ProviderToProto converts provider to authv1.Provider.
@@ -15,9 +21,9 @@ func ProviderToProto(provider string) authv1.Provider {
 	var proto authv1.Provider
 
 	switch provider {
-	case "github":
+	case AccountProviderGithub:
 		proto = authv1.Provider_PROVIDER_GITHUB
-	case "google":
+	case AccountProviderGoogle:
 		proto = authv1.Provider_PROVIDER_GOOGLE
 	default:
 		proto = authv1.Provider_PROVIDER_UNSPECIFIED
@@ -31,9 +37,9 @@ func AccountToProto(account *entities.OauthAccount) *authv1.Account {
 	var provider authv1.Provider
 
 	switch account.Provider {
-	case "github":
+	case AccountProviderGithub:
 		provider = authv1.Provider_PROVIDER_GITHUB
-	case "google":
+	case AccountProviderGoogle:
 		provider = authv1.Provider_PROVIDER_GOOGLE
 	default:
 		provider = authv1.Provider_PROVIDER_UNSPECIFIED
@@ -51,17 +57,17 @@ func AccountToProto(account *entities.OauthAccount) *authv1.Account {
 	}
 }
 
-// ProtoToProvider convert authv1.Proto to string
+// ProtoToProvider convert authv1.Proto to string.
 func ProtoToProvider(proto authv1.Provider) string {
 	provider := ""
 
 	switch proto {
 	case authv1.Provider_PROVIDER_GITHUB:
-		provider = "google"
+		provider = AccountProviderGoogle
 	case authv1.Provider_PROVIDER_GOOGLE:
-		provider = "github"
+		provider = AccountProviderGithub
 	case authv1.Provider_PROVIDER_UNSPECIFIED:
-		provider = "unknown"
+		provider = AccountProviderUnknown
 	}
 
 	return provider
@@ -81,12 +87,11 @@ func ProtoToAccount(proto *authv1.Account) *entities.OauthAccount {
 	}
 }
 
-// ProtoToGetOAuthAccountsByProviderAccountIDParams converts authv1.GetAccountByProviderAccountIDRequest to
-// entities.GetOAuthAccountsByProviderAccountIDParams
+// ProtoToGetOAuthAccountsByProviderAccountIDParams converts authv1.GetAccountByProviderAccountIDRequest
+// to entities.GetOAuthAccountsByProviderAccountIDParams.
 func ProtoToGetOAuthAccountsByProviderAccountIDParams(
 	proto *authv1.GetAccountByProviderAccountIDRequest,
 ) *entities.GetOAuthAccountsByProviderAccountIDParams {
-
 	return &entities.GetOAuthAccountsByProviderAccountIDParams{
 		Provider:          ProtoToProvider(proto.Provider),
 		ProviderAccountID: proto.GetProviderAccountId(),

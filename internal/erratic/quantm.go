@@ -99,25 +99,10 @@ func (e *QuantmError) SetInternal(err error) *QuantmError {
 //	fmt.Println(err.New()) // Output: Bad Request
 //	fmt.Println(err.Information) // Output: map[string]string{"field": "invalid value"}
 func New(code int, message string, args ...string) *QuantmError {
-	extra := false
-	if len(args)%2 != 0 {
-		extra = true
-	}
-
-	info := make(ErrorDetails)
-
-	for i := 0; i < len(args); i += 2 {
-		info[args[i]] = args[i+1]
-	}
-
-	if extra {
-		info["unknown"] = args[len(args)-1]
-	}
-
 	return &QuantmError{
 		ID:      shared.Idempotent(),
 		Status:  code,
 		Message: message,
-		Details: info,
+		Details: NewErrorDetails(args...),
 	}
 }
