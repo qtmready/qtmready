@@ -26,7 +26,7 @@ type (
 // CreateTeam Create a new team.
 func CreateTeam(ctx context.Context, req CreateTeamRequest) (entities.Team, error) {
 	if err := shared.Validator().Struct(req); err != nil {
-		return entities.Team{}, erratic.NewBadRequestError().FormatValidationError(err)
+		return entities.Team{}, erratic.NewBadRequestError().SetVaidationErrors(err)
 	}
 
 	val := ctx.Value("org_id")
@@ -51,7 +51,7 @@ func CreateTeam(ctx context.Context, req CreateTeamRequest) (entities.Team, erro
 func GetTeam(ctx context.Context, req GetTeamRequest) (entities.Team, error) {
 	err := shared.Validator().Struct(req)
 	if err != nil {
-		return entities.Team{}, erratic.NewBadRequestError().FormatValidationError(err)
+		return entities.Team{}, erratic.NewBadRequestError().SetVaidationErrors(err)
 	}
 
 	val := ctx.Value("org_id")
@@ -70,7 +70,7 @@ func GetTeam(ctx context.Context, req GetTeamRequest) (entities.Team, error) {
 	}
 
 	if team.OrgID != org_id {
-		return entities.Team{}, erratic.NewUnauthorizedError().IllegalAccess().AddInfo("team_id", req.ID.String())
+		return entities.Team{}, erratic.NewUnauthorizedError().IllegalAccess().AddDetail("team_id", req.ID.String())
 	}
 
 	return team, nil
@@ -79,7 +79,7 @@ func GetTeam(ctx context.Context, req GetTeamRequest) (entities.Team, error) {
 // UpdateTeam Update a team by ID.
 func UpdateTeam(ctx context.Context, req UpdateTeamRequest) (entities.Team, error) {
 	if err := shared.Validator().Struct(req); err != nil {
-		return entities.Team{}, erratic.NewBadRequestError().FormatValidationError(err)
+		return entities.Team{}, erratic.NewBadRequestError().SetVaidationErrors(err)
 	}
 
 	val := ctx.Value("org_id")
@@ -98,7 +98,7 @@ func UpdateTeam(ctx context.Context, req UpdateTeamRequest) (entities.Team, erro
 	}
 
 	if team.OrgID != org_id {
-		return entities.Team{}, erratic.NewUnauthorizedError().IllegalAccess().AddInfo("team_id", team.ID.String())
+		return entities.Team{}, erratic.NewUnauthorizedError().IllegalAccess().AddDetail("team_id", team.ID.String())
 	}
 
 	return team, nil
