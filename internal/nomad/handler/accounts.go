@@ -16,15 +16,17 @@ type (
 )
 
 func (s *AccountService) GetAccountByProviderAccountID(
-	ctx context.Context, rqst *authv1.GetAccountByProviderAccountIDRequest,
+	ctx context.Context,
+	rqst *authv1.GetAccountByProviderAccountIDRequest,
 ) (*authv1.GetAccountByProviderAccountIDResponse, error) {
-	account, err := db.Queries().GetOAuthAccountsByProviderAccountID(
-		ctx, *convert.ProtoToGetOAuthAccountsByProviderAccountIDParams(rqst),
-	)
+	params := *convert.ProtoToGetOAuthAccountsByProviderAccountIDParams(rqst)
 
+	account, err := db.Queries().GetOAuthAccountsByProviderAccountID(ctx, params)
 	if err != nil {
 		return nil, erratic.NewNotFoundError("account_id", rqst.GetProviderAccountId())
 	}
 
-	return &authv1.GetAccountByProviderAccountIDResponse{Account: convert.AccountToProto(&account)}, nil
+	proto := &authv1.GetAccountByProviderAccountIDResponse{Account: convert.AccountToProto(&account)}
+
+	return proto, nil
 }

@@ -74,7 +74,7 @@ func (e *ErrorMap) Get(key string) (string, bool) {
 func (e *APIError) format() *APIError {
 	// Message is always an error, so no need to convert.
 	if e.internal != nil && e.Errors == nil {
-		e.Errors = &ErrorMap{"internal": e.internal.(error).Error()}
+		e.Errors = &ErrorMap{"internal": e.internal.Error()}
 	}
 
 	return e

@@ -7,14 +7,22 @@ import (
 // This are just alias to generate OpenAPI schema.
 type (
 	// BadRequestError represents a 400 Bad Request error.
+	//
+	// Deprecated: Not to be used directly. Only meant to generate OpenAPI.
 	BadRequestError = QuantmError
 
 	// UnauthorizedError represents a 401 Unauthorized error.
+	//
+	// Deprecated: Not to be used directly. Only meant to generate OpenAPI.
 	UnauthorizedError = QuantmError
 
+	// ForbiddenError represents a 403 Forbidden Error.
+	// Deprecated: Not to be used directly. Only meant to generate OpenAPI.
 	ForbiddenError = QuantmError
 
 	// NotFoundError represents a 404 Not Found error.
+	//
+	// Deprecated: Not to be used directly. Only meant to generate OpenAPI.
 	NotFoundError = QuantmError
 )
 
