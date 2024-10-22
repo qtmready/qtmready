@@ -89,7 +89,7 @@ type (
 // CreateUser creates a new user.
 func CreateUser(ctx context.Context, req CreateUserRequest) (entities.CreateUserRow, error) {
 	if err := shared.Validator().Struct(req); err != nil {
-		return entities.CreateUserRow{}, erratic.NewBadRequestError().FormatValidationError(err)
+		return entities.CreateUserRow{}, erratic.NewBadRequestError().SetVaidationErrors(err)
 	}
 
 	var password string
@@ -128,7 +128,7 @@ func GetUser(ctx context.Context, req GetUserRequest) (entities.User, error) {
 
 	user, err := db.Queries().GetUser(ctx, req.ID)
 	if err != nil {
-		return entities.User{}, erratic.NewNotFoundError().AddInfo("user_id", req.ID.String())
+		return entities.User{}, erratic.NewNotFoundError().AddDetail("user_id", req.ID.String())
 	}
 
 	return user, nil
@@ -137,7 +137,7 @@ func GetUser(ctx context.Context, req GetUserRequest) (entities.User, error) {
 // GetUserByEmail retrieves a user by email.
 func GetUserByEmail(ctx context.Context, req GetUserByEmailRequest) (User, error) {
 	if err := shared.Validator().Struct(req); err != nil {
-		return User{}, erratic.NewBadRequestError().FormatValidationError(err)
+		return User{}, erratic.NewBadRequestError().SetVaidationErrors(err)
 	}
 
 	// Check if authenticated
@@ -181,7 +181,7 @@ func GetUserByID(ctx context.Context, req GetUserByIDRequest) (User, error) {
 	}
 
 	if row.OrgID != org_id {
-		return User{}, erratic.NewUnauthorizedError().IllegalAccess().AddInfo("user_id", req.ID.String())
+		return User{}, erratic.NewUnauthorizedError().IllegalAccess().AddDetail("user_id", req.ID.String())
 	}
 
 	return User{
@@ -222,7 +222,7 @@ func GetUserByProviderAccount(ctx context.Context, req GetUserByProviderAccountR
 // GetUserByEmailFull retrieves a user by email with full information.
 func GetUserByEmailFull(ctx context.Context, req GetUserByEmailRequest) (GetUserByEmailFullResponse, error) {
 	if err := shared.Validator().Struct(req); err != nil {
-		return GetUserByEmailFullResponse{}, erratic.NewBadRequestError().FormatValidationError(err)
+		return GetUserByEmailFullResponse{}, erratic.NewBadRequestError().SetVaidationErrors(err)
 	}
 
 	// Check if authenticated
@@ -285,7 +285,7 @@ func UpdateUser(ctx context.Context, req UpdateUserRequest) (entities.UpdateUser
 	}
 
 	if err := shared.Validator().Struct(req); err != nil {
-		return entities.UpdateUserRow{}, erratic.NewBadRequestError().FormatValidationError(err)
+		return entities.UpdateUserRow{}, erratic.NewBadRequestError().SetVaidationErrors(err)
 	}
 
 	row, err := db.Queries().UpdateUser(ctx, entities.UpdateUserParams{
@@ -316,7 +316,7 @@ func UpdateUserPassword(ctx context.Context, req UpdateUserPasswordRequest) (Use
 	}
 
 	if err := shared.Validator().Struct(req); err != nil {
-		return User{}, erratic.NewBadRequestError().FormatValidationError(err)
+		return User{}, erratic.NewBadRequestError().SetVaidationErrors(err)
 	}
 
 	hashed, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)

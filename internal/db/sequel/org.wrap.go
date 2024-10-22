@@ -21,7 +21,7 @@ type (
 // CreateOrg Create a new organization.
 func CreateOrg(ctx context.Context, req CreateOrgRequest) (entities.Org, error) {
 	if err := shared.Validator().Struct(req); err != nil {
-		return entities.Org{}, erratic.NewBadRequestError().FormatValidationError(err)
+		return entities.Org{}, erratic.NewBadRequestError().SetVaidationErrors(err)
 	}
 
 	org, err := db.Queries().CreateOrg(ctx, entities.CreateOrgParams{Name: req.Name, Domain: req.Domain, Slug: db.CreateSlug(req.Name)})
