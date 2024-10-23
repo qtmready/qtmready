@@ -26,7 +26,7 @@ func (s *AccountService) GetAccountByProviderAccountID(
 		return nil, erratic.NewNotFoundError(
 			"entity", "accounts",
 			"provider_account_id", rqst.GetProviderAccountId(),
-		).ToProto()
+		).ToProto().Err()
 	}
 
 	proto := &authv1.GetAccountByProviderAccountIDResponse{Account: convert.AccountToProto(&account)}
@@ -38,9 +38,10 @@ func (s *AccountService) GetAccountsByUserID(
 	ctx context.Context, req *authv1.GetAccountsByUserIDRequest,
 ) (*authv1.GetAccountsByUserIDResponse, error) {
 	id := convert.ProtoToUUID(req.UserId)
+
 	accounts, err := db.Queries().GetOAuthAccountsByUserID(ctx, id)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToProto()
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToProto().Err()
 	}
 
 	proto := make([]*authv1.Account, len(accounts))
@@ -53,9 +54,10 @@ func (s *AccountService) GetAccountsByUserID(
 
 func (s *AccountService) CreateAccount(ctx context.Context, req *authv1.CreateAccountRequest) (*authv1.CreateAccountResponse, error) {
 	params := convert.ProtoToCreateAccountParams(req)
+
 	account, err := db.Queries().CreateOAuthAccount(ctx, params)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToProto()
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToProto().Err()
 	}
 
 	return &authv1.CreateAccountResponse{Account: convert.AccountToProto(&account)}, nil
@@ -63,9 +65,10 @@ func (s *AccountService) CreateAccount(ctx context.Context, req *authv1.CreateAc
 
 func (s *AccountService) GetAccountByID(ctx context.Context, req *authv1.GetAccountByIDRequest) (*authv1.GetAccountByIDResponse, error) {
 	id := convert.ProtoToUUID(req.Id)
+
 	account, err := db.Queries().GetOAuthAccountByID(ctx, id)
 	if err != nil {
-		return nil, erratic.NewNotFoundError("entity", "accounts", "id", req.GetId().Value).ToProto()
+		return nil, erratic.NewNotFoundError("entity", "accounts", "id", req.GetId().Value).ToProto().Err()
 	}
 
 	return &authv1.GetAccountByIDResponse{Account: convert.AccountToProto(&account)}, nil
