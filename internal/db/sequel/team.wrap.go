@@ -31,7 +31,7 @@ func CreateTeam(ctx context.Context, req CreateTeamRequest) (entities.Team, erro
 
 	val := ctx.Value("org_id")
 	if val == nil {
-		return entities.Team{}, erratic.NewUnauthorizedError().Unauthorized()
+		return entities.Team{}, erratic.NewUnauthorizedError()
 	}
 
 	org_id, ok := val.(uuid.UUID)
@@ -56,7 +56,7 @@ func GetTeam(ctx context.Context, req GetTeamRequest) (entities.Team, error) {
 
 	val := ctx.Value("org_id")
 	if val == nil {
-		return entities.Team{}, erratic.NewUnauthorizedError().Unauthorized()
+		return entities.Team{}, erratic.NewUnauthorizedError()
 	}
 
 	org_id, ok := val.(uuid.UUID)
@@ -70,7 +70,7 @@ func GetTeam(ctx context.Context, req GetTeamRequest) (entities.Team, error) {
 	}
 
 	if team.OrgID != org_id {
-		return entities.Team{}, erratic.NewUnauthorizedError().Forbidden().AddDetail("team_id", req.ID.String())
+		return entities.Team{}, erratic.NewForbiddenError().AddHint("team_id", team.ID.String())
 	}
 
 	return team, nil
@@ -84,7 +84,7 @@ func UpdateTeam(ctx context.Context, req UpdateTeamRequest) (entities.Team, erro
 
 	val := ctx.Value("org_id")
 	if val == nil {
-		return entities.Team{}, erratic.NewUnauthorizedError().Unauthorized()
+		return entities.Team{}, erratic.NewUnauthorizedError()
 	}
 
 	org_id, ok := val.(uuid.UUID)
@@ -98,7 +98,7 @@ func UpdateTeam(ctx context.Context, req UpdateTeamRequest) (entities.Team, erro
 	}
 
 	if team.OrgID != org_id {
-		return entities.Team{}, erratic.NewUnauthorizedError().Forbidden().AddDetail("team_id", team.ID.String())
+		return entities.Team{}, erratic.NewForbiddenError().AddHint("team_id", team.ID.String())
 	}
 
 	return team, nil

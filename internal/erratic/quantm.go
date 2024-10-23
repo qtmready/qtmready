@@ -1,28 +1,29 @@
 package erratic
 
 import (
-	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"go.breu.io/quantm/internal/shared"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/runtime/protoiface"
 	"google.golang.org/protobuf/types/known/anypb"
-
-	"go.breu.io/quantm/internal/shared"
 )
 
 type (
-	// QuantmError is the standard error rising from application.
+	// QuantmError is the standard error type used within the application.
 	//
-	// It includes the HTTP status code, a human-readable message, and additional information.
+	// It encapsulates a unique identifier, an error code (initially HTTP status codes), a human-readable
+	// message, and additional error details. The initial implementation uses HTTP status codes for
+	// convenience, scheme may be adopted in the future. This is subject to how the application evolves.
 	QuantmError struct {
-		ID      string       `json:"id"`      // Unique identifier for the error.
-		Status  int          `json:"status"`  // HTTP status code of the error.
-		Message string       `json:"message"` // Human-readable message describing the error.
-		Details ErrorDetails `json:"details"` // Additional information about the error.
+		ID      string `json:"id"`      // Unique identifier for the error.
+		Code    int    `json:"code"`    // HTTP status code of the error.
+		Message string `json:"message"` // Human-readable message describing the error.
+		Hints   Hints  `json:"hints"`   // Additional information about the error.
 	}
 )
 
@@ -31,19 +32,19 @@ func (e *QuantmError) Error() string {
 	return e.Message
 }
 
-// ResetDetailsWith sets the ErrorDetails field of the APIError.
-func (e *QuantmError) ResetDetailsWith(info ErrorDetails) *QuantmError {
-	e.Details = info
+// SetHintsWith sets the ErrorDetails field of the APIError.
+func (e *QuantmError) SetHintsWith(hints Hints) *QuantmError {
+	e.Hints = hints
 	return e
 }
 
-// AddDetail adds a key-value pair to the ErrorDetails field of the APIError.
-func (e *QuantmError) AddDetail(key, value string) *QuantmError {
-	if e.Details == nil {
-		e.Details = make(ErrorDetails)
+// AddHint adds a key-value pair to the ErrorDetails field of the APIError.
+func (e *QuantmError) AddHint(key, value string) *QuantmError {
+	if e.Hints == nil {
+		e.Hints = make(Hints)
 	}
 
-	e.Details[key] = value
+	e.Hints[key] = value
 
 	return e
 }
@@ -56,32 +57,32 @@ func (e *QuantmError) SetVaidationErrors(err error) *QuantmError {
 	}
 
 	for _, v := range valid {
-		_ = e.AddDetail(v.Field(), v.Tag())
+		_ = e.AddHint(v.Field(), v.Tag())
 	}
 
 	return e
 }
 
-func (e *QuantmError) Unauthorized() *QuantmError {
-	return e.AddDetail("reason", "are you logged in?")
-}
-
-func (e *QuantmError) Forbidden() *QuantmError {
-	return e.AddDetail("reason", "you are not allowed to access this resource")
-}
-
+// DataBaseError sets the ErrorDetails field of the APIError with information related to a database error.
 func (e *QuantmError) DataBaseError(err error) *QuantmError {
-	return e.AddDetail("reason", "database error").AddDetail("internal", err.Error())
+	return e.AddHint("reason", "database error").AddHint("internal", err.Error())
 }
 
+// SetInternal sets the ErrorDetails field of the APIError with an internal error message.
 func (e *QuantmError) SetInternal(err error) *QuantmError {
-	return e.AddDetail("internal", err.Error())
+	return e.AddHint("internal", err.Error())
 }
 
+// ToProto converts the QuantmError to a gRPC error.
+//
+// It maps the HTTP status code to a corresponding gRPC error code, sets the error message,
+// and attaches additional information as error details.
 func (e *QuantmError) ToProto() error {
-	code := codes.Code(codes.Unknown)
+	code := codes.Unknown
 
-	switch e.Status {
+	// Map HTTP status code to gRPC error code and create a new grpc status.
+
+	switch e.Code {
 	case http.StatusBadRequest:
 		code = codes.InvalidArgument
 	case http.StatusUnauthorized:
@@ -96,41 +97,47 @@ func (e *QuantmError) ToProto() error {
 
 	st := status.New(code, e.Message)
 
-	details := make([]protoiface.MessageV1, 0) // Create an empty slice of protoiface.MessageV1
+	// Creating error details from the hints. See
+	//
+	// - https://grpc.io/docs/guides/error/#richer-error-model
+	// - https://cloud.google.com/apis/design/errors#error_model
+
+	details := make([]protoiface.MessageV1, 0)
 
 	info := &errdetails.ErrorInfo{
-		Reason:   e.ID,
+		Reason:   e.Message,
 		Domain:   "quantm",
 		Metadata: make(map[string]string),
 	}
 
-	for key, val := range e.Details {
+	for key, val := range e.Hints {
 		info.Metadata[key] = val
 	}
 
-	anydtl, err := anypb.New(info)
+	anyinfo, err := anypb.New(info)
 	if err != nil {
-		fmt.Println("Error creating Any proto:", err)
+		slog.Warn("Error creating Any proto", "error", err.Error())
 	}
-	// Convert to protoiface.MessageV1
-	details = append(details, anydtl)
 
-	// DebugInfo details
-	if internal, ok := e.Details["internal"]; ok {
-		dbg := &errdetails.DebugInfo{
+	details = append(details, anyinfo)
+
+	if internal, ok := e.Hints["internal"]; ok {
+		trace := &errdetails.DebugInfo{
 			StackEntries: []string{internal},
 			Detail:       "See stack entries for internal details.",
 		}
 
-		anyDetail, err := anypb.New(dbg)
+		anytrace, err := anypb.New(trace)
 		if err != nil {
-			fmt.Println("Error creating Any proto:", err)
+			slog.Warn("Error creating Any proto", "error", err.Error())
 		}
 
-		// Convert to protoiface.MessageV1
-		details = append(details, anyDetail)
-		delete(e.Details, "internal")
+		details = append(details, anytrace)
+
+		delete(e.Hints, "internal")
 	}
+
+	// Finally, attach the error details to the status.
 
 	st, err = st.WithDetails(details...)
 	if err != nil {
@@ -142,18 +149,21 @@ func (e *QuantmError) ToProto() error {
 
 // New creates a new QuantmError instance.
 //
-// It takes the HTTP status code, a human-readable message, and optional key-value pairs for additional information.
+// This function should never be called directly. Use the following functions instead:
 //
-// Example:
+//   - NewBadRequestError
+//   - NewUnauthorizedError
+//   - NewForbiddenError
+//   - NewNotFoundError
+//   - NewInternalServerError
 //
-//	err := New(400, "Bad Request", "field", "invalid value")
-//	fmt.Println(err.New()) // Output: Bad Request
-//	fmt.Println(err.Information) // Output: map[string]string{"field": "invalid value"}
+// The function receives an error code, a human-readable message, and optional key-value pairs for additional
+// information.  Currently, HTTP status codes are used, but this may be revised in the future.
 func New(code int, message string, args ...string) *QuantmError {
 	return &QuantmError{
 		ID:      shared.Idempotent(),
-		Status:  code,
+		Code:    code,
 		Message: message,
-		Details: NewErrorDetails(args...),
+		Hints:   NewErrorDetails(args...),
 	}
 }
