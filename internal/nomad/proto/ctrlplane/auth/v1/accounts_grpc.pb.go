@@ -20,14 +20,19 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	AccountService_GetAccountByProviderAccountID_FullMethodName = "/ctrlplane.auth.v1.AccountService/GetAccountByProviderAccountID"
+	AccountService_GetAccountsByUserID_FullMethodName           = "/ctrlplane.auth.v1.AccountService/GetAccountsByUserID"
+	AccountService_CreateAccount_FullMethodName                 = "/ctrlplane.auth.v1.AccountService/CreateAccount"
+	AccountService_GetAccountByID_FullMethodName                = "/ctrlplane.auth.v1.AccountService/GetAccountByID"
 )
 
 // AccountServiceClient is the client API for AccountService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AccountServiceClient interface {
-	// GetAccountByProviderAccountID returns an account by provider and provider account ID.
 	GetAccountByProviderAccountID(ctx context.Context, in *GetAccountByProviderAccountIDRequest, opts ...grpc.CallOption) (*GetAccountByProviderAccountIDResponse, error)
+	GetAccountsByUserID(ctx context.Context, in *GetAccountsByUserIDRequest, opts ...grpc.CallOption) (*GetAccountsByUserIDResponse, error)
+	CreateAccount(ctx context.Context, in *CreateAccountRequest, opts ...grpc.CallOption) (*CreateAccountResponse, error)
+	GetAccountByID(ctx context.Context, in *GetAccountByIDRequest, opts ...grpc.CallOption) (*GetAccountByIDResponse, error)
 }
 
 type accountServiceClient struct {
@@ -48,12 +53,44 @@ func (c *accountServiceClient) GetAccountByProviderAccountID(ctx context.Context
 	return out, nil
 }
 
+func (c *accountServiceClient) GetAccountsByUserID(ctx context.Context, in *GetAccountsByUserIDRequest, opts ...grpc.CallOption) (*GetAccountsByUserIDResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAccountsByUserIDResponse)
+	err := c.cc.Invoke(ctx, AccountService_GetAccountsByUserID_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountServiceClient) CreateAccount(ctx context.Context, in *CreateAccountRequest, opts ...grpc.CallOption) (*CreateAccountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateAccountResponse)
+	err := c.cc.Invoke(ctx, AccountService_CreateAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *accountServiceClient) GetAccountByID(ctx context.Context, in *GetAccountByIDRequest, opts ...grpc.CallOption) (*GetAccountByIDResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAccountByIDResponse)
+	err := c.cc.Invoke(ctx, AccountService_GetAccountByID_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AccountServiceServer is the server API for AccountService service.
 // All implementations should embed UnimplementedAccountServiceServer
 // for forward compatibility.
 type AccountServiceServer interface {
-	// GetAccountByProviderAccountID returns an account by provider and provider account ID.
 	GetAccountByProviderAccountID(context.Context, *GetAccountByProviderAccountIDRequest) (*GetAccountByProviderAccountIDResponse, error)
+	GetAccountsByUserID(context.Context, *GetAccountsByUserIDRequest) (*GetAccountsByUserIDResponse, error)
+	CreateAccount(context.Context, *CreateAccountRequest) (*CreateAccountResponse, error)
+	GetAccountByID(context.Context, *GetAccountByIDRequest) (*GetAccountByIDResponse, error)
 }
 
 // UnimplementedAccountServiceServer should be embedded to have
@@ -65,6 +102,15 @@ type UnimplementedAccountServiceServer struct{}
 
 func (UnimplementedAccountServiceServer) GetAccountByProviderAccountID(context.Context, *GetAccountByProviderAccountIDRequest) (*GetAccountByProviderAccountIDResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAccountByProviderAccountID not implemented")
+}
+func (UnimplementedAccountServiceServer) GetAccountsByUserID(context.Context, *GetAccountsByUserIDRequest) (*GetAccountsByUserIDResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAccountsByUserID not implemented")
+}
+func (UnimplementedAccountServiceServer) CreateAccount(context.Context, *CreateAccountRequest) (*CreateAccountResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateAccount not implemented")
+}
+func (UnimplementedAccountServiceServer) GetAccountByID(context.Context, *GetAccountByIDRequest) (*GetAccountByIDResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAccountByID not implemented")
 }
 func (UnimplementedAccountServiceServer) testEmbeddedByValue() {}
 
@@ -104,6 +150,60 @@ func _AccountService_GetAccountByProviderAccountID_Handler(srv interface{}, ctx 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AccountService_GetAccountsByUserID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAccountsByUserIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServiceServer).GetAccountsByUserID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountService_GetAccountsByUserID_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServiceServer).GetAccountsByUserID(ctx, req.(*GetAccountsByUserIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AccountService_CreateAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateAccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServiceServer).CreateAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountService_CreateAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServiceServer).CreateAccount(ctx, req.(*CreateAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AccountService_GetAccountByID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAccountByIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AccountServiceServer).GetAccountByID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AccountService_GetAccountByID_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AccountServiceServer).GetAccountByID(ctx, req.(*GetAccountByIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AccountService_ServiceDesc is the grpc.ServiceDesc for AccountService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -114,6 +214,18 @@ var AccountService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAccountByProviderAccountID",
 			Handler:    _AccountService_GetAccountByProviderAccountID_Handler,
+		},
+		{
+			MethodName: "GetAccountsByUserID",
+			Handler:    _AccountService_GetAccountsByUserID_Handler,
+		},
+		{
+			MethodName: "CreateAccount",
+			Handler:    _AccountService_CreateAccount_Handler,
+		},
+		{
+			MethodName: "GetAccountByID",
+			Handler:    _AccountService_GetAccountByID_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
