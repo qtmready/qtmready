@@ -123,12 +123,12 @@ func GetUser(ctx context.Context, req GetUserRequest) (entities.User, error) {
 	// Check if authenticated
 	val := ctx.Value("org_id")
 	if val == nil {
-		return entities.User{}, erratic.NewUnauthorizedError().Unauthorized()
+		return entities.User{}, erratic.NewUnauthorizedError()
 	}
 
 	user, err := db.Queries().GetUser(ctx, req.ID)
 	if err != nil {
-		return entities.User{}, erratic.NewNotFoundError().AddDetail("user_id", req.ID.String())
+		return entities.User{}, erratic.NewNotFoundError().AddHint("user_id", req.ID.String())
 	}
 
 	return user, nil
@@ -143,7 +143,7 @@ func GetUserByEmail(ctx context.Context, req GetUserByEmailRequest) (User, error
 	// Check if authenticated
 	val := ctx.Value("org_id")
 	if val == nil {
-		return User{}, erratic.NewUnauthorizedError().Unauthorized()
+		return User{}, erratic.NewUnauthorizedError()
 	}
 
 	row, err := db.Queries().GetUserByEmail(ctx, req.Email)
@@ -167,7 +167,7 @@ func GetUserByID(ctx context.Context, req GetUserByIDRequest) (User, error) {
 	// Check if authenticated
 	val := ctx.Value("org_id")
 	if val == nil {
-		return User{}, erratic.NewUnauthorizedError().Unauthorized()
+		return User{}, erratic.NewUnauthorizedError()
 	}
 
 	org_id, ok := val.(uuid.UUID)
@@ -181,7 +181,7 @@ func GetUserByID(ctx context.Context, req GetUserByIDRequest) (User, error) {
 	}
 
 	if row.OrgID != org_id {
-		return User{}, erratic.NewUnauthorizedError().Forbidden().AddDetail("user_id", req.ID.String())
+		return User{}, erratic.NewForbiddenError().AddHint("org_id", org_id.String())
 	}
 
 	return User{
@@ -200,7 +200,7 @@ func GetUserByProviderAccount(ctx context.Context, req GetUserByProviderAccountR
 	// Check if authenticated
 	val := ctx.Value("org_id")
 	if val == nil {
-		return User{}, erratic.NewUnauthorizedError().Unauthorized()
+		return User{}, erratic.NewUnauthorizedError()
 	}
 
 	row, err := db.Queries().GetUserByProviderAccount(ctx, req)
@@ -228,7 +228,7 @@ func GetUserByEmailFull(ctx context.Context, req GetUserByEmailRequest) (GetUser
 	// Check if authenticated
 	val := ctx.Value("org_id")
 	if val == nil {
-		return GetUserByEmailFullResponse{}, erratic.NewUnauthorizedError().Unauthorized()
+		return GetUserByEmailFullResponse{}, erratic.NewUnauthorizedError()
 	}
 
 	row, err := db.Queries().GetUserByEmailFull(ctx, req.Email)
@@ -276,7 +276,7 @@ func UpdateUser(ctx context.Context, req UpdateUserRequest) (entities.UpdateUser
 	// Check if authenticated
 	val := ctx.Value("org_id")
 	if val == nil {
-		return entities.UpdateUserRow{}, erratic.NewUnauthorizedError().Unauthorized()
+		return entities.UpdateUserRow{}, erratic.NewUnauthorizedError()
 	}
 
 	_, ok := val.(uuid.UUID)
@@ -307,7 +307,7 @@ func UpdateUserPassword(ctx context.Context, req UpdateUserPasswordRequest) (Use
 	// Check if authenticated
 	val := ctx.Value("org_id")
 	if val == nil {
-		return User{}, erratic.NewUnauthorizedError().Unauthorized()
+		return User{}, erratic.NewUnauthorizedError()
 	}
 
 	_, ok := val.(uuid.UUID)
