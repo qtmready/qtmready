@@ -24,6 +24,8 @@ type (
 	//
 	// Deprecated: Not to be used directly. Only meant to generate OpenAPI.
 	NotFoundError = QuantmError
+
+	InternalServerError = QuantmError
 )
 
 // NewBadRequestError creates a new 400 Bad Request error.
@@ -34,7 +36,7 @@ type (
 //	fmt.Println(err.Error()) // Output: Bad Request
 //	fmt.Println(err.Information) // Output: map[string]string{"field": "invalid value"}
 func NewBadRequestError(args ...string) *QuantmError {
-	return New(http.StatusBadRequest, "Bad Request.")
+	return New(http.StatusBadRequest, "Bad Request.", args...)
 }
 
 // NewUnauthorizedError creates a new 401 Unauthorized error.
@@ -45,11 +47,11 @@ func NewBadRequestError(args ...string) *QuantmError {
 //	fmt.Println(err.Error()) // Output: Unauthorized
 //	fmt.Println(err.Information) // Output: map[string]string{"user_id": "123"}
 func NewUnauthorizedError(args ...string) *QuantmError {
-	return New(http.StatusUnauthorized, "Are you logged in?")
+	return New(http.StatusUnauthorized, "Are you logged in?", args...)
 }
 
 func NewForbiddenError(args ...string) *QuantmError {
-	return New(http.StatusForbidden, "Permission Denied.")
+	return New(http.StatusForbidden, "Permission Denied.", args...)
 }
 
 // NewNotFoundError creates a new 404 Not Found error.
@@ -60,7 +62,7 @@ func NewForbiddenError(args ...string) *QuantmError {
 //	fmt.Println(err.Error()) // Output: Not Found
 //	fmt.Println(err.Information) // Output: map[string]string{"user_id": "123"}
 func NewNotFoundError(args ...string) *QuantmError {
-	return New(http.StatusNotFound, "Resource Not Found.")
+	return New(http.StatusNotFound, "Resource Not Found.", args...)
 }
 
 // NewInternalServerError creates a new 500 Internal Server Error.
@@ -71,5 +73,5 @@ func NewNotFoundError(args ...string) *QuantmError {
 //	fmt.Println(err.Error()) // Output: Internal Server Error
 //	fmt.Println(err.Information) // Output: map[string]string{"reason": "database error"}
 func NewInternalServerError(args ...string) *QuantmError {
-	return New(500, "Internal Server Error.", args...)
+	return New(http.StatusInternalServerError, "Internal Server Error.", args...)
 }

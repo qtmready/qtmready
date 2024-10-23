@@ -13,7 +13,7 @@ SELECT *
 FROM oauth_accounts
 WHERE user_id = $1;
 
--- name: GetOAuthAccountsByProviderAccountID :one
+-- name: GetOAuthAccountByProviderAccountID :one
 SELECT *
 FROM oauth_accounts
 WHERE provider_account_id = $1 and provider = $2;

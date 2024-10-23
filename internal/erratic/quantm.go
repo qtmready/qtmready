@@ -1,7 +1,15 @@
 package erratic
 
 import (
+	"fmt"
+	"net/http"
+
 	"github.com/go-playground/validator/v10"
+	"google.golang.org/genproto/googleapis/rpc/errdetails"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/runtime/protoiface"
+	"google.golang.org/protobuf/types/known/anypb"
 
 	"go.breu.io/quantm/internal/shared"
 )
@@ -24,24 +32,12 @@ func (e *QuantmError) Error() string {
 }
 
 // ResetDetailsWith sets the ErrorDetails field of the APIError.
-//
-// Example:
-//
-//	err := NewBadRequestError("field", "invalid value")
-//	err.ResetDetailsWith(ErrorDetails{"field": "invalid value"})
-//	fmt.Println(err.Information) // Output: map[string]string{"field": "invalid value"}
 func (e *QuantmError) ResetDetailsWith(info ErrorDetails) *QuantmError {
 	e.Details = info
 	return e
 }
 
 // AddDetail adds a key-value pair to the ErrorDetails field of the APIError.
-//
-// Example:
-//
-//	err := NewBadRequestError()
-//	err.AddDetail("field", "invalid value")
-//	fmt.Println(err.Information) // Output: map[string]string{"field": "invalid value"}
 func (e *QuantmError) AddDetail(key, value string) *QuantmError {
 	if e.Details == nil {
 		e.Details = make(ErrorDetails)
@@ -53,13 +49,6 @@ func (e *QuantmError) AddDetail(key, value string) *QuantmError {
 }
 
 // SetVaidationErrors formats a validator.ValidationErrors object into the ErrorDetails field.
-//
-// Example:
-//
-//	err := validator.New().Struct(struct{}{})
-//	apiErr := NewBadRequestError()
-//	apiErr.SetVaidationErrors(err)
-//	fmt.Println(apiErr.Information) // Output: (empty map)
 func (e *QuantmError) SetVaidationErrors(err error) *QuantmError {
 	valid, ok := err.(validator.ValidationErrors)
 	if !ok {
@@ -73,11 +62,11 @@ func (e *QuantmError) SetVaidationErrors(err error) *QuantmError {
 	return e
 }
 
-func (e *QuantmError) NotLoggedIn() *QuantmError {
+func (e *QuantmError) Unauthorized() *QuantmError {
 	return e.AddDetail("reason", "are you logged in?")
 }
 
-func (e *QuantmError) IllegalAccess() *QuantmError {
+func (e *QuantmError) Forbidden() *QuantmError {
 	return e.AddDetail("reason", "you are not allowed to access this resource")
 }
 
@@ -87,6 +76,68 @@ func (e *QuantmError) DataBaseError(err error) *QuantmError {
 
 func (e *QuantmError) SetInternal(err error) *QuantmError {
 	return e.AddDetail("internal", err.Error())
+}
+
+func (e *QuantmError) ToProto() error {
+	code := codes.Code(codes.Unknown)
+
+	switch e.Status {
+	case http.StatusBadRequest:
+		code = codes.InvalidArgument
+	case http.StatusUnauthorized:
+		code = codes.Unauthenticated
+	case http.StatusForbidden:
+		code = codes.PermissionDenied
+	case http.StatusNotFound:
+		code = codes.NotFound
+	case http.StatusInternalServerError:
+		code = codes.Internal
+	}
+
+	st := status.New(code, e.Message)
+
+	details := make([]protoiface.MessageV1, 0) // Create an empty slice of protoiface.MessageV1
+
+	info := &errdetails.ErrorInfo{
+		Reason:   e.ID,
+		Domain:   "quantm",
+		Metadata: make(map[string]string),
+	}
+
+	for key, val := range e.Details {
+		info.Metadata[key] = val
+	}
+
+	anydtl, err := anypb.New(info)
+	if err != nil {
+		fmt.Println("Error creating Any proto:", err)
+	}
+	// Convert to protoiface.MessageV1
+	details = append(details, anydtl)
+
+	// DebugInfo details
+	if internal, ok := e.Details["internal"]; ok {
+		dbg := &errdetails.DebugInfo{
+			StackEntries: []string{internal},
+			Detail:       "See stack entries for internal details.",
+		}
+
+		anyDetail, err := anypb.New(dbg)
+		if err != nil {
+			fmt.Println("Error creating Any proto:", err)
+		}
+
+		// Convert to protoiface.MessageV1
+		details = append(details, anyDetail)
+		delete(e.Details, "internal")
+	}
+
+	st, err = st.WithDetails(details...)
+	if err != nil {
+		return status.Errorf(codes.Internal, "failed to attach error details: %v", err)
+	}
+
+	return st.Err()
 }
 
 // New creates a new QuantmError instance.
