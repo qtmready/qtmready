@@ -77,7 +77,7 @@ func (e *QuantmError) SetInternal(err error) *QuantmError {
 //
 // It maps the HTTP status code to a corresponding gRPC error code, sets the error message,
 // and attaches additional information as error details.
-func (e *QuantmError) ToProto() error {
+func (e *QuantmError) ToProto() *status.Status {
 	code := codes.Unknown
 
 	// Map HTTP status code to gRPC error code and create a new grpc status.
@@ -95,7 +95,7 @@ func (e *QuantmError) ToProto() error {
 		code = codes.Internal
 	}
 
-	st := status.New(code, e.Message)
+	sts := status.New(code, e.Message)
 
 	// Creating error details from the hints. See
 	//
@@ -139,12 +139,12 @@ func (e *QuantmError) ToProto() error {
 
 	// Finally, attach the error details to the status.
 
-	st, err = st.WithDetails(details...)
+	detailed, err := sts.WithDetails(details...)
 	if err != nil {
-		return status.Errorf(codes.Internal, "failed to attach error details: %v", err)
+		return sts
 	}
 
-	return st.Err()
+	return detailed
 }
 
 // New creates a new QuantmError instance.
