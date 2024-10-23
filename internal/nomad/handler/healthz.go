@@ -3,8 +3,9 @@ package handler
 import (
 	"context"
 
-	healthzv1 "go.breu.io/quantm/internal/nomad/proto/ctrlplane/healthz/v1"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+
+	healthzv1 "go.breu.io/quantm/internal/nomad/proto/ctrlplane/healthz/v1"
 )
 
 type (
