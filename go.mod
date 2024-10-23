@@ -4,6 +4,7 @@ go 1.23.1
 
 require (
 	cloud.google.com/go/logging v1.11.0
+	connectrpc.com/connect v1.17.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.24.1
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/propagator v0.48.1
 	github.com/Guilospanck/gocqlxmock v1.0.1
