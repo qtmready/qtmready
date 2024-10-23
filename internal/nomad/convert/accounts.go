@@ -7,7 +7,6 @@ import (
 
 	"go.breu.io/quantm/internal/db/entities"
 	authv1 "go.breu.io/quantm/internal/nomad/proto/ctrlplane/auth/v1"
-	commonv1 "go.breu.io/quantm/internal/nomad/proto/ctrlplane/common/v1"
 )
 
 const (
@@ -16,84 +15,77 @@ const (
 	AccountProviderGoogle  = "google"
 )
 
-// ProviderToProto converts provider to authv1.Provider.
 func ProviderToProto(provider string) authv1.Provider {
-	var proto authv1.Provider
-
 	switch provider {
 	case AccountProviderGithub:
-		proto = authv1.Provider_PROVIDER_GITHUB
+		return authv1.Provider_PROVIDER_GITHUB
 	case AccountProviderGoogle:
-		proto = authv1.Provider_PROVIDER_GOOGLE
+		return authv1.Provider_PROVIDER_GOOGLE
 	default:
-		proto = authv1.Provider_PROVIDER_UNSPECIFIED
+		return authv1.Provider_PROVIDER_UNSPECIFIED
 	}
-
-	return proto
 }
 
-// AccountToProto converts entities.OauthAccount to proto authv1.Account.
 func AccountToProto(account *entities.OauthAccount) *authv1.Account {
-	var provider authv1.Provider
-
-	switch account.Provider {
-	case AccountProviderGithub:
-		provider = authv1.Provider_PROVIDER_GITHUB
-	case AccountProviderGoogle:
-		provider = authv1.Provider_PROVIDER_GOOGLE
-	default:
-		provider = authv1.Provider_PROVIDER_UNSPECIFIED
-	}
-
 	return &authv1.Account{
-		Id:                &commonv1.UUID{Value: account.ID.String()},
+		Id:                UUIDToProto(account.ID),
 		CreatedAt:         timestamppb.New(account.CreatedAt),
 		UpdatedAt:         timestamppb.New(account.UpdatedAt),
 		ExpiresAt:         timestamppb.New(account.ExpiresAt),
-		UserId:            &commonv1.UUID{Value: account.UserID.String()},
-		Provider:          provider,
+		UserId:            UUIDToProto(account.UserID),
+		Provider:          ProviderToProto(account.Provider),
 		ProviderAccountId: account.ProviderAccountID,
 		Kind:              account.Type.String,
 	}
 }
 
-// ProtoToProvider convert authv1.Proto to string.
 func ProtoToProvider(proto authv1.Provider) string {
-	provider := ""
-
 	switch proto {
 	case authv1.Provider_PROVIDER_GITHUB:
-		provider = AccountProviderGoogle
+		return AccountProviderGithub
 	case authv1.Provider_PROVIDER_GOOGLE:
-		provider = AccountProviderGithub
-	case authv1.Provider_PROVIDER_UNSPECIFIED:
-		provider = AccountProviderUnknown
+		return AccountProviderGoogle
+	default:
+		return AccountProviderUnknown
 	}
-
-	return provider
 }
 
-// ProtoToAccount converts authv1.Account to entities.OuathAccount.
 func ProtoToAccount(proto *authv1.Account) *entities.OauthAccount {
 	return &entities.OauthAccount{
-		ID:                uuid.MustParse(proto.Id.GetValue()),
+		ID:                ProtoToUUID(proto.Id),
 		CreatedAt:         proto.CreatedAt.AsTime(),
 		UpdatedAt:         proto.UpdatedAt.AsTime(),
-		UserID:            uuid.MustParse(proto.UserId.GetValue()),
+		UserID:            ProtoToUUID(proto.UserId),
 		Provider:          ProtoToProvider(proto.Provider),
-		ProviderAccountID: proto.GetProviderAccountId(),
+		ProviderAccountID: proto.ProviderAccountId,
 		ExpiresAt:         proto.ExpiresAt.AsTime(),
-		Type:              pgtype.Text{String: proto.GetKind(), Valid: true},
+		Type:              pgtype.Text{String: proto.Kind, Valid: true},
 	}
 }
 
-// ProtoToGetOAuthAccountsByProviderAccountIDParams converts authv1.GetAccountByProviderAccountIDRequest
-// to entities.GetOAuthAccountsByProviderAccountIDParams.
-func ProtoToGetOAuthAccountsByProviderAccountIDParams(
-	proto *authv1.GetAccountByProviderAccountIDRequest,
-) *entities.GetOAuthAccountsByProviderAccountIDParams {
-	return &entities.GetOAuthAccountsByProviderAccountIDParams{
+func ProtoToGetAccountsByUserIDParams(proto *authv1.GetAccountsByUserIDRequest) uuid.UUID {
+	return ProtoToUUID(proto.UserId)
+}
+
+func ProtoToCreateAccountParams(proto *authv1.CreateAccountRequest) entities.CreateOAuthAccountParams {
+	return entities.CreateOAuthAccountParams{
+		UserID:            ProtoToUUID(proto.UserId),
 		Provider:          ProtoToProvider(proto.Provider),
-		ProviderAccountID: proto.GetProviderAccountId(),
+		ProviderAccountID: proto.ProviderAccountId,
+		ExpiresAt:         proto.ExpiresAt.AsTime(),
+		Type:              pgtype.Text{String: proto.Kind, Valid: true},
+	}
+}
+
+func ProtoToGetAccountByIDParams(proto *authv1.GetAccountByIDRequest) uuid.UUID {
+	return ProtoToUUID(proto.Id)
+}
+
+func ProtoToGetAccountByProviderAccountIDParams(
+	proto *authv1.GetAccountByProviderAccountIDRequest,
+) entities.GetOAuthAccountByProviderAccountIDParams {
+	return entities.GetOAuthAccountByProviderAccountIDParams{
+		Provider:          ProtoToProvider(proto.Provider),
+		ProviderAccountID: proto.ProviderAccountId,
 	}
 }
