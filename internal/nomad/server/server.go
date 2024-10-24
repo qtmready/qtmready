@@ -20,6 +20,10 @@ type (
 )
 
 func (s *Server) add(path string, handler http.Handler) {
+	if s.mux == nil {
+		s.mux = http.NewServeMux()
+	}
+
 	s.mux.Handle(path, handler)
 }
 
@@ -50,6 +54,8 @@ func (s *Server) Start(ctx context.Context) error {
 			return ctx
 		},
 	}
+
+	slog.Info("nomad: starting", "port", s.config.Port, "ssl", s.config.EnableSSL)
 
 	return s.self.ListenAndServe()
 }
