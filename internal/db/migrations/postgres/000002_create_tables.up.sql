@@ -5,7 +5,9 @@ create table orgs (
   updated_at timestamptz not null default now(),
   name varchar(255) not null,
   domain varchar(255) not null,
-  slug varchar(255) not null
+  slug varchar(255) not null,
+  constraint orgs_domain_unique unique (domain),
+  constraint orgs_slug_unique unique (slug)
 );
 
 -- auth::orgs::trigger
@@ -13,6 +15,10 @@ create trigger update_orgs_updated_at
   after update on orgs
   for each row
   execute function update_updated_at();
+
+-- auth::orgs::index
+create unique index orgs_domain_idx on orgs (domain);
+create unique index orgs_slug_idx on orgs (slug);
 
 -- auth::teams::create
 create table teams (
@@ -37,11 +43,12 @@ create table users (
   updated_at timestamptz not null default now(),
   org_id uuid not null references orgs (id),
   email varchar(255) not null,
-  first_name varchar(255),
-  last_name varchar(255),
-  password text,
+  first_name varchar(255) not null,
+  last_name varchar(255) not null,
+  password text not null,
   is_active boolean not null default true,
-  is_verified boolean not null default false
+  is_verified boolean not null default false,
+  constraint users_email_unique unique (email)
 );
 
 -- auth::users::trigger
@@ -50,32 +57,19 @@ create trigger update_users_updated_at
   for each row
   execute function update_updated_at();
 
--- auth::oauth_accounts::create
-create table oauth_accounts (
-  id uuid primary key default uuid_generate_v7(),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  user_id uuid not null references users (id),
-  provider varchar(255) not null,
-  provider_account_id varchar(255) not null,
-  expires_at timestamptz not null,
-  type varchar(255)
-);
-
--- auth::oauth_accounts::trigger
-create trigger update_oauth_accounts_updated_at
-  after update on oauth_accounts
-  for each row
-  execute function update_updated_at();
+-- auth::users::index
+create unique index users_email_idx on users (email);
 
 -- auth::team_users::create
+create type team_role as enum ('member', 'admin');
+
 create table team_users (
   id uuid primary key default uuid_generate_v7(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   team_id uuid not null references teams (id),
   user_id uuid not null references users (id),
-  role varchar(255),
+  role team_role not null default 'member',
   is_active boolean not null default true,
   is_admin boolean not null default false
 );
@@ -85,6 +79,24 @@ create trigger update_team_users_updated_at
   after update on team_users
   for each row
   execute function update_updated_at();
+
+  -- auth::oauth_accounts::create
+  create table oauth_accounts (
+    id uuid primary key default uuid_generate_v7(),
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    user_id uuid not null references users (id),
+    provider varchar(255) not null,
+    provider_account_id varchar(255) not null,
+    expires_at timestamptz not null,
+    type varchar(255)
+  );
+
+  -- auth::oauth_accounts::trigger
+  create trigger update_oauth_accounts_updated_at
+    after update on oauth_accounts
+    for each row
+    execute function update_updated_at();
 
 -- core::repos::create
 create table repos (
@@ -119,7 +131,8 @@ create table github_installations (
   installation_type varchar(255),
   sender_id bigint not null,
   sender_login varchar(255) not null,
-  status varchar(255)
+  status varchar(255),
+  constraint github_installations_installation_id_unique unique (installation_id)
 );
 
 -- integrations/github::github_installations::index
@@ -208,6 +221,7 @@ create trigger update_messaging_updated_at
   execute function update_updated_at();
 
 -- events::flat_events::create
+
 create type event_provider as enum ('github', 'slack');
 
 create table flat_events (

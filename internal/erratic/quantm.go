@@ -4,13 +4,15 @@ import (
 	"log/slog"
 	"net/http"
 
+	"connectrpc.com/connect"
 	"github.com/go-playground/validator/v10"
-	"go.breu.io/quantm/internal/shared"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/runtime/protoiface"
 	"google.golang.org/protobuf/types/known/anypb"
+
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -147,9 +149,35 @@ func (e *QuantmError) ToProto() *status.Status {
 	return detailed
 }
 
+func (e *QuantmError) ToConnectError() *connect.Error {
+	code := connect.CodeUnknown
+
+	switch e.Code {
+	case http.StatusBadRequest:
+		code = connect.CodeInvalidArgument
+	case http.StatusUnauthorized:
+		code = connect.CodeUnauthenticated
+	case http.StatusForbidden:
+		code = connect.CodePermissionDenied
+	case http.StatusNotFound:
+		code = connect.CodeNotFound
+	case http.StatusInternalServerError:
+		code = connect.CodeInternal
+	}
+
+	err := connect.NewError(code, e)
+
+	for key, val := range e.Hints {
+		err.Meta().Add(key, val)
+	}
+
+	return err
+}
+
 // New creates a new QuantmError instance.
 //
-// This function should never be called directly. Use the following functions instead:
+// For developer convenience, especially when dealing with http or grpc handlers, it is recommended to use
+// the following helper functions to create new errors:
 //
 //   - NewBadRequestError
 //   - NewUnauthorizedError
@@ -158,7 +186,7 @@ func (e *QuantmError) ToProto() *status.Status {
 //   - NewInternalServerError
 //
 // The function receives an error code, a human-readable message, and optional key-value pairs for additional
-// information.  Currently, HTTP status codes are used, but this may be revised in the future.
+// information.
 func New(code int, message string, args ...string) *QuantmError {
 	return &QuantmError{
 		ID:      shared.Idempotent(),

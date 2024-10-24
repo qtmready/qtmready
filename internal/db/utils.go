@@ -43,6 +43,11 @@ func suffix(length int) string {
 	return sb.String()
 }
 
+// CreateSlug creates a url friendly slug with a 4 character random suffix.
+//
+// Example:
+//
+//	CreateSlug("breu.io") // => "breu-io-x9mu"
 func CreateSlug(s string) string {
 	return slug.Make(s) + "-" + suffix(4)
 }

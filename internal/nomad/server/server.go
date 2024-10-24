@@ -7,6 +7,9 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 type (
@@ -20,6 +23,10 @@ type (
 )
 
 func (s *Server) add(path string, handler http.Handler) {
+	if s.mux == nil {
+		s.mux = http.NewServeMux()
+	}
+
 	s.mux.Handle(path, handler)
 }
 
@@ -36,7 +43,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	s.self = &http.Server{
 		Addr:                         s.config.Address(),
-		Handler:                      s.mux,
+		Handler:                      h2c.NewHandler(s.mux, &http2.Server{}),
 		DisableGeneralOptionsHandler: false,
 		ReadHeaderTimeout:            time.Second * 30,
 		WriteTimeout:                 time.Second * 30,
@@ -50,6 +57,8 @@ func (s *Server) Start(ctx context.Context) error {
 			return ctx
 		},
 	}
+
+	slog.Info("nomad: starting", "port", s.config.Port, "ssl", s.config.EnableSSL)
 
 	return s.self.ListenAndServe()
 }
