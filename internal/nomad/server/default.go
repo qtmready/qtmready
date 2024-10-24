@@ -8,6 +8,7 @@ import (
 func DefaultServer(opts ...Option) *Server {
 	srv := New(opts...)
 	srv.add(handler.NewHealthCheckServiceHandler())
+	srv.add(handler.NewAccountSericeServiceHandler())
 
 	return srv
 }
