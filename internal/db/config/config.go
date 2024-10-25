@@ -201,7 +201,12 @@ func WithPassword(password string) Option {
 
 func WithConfig(config *Connection) Option {
 	return func(c *Connection) {
-		*c = *config
+		c.Host = config.Host
+		c.Port = config.Port
+		c.Name = config.Name
+		c.User = config.User
+		c.Password = config.Password
+		c.EnableSSL = config.EnableSSL
 	}
 }
 
@@ -247,5 +252,6 @@ func Instance(opts ...Option) *Connection {
 		}
 	})
 
+	slog.Info("db: instance created", "host", _c.Host, "port", _c.Port, "name", _c.Name, "user", _c.User, "ssl", _c.EnableSSL)
 	return _c
 }

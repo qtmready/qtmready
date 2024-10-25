@@ -24,7 +24,7 @@ func Run(ctx context.Context, connection *config.Connection) {
 		connection.Start(ctx)
 	}
 
-	dir, err := iofs.New(sql, "migrations/postgres")
+	dir, err := iofs.New(sql, "postgres")
 	if err != nil {
 		slog.Error("db: unable to read migrations ...", "error", err.Error())
 

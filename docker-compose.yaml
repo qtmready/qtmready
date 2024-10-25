@@ -25,8 +25,8 @@ services:
     depends_on:
       - temporal-db
     environment:
+      # https://github.com/temporalio/temporal/blob/main/docker/config_template.yaml#L102
       DB: postgres12_pgx
-      SQL_HOST_NAME: temporal-db
       DBNAME: ${TEMPORAL__DB_NAME}
       DB_PORT: 5432
       POSTGRES_USER: ${TEMPORAL__DB_USER}
