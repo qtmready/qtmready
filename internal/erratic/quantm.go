@@ -150,7 +150,8 @@ func (e *QuantmError) ToProto() *status.Status {
 
 // New creates a new QuantmError instance.
 //
-// This function should never be called directly. Use the following functions instead:
+// For developer convenience, especially when dealing with http or grpc handlers, it is recommended to use
+// the following helper functions to create new errors:
 //
 //   - NewBadRequestError
 //   - NewUnauthorizedError
@@ -159,7 +160,7 @@ func (e *QuantmError) ToProto() *status.Status {
 //   - NewInternalServerError
 //
 // The function receives an error code, a human-readable message, and optional key-value pairs for additional
-// information.  Currently, HTTP status codes are used, but this may be revised in the future.
+// information.
 func New(code int, message string, args ...string) *QuantmError {
 	return &QuantmError{
 		ID:      shared.Idempotent(),

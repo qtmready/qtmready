@@ -1,6 +1,7 @@
-package db
+package migrations
 
 import (
+	"context"
 	"embed"
 	"log/slog"
 
@@ -13,29 +14,31 @@ import (
 )
 
 var (
-	//go:embed migrations/postgres/*.sql
+	//go:embed postgres/*.sql
 	sql embed.FS
 )
 
-// WithPostgresMigrations configures PostgreSQL database migrations.
-// TODO - move to function return.
-func WithPostgresMigrations() {
-	// TODO: read from .env
-	c := &config.DefaultConnection
+// Run runs the migrations for the PostgreSQL database.
+func Run(ctx context.Context, connection *config.Connection) {
+	if !connection.IsConnected() {
+		connection.Start(ctx)
+	}
 
 	dir, err := iofs.New(sql, "migrations/postgres")
 	if err != nil {
-		slog.Error("db: failed to initialize migrations", "error", err.Error())
+		slog.Error("db: unable to read migrations ...", "error", err.Error())
+
 		return
 	}
 
 	migrations, err := migrate.NewWithSourceInstance(
 		"iofs",
 		dir,
-		c.ConnectionURI(),
+		connection.ConnectionURI(),
 	)
+
 	if err != nil {
-		slog.Error("db: failed to create migrations instance", "error", err.Error())
+		slog.Error("db: failed to create migrations instance ...", "error", err.Error())
 		return
 	}
 

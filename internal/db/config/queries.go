@@ -16,18 +16,19 @@ var (
 // Queries returns a singleton instance of SQLC-generated queries, initialized with the Connection singleton's database connection.
 //
 // If no connection exists, Queries establishes one using the default environment-based configuration.  For more predictable behavior,
-// explicitly establishing a connection with `Connection()` and `Connect()` is recommended.
+// manually initialize the connection singleton using Instance() followed by Start() in the main function.
 func Queries() *entities.Queries {
 	_queryonce.Do(func() {
 		slog.Info("db: initializing queries ...")
 
 		if _c == nil {
-			slog.Warn("db: no connection, using environment variables to connect ...")
+			slog.Warn("db: no connection, attempting to create connection using environment variables ...")
 
-			ConnectionFromEnvironment().Connect(context.Background())
+			conn := Instance(WithConfigFromEnvironment())
+			_ = conn.Start(context.Background())
 		}
 
-		_qry = entities.New(Conn().conn)
+		_qry = entities.New(Instance().conn)
 	})
 
 	return _qry
