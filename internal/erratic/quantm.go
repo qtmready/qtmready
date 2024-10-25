@@ -5,12 +5,13 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
-	"go.breu.io/quantm/internal/shared"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/runtime/protoiface"
 	"google.golang.org/protobuf/types/known/anypb"
+
+	"go.breu.io/quantm/internal/shared"
 )
 
 type (
