@@ -107,6 +107,23 @@ func (c *Connection) Connect(ctx context.Context) {
 	}
 }
 
+func (c *Connection) ConnectionUri() string {
+	ssl := "disable"
+	if c.EnableSSL {
+		ssl = "require"
+	}
+
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		c.User,
+		c.Password,
+		c.Host,
+		c.Port,
+		c.Name,
+		ssl,
+	)
+}
+
 // Ping checks the database connection health by sending a ping.
 //
 // Returns an error if the ping fails.

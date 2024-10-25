@@ -24,9 +24,5 @@ import (
 )
 
 func main() {
-	db.NewCassandraSession(
-		db.WithCassandraFromEnv(),
-		db.WithCassandraSession(),
-		db.WithCassandraMigrations(),
-	)
+	db.WithPostgresMigrations()
 }
