@@ -21,15 +21,15 @@ type (
 		Nomad *pkg_nomad.Config `koanf:"NOMAD"`
 	}
 
-	Component interface {
+	Service interface {
 		Start(context.Context) error
 		Stop(context.Context) error
 	}
 
-	Components []Component
+	Services []Service
 )
 
-func nomad(config *pkg_nomad.Config) Component {
+func nomad(config *pkg_nomad.Config) Service {
 	return pkg_nomad.New(pkg_nomad.WithConfig(config))
 }
 
@@ -55,7 +55,7 @@ func read_env() *Config {
 func main() {
 	conf := read_env()
 
-	components := make(Components, 0)
+	svcs := make(Services, 0)
 	cleanups := make([]graceful.Cleanup, 0)
 
 	ctx := context.Background()
@@ -66,11 +66,11 @@ func main() {
 	terminate := make(chan os.Signal, 1)
 	signal.Notify(terminate, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt)
 
-	components = append(components, nomad(conf.Nomad))
+	svcs = append(svcs, nomad(conf.Nomad))
 
-	for _, c := range components {
-		cleanups = append(cleanups, c.Stop)
-		graceful.Go(ctx, graceful.GrabAndGo(c.Start, ctx), rx_errors)
+	for _, svc := range svcs {
+		cleanups = append(cleanups, svc.Stop)
+		graceful.Go(ctx, graceful.GrabAndGo(svc.Start, ctx), rx_errors)
 	}
 
 	select {
