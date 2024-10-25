@@ -7,6 +7,9 @@ import (
 	"net"
 	"net/http"
 	"time"
+
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 type (
@@ -40,7 +43,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 	s.self = &http.Server{
 		Addr:                         s.config.Address(),
-		Handler:                      s.mux,
+		Handler:                      h2c.NewHandler(s.mux, &http2.Server{}),
 		DisableGeneralOptionsHandler: false,
 		ReadHeaderTimeout:            time.Second * 30,
 		WriteTimeout:                 time.Second * 30,
