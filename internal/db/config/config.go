@@ -13,6 +13,9 @@ import (
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
+
+	"go.breu.io/quantm/internal/db/status"
+	"go.breu.io/quantm/internal/erratic"
 )
 
 var (
@@ -38,7 +41,8 @@ type (
 )
 
 var (
-	DefaultConn = Connection{
+	// DefaultConnection is the default database connection configuration.
+	DefaultConnection = Connection{
 		Host:      "localhost",
 		Name:      "ctrlplane",
 		Port:      5432,
@@ -61,25 +65,42 @@ func (c *Connection) ConnectionString() string {
 	)
 }
 
+func (c *Connection) ConnectionURI() string {
+	ssl := "disable"
+	if c.EnableSSL {
+		ssl = "require"
+	}
+
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
+		c.User,
+		c.Password,
+		c.Host,
+		c.Port,
+		c.Name,
+		ssl,
+	)
+}
+
 // IsConnected checks if a database connection exists.
 func (c *Connection) IsConnected() bool {
 	return c.conn != nil
 }
 
-// Connect establishes a database connection using retry logic.
+// Start establishes a database connection using retry logic.
 //
 // Panics if a connection cannot be established after multiple retries.
-func (c *Connection) Connect(ctx context.Context) {
-	if c.conn != nil {
+func (c *Connection) Start(ctx context.Context) error {
+	if c.IsConnected() {
 		slog.Warn("db: already connected")
 
-		return
+		return nil
 	}
 
 	if c.Host == "" || c.Name == "" || c.User == "" {
 		slog.Error("db: invalid configuration", "host", c.Host, "name", c.Name, "user", c.User)
 
-		panic("db: invalid configuration")
+		return erratic.NewValidationError("reason", "database configuration is invalid", "host", c.Host, "name", c.Name, "user", c.User)
 	}
 
 	slog.Info("db: connecting ...", "host", c.Host, "port", c.Port, "name", c.Name, "user", c.User, "ssl", c.EnableSSL)
@@ -103,25 +124,10 @@ func (c *Connection) Connect(ctx context.Context) {
 	)
 
 	if err != nil {
-		panic(fmt.Errorf("db: unable to connect, %v", err))
-	}
-}
-
-func (c *Connection) ConnectionUri() string {
-	ssl := "disable"
-	if c.EnableSSL {
-		ssl = "require"
+		return status.NewConnectionError().AddHint("error", err.Error())
 	}
 
-	return fmt.Sprintf(
-		"postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		c.User,
-		c.Password,
-		c.Host,
-		c.Port,
-		c.Name,
-		ssl,
-	)
+	return nil
 }
 
 // Ping checks the database connection health by sending a ping.
@@ -131,9 +137,15 @@ func (c *Connection) Ping(ctx context.Context) error {
 	return c.conn.Ping(ctx)
 }
 
-// Close closes the database connection.
-func (c *Connection) Close(ctx context.Context) {
-	c.conn.Close(ctx)
+// Stop closes the database connection.
+func (c *Connection) Stop(ctx context.Context) error {
+	if c.IsConnected() {
+		c.conn.Close(ctx)
+	} else {
+		slog.Warn("db: already closed")
+	}
+
+	return nil
 }
 
 // retryfn returns a function that attempts to establish a database connection.
@@ -187,6 +199,12 @@ func WithPassword(password string) Option {
 	}
 }
 
+func WithConfig(config *Connection) Option {
+	return func(c *Connection) {
+		*c = *config
+	}
+}
+
 // WithConfigFromEnvironment reads connection parameters from environment variables using koanf.
 //
 // Panics if environment variables cannot be read.
@@ -205,7 +223,7 @@ func WithConfigFromEnvironment(opts ...string) Option {
 		}
 
 		k := koanf.New("__")
-		_ = k.Load(structs.Provider(DefaultConn, "__"), nil)
+		_ = k.Load(structs.Provider(DefaultConnection, "__"), nil)
 
 		if err := k.Load(env.Provider(prefix, "__", nil), nil); err != nil {
 			panic(err)
@@ -217,10 +235,10 @@ func WithConfigFromEnvironment(opts ...string) Option {
 	}
 }
 
-// Connection creates a new global connection instance with functional options.
+// Instance creates a new global connection instance with functional options.
 //
 // Uses `sync.Once` to ensure the connection is initialized only once.
-func Conn(opts ...Option) *Connection {
+func Instance(opts ...Option) *Connection {
 	_conce.Do(func() {
 		_c = &Connection{}
 
@@ -230,11 +248,4 @@ func Conn(opts ...Option) *Connection {
 	})
 
 	return _c
-}
-
-// ConnectionFromEnvironment creates a new connection instance with values from environment variables.
-func ConnectionFromEnvironment() *Connection {
-	return Conn(
-		WithConfigFromEnvironment("DB__"),
-	)
 }
