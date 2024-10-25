@@ -118,8 +118,9 @@ func configure() *Config {
 		panic(err)
 	}
 
-	// Parse command line flags. The values set here will override the environment variables.
-	flag.BoolVarP(&conf.Migrate, "migrate", "m", conf.Migrate, "enable database migration")
+	if !conf.Migrate {
+		flag.BoolVarP(&conf.Migrate, "migrate", "m", false, "run database migrations")
+	}
 
 	return conf
 }
