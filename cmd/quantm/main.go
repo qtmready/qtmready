@@ -13,12 +13,14 @@ import (
 	"github.com/knadh/koanf/v2"
 	"go.breu.io/graceful"
 
+	"go.breu.io/quantm/internal/db/config"
 	pkg_nomad "go.breu.io/quantm/internal/nomad"
 )
 
 type (
 	Config struct {
-		Nomad *pkg_nomad.Config `koanf:"NOMAD"`
+		Nomad *pkg_nomad.Config  `koanf:"NOMAD"`
+		DB    *config.Connection `koanf:"DB"`
 	}
 
 	Service interface {
@@ -34,7 +36,10 @@ func nomad(config *pkg_nomad.Config) Service {
 }
 
 func read_env() *Config {
-	conf := &Config{Nomad: &pkg_nomad.DefaultConfig}
+	conf := &Config{
+		Nomad: &pkg_nomad.DefaultConfig,
+		DB:    &config.DefaultConn,
+	}
 	k := koanf.New("__")
 
 	if err := k.Load(structs.Provider(conf, "__"), nil); err != nil {

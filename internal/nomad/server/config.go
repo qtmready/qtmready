@@ -12,7 +12,7 @@ import (
 type (
 	// Config represents the Nomad server configuration.
 	Config struct {
-		Port      int  `json:"port" env:"PORT"`
+		Port      int  `json:"port" koanf:"PORT"`
 		EnableSSL bool `json:"enable_ssl" koanf:"ENABLE_SSL"`
 	}
 
@@ -21,7 +21,7 @@ type (
 
 var (
 	DefaultConfig = Config{
-		Port:      8080,
+		Port:      7070,
 		EnableSSL: false,
 	}
 )

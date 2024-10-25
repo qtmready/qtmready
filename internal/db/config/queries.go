@@ -27,7 +27,7 @@ func Queries() *entities.Queries {
 			ConnectionFromEnvironment().Connect(context.Background())
 		}
 
-		_qry = entities.New(Connection().conn)
+		_qry = entities.New(Conn().conn)
 	})
 
 	return _qry
