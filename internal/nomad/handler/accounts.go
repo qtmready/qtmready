@@ -28,7 +28,7 @@ func (s *AccountService) GetAccountByProviderAccountID(
 		return nil, erratic.NewNotFoundError(
 			"entity", "accounts",
 			"provider_account_id", rqst.Msg.GetProviderAccountId(),
-		).ToProto().Err()
+		).ToConnectError()
 	}
 
 	proto := &authv1.GetAccountByProviderAccountIDResponse{Account: convert.AccountToProto(&account)}

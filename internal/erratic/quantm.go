@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"connectrpc.com/connect"
 	"github.com/go-playground/validator/v10"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
 	"google.golang.org/grpc/codes"
@@ -146,6 +147,31 @@ func (e *QuantmError) ToProto() *status.Status {
 	}
 
 	return detailed
+}
+
+func (e *QuantmError) ToConnectError() *connect.Error {
+	code := connect.CodeUnknown
+
+	switch e.Code {
+	case http.StatusBadRequest:
+		code = connect.CodeInvalidArgument
+	case http.StatusUnauthorized:
+		code = connect.CodeUnauthenticated
+	case http.StatusForbidden:
+		code = connect.CodePermissionDenied
+	case http.StatusNotFound:
+		code = connect.CodeNotFound
+	case http.StatusInternalServerError:
+		code = connect.CodeInternal
+	}
+
+	err := connect.NewError(code, e)
+
+	for key, val := range e.Hints {
+		err.Meta().Add(key, val)
+	}
+
+	return err
 }
 
 // New creates a new QuantmError instance.
