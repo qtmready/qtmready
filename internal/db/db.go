@@ -19,7 +19,7 @@ func WithConfig(conf *Config) config.Option {
 
 // Connection is a wrapper around the config.Instance singleton.
 func Connection(opts ...config.Option) *config.Connection {
-	return config.Instance()
+	return config.Instance(opts...)
 }
 
 // Queries is a wrapper around the config.Queries singleton.

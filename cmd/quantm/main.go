@@ -48,7 +48,7 @@ func main() {
 	terminate := make(chan os.Signal, 1)
 	signal.Notify(terminate, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt)
 
-	conf := configure()                     // Read configuration from environment variables.
+	conf := configure()                     // Read configuration from environment and flags.
 	svcs := make(Services, 0)               // Initialize an empty list of services.
 	cleanups := make([]graceful.Cleanup, 0) // Initialize an empty list of cleanup functions.
 
@@ -118,8 +118,10 @@ func configure() *Config {
 		panic(err)
 	}
 
+	// Add migration flag if not enabled.
 	if !conf.Migrate {
 		flag.BoolVarP(&conf.Migrate, "migrate", "m", false, "run database migrations")
+		flag.Parse()
 	}
 
 	return conf
