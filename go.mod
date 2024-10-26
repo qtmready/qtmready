@@ -44,6 +44,7 @@ require (
 	go.step.sm/crypto v0.53.0
 	go.temporal.io/sdk v1.29.0
 	golang.org/x/crypto v0.27.0
+	golang.org/x/net v0.29.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -170,7 +171,6 @@ require (
 	go.uber.org/atomic v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20240409090435-93d18d7e34b8 // indirect
 	golang.org/x/mod v0.21.0 // indirect
-	golang.org/x/net v0.29.0 // indirect
 	golang.org/x/oauth2 v0.23.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
