@@ -58,7 +58,6 @@ func main() {
 
 	// If migration is enabled, append the migration service to the list.
 	if conf.Migrate {
-		slog.Info("main: running migrations ...")
 		migrations.Run(ctx, conf.DB)
 	}
 
@@ -118,7 +117,7 @@ func configure() *Config {
 		panic(err)
 	}
 
-	// Add migration flag if not enabled.
+	// Add -m or --migrate flag to enable database migration.
 	if !conf.Migrate {
 		flag.BoolVarP(&conf.Migrate, "migrate", "m", false, "run database migrations")
 		flag.Parse()

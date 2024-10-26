@@ -35,17 +35,22 @@ const (
 const (
 	// UserServiceCreateUserProcedure is the fully-qualified name of the UserService's CreateUser RPC.
 	UserServiceCreateUserProcedure = "/ctrlplane.auth.v1.UserService/CreateUser"
+	// UserServiceGetUserByEmailProcedure is the fully-qualified name of the UserService's
+	// GetUserByEmail RPC.
+	UserServiceGetUserByEmailProcedure = "/ctrlplane.auth.v1.UserService/GetUserByEmail"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	userServiceServiceDescriptor          = v1.File_ctrlplane_auth_v1_users_proto.Services().ByName("UserService")
-	userServiceCreateUserMethodDescriptor = userServiceServiceDescriptor.Methods().ByName("CreateUser")
+	userServiceServiceDescriptor              = v1.File_ctrlplane_auth_v1_users_proto.Services().ByName("UserService")
+	userServiceCreateUserMethodDescriptor     = userServiceServiceDescriptor.Methods().ByName("CreateUser")
+	userServiceGetUserByEmailMethodDescriptor = userServiceServiceDescriptor.Methods().ByName("GetUserByEmail")
 )
 
 // UserServiceClient is a client for the ctrlplane.auth.v1.UserService service.
 type UserServiceClient interface {
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
+	GetUserByEmail(context.Context, *connect.Request[v1.GetUserByEmailRequest]) (*connect.Response[v1.GetUserByEmailResponse], error)
 }
 
 // NewUserServiceClient constructs a client for the ctrlplane.auth.v1.UserService service. By
@@ -64,12 +69,19 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(userServiceCreateUserMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		getUserByEmail: connect.NewClient[v1.GetUserByEmailRequest, v1.GetUserByEmailResponse](
+			httpClient,
+			baseURL+UserServiceGetUserByEmailProcedure,
+			connect.WithSchema(userServiceGetUserByEmailMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // userServiceClient implements UserServiceClient.
 type userServiceClient struct {
-	createUser *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
+	createUser     *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
+	getUserByEmail *connect.Client[v1.GetUserByEmailRequest, v1.GetUserByEmailResponse]
 }
 
 // CreateUser calls ctrlplane.auth.v1.UserService.CreateUser.
@@ -77,9 +89,15 @@ func (c *userServiceClient) CreateUser(ctx context.Context, req *connect.Request
 	return c.createUser.CallUnary(ctx, req)
 }
 
+// GetUserByEmail calls ctrlplane.auth.v1.UserService.GetUserByEmail.
+func (c *userServiceClient) GetUserByEmail(ctx context.Context, req *connect.Request[v1.GetUserByEmailRequest]) (*connect.Response[v1.GetUserByEmailResponse], error) {
+	return c.getUserByEmail.CallUnary(ctx, req)
+}
+
 // UserServiceHandler is an implementation of the ctrlplane.auth.v1.UserService service.
 type UserServiceHandler interface {
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
+	GetUserByEmail(context.Context, *connect.Request[v1.GetUserByEmailRequest]) (*connect.Response[v1.GetUserByEmailResponse], error)
 }
 
 // NewUserServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -94,10 +112,18 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(userServiceCreateUserMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	userServiceGetUserByEmailHandler := connect.NewUnaryHandler(
+		UserServiceGetUserByEmailProcedure,
+		svc.GetUserByEmail,
+		connect.WithSchema(userServiceGetUserByEmailMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/ctrlplane.auth.v1.UserService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case UserServiceCreateUserProcedure:
 			userServiceCreateUserHandler.ServeHTTP(w, r)
+		case UserServiceGetUserByEmailProcedure:
+			userServiceGetUserByEmailHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -109,4 +135,8 @@ type UnimplementedUserServiceHandler struct{}
 
 func (UnimplementedUserServiceHandler) CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ctrlplane.auth.v1.UserService.CreateUser is not implemented"))
+}
+
+func (UnimplementedUserServiceHandler) GetUserByEmail(context.Context, *connect.Request[v1.GetUserByEmailRequest]) (*connect.Response[v1.GetUserByEmailResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ctrlplane.auth.v1.UserService.GetUserByEmail is not implemented"))
 }

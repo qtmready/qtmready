@@ -20,13 +20,16 @@ var (
 
 // Run runs the migrations for the PostgreSQL database.
 func Run(ctx context.Context, connection *config.Connection) {
+	slog.Info("db: running ...")
+
 	if !connection.IsConnected() {
-		connection.Start(ctx)
+		_ = connection.Start(ctx)
+		defer func() { _ = connection.Stop(ctx) }()
 	}
 
 	dir, err := iofs.New(sql, "postgres")
 	if err != nil {
-		slog.Error("db: unable to read migrations ...", "error", err.Error())
+		slog.Error("migrations: unable to read ...", "error", err.Error())
 
 		return
 	}
@@ -38,19 +41,30 @@ func Run(ctx context.Context, connection *config.Connection) {
 	)
 
 	if err != nil {
-		slog.Error("db: failed to create migrations instance ...", "error", err.Error())
+		slog.Error("migrations: unable to read data ...", "error", err.Error())
+		return
+	}
+
+	version, dirty, err := migrations.Version()
+	if dirty {
+		slog.Error("migrations: cannot run. It has unapplied migrations.", "version", version)
+		return
+	}
+
+	if err != nil {
+		slog.Warn("migrations: failed", "error", err.Error())
 		return
 	}
 
 	err = migrations.Up()
 	if err != nil && err != migrate.ErrNoChange {
-		slog.Warn("db: failed to run migrations", "error", err.Error())
+		slog.Warn("migrations: failed", "error", err.Error())
 		return
 	}
 
 	if err == migrate.ErrNoChange {
-		slog.Info("db: no new migrations to run")
+		slog.Info("migrations: nothing new since ...", "version", version)
 	}
 
-	slog.Info("db: migrations done successfully")
+	slog.Info("migrations: migrations done successfully")
 }

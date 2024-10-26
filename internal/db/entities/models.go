@@ -56,6 +56,48 @@ func (ns NullEventProvider) Value() (driver.Value, error) {
 	return string(ns.EventProvider), nil
 }
 
+type TeamRole string
+
+const (
+	TeamRoleMember TeamRole = "member"
+	TeamRoleAdmin  TeamRole = "admin"
+)
+
+func (e *TeamRole) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TeamRole(s)
+	case string:
+		*e = TeamRole(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TeamRole: %T", src)
+	}
+	return nil
+}
+
+type NullTeamRole struct {
+	TeamRole TeamRole `json:"team_role"`
+	Valid    bool     `json:"valid"` // Valid is true if TeamRole is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTeamRole) Scan(value interface{}) error {
+	if value == nil {
+		ns.TeamRole, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TeamRole.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTeamRole) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TeamRole), nil
+}
+
 type FlatEvent struct {
 	ID          uuid.UUID       `json:"id"`
 	Version     string          `json:"version"`
@@ -173,25 +215,25 @@ type Team struct {
 }
 
 type TeamUser struct {
-	ID        uuid.UUID   `json:"id"`
-	CreatedAt time.Time   `json:"created_at"`
-	UpdatedAt time.Time   `json:"updated_at"`
-	TeamID    uuid.UUID   `json:"team_id"`
-	UserID    uuid.UUID   `json:"user_id"`
-	Role      pgtype.Text `json:"role"`
-	IsActive  bool        `json:"is_active"`
-	IsAdmin   bool        `json:"is_admin"`
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	TeamID    uuid.UUID `json:"team_id"`
+	UserID    uuid.UUID `json:"user_id"`
+	Role      TeamRole  `json:"role"`
+	IsActive  bool      `json:"is_active"`
+	IsAdmin   bool      `json:"is_admin"`
 }
 
 type User struct {
-	ID         uuid.UUID   `json:"id"`
-	CreatedAt  time.Time   `json:"created_at"`
-	UpdatedAt  time.Time   `json:"updated_at"`
-	OrgID      uuid.UUID   `json:"org_id"`
-	Email      string      `json:"email"`
-	FirstName  pgtype.Text `json:"first_name"`
-	LastName   pgtype.Text `json:"last_name"`
-	Password   pgtype.Text `json:"password"`
-	IsActive   bool        `json:"is_active"`
-	IsVerified bool        `json:"is_verified"`
+	ID         uuid.UUID `json:"id"`
+	CreatedAt  time.Time `json:"created_at"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	OrgID      uuid.UUID `json:"org_id"`
+	Email      string    `json:"email"`
+	FirstName  string    `json:"first_name"`
+	LastName   string    `json:"last_name"`
+	Password   string    `json:"password"`
+	IsActive   bool      `json:"is_active"`
+	IsVerified bool      `json:"is_verified"`
 }

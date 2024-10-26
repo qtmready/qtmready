@@ -1,20 +1,18 @@
--- name: GetUserByID :one
-SELECT id, created_at, updated_at, first_name, last_name, email, org_id
-FROM users
-WHERE id = $1
-LIMIT 1;
+-- name: CreateUser :one
+INSERT INTO users (first_name, last_name, email, password)
+VALUES ($1, $2, $3, $4)
+RETURNING *;
 
--- name: GetUser :one
+-- name: GetUserByID :one
 SELECT *
 FROM users
 WHERE id = $1
 LIMIT 1;
 
 -- name: GetUserByEmail :one
-SELECT id, created_at, updated_at, first_name, last_name, email, org_id
+SELECT *
 FROM users
 WHERE email = LOWER($1);
-
 
 -- name: GetUserByEmailFull :one
 SELECT
@@ -126,15 +124,10 @@ WHERE
   u.email = LOWER($1)
 GROUP BY u.id, org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug;
 
--- name: CreateUser :one
-INSERT INTO users (first_name, last_name, email, password)
-VALUES ($1, $2, $3, $4)
-RETURNING id, created_at, updated_at, first_name, last_name, email, org_id;
-
 -- name: GetUserByProviderAccount :one
 SELECT
-  u.id, u.created_at, u.updated_at, u.first_name, u.last_name, u.email, u.org_id
-FROM users u
+  u.*
+FROM users as u
 WHERE u.id IN (
   SELECT user_id
   FROM oauth_accounts
@@ -145,10 +138,9 @@ WHERE u.id IN (
 UPDATE users
 SET first_name = $2, last_name = $3, email = LOWER($4), org_id = $5
 WHERE id = $1
-RETURNING id, created_at, updated_at, first_name, last_name, email, org_id;
+RETURNING *;
 
--- name: UpdateUserPassword :one
+-- name: UpdateUserPassword :exec
 UPDATE users
 SET password = $2
-WHERE id = $1
-RETURNING id, created_at, updated_at, first_name, last_name, email, org_id;
+WHERE id = $1;
