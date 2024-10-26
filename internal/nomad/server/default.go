@@ -10,6 +10,7 @@ func DefaultServer(opts ...Option) *Server {
 
 	srv.add(handler.NewHealthCheckServiceHandler())
 	srv.add(handler.NewAccountSericeServiceHandler())
+	srv.add(handler.NewUserSericeServiceHandler())
 
 	return srv
 }

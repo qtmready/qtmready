@@ -9,7 +9,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createTeamUser = `-- name: CreateTeamUser :one
@@ -19,11 +18,11 @@ RETURNING id, created_at, updated_at, team_id, user_id, role, is_active, is_admi
 `
 
 type CreateTeamUserParams struct {
-	TeamID   uuid.UUID   `json:"team_id"`
-	UserID   uuid.UUID   `json:"user_id"`
-	Role     pgtype.Text `json:"role"`
-	IsActive bool        `json:"is_active"`
-	IsAdmin  bool        `json:"is_admin"`
+	TeamID   uuid.UUID `json:"team_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	Role     TeamRole  `json:"role"`
+	IsActive bool      `json:"is_active"`
+	IsAdmin  bool      `json:"is_admin"`
 }
 
 func (q *Queries) CreateTeamUser(ctx context.Context, arg CreateTeamUserParams) (TeamUser, error) {
