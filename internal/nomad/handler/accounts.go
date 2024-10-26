@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+	"github.com/jackc/pgx/v5"
 
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/erratic"
@@ -25,10 +26,14 @@ func (s *AccountService) GetAccountByProviderAccountID(
 
 	account, err := db.Queries().GetOAuthAccountByProviderAccountID(ctx, params)
 	if err != nil {
-		return nil, erratic.NewNotFoundError(
-			"entity", "accounts",
-			"provider_account_id", rqst.Msg.GetProviderAccountId(),
-		).ToConnectError()
+		if err == pgx.ErrNoRows {
+			return nil, erratic.NewNotFoundError(
+				"entity", "accounts",
+				"provider_account_id", rqst.Msg.GetProviderAccountId(),
+			).ToConnectError()
+		}
+
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
 	proto := &authv1.GetAccountByProviderAccountIDResponse{Account: convert.AccountToProto(&account)}

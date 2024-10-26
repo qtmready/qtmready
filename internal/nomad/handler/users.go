@@ -11,7 +11,9 @@ import (
 )
 
 type (
-	UserService struct{}
+	UserService struct {
+		authv1connect.UnimplementedUserServiceHandler
+	}
 )
 
 func (s *UserService) CreateUser(
