@@ -5,7 +5,9 @@ create table orgs (
   updated_at timestamptz not null default now(),
   name varchar(255) not null,
   domain varchar(255) not null,
-  slug varchar(255) not null
+  slug varchar(255) not null,
+  constraint orgs_domain_unique unique (domain),
+  constraint orgs_slug_unique unique (slug)
 );
 
 -- auth::orgs::trigger
@@ -13,6 +15,11 @@ create trigger update_orgs_updated_at
   after update on orgs
   for each row
   execute function update_updated_at();
+
+-- auth::orgs::index
+
+create unique index orgs_domain_idx on orgs (domain);
+create unique index orgs_slug_idx on orgs (slug);
 
 -- auth::teams::create
 create table teams (
@@ -41,7 +48,8 @@ create table users (
   last_name varchar(255),
   password text,
   is_active boolean not null default true,
-  is_verified boolean not null default false
+  is_verified boolean not null default false,
+  contraint users_email_unique unique (email)
 );
 
 -- auth::users::trigger
