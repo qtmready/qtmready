@@ -247,6 +247,8 @@ func WithConfigFromEnvironment(opts ...string) Option {
 // Uses `sync.Once` to ensure the connection is initialized only once.
 func Instance(opts ...Option) *Connection {
 	_conce.Do(func() {
+		slog.Info("db: initializing ...")
+
 		_c = &Connection{}
 
 		for _, opt := range opts {
@@ -254,6 +256,6 @@ func Instance(opts ...Option) *Connection {
 		}
 	})
 
-	slog.Info("db: instance created", "host", _c.Host, "port", _c.Port, "name", _c.Name, "user", _c.User, "ssl", _c.EnableSSL)
+	slog.Info("db: connection configured ...", "host", _c.Host, "port", _c.Port, "name", _c.Name, "user", _c.User, "ssl", _c.EnableSSL)
 	return _c
 }
