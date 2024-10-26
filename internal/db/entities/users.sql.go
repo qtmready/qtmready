@@ -56,6 +56,160 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 	return i, err
 }
 
+const getFullUserByEmail = `-- name: GetFullUserByEmail :one
+SELECT
+  u.id,
+  u.created_at,
+  u.updated_at,
+  u.first_name,
+  u.last_name,
+  u.email,
+  u.org_id,
+  ARRAY_AGG(
+    DISTINCT ROW(
+      team.id,
+      team.created_at,
+      team.updated_at,
+      team.org_id,
+      team.name,
+      team.slug
+    )
+  ) AS teams,
+  ARRAY_AGG(
+    DISTINCT ROW(
+      account.id,
+      account.created_at,
+      account.updated_at,
+      account.user_id,
+      account.provider,
+      account.provider_account_id,
+      account.expires_at,
+      account.type
+      )
+  ) as accounts,
+  ROW(org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug) AS org
+FROM users AS u
+LEFT JOIN team_users AS team_user
+  ON u.id = team_user.user_id
+LEFT JOIN teams AS team
+  ON team_user.team_id = team.id
+LEFT JOIN oauth_accounts AS account
+  ON u.id = account.user_id
+LEFT JOIN orgs AS org
+  ON u.org_id = org.id
+WHERE
+  u.email = LOWER($1)
+GROUP BY u.id, org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug
+`
+
+type GetFullUserByEmailRow struct {
+	ID        uuid.UUID   `json:"id"`
+	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
+	FirstName pgtype.Text `json:"first_name"`
+	LastName  pgtype.Text `json:"last_name"`
+	Email     string      `json:"email"`
+	OrgID     uuid.UUID   `json:"org_id"`
+	Teams     interface{} `json:"teams"`
+	Accounts  interface{} `json:"accounts"`
+	Org       interface{} `json:"org"`
+}
+
+func (q *Queries) GetFullUserByEmail(ctx context.Context, lower string) (GetFullUserByEmailRow, error) {
+	row := q.db.QueryRow(ctx, getFullUserByEmail, lower)
+	var i GetFullUserByEmailRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FirstName,
+		&i.LastName,
+		&i.Email,
+		&i.OrgID,
+		&i.Teams,
+		&i.Accounts,
+		&i.Org,
+	)
+	return i, err
+}
+
+const getFullUserByID = `-- name: GetFullUserByID :one
+SELECT
+  u.id,
+  u.created_at,
+  u.updated_at,
+  u.first_name,
+  u.last_name,
+  u.email,
+  u.org_id,
+  ARRAY_AGG(
+    DISTINCT ROW(
+      team.id,
+      team.created_at,
+      team.updated_at,
+      team.org_id,
+      team.name,
+      team.slug
+    )
+  ) AS teams,
+  ARRAY_AGG(
+    DISTINCT ROW(
+      account.id,
+      account.created_at,
+      account.updated_at,
+      account.user_id,
+      account.provider,
+      account.provider_account_id,
+      account.expires_at,
+      account.type
+      )
+  ) as accounts,
+  ROW(org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug) AS org
+FROM users AS u
+LEFT JOIN team_users AS team_user
+  ON u.id = team_user.user_id
+LEFT JOIN teams AS team
+  ON team_user.team_id = team.id
+LEFT JOIN oauth_accounts AS account
+  ON u.id = account.user_id
+LEFT JOIN orgs AS org
+  ON u.org_id = org.id
+WHERE
+  u.id = $1
+GROUP BY u.id, org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug
+`
+
+type GetFullUserByIDRow struct {
+	ID        uuid.UUID   `json:"id"`
+	CreatedAt time.Time   `json:"created_at"`
+	UpdatedAt time.Time   `json:"updated_at"`
+	FirstName pgtype.Text `json:"first_name"`
+	LastName  pgtype.Text `json:"last_name"`
+	Email     string      `json:"email"`
+	OrgID     uuid.UUID   `json:"org_id"`
+	Teams     interface{} `json:"teams"`
+	Accounts  interface{} `json:"accounts"`
+	Org       interface{} `json:"org"`
+}
+
+func (q *Queries) GetFullUserByID(ctx context.Context, id uuid.UUID) (GetFullUserByIDRow, error) {
+	row := q.db.QueryRow(ctx, getFullUserByID, id)
+	var i GetFullUserByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.FirstName,
+		&i.LastName,
+		&i.Email,
+		&i.OrgID,
+		&i.Teams,
+		&i.Accounts,
+		&i.Org,
+	)
+	return i, err
+}
+
 const getUser = `-- name: GetUser :one
 SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
 FROM users

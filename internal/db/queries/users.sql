@@ -36,6 +36,96 @@ WHERE
 GROUP BY
   u.id;
 
+-- name: GetFullUserByID :one
+SELECT
+  u.id,
+  u.created_at,
+  u.updated_at,
+  u.first_name,
+  u.last_name,
+  u.email,
+  u.org_id,
+  ARRAY_AGG(
+    DISTINCT ROW(
+      team.id,
+      team.created_at,
+      team.updated_at,
+      team.org_id,
+      team.name,
+      team.slug
+    )
+  ) AS teams,
+  ARRAY_AGG(
+    DISTINCT ROW(
+      account.id,
+      account.created_at,
+      account.updated_at,
+      account.user_id,
+      account.provider,
+      account.provider_account_id,
+      account.expires_at,
+      account.type
+      )
+  ) as accounts,
+  ROW(org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug) AS org
+FROM users AS u
+LEFT JOIN team_users AS team_user
+  ON u.id = team_user.user_id
+LEFT JOIN teams AS team
+  ON team_user.team_id = team.id
+LEFT JOIN oauth_accounts AS account
+  ON u.id = account.user_id
+LEFT JOIN orgs AS org
+  ON u.org_id = org.id
+WHERE
+  u.id = $1
+GROUP BY u.id, org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug;
+
+-- name: GetFullUserByEmail :one
+SELECT
+  u.id,
+  u.created_at,
+  u.updated_at,
+  u.first_name,
+  u.last_name,
+  u.email,
+  u.org_id,
+  ARRAY_AGG(
+    DISTINCT ROW(
+      team.id,
+      team.created_at,
+      team.updated_at,
+      team.org_id,
+      team.name,
+      team.slug
+    )
+  ) AS teams,
+  ARRAY_AGG(
+    DISTINCT ROW(
+      account.id,
+      account.created_at,
+      account.updated_at,
+      account.user_id,
+      account.provider,
+      account.provider_account_id,
+      account.expires_at,
+      account.type
+      )
+  ) as accounts,
+  ROW(org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug) AS org
+FROM users AS u
+LEFT JOIN team_users AS team_user
+  ON u.id = team_user.user_id
+LEFT JOIN teams AS team
+  ON team_user.team_id = team.id
+LEFT JOIN oauth_accounts AS account
+  ON u.id = account.user_id
+LEFT JOIN orgs AS org
+  ON u.org_id = org.id
+WHERE
+  u.email = LOWER($1)
+GROUP BY u.id, org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug;
+
 -- name: CreateUser :one
 INSERT INTO users (first_name, last_name, email, password)
 VALUES ($1, $2, $3, $4)
