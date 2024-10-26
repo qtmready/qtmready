@@ -49,7 +49,7 @@ create table users (
   password text,
   is_active boolean not null default true,
   is_verified boolean not null default false,
-  contraint users_email_unique unique (email)
+  constraint users_email_unique unique (email)
 );
 
 -- auth::users::trigger
