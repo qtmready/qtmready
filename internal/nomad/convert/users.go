@@ -1,6 +1,7 @@
 package convert
 
 import (
+	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"go.breu.io/quantm/internal/db/entities"
@@ -22,22 +23,24 @@ func UserToProto(user *entities.User) *authv1.User {
 
 func ProtoToUser(proto *authv1.User) *entities.User {
 	return &entities.User{
-		ID:         ProtoToUUID(proto.Id),
-		CreatedAt:  proto.CreatedAt.AsTime(),
-		UpdatedAt:  proto.UpdatedAt.AsTime(),
-		FirstName:  proto.FirstName,
-		LastName:   proto.LastName,
-		Email:      proto.Email,
-		IsActive:   proto.IsActive,
-		IsVerified: proto.IsVerified,
+		ID:         ProtoToUUID(proto.GetId()),
+		CreatedAt:  proto.GetCreatedAt().AsTime(),
+		UpdatedAt:  proto.GetUpdatedAt().AsTime(),
+		FirstName:  proto.GetFirstName(),
+		LastName:   proto.GetLastName(),
+		Email:      proto.GetEmail(),
+		IsActive:   proto.GetIsActive(),
+		IsVerified: proto.GetIsVerified(),
 	}
 }
 
 func ProtoToCreateUserParams(proto *authv1.CreateUserRequest) entities.CreateUserParams {
+	hashed, _ := bcrypt.GenerateFromPassword([]byte(""), bcrypt.DefaultCost) // TODO: hash password
+
 	return entities.CreateUserParams{
-		FirstName: proto.FirstName,
-		LastName:  proto.LastName,
-		Email:     proto.Email,
-		Password:  proto.Password,
+		FirstName: proto.GetFirstName(),
+		LastName:  proto.GetLastName(),
+		Email:     proto.GetEmail(),
+		Password:  string(hashed),
 	}
 }

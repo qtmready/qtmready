@@ -92,13 +92,13 @@ func (c *Connection) IsConnected() bool {
 // Panics if a connection cannot be established after multiple retries.
 func (c *Connection) Start(ctx context.Context) error {
 	if c.IsConnected() {
-		slog.Warn("db: already connected")
+		slog.Warn("db: already connected.")
 
 		return nil
 	}
 
 	if c.Host == "" || c.Name == "" || c.User == "" {
-		slog.Error("db: invalid configuration", "host", c.Host, "name", c.Name, "user", c.User)
+		slog.Error("db: invalid configuration.", "host", c.Host, "name", c.Name, "user", c.User)
 
 		return erratic.NewValidationError("reason", "database configuration is invalid", "host", c.Host, "name", c.Name, "user", c.User)
 	}
@@ -127,7 +127,7 @@ func (c *Connection) Start(ctx context.Context) error {
 		return status.NewConnectionError().AddHint("error", err.Error())
 	}
 
-	slog.Info("db: connected")
+	slog.Info("db: connected.")
 
 	return nil
 }
@@ -139,12 +139,16 @@ func (c *Connection) Ping(ctx context.Context) error {
 	return c.conn.Ping(ctx)
 }
 
+func (c *Connection) Get() *pgx.Conn {
+	return c.conn
+}
+
 // Stop closes the database connection.
 func (c *Connection) Stop(ctx context.Context) error {
 	if c.IsConnected() {
 		c.conn.Close(ctx)
 	} else {
-		slog.Warn("db: already closed")
+		slog.Warn("db: already closed.")
 	}
 
 	return nil
@@ -247,15 +251,16 @@ func WithConfigFromEnvironment(opts ...string) Option {
 // Uses `sync.Once` to ensure the connection is initialized only once.
 func Instance(opts ...Option) *Connection {
 	_conce.Do(func() {
-		slog.Info("db: initializing ...")
+		slog.Info("db: configuring connection ...")
 
 		_c = &Connection{}
 
 		for _, opt := range opts {
 			opt(_c)
 		}
+
+		slog.Info("db: connection configured.")
 	})
 
-	slog.Info("db: connection configured ...", "host", _c.Host, "port", _c.Port, "name", _c.Name, "user", _c.User, "ssl", _c.EnableSSL)
 	return _c
 }

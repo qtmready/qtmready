@@ -15,6 +15,7 @@ const (
 	AccountProviderGoogle  = "google"
 )
 
+// ProviderToProto converts an account provider string to its protobuf representation.
 func ProviderToProto(provider string) authv1.Provider {
 	switch provider {
 	case AccountProviderGithub:
@@ -26,6 +27,7 @@ func ProviderToProto(provider string) authv1.Provider {
 	}
 }
 
+// AccountToProto converts an OauthAccount entity to its protobuf representation.
 func AccountToProto(account *entities.OauthAccount) *authv1.Account {
 	return &authv1.Account{
 		Id:                UUIDToProto(account.ID),
@@ -39,6 +41,7 @@ func AccountToProto(account *entities.OauthAccount) *authv1.Account {
 	}
 }
 
+// ProtoToProvider converts a protobuf provider to its string representation.
 func ProtoToProvider(proto authv1.Provider) string {
 	switch proto {
 	case authv1.Provider_PROVIDER_GITHUB:
@@ -50,42 +53,48 @@ func ProtoToProvider(proto authv1.Provider) string {
 	}
 }
 
+// ProtoToAccount converts a protobuf account to its OauthAccount entity representation.
 func ProtoToAccount(proto *authv1.Account) *entities.OauthAccount {
 	return &entities.OauthAccount{
-		ID:                ProtoToUUID(proto.Id),
-		CreatedAt:         proto.CreatedAt.AsTime(),
-		UpdatedAt:         proto.UpdatedAt.AsTime(),
-		UserID:            ProtoToUUID(proto.UserId),
-		Provider:          ProtoToProvider(proto.Provider),
-		ProviderAccountID: proto.ProviderAccountId,
-		ExpiresAt:         proto.ExpiresAt.AsTime(),
-		Type:              pgtype.Text{String: proto.Kind, Valid: true},
+		ID:                ProtoToUUID(proto.GetId()),
+		CreatedAt:         proto.GetCreatedAt().AsTime(),
+		UpdatedAt:         proto.GetUpdatedAt().AsTime(),
+		UserID:            ProtoToUUID(proto.GetUserId()),
+		Provider:          ProtoToProvider(proto.GetProvider()),
+		ProviderAccountID: proto.GetProviderAccountId(),
+		ExpiresAt:         proto.GetExpiresAt().AsTime(),
+		Type:              pgtype.Text{String: proto.GetKind(), Valid: true},
 	}
 }
 
+// ProtoToGetAccountsByUserIDParams converts a protobuf GetAccountsByUserIDRequest to a UUID.
 func ProtoToGetAccountsByUserIDParams(proto *authv1.GetAccountsByUserIDRequest) uuid.UUID {
-	return ProtoToUUID(proto.UserId)
+	return ProtoToUUID(proto.GetUserId())
 }
 
+// ProtoToCreateAccountParams converts a protobuf CreateAccountRequest to an entities.CreateOAuthAccountParams.
 func ProtoToCreateAccountParams(proto *authv1.CreateAccountRequest) entities.CreateOAuthAccountParams {
 	return entities.CreateOAuthAccountParams{
-		UserID:            ProtoToUUID(proto.UserId),
-		Provider:          ProtoToProvider(proto.Provider),
-		ProviderAccountID: proto.ProviderAccountId,
-		ExpiresAt:         proto.ExpiresAt.AsTime(),
-		Type:              pgtype.Text{String: proto.Kind, Valid: true},
+		UserID:            ProtoToUUID(proto.GetUserId()),
+		Provider:          ProtoToProvider(proto.GetProvider()),
+		ProviderAccountID: proto.GetProviderAccountId(),
+		ExpiresAt:         proto.GetExpiresAt().AsTime(),
+		Type:              pgtype.Text{String: proto.GetKind(), Valid: true},
 	}
 }
 
+// ProtoToGetAccountByIDParams converts a protobuf GetAccountByIDRequest to a UUID.
 func ProtoToGetAccountByIDParams(proto *authv1.GetAccountByIDRequest) uuid.UUID {
-	return ProtoToUUID(proto.Id)
+	return ProtoToUUID(proto.GetId())
 }
 
+// ProtoToGetAccountByProviderAccountIDParams converts a protobuf GetAccountByProviderAccountIDRequest to an
+// entities.GetOAuthAccountByProviderAccountIDParams.
 func ProtoToGetAccountByProviderAccountIDParams(
 	proto *authv1.GetAccountByProviderAccountIDRequest,
 ) entities.GetOAuthAccountByProviderAccountIDParams {
 	return entities.GetOAuthAccountByProviderAccountIDParams{
-		Provider:          ProtoToProvider(proto.Provider),
-		ProviderAccountID: proto.ProviderAccountId,
+		Provider:          ProtoToProvider(proto.GetProvider()),
+		ProviderAccountID: proto.GetProviderAccountId(),
 	}
 }
