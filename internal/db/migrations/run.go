@@ -3,6 +3,7 @@ package migrations
 import (
 	"context"
 	"embed"
+	"fmt"
 	"log/slog"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -19,8 +20,8 @@ var (
 )
 
 // Run runs the migrations for the PostgreSQL database.
-func Run(ctx context.Context, connection *config.Connection) {
-	slog.Info("db: running ...")
+func Run(ctx context.Context, connection *config.Connection) error {
+	slog.Info("migrations: running ...")
 
 	if !connection.IsConnected() {
 		_ = connection.Start(ctx)
@@ -31,7 +32,7 @@ func Run(ctx context.Context, connection *config.Connection) {
 	if err != nil {
 		slog.Error("migrations: unable to read ...", "error", err.Error())
 
-		return
+		return err
 	}
 
 	migrations, err := migrate.NewWithSourceInstance(
@@ -42,24 +43,18 @@ func Run(ctx context.Context, connection *config.Connection) {
 
 	if err != nil {
 		slog.Error("migrations: unable to read data ...", "error", err.Error())
-		return
+		return err
 	}
 
-	version, dirty, err := migrations.Version()
+	version, dirty, _ := migrations.Version()
+
 	if dirty {
-		slog.Error("migrations: cannot run. It has unapplied migrations.", "version", version)
-		return
-	}
-
-	if err != nil {
-		slog.Warn("migrations: failed", "error", err.Error())
-		return
+		return fmt.Errorf("migrations:  unapplied migrations at version, %d", version)
 	}
 
 	err = migrations.Up()
 	if err != nil && err != migrate.ErrNoChange {
-		slog.Warn("migrations: failed", "error", err.Error())
-		return
+		return err
 	}
 
 	if err == migrate.ErrNoChange {
@@ -67,4 +62,6 @@ func Run(ctx context.Context, connection *config.Connection) {
 	}
 
 	slog.Info("migrations: migrations done successfully")
+
+	return nil
 }

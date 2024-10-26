@@ -58,7 +58,11 @@ func main() {
 
 	// If migration is enabled, append the migration service to the list.
 	if conf.Migrate {
-		migrations.Run(ctx, conf.DB)
+		if err := migrations.Run(ctx, conf.DB); err != nil {
+			slog.Error("main: unable to run migrations, cannot continue ...", "error", err.Error())
+
+			os.Exit(1)
+		}
 	}
 
 	// Start each service in a goroutine, registering cleanup functions for graceful shutdown.
