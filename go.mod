@@ -49,6 +49,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 )
 
+require github.com/google/go-cmp v0.6.0 // indirect
+
 require (
 	cloud.google.com/go v0.115.1 // indirect
 	cloud.google.com/go/auth v0.9.5 // indirect
