@@ -136,7 +136,6 @@ func TestProtoToCreateUserParams(t *testing.T) {
 	if params.Email != req.GetEmail() {
 		t.Errorf("Expected Email to be %s, got %s", req.GetEmail(), params.Email)
 	}
-	// TODO: add password validation
 }
 
 func TestProtoToUpdateUserParams(t *testing.T) {
