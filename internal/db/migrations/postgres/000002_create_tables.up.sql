@@ -46,6 +46,7 @@ create table users (
   first_name varchar(255) not null,
   last_name varchar(255) not null,
   password text not null,
+  picture text not null,
   is_active boolean not null default true,
   is_verified boolean not null default false,
   constraint users_email_unique unique (email)
@@ -89,7 +90,8 @@ create trigger update_team_users_updated_at
     provider varchar(255) not null,
     provider_account_id varchar(255) not null,
     expires_at timestamptz not null,
-    type varchar(255)
+    type varchar(255),
+    constraint oauth_accounts_unique_provider_account unique (provider, provider_account_id)
   );
 
   -- auth::oauth_accounts::trigger
@@ -217,32 +219,5 @@ create table messaging (
 -- messaging::messaging::trigger
 create trigger update_messaging_updated_at
   after update on messaging
-  for each row
-  execute function update_updated_at();
-
--- events::flat_events::create
-
-create type event_provider as enum ('github', 'slack');
-
-create table flat_events (
-  id uuid primary key default uuid_generate_v7(),
-  version varchar(255) not null,
-  parent_id uuid,
-  provider event_provider not null,
-  scope varchar(255) not null,
-  action varchar(255) not null,
-  source varchar(255) not null,
-  subject_id uuid not null,
-  subject_name varchar(255) not null,
-  payload jsonb not null,
-  team_id uuid not null references teams (id),
-  user_id uuid not null references users (id),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
--- events::flat_events::trigger
-create trigger update_flat_events_updated_at
-  after update on flat_events
   for each row
   execute function update_updated_at();

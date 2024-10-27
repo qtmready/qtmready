@@ -7,15 +7,14 @@ package entities
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (first_name, last_name, email, password, org_id)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
+INSERT INTO users (first_name, last_name, email, password, picture, org_id)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, created_at, updated_at, org_id, email, first_name, last_name, password, picture, is_active, is_verified
 `
 
 type CreateUserParams struct {
@@ -23,6 +22,7 @@ type CreateUserParams struct {
 	LastName  string    `json:"last_name"`
 	Email     string    `json:"email"`
 	Password  string    `json:"password"`
+	Picture   string    `json:"picture"`
 	OrgID     uuid.UUID `json:"org_id"`
 }
 
@@ -32,6 +32,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.LastName,
 		arg.Email,
 		arg.Password,
+		arg.Picture,
 		arg.OrgID,
 	)
 	var i User
@@ -44,168 +45,131 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.FirstName,
 		&i.LastName,
 		&i.Password,
+		&i.Picture,
 		&i.IsActive,
 		&i.IsVerified,
 	)
 	return i, err
 }
 
-const getFullUserByEmail = `-- name: GetFullUserByEmail :one
+const getAuthUserByEmail = `-- name: GetAuthUserByEmail :one
 SELECT
-  u.id,
-  u.created_at,
-  u.updated_at,
-  u.first_name,
-  u.last_name,
-  u.email,
-  u.org_id,
-  ARRAY_AGG(
-    DISTINCT ROW(
-      team.id,
-      team.created_at,
-      team.updated_at,
-      team.org_id,
-      team.name,
-      team.slug
-    )
-  ) AS teams,
-  ARRAY_AGG(
-    DISTINCT ROW(
-      account.id,
-      account.created_at,
-      account.updated_at,
-      account.user_id,
-      account.provider,
-      account.provider_account_id,
-      account.expires_at,
-      account.type
-      )
-  ) as accounts,
-  ROW(org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug) AS org
-FROM users AS u
-LEFT JOIN team_users AS team_user
-  ON u.id = team_user.user_id
+  json_build_object(
+    'id', usr.id,
+    'created_at', usr.created_at,
+    'updated_at', usr.updated_at,
+    'org_id', usr.org_id,
+    'email', usr.email,
+    'first_name', usr.first_name,
+    'last_name', usr.last_name,
+    'picture', usr.picture,
+    'is_active', usr.is_active,
+    'is_verified', usr.is_verified
+  ) AS user,
+	json_agg(team.*) AS teams,
+  json_agg(account.*) AS oauth_accounts,
+  json_build_object(
+    'id', org.id,
+    'created_at', org.created_at,
+    'updated_at', org.updated_at,
+    'name', org.name,
+    'domain', org.domain,
+    'slug', org.slug
+  ) AS org
+FROM users AS usr
+LEFT JOIN team_users AS tu
+  ON usr.id = tu.user_id
 LEFT JOIN teams AS team
-  ON team_user.team_id = team.id
+  ON tu.team_id = team.id
 LEFT JOIN oauth_accounts AS account
-  ON u.id = account.user_id
-LEFT JOIN orgs AS org
-  ON u.org_id = org.id
+  ON usr.id = account.user_id
+JOIN orgs AS org
+  ON usr.org_id = org.id
 WHERE
-  u.email = LOWER($1)
-GROUP BY u.id, org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug
+  usr.email = LOWER($1)
+GROUP BY
+  usr.id, org.id
 `
 
-type GetFullUserByEmailRow struct {
-	ID        uuid.UUID   `json:"id"`
-	CreatedAt time.Time   `json:"created_at"`
-	UpdatedAt time.Time   `json:"updated_at"`
-	FirstName string      `json:"first_name"`
-	LastName  string      `json:"last_name"`
-	Email     string      `json:"email"`
-	OrgID     uuid.UUID   `json:"org_id"`
-	Teams     interface{} `json:"teams"`
-	Accounts  interface{} `json:"accounts"`
-	Org       interface{} `json:"org"`
+type GetAuthUserByEmailRow struct {
+	User          []byte `json:"user"`
+	Teams         []byte `json:"teams"`
+	OauthAccounts []byte `json:"oauth_accounts"`
+	Org           []byte `json:"org"`
 }
 
-func (q *Queries) GetFullUserByEmail(ctx context.Context, lower string) (GetFullUserByEmailRow, error) {
-	row := q.db.QueryRow(ctx, getFullUserByEmail, lower)
-	var i GetFullUserByEmailRow
+func (q *Queries) GetAuthUserByEmail(ctx context.Context, lower string) (GetAuthUserByEmailRow, error) {
+	row := q.db.QueryRow(ctx, getAuthUserByEmail, lower)
+	var i GetAuthUserByEmailRow
 	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.FirstName,
-		&i.LastName,
-		&i.Email,
-		&i.OrgID,
+		&i.User,
 		&i.Teams,
-		&i.Accounts,
+		&i.OauthAccounts,
 		&i.Org,
 	)
 	return i, err
 }
 
-const getFullUserByID = `-- name: GetFullUserByID :one
+const getAuthUserByID = `-- name: GetAuthUserByID :one
 SELECT
-  u.id,
-  u.created_at,
-  u.updated_at,
-  u.first_name,
-  u.last_name,
-  u.email,
-  u.org_id,
-  ARRAY_AGG(
-    DISTINCT ROW(
-      team.id,
-      team.created_at,
-      team.updated_at,
-      team.org_id,
-      team.name,
-      team.slug
-    )
-  ) AS teams,
-  ARRAY_AGG(
-    DISTINCT ROW(
-      account.id,
-      account.created_at,
-      account.updated_at,
-      account.user_id,
-      account.provider,
-      account.provider_account_id,
-      account.expires_at,
-      account.type
-      )
-  ) as accounts,
-  ROW(org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug) AS org
-FROM users AS u
-LEFT JOIN team_users AS team_user
-  ON u.id = team_user.user_id
+  json_build_object(
+    'id', usr.id,
+    'created_at', usr.created_at,
+    'updated_at', usr.updated_at,
+    'org_id', usr.org_id,
+    'email', usr.email,
+    'first_name', usr.first_name,
+    'last_name', usr.last_name,
+    'picture', usr.picture,
+    'is_active', usr.is_active,
+    'is_verified', usr.is_verified
+  ) AS user,
+	json_agg(team.*) AS teams,
+  json_agg(account.*) AS oauth_accounts,
+  json_build_object(
+    'id', org.id,
+    'created_at', org.created_at,
+    'updated_at', org.updated_at,
+    'name', org.name,
+    'domain', org.domain,
+    'slug', org.slug
+  ) AS org
+FROM users AS usr
+LEFT JOIN team_users AS tu
+  ON usr.id = tu.user_id
 LEFT JOIN teams AS team
-  ON team_user.team_id = team.id
+  ON tu.team_id = team.id
 LEFT JOIN oauth_accounts AS account
-  ON u.id = account.user_id
-LEFT JOIN orgs AS org
-  ON u.org_id = org.id
+  ON usr.id = account.user_id
+JOIN orgs AS org
+  ON usr.org_id = org.id
 WHERE
-  u.id = $1
-GROUP BY u.id, org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug
+  usr.id = $1
+GROUP BY
+  usr.id, org.id
 `
 
-type GetFullUserByIDRow struct {
-	ID        uuid.UUID   `json:"id"`
-	CreatedAt time.Time   `json:"created_at"`
-	UpdatedAt time.Time   `json:"updated_at"`
-	FirstName string      `json:"first_name"`
-	LastName  string      `json:"last_name"`
-	Email     string      `json:"email"`
-	OrgID     uuid.UUID   `json:"org_id"`
-	Teams     interface{} `json:"teams"`
-	Accounts  interface{} `json:"accounts"`
-	Org       interface{} `json:"org"`
+type GetAuthUserByIDRow struct {
+	User          []byte `json:"user"`
+	Teams         []byte `json:"teams"`
+	OauthAccounts []byte `json:"oauth_accounts"`
+	Org           []byte `json:"org"`
 }
 
-func (q *Queries) GetFullUserByID(ctx context.Context, id uuid.UUID) (GetFullUserByIDRow, error) {
-	row := q.db.QueryRow(ctx, getFullUserByID, id)
-	var i GetFullUserByIDRow
+func (q *Queries) GetAuthUserByID(ctx context.Context, id uuid.UUID) (GetAuthUserByIDRow, error) {
+	row := q.db.QueryRow(ctx, getAuthUserByID, id)
+	var i GetAuthUserByIDRow
 	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.FirstName,
-		&i.LastName,
-		&i.Email,
-		&i.OrgID,
+		&i.User,
 		&i.Teams,
-		&i.Accounts,
+		&i.OauthAccounts,
 		&i.Org,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
+SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, picture, is_active, is_verified
 FROM users
 WHERE email = LOWER($1)
 `
@@ -222,66 +186,15 @@ func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (User, error
 		&i.FirstName,
 		&i.LastName,
 		&i.Password,
+		&i.Picture,
 		&i.IsActive,
 		&i.IsVerified,
 	)
 	return i, err
 }
 
-const getUserByEmailFull = `-- name: GetUserByEmailFull :one
-SELECT
-  u.id, u.created_at, u.updated_at, u.first_name, u.last_name, u.email, u.org_id,
-  array_agg(t.*) AS teams,
-  array_agg(oa.*) AS oauth_accounts,
-  array_agg(o.*) AS orgs
-FROM users AS u
-LEFT JOIN team_users AS tu
-  ON u.id = tu.user_id
-LEFT JOIN teams AS t
-  ON tu.team_id = t.id
-LEFT JOIN oauth_accounts AS oa
-  ON u.id = oa.user_id
-LEFT JOIN orgs AS o
-  ON u.org_id = o.id
-WHERE
-  u.email = LOWER($1)
-GROUP BY
-  u.id
-`
-
-type GetUserByEmailFullRow struct {
-	ID            uuid.UUID   `json:"id"`
-	CreatedAt     time.Time   `json:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at"`
-	FirstName     string      `json:"first_name"`
-	LastName      string      `json:"last_name"`
-	Email         string      `json:"email"`
-	OrgID         uuid.UUID   `json:"org_id"`
-	Teams         interface{} `json:"teams"`
-	OauthAccounts interface{} `json:"oauth_accounts"`
-	Orgs          interface{} `json:"orgs"`
-}
-
-func (q *Queries) GetUserByEmailFull(ctx context.Context, lower string) (GetUserByEmailFullRow, error) {
-	row := q.db.QueryRow(ctx, getUserByEmailFull, lower)
-	var i GetUserByEmailFullRow
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.FirstName,
-		&i.LastName,
-		&i.Email,
-		&i.OrgID,
-		&i.Teams,
-		&i.OauthAccounts,
-		&i.Orgs,
-	)
-	return i, err
-}
-
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
+SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, picture, is_active, is_verified
 FROM users
 WHERE id = $1
 LIMIT 1
@@ -299,6 +212,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.FirstName,
 		&i.LastName,
 		&i.Password,
+		&i.Picture,
 		&i.IsActive,
 		&i.IsVerified,
 	)
@@ -307,13 +221,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 
 const getUserByProviderAccount = `-- name: GetUserByProviderAccount :one
 SELECT
-  u.id, u.created_at, u.updated_at, u.org_id, u.email, u.first_name, u.last_name, u.password, u.is_active, u.is_verified
-FROM users as u
-WHERE u.id IN (
-  SELECT user_id
-  FROM oauth_accounts
-  WHERE provider = $1 AND provider_account_id = $2
-)
+  usr.id, usr.created_at, usr.updated_at, usr.org_id, usr.email, usr.first_name, usr.last_name, usr.password, usr.picture, usr.is_active, usr.is_verified
+FROM
+  users usr
+JOIN
+  oauth_accounts act ON usr.id = act.user_id
+WHERE
+  act.provider = $1 AND act.provider_account_id = $2
 `
 
 type GetUserByProviderAccountParams struct {
@@ -333,6 +247,7 @@ func (q *Queries) GetUserByProviderAccount(ctx context.Context, arg GetUserByPro
 		&i.FirstName,
 		&i.LastName,
 		&i.Password,
+		&i.Picture,
 		&i.IsActive,
 		&i.IsVerified,
 	)
@@ -343,7 +258,7 @@ const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET first_name = $2, last_name = $3, email = LOWER($4), org_id = $5
 WHERE id = $1
-RETURNING id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
+RETURNING id, created_at, updated_at, org_id, email, first_name, last_name, password, picture, is_active, is_verified
 `
 
 type UpdateUserParams struct {
@@ -372,6 +287,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.FirstName,
 		&i.LastName,
 		&i.Password,
+		&i.Picture,
 		&i.IsActive,
 		&i.IsVerified,
 	)

@@ -17,6 +17,7 @@ sql:
       - "./queries/github_orgs.sql"
       - "./queries/github_users.sql"
       - "./queries/github_repos.sql"
+      - "./queries/messaging.sql"
     gen:
       go:
         package: "entities"

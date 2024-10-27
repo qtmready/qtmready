@@ -15,17 +15,10 @@ type (
 	HealthCheckService struct{}
 )
 
-// func (s *HealthCheckService) Status(ctx context.Context, _ *emptypb.Empty) (*healthzv1.HealthCheckResponse, error) {
-// 	return &healthzv1.HealthCheckResponse{
-// 		Database: true,
-// 		Temporal: true,
-// 	}, nil
-// }
-
 func (s *HealthCheckService) Status(
 	ctx context.Context, _ *connect.Request[emptypb.Empty],
-) (*connect.Response[healthzv1.HealthCheckResponse], error) {
-	response := connect.NewResponse(&healthzv1.HealthCheckResponse{
+) (*connect.Response[healthzv1.StatusResponse], error) {
+	response := connect.NewResponse(&healthzv1.StatusResponse{
 		Database: true,
 		Temporal: true,
 	})

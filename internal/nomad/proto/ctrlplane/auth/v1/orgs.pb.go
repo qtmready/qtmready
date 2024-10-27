@@ -22,6 +22,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Represents an organization within the control plane.
 type Org struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -107,6 +108,7 @@ func (x *Org) GetSlug() string {
 	return ""
 }
 
+// Request to create a new organization.
 type CreateOrgRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -168,6 +170,7 @@ func (x *CreateOrgRequest) GetSlug() string {
 	return ""
 }
 
+// Response containing the newly created organization.
 type CreateOrgResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -213,6 +216,7 @@ func (x *CreateOrgResponse) GetOrg() *Org {
 	return nil
 }
 
+// Request to retrieve an organization by its unique identifier.
 type GetOrgByIDRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -258,6 +262,7 @@ func (x *GetOrgByIDRequest) GetId() *v1.UUID {
 	return nil
 }
 
+// Response containing the retrieved organization.
 type GetOrgByIDResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -303,6 +308,7 @@ func (x *GetOrgByIDResponse) GetOrg() *Org {
 	return nil
 }
 
+// Request to update an existing organization.
 type UpdateOrgByIDRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -356,6 +362,7 @@ func (x *UpdateOrgByIDRequest) GetSlug() string {
 	return ""
 }
 
+// Response containing the updated organization.
 type UpdateOrgByIDResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

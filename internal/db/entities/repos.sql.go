@@ -67,6 +67,44 @@ func (q *Queries) DeleteRepo(ctx context.Context, id uuid.UUID) error {
 	return err
 }
 
+const getOrgRepos = `-- name: GetOrgRepos :many
+SELECT id, created_at, updated_at, org_id, name, provider, provider_id, default_branch, is_monorepo, threshold, stale_duration
+FROM repos 
+WHERE org_id = $1
+`
+
+func (q *Queries) GetOrgRepos(ctx context.Context, orgID uuid.UUID) ([]Repo, error) {
+	rows, err := q.db.Query(ctx, getOrgRepos, orgID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Repo
+	for rows.Next() {
+		var i Repo
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.OrgID,
+			&i.Name,
+			&i.Provider,
+			&i.ProviderID,
+			&i.DefaultBranch,
+			&i.IsMonorepo,
+			&i.Threshold,
+			&i.StaleDuration,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getRepoByID = `-- name: GetRepoByID :one
 SELECT id, created_at, updated_at, org_id, name, provider, provider_id, default_branch, is_monorepo, threshold, stale_duration
 FROM repos

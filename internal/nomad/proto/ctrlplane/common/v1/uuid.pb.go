@@ -32,9 +32,9 @@ const (
 //	  fixed16 time_mid = 2;                  // 16 bits: The middle field of the timestamp.
 //	  fixed16 time_hi_and_version = 3;       // 16 bits: The high field of the timestamp multiplexed with the version number.
 //	  fixed16 clock_seq_hi_and_reserved = 4; // 8 bits: The high field of the clock sequence multiplexed with the variant.
-//	  fixed16 clock_seq_low = 5;             // 8 bits: The low field of the clock sequence.
+//	  fixed16 clock_seq_low= 5;              // 8 bits: The low field of the clock sequence.
 //	  fixed64 node = 6;                      // 48 bits: The spatially unique node identifier.
-//	}
+//	 }
 //
 // This string representation provides universal compatibility and simpler implementation at the cost of increased size.
 // Future optimization may consider a native format for improved efficiency.

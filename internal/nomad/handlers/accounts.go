@@ -27,10 +27,7 @@ func (s *AccountService) GetAccountByProviderAccountID(
 	account, err := db.Queries().GetOAuthAccountByProviderAccountID(ctx, params)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, erratic.NewNotFoundError(
-				"entity", "accounts",
-				"provider_account_id", rqst.Msg.GetProviderAccountId(),
-			).ToConnectError()
+			return nil, erratic.NewNotFoundError("entity", "accounts", "provider_id", rqst.Msg.GetProviderAccountId()).ToConnectError()
 		}
 
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
