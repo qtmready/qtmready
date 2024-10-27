@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"go.breu.io/quantm/internal/db"
@@ -89,6 +90,38 @@ func (s *UserService) GetUserByEmail(
 	}
 
 	return connect.NewResponse(&authv1.GetUserByEmailResponse{User: convert.UserToProto(&user)}), nil
+}
+
+func (s *UserService) GetUserByID(
+	ctx context.Context, req *connect.Request[authv1.GetUserByIDRequest],
+) (*connect.Response[authv1.GetUserByIDResponse], error) {
+	user, err := db.Queries().GetUserByID(ctx, uuid.MustParse(req.Msg.GetId().GetValue()))
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, erratic.NewNotFoundError(
+				"entity", "users",
+				"id", req.Msg.GetId().GetValue(),
+			).ToConnectError()
+		}
+
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+	}
+
+	return connect.NewResponse(&authv1.GetUserByIDResponse{User: convert.UserToProto(&user)}), nil
+}
+
+func (s *UserService) UpdateUser(
+	ctx context.Context, req *connect.Request[authv1.UpdateUserRequest],
+) (*connect.Response[authv1.UpdateUserResponse], error) {
+	dummy := connect.NewResponse(&authv1.UpdateUserResponse{})
+	params := convert.ProtoToUpdateUserParams(req.Msg)
+
+	user, err := db.Queries().UpdateUser(ctx, params)
+	if err != nil {
+		return dummy, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+	}
+
+	return connect.NewResponse(&authv1.UpdateUserResponse{User: convert.UserToProto(&user)}), nil
 }
 
 func NewUserSericeServiceHandler() (string, http.Handler) {
