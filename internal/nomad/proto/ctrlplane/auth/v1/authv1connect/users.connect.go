@@ -49,6 +49,8 @@ var (
 
 // UserServiceClient is a client for the ctrlplane.auth.v1.UserService service.
 type UserServiceClient interface {
+	// CreateUser creates a new user, associating it with the given domain. Domains are unique to organizations.
+	// If the domain is not registered, this method will create a new organization and assign the user to it.
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	GetUserByEmail(context.Context, *connect.Request[v1.GetUserByEmailRequest]) (*connect.Response[v1.GetUserByEmailResponse], error)
 }
@@ -96,6 +98,8 @@ func (c *userServiceClient) GetUserByEmail(ctx context.Context, req *connect.Req
 
 // UserServiceHandler is an implementation of the ctrlplane.auth.v1.UserService service.
 type UserServiceHandler interface {
+	// CreateUser creates a new user, associating it with the given domain. Domains are unique to organizations.
+	// If the domain is not registered, this method will create a new organization and assign the user to it.
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	GetUserByEmail(context.Context, *connect.Request[v1.GetUserByEmailRequest]) (*connect.Response[v1.GetUserByEmailResponse], error)
 }
