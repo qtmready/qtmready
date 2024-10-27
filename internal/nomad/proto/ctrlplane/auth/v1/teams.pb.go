@@ -22,6 +22,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Team represents a team within an organization.
 type Team struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -99,6 +100,7 @@ func (x *Team) GetSlug() string {
 	return ""
 }
 
+// CreateTeamRequest represents a request to create a new team.
 type CreateTeamRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -152,6 +154,7 @@ func (x *CreateTeamRequest) GetOrgId() string {
 	return ""
 }
 
+// CreateTeamResponse represents a response to a create team request.
 type CreateTeamResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache

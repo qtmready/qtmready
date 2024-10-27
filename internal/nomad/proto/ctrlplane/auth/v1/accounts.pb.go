@@ -22,6 +22,9 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Provider is an enum for the different types of authentication providers
+//
+// Deprecated: Use ctrlplane.auth.v1.AuthProvider instead.
 type Provider int32
 
 const (
@@ -71,6 +74,7 @@ func (Provider) EnumDescriptor() ([]byte, []int) {
 	return file_ctrlplane_auth_v1_accounts_proto_rawDescGZIP(), []int{0}
 }
 
+// Represents an external account associated with a user.
 type Account struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -83,7 +87,7 @@ type Account struct {
 	Provider          Provider               `protobuf:"varint,5,opt,name=provider,proto3,enum=ctrlplane.auth.v1.Provider" json:"provider,omitempty"`
 	ProviderAccountId string                 `protobuf:"bytes,6,opt,name=provider_account_id,json=providerAccountId,proto3" json:"provider_account_id,omitempty"`
 	ExpiresAt         *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	Kind              string                 `protobuf:"bytes,8,opt,name=kind,proto3" json:"kind,omitempty"` // Using "kind" instead of "type" which is a reserved word
+	Kind              string                 `protobuf:"bytes,8,opt,name=kind,proto3" json:"kind,omitempty"`
 }
 
 func (x *Account) Reset() {
@@ -172,6 +176,7 @@ func (x *Account) GetKind() string {
 	return ""
 }
 
+// Request to retrieve an account by its provider and identifier.
 type GetAccountByProviderAccountIDRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -225,6 +230,7 @@ func (x *GetAccountByProviderAccountIDRequest) GetProviderAccountId() string {
 	return ""
 }
 
+// Response containing the account retrieved by provider and identifier.
 type GetAccountByProviderAccountIDResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -270,6 +276,7 @@ func (x *GetAccountByProviderAccountIDResponse) GetAccount() *Account {
 	return nil
 }
 
+// Request to retrieve accounts associated with a specific user.
 type GetAccountsByUserIDRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -315,12 +322,13 @@ func (x *GetAccountsByUserIDRequest) GetUserId() *v1.UUID {
 	return nil
 }
 
+// Response containing the accounts associated with a user.
 type GetAccountsByUserIDResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	Accounts []*Account `protobuf:"bytes,1,rep,name=accounts,proto3" json:"accounts,omitempty"` // Repeated field for multiple accounts
+	Accounts []*Account `protobuf:"bytes,1,rep,name=accounts,proto3" json:"accounts,omitempty"`
 }
 
 func (x *GetAccountsByUserIDResponse) Reset() {
@@ -360,6 +368,7 @@ func (x *GetAccountsByUserIDResponse) GetAccounts() []*Account {
 	return nil
 }
 
+// Request to create a new external account.
 type CreateAccountRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -369,7 +378,7 @@ type CreateAccountRequest struct {
 	Provider          Provider               `protobuf:"varint,2,opt,name=provider,proto3,enum=ctrlplane.auth.v1.Provider" json:"provider,omitempty"`
 	ProviderAccountId string                 `protobuf:"bytes,3,opt,name=provider_account_id,json=providerAccountId,proto3" json:"provider_account_id,omitempty"`
 	ExpiresAt         *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
-	Kind              string                 `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"` // Using "kind" instead of "type"
+	Kind              string                 `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
 }
 
 func (x *CreateAccountRequest) Reset() {
@@ -437,6 +446,7 @@ func (x *CreateAccountRequest) GetKind() string {
 	return ""
 }
 
+// Response containing the newly created external account.
 type CreateAccountResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -482,6 +492,7 @@ func (x *CreateAccountResponse) GetAccount() *Account {
 	return nil
 }
 
+// Request to retrieve an account by its unique identifier.
 type GetAccountByIDRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -527,6 +538,7 @@ func (x *GetAccountByIDRequest) GetId() *v1.UUID {
 	return nil
 }
 
+// Response containing the account retrieved by ID.
 type GetAccountByIDResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
