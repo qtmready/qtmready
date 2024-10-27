@@ -52,8 +52,11 @@ var (
 
 // OrgServiceClient is a client for the ctrlplane.auth.v1.OrgService service.
 type OrgServiceClient interface {
+	// Creates a new organization.
 	CreateOrg(context.Context, *connect.Request[v1.CreateOrgRequest]) (*connect.Response[v1.CreateOrgResponse], error)
+	// Retrieves an organization by its globally unique identifier.
 	GetOrgByID(context.Context, *connect.Request[v1.GetOrgByIDRequest]) (*connect.Response[v1.GetOrgByIDResponse], error)
+	// Updates an existing organization.
 	UpdateOrgByID(context.Context, *connect.Request[v1.UpdateOrgByIDRequest]) (*connect.Response[v1.UpdateOrgByIDResponse], error)
 }
 
@@ -112,8 +115,11 @@ func (c *orgServiceClient) UpdateOrgByID(ctx context.Context, req *connect.Reque
 
 // OrgServiceHandler is an implementation of the ctrlplane.auth.v1.OrgService service.
 type OrgServiceHandler interface {
+	// Creates a new organization.
 	CreateOrg(context.Context, *connect.Request[v1.CreateOrgRequest]) (*connect.Response[v1.CreateOrgResponse], error)
+	// Retrieves an organization by its globally unique identifier.
 	GetOrgByID(context.Context, *connect.Request[v1.GetOrgByIDRequest]) (*connect.Response[v1.GetOrgByIDResponse], error)
+	// Updates an existing organization.
 	UpdateOrgByID(context.Context, *connect.Request[v1.UpdateOrgByIDRequest]) (*connect.Response[v1.UpdateOrgByIDResponse], error)
 }
 

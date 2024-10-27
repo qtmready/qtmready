@@ -58,9 +58,13 @@ var (
 
 // AccountServiceClient is a client for the ctrlplane.auth.v1.AccountService service.
 type AccountServiceClient interface {
+	// Retrieves an account by its provider and identifier.
 	GetAccountByProviderAccountID(context.Context, *connect.Request[v1.GetAccountByProviderAccountIDRequest]) (*connect.Response[v1.GetAccountByProviderAccountIDResponse], error)
+	// Retrieves accounts associated with a specific user.
 	GetAccountsByUserID(context.Context, *connect.Request[v1.GetAccountsByUserIDRequest]) (*connect.Response[v1.GetAccountsByUserIDResponse], error)
+	// Creates a new external account.
 	CreateAccount(context.Context, *connect.Request[v1.CreateAccountRequest]) (*connect.Response[v1.CreateAccountResponse], error)
+	// Retrieves an account by its unique identifier.
 	GetAccountByID(context.Context, *connect.Request[v1.GetAccountByIDRequest]) (*connect.Response[v1.GetAccountByIDResponse], error)
 }
 
@@ -132,9 +136,13 @@ func (c *accountServiceClient) GetAccountByID(ctx context.Context, req *connect.
 
 // AccountServiceHandler is an implementation of the ctrlplane.auth.v1.AccountService service.
 type AccountServiceHandler interface {
+	// Retrieves an account by its provider and identifier.
 	GetAccountByProviderAccountID(context.Context, *connect.Request[v1.GetAccountByProviderAccountIDRequest]) (*connect.Response[v1.GetAccountByProviderAccountIDResponse], error)
+	// Retrieves accounts associated with a specific user.
 	GetAccountsByUserID(context.Context, *connect.Request[v1.GetAccountsByUserIDRequest]) (*connect.Response[v1.GetAccountsByUserIDResponse], error)
+	// Creates a new external account.
 	CreateAccount(context.Context, *connect.Request[v1.CreateAccountRequest]) (*connect.Response[v1.CreateAccountResponse], error)
+	// Retrieves an account by its unique identifier.
 	GetAccountByID(context.Context, *connect.Request[v1.GetAccountByIDRequest]) (*connect.Response[v1.GetAccountByIDResponse], error)
 }
 

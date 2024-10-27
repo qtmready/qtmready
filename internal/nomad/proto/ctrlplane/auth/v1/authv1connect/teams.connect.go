@@ -45,6 +45,7 @@ var (
 
 // TeamServiceClient is a client for the ctrlplane.auth.v1.TeamService service.
 type TeamServiceClient interface {
+	// CreateTeam creates a new team.
 	CreateTeam(context.Context, *connect.Request[v1.CreateTeamRequest]) (*connect.Response[v1.CreateTeamResponse], error)
 }
 
@@ -79,6 +80,7 @@ func (c *teamServiceClient) CreateTeam(ctx context.Context, req *connect.Request
 
 // TeamServiceHandler is an implementation of the ctrlplane.auth.v1.TeamService service.
 type TeamServiceHandler interface {
+	// CreateTeam creates a new team.
 	CreateTeam(context.Context, *connect.Request[v1.CreateTeamRequest]) (*connect.Response[v1.CreateTeamResponse], error)
 }
 

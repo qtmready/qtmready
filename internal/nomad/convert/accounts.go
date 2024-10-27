@@ -10,17 +10,17 @@ import (
 )
 
 const (
-	AccountProviderUnknown = "unknown"
-	AccountProviderGithub  = "github"
-	AccountProviderGoogle  = "google"
+	AuthProviderUnknown = "unknown"
+	AuthProviderGithub  = "github"
+	AuthProviderGoogle  = "google"
 )
 
 // ProviderToProto converts an account provider string to its protobuf representation.
 func ProviderToProto(provider string) authv1.Provider {
 	switch provider {
-	case AccountProviderGithub:
+	case AuthProviderGithub:
 		return authv1.Provider_PROVIDER_GITHUB
-	case AccountProviderGoogle:
+	case AuthProviderGoogle:
 		return authv1.Provider_PROVIDER_GOOGLE
 	default:
 		return authv1.Provider_PROVIDER_UNSPECIFIED
@@ -45,11 +45,11 @@ func AccountToProto(account *entities.OauthAccount) *authv1.Account {
 func ProtoToProvider(proto authv1.Provider) string {
 	switch proto {
 	case authv1.Provider_PROVIDER_GITHUB:
-		return AccountProviderGithub
+		return AuthProviderGithub
 	case authv1.Provider_PROVIDER_GOOGLE:
-		return AccountProviderGoogle
+		return AuthProviderGoogle
 	default:
-		return AccountProviderUnknown
+		return AuthProviderUnknown
 	}
 }
 
