@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/erratic"
 	"go.breu.io/quantm/internal/nomad/convert"
 	authv1 "go.breu.io/quantm/internal/nomad/proto/ctrlplane/auth/v1"
@@ -23,7 +24,53 @@ type (
 func (s *UserService) CreateUser(
 	ctx context.Context, req *connect.Request[authv1.CreateUserRequest],
 ) (*connect.Response[authv1.CreateUserResponse], error) {
-	return nil, nil
+	empty := connect.NewResponse(&authv1.CreateUserResponse{}) // empty response because protobuf requires a message.
+	params := convert.ProtoToCreateUserParams(req.Msg)         // protobuf to create user params (without org id).
+	domain := req.Msg.GetDomain()                              // extract domain to lookup org.
+
+	// Begin a database transaction.
+	tx, qtx, err := db.Transaction(ctx)
+	if err != nil {
+		return empty, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+	}
+
+	defer func() { _ = tx.Rollback(ctx) }() // rollback is deferred to ensure that we rollback on error.
+
+	// Get the organization associated with the given domain.
+	org, err := qtx.GetOrgByDomain(ctx, domain)
+	if err != nil {
+		if err != pgx.ErrNoRows {
+			return empty, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		}
+
+		// Generate a slug for the organization.
+		slug := db.CreateSlug(domain)
+
+		// Create the organization in the database.
+		org, err = qtx.CreateOrg(ctx, entities.CreateOrgParams{Name: domain, Lower: domain, Slug: slug})
+		if err != nil {
+			return empty, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		}
+	}
+
+	// Set the organization ID in the CreateUserParams struct.
+	params.OrgID = org.ID
+
+	// Create the user in the database.
+	user, err := qtx.CreateUser(ctx, params)
+	if err != nil {
+		// Return an internal server error if there's an error creating the user.
+		return empty, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+	}
+
+	// Commit the database transaction.
+	if err := tx.Commit(ctx); err != nil {
+		// Return an internal server error if there's an error committing the transaction.
+		return empty, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+	}
+
+	// Convert the created user to a protobuf struct and return a successful response.
+	return connect.NewResponse(&authv1.CreateUserResponse{User: convert.UserToProto(&user)}), nil
 }
 
 func (s *UserService) GetUserByEmail(
