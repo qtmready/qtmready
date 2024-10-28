@@ -45,3 +45,23 @@ SELECT *
 FROM github_repos
 WHERE installation_id = $1 AND github_id = $2;
 
+
+-- name: GetGithubReposWithCoreRepo :many
+SELECT 
+    g.*, 
+    json_build_object(
+        'repo_id', r.id,
+        'repo_name', r.name,
+        'provider', r.provider,
+        'provider_id', r.provider_id,
+        'default_branch', r.default_branch,
+        'is_monorepo', r.is_monorepo,
+        'threshold', r.threshold,
+        'stale_duration', r.stale_duration
+    ) AS repo
+FROM 
+    github_repos g
+LEFT JOIN 
+    repos r ON g.repo_id = r.id
+WHERE 
+    g.full_name = $1;  -- TODO - based on intallation id or some other
