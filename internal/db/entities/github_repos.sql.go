@@ -19,7 +19,7 @@ RETURNING id, created_at, updated_at, repo_id, installation_id, github_id, name,
 `
 
 type CreateGithubRepoParams struct {
-	RepoID         uuid.UUID   `json:"repo_id"`
+	RepoID         pgtype.UUID `json:"repo_id"`
 	InstallationID uuid.UUID   `json:"installation_id"`
 	GithubID       int64       `json:"github_id"`
 	Name           string      `json:"name"`
@@ -173,7 +173,7 @@ FROM github_repos
 WHERE repo_id = $1
 `
 
-func (q *Queries) GetGithubRepoByRepoID(ctx context.Context, repoID uuid.UUID) ([]GithubRepo, error) {
+func (q *Queries) GetGithubRepoByRepoID(ctx context.Context, repoID pgtype.UUID) ([]GithubRepo, error) {
 	rows, err := q.db.Query(ctx, getGithubRepoByRepoID, repoID)
 	if err != nil {
 		return nil, err
@@ -219,7 +219,7 @@ RETURNING id, created_at, updated_at, repo_id, installation_id, github_id, name,
 
 type UpdateGithubRepoParams struct {
 	ID             uuid.UUID   `json:"id"`
-	RepoID         uuid.UUID   `json:"repo_id"`
+	RepoID         pgtype.UUID `json:"repo_id"`
 	InstallationID uuid.UUID   `json:"installation_id"`
 	GithubID       int64       `json:"github_id"`
 	Name           string      `json:"name"`
