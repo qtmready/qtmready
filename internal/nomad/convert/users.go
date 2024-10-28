@@ -76,7 +76,7 @@ func ProtoToUpdateUserParams(proto *authv1.UpdateUserRequest) entities.UpdateUse
 }
 
 // AuthUserQueryToProto converts a user, accounts, teams, and org byte slices to an authv1.AuthUser protobuf message.
-func AuthUserQueryToProto(user, accounts, teams, org []byte) (&authv1.AuthUser, error) {
+func AuthUserQueryToProto(user, accounts, teams, org []byte) (*authv1.AuthUser, error) {
 	converted := authv1.AuthUser{
 		Teams:    make([]*authv1.Team, 0),
 		Accounts: make([]*authv1.Account, 0),
