@@ -83,7 +83,7 @@ type GithubRepo struct {
 	ID             uuid.UUID   `json:"id"`
 	CreatedAt      time.Time   `json:"created_at"`
 	UpdatedAt      time.Time   `json:"updated_at"`
-	RepoID         uuid.UUID   `json:"repo_id"`
+	RepoID         pgtype.UUID `json:"repo_id"`
 	InstallationID uuid.UUID   `json:"installation_id"`
 	GithubID       int64       `json:"github_id"`
 	Name           string      `json:"name"`
@@ -106,7 +106,7 @@ type Messaging struct {
 	ID        uuid.UUID       `json:"id"`
 	CreatedAt time.Time       `json:"created_at"`
 	UpdatedAt time.Time       `json:"updated_at"`
-	Provider  string          `json:"provider"`
+	Hook      string          `json:"hook"`
 	Kind      string          `json:"kind"`
 	LinkTo    uuid.UUID       `json:"link_to"`
 	Data      json.RawMessage `json:"data"`
@@ -138,8 +138,8 @@ type Repo struct {
 	UpdatedAt     time.Time       `json:"updated_at"`
 	OrgID         uuid.UUID       `json:"org_id"`
 	Name          string          `json:"name"`
-	Provider      string          `json:"provider"`
-	ProviderID    string          `json:"provider_id"`
+	Hook          string          `json:"hook"`
+	HookID        string          `json:"hook_id"`
 	DefaultBranch string          `json:"default_branch"`
 	IsMonorepo    bool            `json:"is_monorepo"`
 	Threshold     int32           `json:"threshold"`
@@ -178,4 +178,13 @@ type User struct {
 	Picture    string    `json:"picture"`
 	IsActive   bool      `json:"is_active"`
 	IsVerified bool      `json:"is_verified"`
+}
+
+type UserRole struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Name      string    `json:"name"`
+	UserID    uuid.UUID `json:"user_id"`
+	OrgID     uuid.UUID `json:"org_id"`
 }

@@ -7,6 +7,7 @@ package entities
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -19,7 +20,7 @@ RETURNING id, created_at, updated_at, repo_id, installation_id, github_id, name,
 `
 
 type CreateGithubRepoParams struct {
-	RepoID         uuid.UUID   `json:"repo_id"`
+	RepoID         pgtype.UUID `json:"repo_id"`
 	InstallationID uuid.UUID   `json:"installation_id"`
 	GithubID       int64       `json:"github_id"`
 	Name           string      `json:"name"`
@@ -167,21 +168,50 @@ func (q *Queries) GetGithubRepoByName(ctx context.Context, name string) (GithubR
 	return i, err
 }
 
-const getGithubRepoByRepoID = `-- name: GetGithubRepoByRepoID :many
-SELECT id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
-FROM github_repos
-WHERE repo_id = $1
+const getGithubReposWithCoreRepo = `-- name: GetGithubReposWithCoreRepo :many
+SELECT 
+    g.id, g.created_at, g.updated_at, g.repo_id, g.installation_id, g.github_id, g.name, g.full_name, g.url, g.is_active, 
+    json_build_object(
+        'repo_id', r.id,
+        'repo_name', r.name,
+        'provider', r.provider,
+        'provider_id', r.provider_id,
+        'default_branch', r.default_branch,
+        'is_monorepo', r.is_monorepo,
+        'threshold', r.threshold,
+        'stale_duration', r.stale_duration
+    ) AS repo
+FROM 
+    github_repos g
+LEFT JOIN 
+    repos r ON g.repo_id = r.id
+WHERE 
+    g.full_name = $1
 `
 
-func (q *Queries) GetGithubRepoByRepoID(ctx context.Context, repoID uuid.UUID) ([]GithubRepo, error) {
-	rows, err := q.db.Query(ctx, getGithubRepoByRepoID, repoID)
+type GetGithubReposWithCoreRepoRow struct {
+	ID             uuid.UUID   `json:"id"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+	RepoID         pgtype.UUID `json:"repo_id"`
+	InstallationID uuid.UUID   `json:"installation_id"`
+	GithubID       int64       `json:"github_id"`
+	Name           string      `json:"name"`
+	FullName       string      `json:"full_name"`
+	Url            string      `json:"url"`
+	IsActive       pgtype.Bool `json:"is_active"`
+	Repo           []byte      `json:"repo"`
+}
+
+func (q *Queries) GetGithubReposWithCoreRepo(ctx context.Context, fullName string) ([]GetGithubReposWithCoreRepoRow, error) {
+	rows, err := q.db.Query(ctx, getGithubReposWithCoreRepo, fullName)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GithubRepo
+	var items []GetGithubReposWithCoreRepoRow
 	for rows.Next() {
-		var i GithubRepo
+		var i GetGithubReposWithCoreRepoRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -193,6 +223,7 @@ func (q *Queries) GetGithubRepoByRepoID(ctx context.Context, repoID uuid.UUID) (
 			&i.FullName,
 			&i.Url,
 			&i.IsActive,
+			&i.Repo,
 		); err != nil {
 			return nil, err
 		}
@@ -219,7 +250,7 @@ RETURNING id, created_at, updated_at, repo_id, installation_id, github_id, name,
 
 type UpdateGithubRepoParams struct {
 	ID             uuid.UUID   `json:"id"`
-	RepoID         uuid.UUID   `json:"repo_id"`
+	RepoID         pgtype.UUID `json:"repo_id"`
 	InstallationID uuid.UUID   `json:"installation_id"`
 	GithubID       int64       `json:"github_id"`
 	Name           string      `json:"name"`

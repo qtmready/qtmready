@@ -107,8 +107,8 @@ create table repos (
   updated_at timestamptz not null default now(),
   org_id uuid not null references orgs (id),
   name varchar(255) not null,
-  provider varchar(255) not null,
-  provider_id varchar(255) not null,
+  hook varchar(255) not null,
+  hook_id varchar(255) not null,
   default_branch varchar(255) not null default 'main',
   is_monorepo boolean not null default false,
   threshold integer not null default 500,
@@ -187,7 +187,7 @@ create table github_repos (
   id uuid primary key default uuid_generate_v7(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  repo_id uuid not null references repos (id),
+  repo_id uuid null references repos (id),
   installation_id uuid not null references github_installations (id),
   github_id bigint not null,
   name varchar(255) not null,
@@ -210,7 +210,7 @@ create table messaging (
   id uuid primary key default uuid_generate_v7(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  provider varchar(255) not null,
+  hook varchar(255) not null,
   kind varchar(255) not null,
   link_to uuid not null,
   data jsonb not null
@@ -219,5 +219,21 @@ create table messaging (
 -- messaging::messaging::trigger
 create trigger update_messaging_updated_at
   after update on messaging
+  for each row
+  execute function update_updated_at();
+
+-- user_roles::user_roles::create
+create table user_roles (
+  id uuid primary key default uuid_generate_v7(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  name varchar(50) not null,
+  user_id uuid not null references users (id),
+  org_id uuid not null references orgs (id)
+);
+
+-- user_roles::user_roles::trigger
+create trigger update_user_roles_updated_at
+  after update on user_roles
   for each row
   execute function update_updated_at();
