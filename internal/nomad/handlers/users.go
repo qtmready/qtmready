@@ -76,13 +76,13 @@ func (s *UserService) CreateUser(
 
 func (s *UserService) GetUserByProviderAccount(
 	ctx context.Context, request *connect.Request[authv1.GetUserByProviderAccountRequest],
-) (*connect.Response[authv1.GetUserByProviderAccountResponse], error) {
+) (*connect.Response[authv1.AuthUser], error) {
 	params := entities.GetUserByProviderAccountParams{
 		Provider:          convert.ProtoToAuthProvider(request.Msg.GetProvider()),
 		ProviderAccountID: request.Msg.GetProviderAccountId(),
 	}
 
-	user, err := db.Queries().GetUserByProviderAccount(ctx, params)
+	one, err := db.Queries().GetUserByProviderAccount(ctx, params)
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, erratic.NewNotFoundError(
@@ -97,7 +97,18 @@ func (s *UserService) GetUserByProviderAccount(
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
-	return connect.NewResponse(&authv1.GetUserByProviderAccountResponse{User: convert.UserToProto(&user)}), nil
+	ptr, err := db.Queries().GetAuthUserByID(ctx, one.ID)
+	slog.Info("do we have a user?", "response", ptr)
+	if err != nil {
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+	}
+
+	user, err := convert.AuthUserQueryToProto(ptr.User, ptr.OauthAccounts, ptr.Teams, ptr.Org)
+	if err != nil {
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+	}
+
+	return connect.NewResponse(user), nil
 }
 
 func (s *UserService) GetUserByEmail(
