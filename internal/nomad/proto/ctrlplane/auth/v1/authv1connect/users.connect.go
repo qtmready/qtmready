@@ -59,9 +59,8 @@ var (
 
 // UserServiceClient is a client for the ctrlplane.auth.v1.UserService service.
 type UserServiceClient interface {
-	// Creates a new user account associated with the given domain.
-	// Domains are unique to organizations. If the domain is not registered,
-	// a new organization will be created and the user assigned to it.
+	// Creates a new user account associated with the given domain. Domains are unique to organizations. If the domain is
+	// not registered, a new organization will be created and the user assigned to it.
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	// Retrieves a user based on their external provider account.
 	GetUserByProviderAccount(context.Context, *connect.Request[v1.GetUserByProviderAccountRequest]) (*connect.Response[v1.GetUserByProviderAccountResponse], error)
@@ -152,9 +151,8 @@ func (c *userServiceClient) UpdateUser(ctx context.Context, req *connect.Request
 
 // UserServiceHandler is an implementation of the ctrlplane.auth.v1.UserService service.
 type UserServiceHandler interface {
-	// Creates a new user account associated with the given domain.
-	// Domains are unique to organizations. If the domain is not registered,
-	// a new organization will be created and the user assigned to it.
+	// Creates a new user account associated with the given domain. Domains are unique to organizations. If the domain is
+	// not registered, a new organization will be created and the user assigned to it.
 	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
 	// Retrieves a user based on their external provider account.
 	GetUserByProviderAccount(context.Context, *connect.Request[v1.GetUserByProviderAccountRequest]) (*connect.Response[v1.GetUserByProviderAccountResponse], error)

@@ -35,7 +35,7 @@ func AccountToProto(account *entities.OauthAccount) *authv1.Account {
 		UpdatedAt:         timestamppb.New(account.UpdatedAt),
 		ExpiresAt:         timestamppb.New(account.ExpiresAt),
 		UserId:            UUIDToProto(account.UserID),
-		Provider:          ProviderToProto(account.Provider),
+		Provider:          AuthProviderToProto(account.Provider),
 		ProviderAccountId: account.ProviderAccountID,
 		Kind:              account.Type.String,
 	}
@@ -60,7 +60,7 @@ func ProtoToAccount(proto *authv1.Account) *entities.OauthAccount {
 		CreatedAt:         proto.GetCreatedAt().AsTime(),
 		UpdatedAt:         proto.GetUpdatedAt().AsTime(),
 		UserID:            ProtoToUUID(proto.GetUserId()),
-		Provider:          ProtoToProvider(proto.GetProvider()),
+		Provider:          ProtoToAuthProvider(proto.GetProvider()),
 		ProviderAccountID: proto.GetProviderAccountId(),
 		ExpiresAt:         proto.GetExpiresAt().AsTime(),
 		Type:              pgtype.Text{String: proto.GetKind(), Valid: true},
@@ -94,7 +94,7 @@ func ProtoToGetAccountByProviderAccountIDParams(
 	proto *authv1.GetAccountByProviderAccountIDRequest,
 ) entities.GetOAuthAccountByProviderAccountIDParams {
 	return entities.GetOAuthAccountByProviderAccountIDParams{
-		Provider:          ProtoToProvider(proto.GetProvider()),
+		Provider:          ProtoToAuthProvider(proto.GetProvider()),
 		ProviderAccountID: proto.GetProviderAccountId(),
 	}
 }
