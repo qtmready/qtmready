@@ -16,7 +16,17 @@ WHERE email = LOWER($1);
 
 -- name: GetAuthUserByID :one
 SELECT
-	usr.*,
+  json_build_object(
+    'id', usr.id,
+    'created_at', usr.created_at,
+    'updated_at', usr.updated_at,
+    'org_id', usr.org_id,
+    'email', usr.email,
+    'first_name', usr.first_name,
+    'last_name', usr.last_name,
+    'is_active', usr.is_active,
+    'is_verified', usr.is_verified
+  ) AS user,
 	json_agg(team.*) AS teams,
   json_agg(account.*) AS oauth_accounts,
   json_build_object(
