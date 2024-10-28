@@ -7,7 +7,6 @@ package entities
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -109,7 +108,17 @@ func (q *Queries) GetAuthUserByEmail(ctx context.Context, lower string) (GetAuth
 
 const getAuthUserByID = `-- name: GetAuthUserByID :one
 SELECT
-	usr.id, usr.created_at, usr.updated_at, usr.org_id, usr.email, usr.first_name, usr.last_name, usr.password, usr.is_active, usr.is_verified,
+  json_build_object(
+    'id', usr.id,
+    'created_at', usr.created_at,
+    'updated_at', usr.updated_at,
+    'org_id', usr.org_id,
+    'email', usr.email,
+    'first_name', usr.first_name,
+    'last_name', usr.last_name,
+    'is_active', usr.is_active,
+    'is_verified', usr.is_verified
+  ) AS user,
 	json_agg(team.*) AS teams,
   json_agg(account.*) AS oauth_accounts,
   json_build_object(
@@ -136,35 +145,17 @@ GROUP BY
 `
 
 type GetAuthUserByIDRow struct {
-	ID            uuid.UUID `json:"id"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	OrgID         uuid.UUID `json:"org_id"`
-	Email         string    `json:"email"`
-	FirstName     string    `json:"first_name"`
-	LastName      string    `json:"last_name"`
-	Password      string    `json:"password"`
-	IsActive      bool      `json:"is_active"`
-	IsVerified    bool      `json:"is_verified"`
-	Teams         []byte    `json:"teams"`
-	OauthAccounts []byte    `json:"oauth_accounts"`
-	Org           []byte    `json:"org"`
+	User          []byte `json:"user"`
+	Teams         []byte `json:"teams"`
+	OauthAccounts []byte `json:"oauth_accounts"`
+	Org           []byte `json:"org"`
 }
 
 func (q *Queries) GetAuthUserByID(ctx context.Context, id uuid.UUID) (GetAuthUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, getAuthUserByID, id)
 	var i GetAuthUserByIDRow
 	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.OrgID,
-		&i.Email,
-		&i.FirstName,
-		&i.LastName,
-		&i.Password,
-		&i.IsActive,
-		&i.IsVerified,
+		&i.User,
 		&i.Teams,
 		&i.OauthAccounts,
 		&i.Org,
