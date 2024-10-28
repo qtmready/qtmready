@@ -122,7 +122,7 @@ func (q *Queries) GetGithubOrgByInstallationID(ctx context.Context, installation
 
 const updateGithubOrg = `-- name: UpdateGithubOrg :one
 UPDATE github_orgs
-SET installation_id = $2, github_org_id = $3, name = $4, updated_at = NOW()
+SET installation_id = $2, github_org_id = $3, name = $4
 WHERE id = $1
 RETURNING id, created_at, updated_at, installation_id, github_org_id, name
 `
