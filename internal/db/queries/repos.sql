@@ -29,3 +29,8 @@ WHERE id = $1;
 SELECT *
 FROM repos
 ORDER BY created_at DESC;
+
+-- name: GetOrgRepos :many
+SELECT *
+FROM repos 
+WHERE org_id = $1; 

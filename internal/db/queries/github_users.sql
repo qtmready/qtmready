@@ -1,7 +1,7 @@
 -- name: CreateGithubUser :one
 INSERT INTO github_users (user_id, github_id, github_org_id, login)
 VALUES ($1, $2, $3, $4)
-RETURNING id, created_at, updated_at, user_id, github_id, github_org_id, login;
+RETURNING *;
 
 -- name: GetGithubUserByID :one
 SELECT *
@@ -32,7 +32,7 @@ WHERE login = $1;
 UPDATE github_users
 SET user_id = $2, github_id = $3, github_org_id = $4, login = $5
 WHERE id = $1
-RETURNING id, created_at, updated_at, user_id, github_id, github_org_id, login;
+RETURNING *;
 
 -- name: DeleteGithubUser :one
 DELETE FROM github_users
