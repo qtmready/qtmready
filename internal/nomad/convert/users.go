@@ -1,6 +1,8 @@
 package convert
 
 import (
+	"encoding/json"
+
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -71,4 +73,72 @@ func ProtoToUpdateUserParams(proto *authv1.UpdateUserRequest) entities.UpdateUse
 		Lower:     proto.User.GetEmail(),
 		OrgID:     ProtoToUUID(proto.User.GetOrgId()),
 	}
+}
+
+// AuthUserQueryToProto converts a user, accounts, teams, and org byte slices to an authv1.AuthUser protobuf message.
+func AuthUserQueryToProto(user, accounts, teams, org []byte) (&authv1.AuthUser, error) {
+	converted := authv1.AuthUser{
+		Teams:    make([]*authv1.Team, 0),
+		Accounts: make([]*authv1.Account, 0),
+	}
+
+	if err := json.Unmarshal(user, converted.User); err != nil {
+		return nil, err
+	}
+
+	if err := BytesToSliceTeamProto(teams, converted.Teams); err != nil {
+		return nil, err
+	}
+
+	if err := BytesToSliceAccountProto(accounts, converted.Accounts); err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(org, converted.Org); err != nil {
+		return nil, err
+	}
+
+	return &converted, nil
+}
+
+// BytesToSliceTeamProto converts a byte slice representing a JSON array of Team proto messages to a slice of
+// pointers to Team proto messages.
+//
+// It unmarshals the JSON data into a temporary slice of Team proto messages and then appends pointers to each
+// element of the temporary slice to the target slice. This approach ensures that memory is allocated correctly for
+// the structs and that the pointers are referencing the correct locations, preventing potential data loss.
+//
+// Note that since slices are reference types in Go, the target slice will be modified in place.
+func BytesToSliceTeamProto(src []byte, tgt []*authv1.Team) error {
+	var deserialized []authv1.Team
+	if err := json.Unmarshal(src, &deserialized); err != nil {
+		return err
+	}
+
+	for idx := range deserialized {
+		tgt = append(tgt, &deserialized[idx])
+	}
+
+	return nil
+}
+
+// BytesToSliceAccountProto converts a byte slice representing a JSON array of Account proto messages to a slice of
+// pointers to Account proto messages.
+//
+// It unmarshals the JSON data into a temporary slice of Team proto messages and then appends pointers to each
+// element of the temporary slice to the target slice. This approach ensures that memory is allocated correctly for
+// the structs and that the pointers are referencing the correct locations, preventing potential data loss.
+//
+// Note that since slices are reference types in Go, the target slice will be modified in place.
+func BytesToSliceAccountProto(src []byte, tgt []*authv1.Account) error {
+	deserialized := make([]authv1.Account, 0)
+	if err := json.Unmarshal(src, &deserialized); err != nil {
+		return err
+	}
+
+	for idx := range deserialized {
+		tgt = append(tgt, &deserialized[idx])
+	}
+
+	return nil
 }
