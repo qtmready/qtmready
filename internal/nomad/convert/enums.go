@@ -4,6 +4,12 @@ import (
 	commonv1 "go.breu.io/quantm/internal/nomad/proto/ctrlplane/common/v1"
 )
 
+const (
+	AuthProviderUnknown = "unknown"
+	AuthProviderGithub  = "github"
+	AuthProviderGoogle  = "google"
+)
+
 func AuthProviderToProto(provider string) commonv1.AuthProvider {
 	switch provider {
 	case AuthProviderGithub:

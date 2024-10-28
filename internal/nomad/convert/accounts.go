@@ -9,24 +9,6 @@ import (
 	authv1 "go.breu.io/quantm/internal/nomad/proto/ctrlplane/auth/v1"
 )
 
-const (
-	AuthProviderUnknown = "unknown"
-	AuthProviderGithub  = "github"
-	AuthProviderGoogle  = "google"
-)
-
-// ProviderToProto converts an account provider string to its protobuf representation.
-func ProviderToProto(provider string) authv1.Provider {
-	switch provider {
-	case AuthProviderGithub:
-		return authv1.Provider_PROVIDER_GITHUB
-	case AuthProviderGoogle:
-		return authv1.Provider_PROVIDER_GOOGLE
-	default:
-		return authv1.Provider_PROVIDER_UNSPECIFIED
-	}
-}
-
 // AccountToProto converts an OauthAccount entity to its protobuf representation.
 func AccountToProto(account *entities.OauthAccount) *authv1.Account {
 	return &authv1.Account{
@@ -38,18 +20,6 @@ func AccountToProto(account *entities.OauthAccount) *authv1.Account {
 		Provider:          AuthProviderToProto(account.Provider),
 		ProviderAccountId: account.ProviderAccountID,
 		Kind:              account.Type.String,
-	}
-}
-
-// ProtoToProvider converts a protobuf provider to its string representation.
-func ProtoToProvider(proto authv1.Provider) string {
-	switch proto {
-	case authv1.Provider_PROVIDER_GITHUB:
-		return AuthProviderGithub
-	case authv1.Provider_PROVIDER_GOOGLE:
-		return AuthProviderGoogle
-	default:
-		return AuthProviderUnknown
 	}
 }
 
@@ -76,7 +46,7 @@ func ProtoToGetAccountsByUserIDParams(proto *authv1.GetAccountsByUserIDRequest) 
 func ProtoToCreateAccountParams(proto *authv1.CreateAccountRequest) entities.CreateOAuthAccountParams {
 	return entities.CreateOAuthAccountParams{
 		UserID:            ProtoToUUID(proto.GetUserId()),
-		Provider:          ProtoToProvider(proto.GetProvider()),
+		Provider:          ProtoToAuthProvider(proto.GetProvider()),
 		ProviderAccountID: proto.GetProviderAccountId(),
 		ExpiresAt:         proto.GetExpiresAt().AsTime(),
 		Type:              pgtype.Text{String: proto.GetKind(), Valid: true},
