@@ -16,123 +16,94 @@ WHERE email = LOWER($1);
 
 -- name: GetUserByEmailFull :one
 SELECT
-  u.id, u.created_at, u.updated_at, u.first_name, u.last_name, u.email, u.org_id,
-  array_agg(t.*) AS teams,
-  array_agg(oa.*) AS oauth_accounts,
-  array_agg(o.*) AS orgs
-FROM users AS u
+	usr.*,
+	json_agg(team.*) AS teams,
+  json_agg(account.*) AS oauth_accounts,
+  json_build_object(
+    'id', org.id,
+    'created_at', org.created_at,
+    'updated_at', org.updated_at,
+    'name', org.name,
+    'domain', org.domain,
+    'slug', org.slug
+  ) AS org
+FROM users AS usr
 LEFT JOIN team_users AS tu
-  ON u.id = tu.user_id
-LEFT JOIN teams AS t
-  ON tu.team_id = t.id
-LEFT JOIN oauth_accounts AS oa
-  ON u.id = oa.user_id
-LEFT JOIN orgs AS o
-  ON u.org_id = o.id
+  ON usr.id = tu.user_id
+LEFT JOIN teams AS team
+  ON tu.team_id = team.id
+LEFT JOIN oauth_accounts AS account
+  ON usr.id = account.user_id
+JOIN orgs AS org
+  ON usr.org_id = org.id
 WHERE
-  u.email = LOWER($1)
+  usr.email = LOWER($1)
 GROUP BY
-  u.id;
+  usr.id, org.id;
 
 -- name: GetFullUserByID :one
 SELECT
-  u.id,
-  u.created_at,
-  u.updated_at,
-  u.first_name,
-  u.last_name,
-  u.email,
-  u.org_id,
-  ARRAY_AGG(
-    DISTINCT ROW(
-      team.id,
-      team.created_at,
-      team.updated_at,
-      team.org_id,
-      team.name,
-      team.slug
-    )
-  ) AS teams,
-  ARRAY_AGG(
-    DISTINCT ROW(
-      account.id,
-      account.created_at,
-      account.updated_at,
-      account.user_id,
-      account.provider,
-      account.provider_account_id,
-      account.expires_at,
-      account.type
-      )
-  ) as accounts,
-  ROW(org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug) AS org
-FROM users AS u
-LEFT JOIN team_users AS team_user
-  ON u.id = team_user.user_id
+	usr.*,
+	json_agg(team.*) AS teams,
+  json_agg(account.*) AS oauth_accounts,
+  json_build_object(
+    'id', org.id,
+    'created_at', org.created_at,
+    'updated_at', org.updated_at,
+    'name', org.name,
+    'domain', org.domain,
+    'slug', org.slug
+  ) AS org
+FROM users AS usr
+LEFT JOIN team_users AS tu
+  ON usr.id = tu.user_id
 LEFT JOIN teams AS team
-  ON team_user.team_id = team.id
+  ON tu.team_id = team.id
 LEFT JOIN oauth_accounts AS account
-  ON u.id = account.user_id
-LEFT JOIN orgs AS org
-  ON u.org_id = org.id
+  ON usr.id = account.user_id
+JOIN orgs AS org
+  ON usr.org_id = org.id
 WHERE
-  u.id = $1
-GROUP BY u.id, org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug;
+  usr.id = $1
+GROUP BY
+  usr.id, org.id;
 
 -- name: GetFullUserByEmail :one
 SELECT
-  u.id,
-  u.created_at,
-  u.updated_at,
-  u.first_name,
-  u.last_name,
-  u.email,
-  u.org_id,
-  ARRAY_AGG(
-    DISTINCT ROW(
-      team.id,
-      team.created_at,
-      team.updated_at,
-      team.org_id,
-      team.name,
-      team.slug
-    )
-  ) AS teams,
-  ARRAY_AGG(
-    DISTINCT ROW(
-      account.id,
-      account.created_at,
-      account.updated_at,
-      account.user_id,
-      account.provider,
-      account.provider_account_id,
-      account.expires_at,
-      account.type
-      )
-  ) as accounts,
-  ROW(org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug) AS org
-FROM users AS u
-LEFT JOIN team_users AS team_user
-  ON u.id = team_user.user_id
+	usr.*,
+	json_agg(team.*) AS teams,
+  json_agg(account.*) AS oauth_accounts,
+  json_build_object(
+    'id', org.id,
+    'created_at', org.created_at,
+    'updated_at', org.updated_at,
+    'name', org.name,
+    'domain', org.domain,
+    'slug', org.slug
+  ) AS org
+FROM users AS usr
+LEFT JOIN team_users AS tu
+  ON usr.id = tu.user_id
 LEFT JOIN teams AS team
-  ON team_user.team_id = team.id
+  ON tu.team_id = team.id
 LEFT JOIN oauth_accounts AS account
-  ON u.id = account.user_id
-LEFT JOIN orgs AS org
-  ON u.org_id = org.id
+  ON usr.id = account.user_id
+JOIN orgs AS org
+  ON usr.org_id = org.id
 WHERE
-  u.email = LOWER($1)
-GROUP BY u.id, org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug;
+  usr.email = LOWER($1)
+GROUP BY
+  usr.id, org.id;
 
 -- name: GetUserByProviderAccount :one
 SELECT
-  u.*
-FROM users as u
-WHERE u.id IN (
-  SELECT user_id
-  FROM oauth_accounts
-  WHERE provider = $1 AND provider_account_id = $2
-);
+  usr.*
+FROM
+  users usr
+JOIN
+  oauth_accounts act ON usr.id = act.user_id
+WHERE
+  act.provider = $1 AND act.provider_account_id = $2;
 
 -- name: UpdateUser :one
 UPDATE users

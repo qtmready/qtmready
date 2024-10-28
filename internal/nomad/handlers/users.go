@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -25,14 +26,13 @@ type (
 func (s *UserService) CreateUser(
 	ctx context.Context, req *connect.Request[authv1.CreateUserRequest],
 ) (*connect.Response[authv1.CreateUserResponse], error) {
-	empty := connect.NewResponse(&authv1.CreateUserResponse{}) // empty response because protobuf requires a message.
-	params := convert.ProtoToCreateUserParams(req.Msg)         // protobuf to create user params (without org id).
-	domain := req.Msg.GetDomain()                              // extract domain to lookup org.
+	params := convert.ProtoToCreateUserParams(req.Msg) // protobuf to create user params (without org id).
+	domain := req.Msg.GetDomain()                      // extract domain to lookup org.
 
 	// Begin a database transaction.
 	tx, qtx, err := db.Transaction(ctx)
 	if err != nil {
-		return empty, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }() // rollback is deferred to ensure that we rollback on error.
@@ -41,7 +41,7 @@ func (s *UserService) CreateUser(
 	org, err := qtx.GetOrgByDomain(ctx, domain)
 	if err != nil {
 		if err != pgx.ErrNoRows {
-			return empty, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+			return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 		}
 
 		// Generate a slug for the organization.
@@ -50,7 +50,7 @@ func (s *UserService) CreateUser(
 		// Create the organization in the database.
 		org, err = qtx.CreateOrg(ctx, entities.CreateOrgParams{Name: domain, Lower: domain, Slug: slug})
 		if err != nil {
-			return empty, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+			return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 		}
 	}
 
@@ -61,17 +61,43 @@ func (s *UserService) CreateUser(
 	user, err := qtx.CreateUser(ctx, params)
 	if err != nil {
 		// Return an internal server error if there's an error creating the user.
-		return empty, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
 	// Commit the database transaction.
 	if err := tx.Commit(ctx); err != nil {
 		// Return an internal server error if there's an error committing the transaction.
-		return empty, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
 	// Convert the created user to a protobuf struct and return a successful response.
 	return connect.NewResponse(&authv1.CreateUserResponse{User: convert.UserToProto(&user)}), nil
+}
+
+func (s *UserService) GetUserByProviderAccount(
+	ctx context.Context, request *connect.Request[authv1.GetUserByProviderAccountRequest],
+) (*connect.Response[authv1.GetUserByProviderAccountResponse], error) {
+	params := entities.GetUserByProviderAccountParams{
+		Provider:          convert.ProtoToAuthProvider(request.Msg.GetProvider()),
+		ProviderAccountID: request.Msg.GetProviderAccountId(),
+	}
+
+	user, err := db.Queries().GetUserByProviderAccount(ctx, params)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, erratic.NewNotFoundError(
+				"entity", "users",
+				"provider", request.Msg.GetProvider().String(),
+				"provider_account_id", request.Msg.GetProviderAccountId(),
+			).ToConnectError()
+		}
+
+		slog.Error("unable to get error", "error", err.Error())
+
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+	}
+
+	return connect.NewResponse(&authv1.GetUserByProviderAccountResponse{User: convert.UserToProto(&user)}), nil
 }
 
 func (s *UserService) GetUserByEmail(
@@ -80,10 +106,7 @@ func (s *UserService) GetUserByEmail(
 	user, err := db.Queries().GetUserByEmail(ctx, req.Msg.GetEmail())
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, erratic.NewNotFoundError(
-				"entity", "users",
-				"email", req.Msg.GetEmail(),
-			).ToConnectError()
+			return nil, erratic.NewNotFoundError("entity", "users", "email", req.Msg.GetEmail()).ToConnectError()
 		}
 
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
@@ -98,10 +121,7 @@ func (s *UserService) GetUserByID(
 	user, err := db.Queries().GetUserByID(ctx, uuid.MustParse(req.Msg.GetId().GetValue()))
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, erratic.NewNotFoundError(
-				"entity", "users",
-				"id", req.Msg.GetId().GetValue(),
-			).ToConnectError()
+			return nil, erratic.NewNotFoundError("entity", "users", "id", req.Msg.GetId().GetValue()).ToConnectError()
 		}
 
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
@@ -113,12 +133,11 @@ func (s *UserService) GetUserByID(
 func (s *UserService) UpdateUser(
 	ctx context.Context, req *connect.Request[authv1.UpdateUserRequest],
 ) (*connect.Response[authv1.UpdateUserResponse], error) {
-	dummy := connect.NewResponse(&authv1.UpdateUserResponse{})
 	params := convert.ProtoToUpdateUserParams(req.Msg)
 
 	user, err := db.Queries().UpdateUser(ctx, params)
 	if err != nil {
-		return dummy, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
 	return connect.NewResponse(&authv1.UpdateUserResponse{User: convert.UserToProto(&user)}), nil
