@@ -34,3 +34,8 @@ ORDER BY created_at DESC;
 SELECT *
 FROM repos 
 WHERE org_id = $1; 
+
+-- name: GetReposByProviderAndProviderID :one
+SELECT *
+FROM repos 
+WHERE provider = $1 AND provider_id = $2; 

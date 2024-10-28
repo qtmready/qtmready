@@ -130,6 +130,36 @@ func (q *Queries) GetRepoByID(ctx context.Context, id uuid.UUID) (Repo, error) {
 	return i, err
 }
 
+const getReposByProviderAndProviderID = `-- name: GetReposByProviderAndProviderID :one
+SELECT id, created_at, updated_at, org_id, name, provider, provider_id, default_branch, is_monorepo, threshold, stale_duration
+FROM repos 
+WHERE provider = $1 AND provider_id = $2
+`
+
+type GetReposByProviderAndProviderIDParams struct {
+	Provider   string `json:"provider"`
+	ProviderID string `json:"provider_id"`
+}
+
+func (q *Queries) GetReposByProviderAndProviderID(ctx context.Context, arg GetReposByProviderAndProviderIDParams) (Repo, error) {
+	row := q.db.QueryRow(ctx, getReposByProviderAndProviderID, arg.Provider, arg.ProviderID)
+	var i Repo
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OrgID,
+		&i.Name,
+		&i.Provider,
+		&i.ProviderID,
+		&i.DefaultBranch,
+		&i.IsMonorepo,
+		&i.Threshold,
+		&i.StaleDuration,
+	)
+	return i, err
+}
+
 const listRepos = `-- name: ListRepos :many
 SELECT id, created_at, updated_at, org_id, name, provider, provider_id, default_branch, is_monorepo, threshold, stale_duration
 FROM repos
