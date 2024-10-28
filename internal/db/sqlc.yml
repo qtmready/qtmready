@@ -43,3 +43,7 @@ sql:
             go_type:
               import: "encoding/json"
               type: "RawMessage"
+
+          - db_type: "boolean"
+            go_type:
+              type: "bool"

@@ -83,7 +83,7 @@ type GithubRepo struct {
 	ID             uuid.UUID   `json:"id"`
 	CreatedAt      time.Time   `json:"created_at"`
 	UpdatedAt      time.Time   `json:"updated_at"`
-	RepoID         uuid.UUID   `json:"repo_id"`
+	RepoID         pgtype.UUID `json:"repo_id"`
 	InstallationID uuid.UUID   `json:"installation_id"`
 	GithubID       int64       `json:"github_id"`
 	Name           string      `json:"name"`

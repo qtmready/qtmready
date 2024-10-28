@@ -30,7 +30,7 @@ SELECT *
 FROM repos
 ORDER BY created_at DESC;
 
--- name: GetOrgRepos :many
+-- name: GetOrgReposByOrgID :many
 SELECT *
 FROM repos 
 WHERE org_id = $1; 
