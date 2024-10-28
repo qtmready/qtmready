@@ -168,43 +168,6 @@ func (q *Queries) GetGithubRepoByName(ctx context.Context, name string) (GithubR
 	return i, err
 }
 
-const getGithubRepoByRepoID = `-- name: GetGithubRepoByRepoID :many
-SELECT id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
-FROM github_repos
-WHERE repo_id = $1
-`
-
-func (q *Queries) GetGithubRepoByRepoID(ctx context.Context, repoID pgtype.UUID) ([]GithubRepo, error) {
-	rows, err := q.db.Query(ctx, getGithubRepoByRepoID, repoID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GithubRepo
-	for rows.Next() {
-		var i GithubRepo
-		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.RepoID,
-			&i.InstallationID,
-			&i.GithubID,
-			&i.Name,
-			&i.FullName,
-			&i.Url,
-			&i.IsActive,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getGithubReposWithCoreRepo = `-- name: GetGithubReposWithCoreRepo :many
 SELECT 
     g.id, g.created_at, g.updated_at, g.repo_id, g.installation_id, g.github_id, g.name, g.full_name, g.url, g.is_active, 

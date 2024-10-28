@@ -25,11 +25,6 @@ DELETE FROM github_repos
 WHERE id = $1
 RETURNING id;
 
--- name: GetGithubRepoByRepoID :many
-SELECT *
-FROM github_repos
-WHERE repo_id = $1;
-
 -- name: GetGithubRepoByFullName :one
 SELECT *
 FROM github_repos
