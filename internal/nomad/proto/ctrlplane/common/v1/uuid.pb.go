@@ -22,10 +22,8 @@ const (
 
 // Represents a universally unique identifier (UUID) as a string.
 //
-// A native 18-byte representation, conforming to RFC 4122 section 4.1.2, would
-// offer optimal performance in terms of size. However, it requires custom
-// serialization logic across platforms, making it impractical for current
-// needs.
+// A native 18-byte representation, conforming to RFC 4122 section 4.1.2, would offer optimal performance in terms of
+// size. However, it requires custom serialization logic across platforms, making it impractical for current needs.
 //
 // Native UUID representation (for future reference):
 //
@@ -34,16 +32,14 @@ const (
 //	  fixed16 time_mid = 2;                  // 16 bits: The middle field of the timestamp.
 //	  fixed16 time_hi_and_version = 3;       // 16 bits: The high field of the timestamp multiplexed with the version number.
 //	  fixed16 clock_seq_hi_and_reserved = 4; // 8 bits: The high field of the clock sequence multiplexed with the variant.
-//	  fixed16 clock_seq_low= 5;             // 8 bits: The low field of the clock sequence.
+//	  fixed16 clock_seq_low= 5;              // 8 bits: The low field of the clock sequence.
 //	  fixed64 node = 6;                      // 48 bits: The spatially unique node identifier.
 //	 }
 //
-// This string representation provides universal compatibility and simpler
-// implementation at the cost of increased size. Future optimization may
-// consider a native format for improved efficiency.
+// This string representation provides universal compatibility and simpler implementation at the cost of increased size.
+// Future optimization may consider a native format for improved efficiency.
 //
-// See https://github.com/protocolbuffers/protobuf/issues/2224 for relevant
-// discussion.
+// See https://github.com/protocolbuffers/protobuf/issues/2224 for relevant discussion.
 type UUID struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
