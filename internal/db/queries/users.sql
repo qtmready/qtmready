@@ -1,6 +1,6 @@
 -- name: CreateUser :one
-INSERT INTO users (first_name, last_name, email, password, org_id)
-VALUES ($1, $2, $3, $4, $5)
+INSERT INTO users (first_name, last_name, email, password, picture, org_id)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetUserByID :one
@@ -24,6 +24,7 @@ SELECT
     'email', usr.email,
     'first_name', usr.first_name,
     'last_name', usr.last_name,
+    'picture', usr.picture,
     'is_active', usr.is_active,
     'is_verified', usr.is_verified
   ) AS user,
@@ -61,6 +62,7 @@ SELECT
     'email', usr.email,
     'first_name', usr.first_name,
     'last_name', usr.last_name,
+    'picture', usr.picture,
     'is_active', usr.is_active,
     'is_verified', usr.is_verified
   ) AS user,

@@ -14,48 +14,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type EventProvider string
-
-const (
-	EventProviderGithub EventProvider = "github"
-	EventProviderSlack  EventProvider = "slack"
-)
-
-func (e *EventProvider) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = EventProvider(s)
-	case string:
-		*e = EventProvider(s)
-	default:
-		return fmt.Errorf("unsupported scan type for EventProvider: %T", src)
-	}
-	return nil
-}
-
-type NullEventProvider struct {
-	EventProvider EventProvider `json:"event_provider"`
-	Valid         bool          `json:"valid"` // Valid is true if EventProvider is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullEventProvider) Scan(value interface{}) error {
-	if value == nil {
-		ns.EventProvider, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.EventProvider.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullEventProvider) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.EventProvider), nil
-}
-
 type TeamRole string
 
 const (
@@ -96,23 +54,6 @@ func (ns NullTeamRole) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.TeamRole), nil
-}
-
-type FlatEvent struct {
-	ID          uuid.UUID       `json:"id"`
-	Version     string          `json:"version"`
-	ParentID    pgtype.UUID     `json:"parent_id"`
-	Provider    EventProvider   `json:"provider"`
-	Scope       string          `json:"scope"`
-	Action      string          `json:"action"`
-	Source      string          `json:"source"`
-	SubjectID   uuid.UUID       `json:"subject_id"`
-	SubjectName string          `json:"subject_name"`
-	Payload     json.RawMessage `json:"payload"`
-	TeamID      uuid.UUID       `json:"team_id"`
-	UserID      uuid.UUID       `json:"user_id"`
-	CreatedAt   time.Time       `json:"created_at"`
-	UpdatedAt   time.Time       `json:"updated_at"`
 }
 
 type GithubInstallation struct {
@@ -234,6 +175,7 @@ type User struct {
 	FirstName  string    `json:"first_name"`
 	LastName   string    `json:"last_name"`
 	Password   string    `json:"password"`
+	Picture    string    `json:"picture"`
 	IsActive   bool      `json:"is_active"`
 	IsVerified bool      `json:"is_verified"`
 }
