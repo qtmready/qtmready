@@ -11,6 +11,27 @@ import (
 	"github.com/google/uuid"
 )
 
+const createDefaultOrg = `-- name: CreateDefaultOrg :one
+INSERT INTO orgs (id, name, domain, slug)
+VALUES ('00000000-0000-0000-0000-000000000001', 'No Org', 'example.com', 'no-org')
+ON CONFLICT (id) DO NOTHING
+RETURNING id, created_at, updated_at, name, domain, slug
+`
+
+func (q *Queries) CreateDefaultOrg(ctx context.Context) (Org, error) {
+	row := q.db.QueryRow(ctx, createDefaultOrg)
+	var i Org
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Name,
+		&i.Domain,
+		&i.Slug,
+	)
+	return i, err
+}
+
 const createOrg = `-- name: CreateOrg :one
 INSERT INTO orgs (name, domain, slug)
 VALUES ($1, LOWER($2), $3)

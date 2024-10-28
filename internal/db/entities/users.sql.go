@@ -12,9 +12,9 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (first_name, last_name, email, password, org_id)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
+INSERT INTO users (first_name, last_name, email, password, picture, org_id)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, created_at, updated_at, org_id, email, first_name, last_name, password, picture, is_active, is_verified
 `
 
 type CreateUserParams struct {
@@ -22,6 +22,7 @@ type CreateUserParams struct {
 	LastName  string    `json:"last_name"`
 	Email     string    `json:"email"`
 	Password  string    `json:"password"`
+	Picture   string    `json:"picture"`
 	OrgID     uuid.UUID `json:"org_id"`
 }
 
@@ -31,6 +32,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.LastName,
 		arg.Email,
 		arg.Password,
+		arg.Picture,
 		arg.OrgID,
 	)
 	var i User
@@ -43,6 +45,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.FirstName,
 		&i.LastName,
 		&i.Password,
+		&i.Picture,
 		&i.IsActive,
 		&i.IsVerified,
 	)
@@ -59,6 +62,7 @@ SELECT
     'email', usr.email,
     'first_name', usr.first_name,
     'last_name', usr.last_name,
+    'picture', usr.picture,
     'is_active', usr.is_active,
     'is_verified', usr.is_verified
   ) AS user,
@@ -116,6 +120,7 @@ SELECT
     'email', usr.email,
     'first_name', usr.first_name,
     'last_name', usr.last_name,
+    'picture', usr.picture,
     'is_active', usr.is_active,
     'is_verified', usr.is_verified
   ) AS user,
@@ -164,7 +169,7 @@ func (q *Queries) GetAuthUserByID(ctx context.Context, id uuid.UUID) (GetAuthUse
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
+SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, picture, is_active, is_verified
 FROM users
 WHERE email = LOWER($1)
 `
@@ -181,6 +186,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (User, error
 		&i.FirstName,
 		&i.LastName,
 		&i.Password,
+		&i.Picture,
 		&i.IsActive,
 		&i.IsVerified,
 	)
@@ -188,7 +194,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (User, error
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
+SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, picture, is_active, is_verified
 FROM users
 WHERE id = $1
 LIMIT 1
@@ -206,6 +212,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.FirstName,
 		&i.LastName,
 		&i.Password,
+		&i.Picture,
 		&i.IsActive,
 		&i.IsVerified,
 	)
@@ -214,7 +221,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 
 const getUserByProviderAccount = `-- name: GetUserByProviderAccount :one
 SELECT
-  usr.id, usr.created_at, usr.updated_at, usr.org_id, usr.email, usr.first_name, usr.last_name, usr.password, usr.is_active, usr.is_verified
+  usr.id, usr.created_at, usr.updated_at, usr.org_id, usr.email, usr.first_name, usr.last_name, usr.password, usr.picture, usr.is_active, usr.is_verified
 FROM
   users usr
 JOIN
@@ -240,6 +247,7 @@ func (q *Queries) GetUserByProviderAccount(ctx context.Context, arg GetUserByPro
 		&i.FirstName,
 		&i.LastName,
 		&i.Password,
+		&i.Picture,
 		&i.IsActive,
 		&i.IsVerified,
 	)
@@ -250,7 +258,7 @@ const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET first_name = $2, last_name = $3, email = LOWER($4), org_id = $5
 WHERE id = $1
-RETURNING id, created_at, updated_at, org_id, email, first_name, last_name, password, is_active, is_verified
+RETURNING id, created_at, updated_at, org_id, email, first_name, last_name, password, picture, is_active, is_verified
 `
 
 type UpdateUserParams struct {
@@ -279,6 +287,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.FirstName,
 		&i.LastName,
 		&i.Password,
+		&i.Picture,
 		&i.IsActive,
 		&i.IsVerified,
 	)
