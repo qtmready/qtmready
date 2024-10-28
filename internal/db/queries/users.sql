@@ -14,34 +14,7 @@ SELECT *
 FROM users
 WHERE email = LOWER($1);
 
--- name: GetUserByEmailFull :one
-SELECT
-	usr.*,
-	json_agg(team.*) AS teams,
-  json_agg(account.*) AS oauth_accounts,
-  json_build_object(
-    'id', org.id,
-    'created_at', org.created_at,
-    'updated_at', org.updated_at,
-    'name', org.name,
-    'domain', org.domain,
-    'slug', org.slug
-  ) AS org
-FROM users AS usr
-LEFT JOIN team_users AS tu
-  ON usr.id = tu.user_id
-LEFT JOIN teams AS team
-  ON tu.team_id = team.id
-LEFT JOIN oauth_accounts AS account
-  ON usr.id = account.user_id
-JOIN orgs AS org
-  ON usr.org_id = org.id
-WHERE
-  usr.email = LOWER($1)
-GROUP BY
-  usr.id, org.id;
-
--- name: GetFullUserByID :one
+-- name: GetAuthUserByID :one
 SELECT
 	usr.*,
 	json_agg(team.*) AS teams,
@@ -68,7 +41,7 @@ WHERE
 GROUP BY
   usr.id, org.id;
 
--- name: GetFullUserByEmail :one
+-- name: GetAuthUserByEmail :one
 SELECT
 	usr.*,
 	json_agg(team.*) AS teams,

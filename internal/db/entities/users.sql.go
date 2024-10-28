@@ -50,7 +50,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
-const getFullUserByEmail = `-- name: GetFullUserByEmail :one
+const getAuthUserByEmail = `-- name: GetAuthUserByEmail :one
 SELECT
 	usr.id, usr.created_at, usr.updated_at, usr.org_id, usr.email, usr.first_name, usr.last_name, usr.password, usr.is_active, usr.is_verified,
 	json_agg(team.*) AS teams,
@@ -78,7 +78,7 @@ GROUP BY
   usr.id, org.id
 `
 
-type GetFullUserByEmailRow struct {
+type GetAuthUserByEmailRow struct {
 	ID            uuid.UUID `json:"id"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
@@ -94,9 +94,9 @@ type GetFullUserByEmailRow struct {
 	Org           []byte    `json:"org"`
 }
 
-func (q *Queries) GetFullUserByEmail(ctx context.Context, lower string) (GetFullUserByEmailRow, error) {
-	row := q.db.QueryRow(ctx, getFullUserByEmail, lower)
-	var i GetFullUserByEmailRow
+func (q *Queries) GetAuthUserByEmail(ctx context.Context, lower string) (GetAuthUserByEmailRow, error) {
+	row := q.db.QueryRow(ctx, getAuthUserByEmail, lower)
+	var i GetAuthUserByEmailRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -115,7 +115,7 @@ func (q *Queries) GetFullUserByEmail(ctx context.Context, lower string) (GetFull
 	return i, err
 }
 
-const getFullUserByID = `-- name: GetFullUserByID :one
+const getAuthUserByID = `-- name: GetAuthUserByID :one
 SELECT
 	usr.id, usr.created_at, usr.updated_at, usr.org_id, usr.email, usr.first_name, usr.last_name, usr.password, usr.is_active, usr.is_verified,
 	json_agg(team.*) AS teams,
@@ -143,7 +143,7 @@ GROUP BY
   usr.id, org.id
 `
 
-type GetFullUserByIDRow struct {
+type GetAuthUserByIDRow struct {
 	ID            uuid.UUID `json:"id"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
@@ -159,9 +159,9 @@ type GetFullUserByIDRow struct {
 	Org           []byte    `json:"org"`
 }
 
-func (q *Queries) GetFullUserByID(ctx context.Context, id uuid.UUID) (GetFullUserByIDRow, error) {
-	row := q.db.QueryRow(ctx, getFullUserByID, id)
-	var i GetFullUserByIDRow
+func (q *Queries) GetAuthUserByID(ctx context.Context, id uuid.UUID) (GetAuthUserByIDRow, error) {
+	row := q.db.QueryRow(ctx, getAuthUserByID, id)
+	var i GetAuthUserByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -200,71 +200,6 @@ func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (User, error
 		&i.Password,
 		&i.IsActive,
 		&i.IsVerified,
-	)
-	return i, err
-}
-
-const getUserByEmailFull = `-- name: GetUserByEmailFull :one
-SELECT
-	usr.id, usr.created_at, usr.updated_at, usr.org_id, usr.email, usr.first_name, usr.last_name, usr.password, usr.is_active, usr.is_verified,
-	json_agg(team.*) AS teams,
-  json_agg(account.*) AS oauth_accounts,
-  json_build_object(
-    'id', org.id,
-    'created_at', org.created_at,
-    'updated_at', org.updated_at,
-    'name', org.name,
-    'domain', org.domain,
-    'slug', org.slug
-  ) AS org
-FROM users AS usr
-LEFT JOIN team_users AS tu
-  ON usr.id = tu.user_id
-LEFT JOIN teams AS team
-  ON tu.team_id = team.id
-LEFT JOIN oauth_accounts AS account
-  ON usr.id = account.user_id
-JOIN orgs AS org
-  ON usr.org_id = org.id
-WHERE
-  usr.email = LOWER($1)
-GROUP BY
-  usr.id, org.id
-`
-
-type GetUserByEmailFullRow struct {
-	ID            uuid.UUID `json:"id"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
-	OrgID         uuid.UUID `json:"org_id"`
-	Email         string    `json:"email"`
-	FirstName     string    `json:"first_name"`
-	LastName      string    `json:"last_name"`
-	Password      string    `json:"password"`
-	IsActive      bool      `json:"is_active"`
-	IsVerified    bool      `json:"is_verified"`
-	Teams         []byte    `json:"teams"`
-	OauthAccounts []byte    `json:"oauth_accounts"`
-	Org           []byte    `json:"org"`
-}
-
-func (q *Queries) GetUserByEmailFull(ctx context.Context, lower string) (GetUserByEmailFullRow, error) {
-	row := q.db.QueryRow(ctx, getUserByEmailFull, lower)
-	var i GetUserByEmailFullRow
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.OrgID,
-		&i.Email,
-		&i.FirstName,
-		&i.LastName,
-		&i.Password,
-		&i.IsActive,
-		&i.IsVerified,
-		&i.Teams,
-		&i.OauthAccounts,
-		&i.Org,
 	)
 	return i, err
 }

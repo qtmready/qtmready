@@ -47,7 +47,8 @@ var (
 
 // HealthCheckServiceClient is a client for the ctrlplane.healthz.v1.HealthCheckService service.
 type HealthCheckServiceClient interface {
-	Status(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.HealthCheckResponse], error)
+	// buf:lint:ignore RPCNamingConventions
+	Status(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.StatusResponse], error)
 }
 
 // NewHealthCheckServiceClient constructs a client for the ctrlplane.healthz.v1.HealthCheckService
@@ -60,7 +61,7 @@ type HealthCheckServiceClient interface {
 func NewHealthCheckServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) HealthCheckServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	return &healthCheckServiceClient{
-		status: connect.NewClient[emptypb.Empty, v1.HealthCheckResponse](
+		status: connect.NewClient[emptypb.Empty, v1.StatusResponse](
 			httpClient,
 			baseURL+HealthCheckServiceStatusProcedure,
 			connect.WithSchema(healthCheckServiceStatusMethodDescriptor),
@@ -71,18 +72,19 @@ func NewHealthCheckServiceClient(httpClient connect.HTTPClient, baseURL string, 
 
 // healthCheckServiceClient implements HealthCheckServiceClient.
 type healthCheckServiceClient struct {
-	status *connect.Client[emptypb.Empty, v1.HealthCheckResponse]
+	status *connect.Client[emptypb.Empty, v1.StatusResponse]
 }
 
 // Status calls ctrlplane.healthz.v1.HealthCheckService.Status.
-func (c *healthCheckServiceClient) Status(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.HealthCheckResponse], error) {
+func (c *healthCheckServiceClient) Status(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.StatusResponse], error) {
 	return c.status.CallUnary(ctx, req)
 }
 
 // HealthCheckServiceHandler is an implementation of the ctrlplane.healthz.v1.HealthCheckService
 // service.
 type HealthCheckServiceHandler interface {
-	Status(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.HealthCheckResponse], error)
+	// buf:lint:ignore RPCNamingConventions
+	Status(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.StatusResponse], error)
 }
 
 // NewHealthCheckServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -110,6 +112,6 @@ func NewHealthCheckServiceHandler(svc HealthCheckServiceHandler, opts ...connect
 // UnimplementedHealthCheckServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedHealthCheckServiceHandler struct{}
 
-func (UnimplementedHealthCheckServiceHandler) Status(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.HealthCheckResponse], error) {
+func (UnimplementedHealthCheckServiceHandler) Status(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.StatusResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ctrlplane.healthz.v1.HealthCheckService.Status is not implemented"))
 }
