@@ -2,6 +2,7 @@ package convert
 
 import (
 	"encoding/json"
+	"log/slog"
 
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -83,18 +84,22 @@ func AuthUserQueryToProto(user, accounts, teams, org []byte) (*authv1.AuthUser, 
 	}
 
 	if err := json.Unmarshal(user, converted.User); err != nil {
+		slog.Error("unmarshalling user", "error", err)
 		return nil, err
 	}
 
 	if err := BytesToSliceTeamProto(teams, converted.Teams); err != nil {
+		slog.Error("unmarshalling team", "error", err)
 		return nil, err
 	}
 
 	if err := BytesToSliceAccountProto(accounts, converted.Accounts); err != nil {
+		slog.Error("unmarshalling account", "error", err)
 		return nil, err
 	}
 
 	if err := json.Unmarshal(org, converted.Org); err != nil {
+		slog.Error("unmarshalling org", "error", err)
 		return nil, err
 	}
 
