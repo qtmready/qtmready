@@ -89,7 +89,8 @@ create trigger update_team_users_updated_at
     provider varchar(255) not null,
     provider_account_id varchar(255) not null,
     expires_at timestamptz not null,
-    type varchar(255)
+    type varchar(255),
+    constraint oauth_accounts_unique_provider_account unique (provider, provider_account_id)
   );
 
   -- auth::oauth_accounts::trigger
