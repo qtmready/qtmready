@@ -11,6 +11,7 @@ func DefaultServer(opts ...Option) *Server {
 	srv.add(handlers.NewHealthCheckServiceHandler())
 	srv.add(handlers.NewAccountSericeServiceHandler())
 	srv.add(handlers.NewUserSericeServiceHandler())
+	srv.add(handlers.NewGithubServiceHandler())
 
 	return srv
 }

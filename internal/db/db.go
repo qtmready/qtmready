@@ -10,19 +10,19 @@ import (
 )
 
 type (
-	Config = config.Connection
+	Config = config.Config
 )
 
 var (
-	DefaultConfig = config.DefaultConnection
+	DefaultConfig = config.DefaultConfig
 )
 
-func WithConfig(conf *Config) config.Option {
+func WithConfig(conf *Config) config.ConfigOption {
 	return config.WithConfig(conf)
 }
 
 // Connection is a wrapper around the config.Instance singleton.
-func Connection(opts ...config.Option) *config.Connection {
+func Connection(opts ...config.ConfigOption) *config.Config {
 	return config.Instance(opts...)
 }
 

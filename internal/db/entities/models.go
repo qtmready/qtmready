@@ -124,12 +124,13 @@ type OauthAccount struct {
 }
 
 type Org struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Name      string    `json:"name"`
-	Domain    string    `json:"domain"`
-	Slug      string    `json:"slug"`
+	ID        uuid.UUID       `json:"id"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
+	Name      string          `json:"name"`
+	Domain    string          `json:"domain"`
+	Slug      string          `json:"slug"`
+	Hooks     json.RawMessage `json:"hooks"`
 }
 
 type Repo struct {

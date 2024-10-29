@@ -67,6 +67,36 @@ func (q *Queries) DeleteGithubRepo(ctx context.Context, id uuid.UUID) (uuid.UUID
 	return id, err
 }
 
+const getGithubRepo = `-- name: GetGithubRepo :one
+SELECT id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
+FROM github_repos
+WHERE name = $1 AND full_name = $2 AND github_id = $3
+`
+
+type GetGithubRepoParams struct {
+	Name     string `json:"name"`
+	FullName string `json:"full_name"`
+	GithubID int64  `json:"github_id"`
+}
+
+func (q *Queries) GetGithubRepo(ctx context.Context, arg GetGithubRepoParams) (GithubRepo, error) {
+	row := q.db.QueryRow(ctx, getGithubRepo, arg.Name, arg.FullName, arg.GithubID)
+	var i GithubRepo
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RepoID,
+		&i.InstallationID,
+		&i.GithubID,
+		&i.Name,
+		&i.FullName,
+		&i.Url,
+		&i.IsActive,
+	)
+	return i, err
+}
+
 const getGithubRepoByFullName = `-- name: GetGithubRepoByFullName :one
 SELECT id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
 FROM github_repos
@@ -168,7 +198,7 @@ func (q *Queries) GetGithubRepoByName(ctx context.Context, name string) (GithubR
 	return i, err
 }
 
-const getGithubReposWithCoreRepo = `-- name: GetGithubReposWithCoreRepo :many
+const getGithubReposWithCoreRepo = `-- name: GetGithubReposWithCoreRepo :one
 SELECT 
     g.id, g.created_at, g.updated_at, g.repo_id, g.installation_id, g.github_id, g.name, g.full_name, g.url, g.is_active, 
     json_build_object(
@@ -186,7 +216,8 @@ FROM
 LEFT JOIN 
     repos r ON g.repo_id = r.id
 WHERE 
-    g.full_name = $1
+    g.id = $1 -- TODO - based on intallation id or some other
+LIMIT 1
 `
 
 type GetGithubReposWithCoreRepoRow struct {
@@ -203,36 +234,23 @@ type GetGithubReposWithCoreRepoRow struct {
 	Repo           []byte      `json:"repo"`
 }
 
-func (q *Queries) GetGithubReposWithCoreRepo(ctx context.Context, fullName string) ([]GetGithubReposWithCoreRepoRow, error) {
-	rows, err := q.db.Query(ctx, getGithubReposWithCoreRepo, fullName)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetGithubReposWithCoreRepoRow
-	for rows.Next() {
-		var i GetGithubReposWithCoreRepoRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.RepoID,
-			&i.InstallationID,
-			&i.GithubID,
-			&i.Name,
-			&i.FullName,
-			&i.Url,
-			&i.IsActive,
-			&i.Repo,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
+func (q *Queries) GetGithubReposWithCoreRepo(ctx context.Context, id uuid.UUID) (GetGithubReposWithCoreRepoRow, error) {
+	row := q.db.QueryRow(ctx, getGithubReposWithCoreRepo, id)
+	var i GetGithubReposWithCoreRepoRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RepoID,
+		&i.InstallationID,
+		&i.GithubID,
+		&i.Name,
+		&i.FullName,
+		&i.Url,
+		&i.IsActive,
+		&i.Repo,
+	)
+	return i, err
 }
 
 const updateGithubRepo = `-- name: UpdateGithubRepo :one

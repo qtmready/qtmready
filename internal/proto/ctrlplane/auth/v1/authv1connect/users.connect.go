@@ -61,13 +61,13 @@ var (
 type UserServiceClient interface {
 	// Creates a new user account associated with the given domain. Domains are unique to organizations. If the domain is
 	// not registered, a new organization will be created and the user assigned to it.
-	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
+	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.AuthUser], error)
 	// Retrieves a user based on their external provider account.
 	GetUserByProviderAccount(context.Context, *connect.Request[v1.GetUserByProviderAccountRequest]) (*connect.Response[v1.AuthUser], error)
 	// Retrieves a user by their email address.
-	GetUserByEmail(context.Context, *connect.Request[v1.GetUserByEmailRequest]) (*connect.Response[v1.GetUserByEmailResponse], error)
+	GetUserByEmail(context.Context, *connect.Request[v1.GetUserByEmailRequest]) (*connect.Response[v1.AuthUser], error)
 	// Retrieves a user by their globally unique identifier.
-	GetUserByID(context.Context, *connect.Request[v1.GetUserByIDRequest]) (*connect.Response[v1.GetUserByIDResponse], error)
+	GetUserByID(context.Context, *connect.Request[v1.GetUserByIDRequest]) (*connect.Response[v1.AuthUser], error)
 	// Updates an existing user account.
 	UpdateUser(context.Context, *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.UpdateUserResponse], error)
 }
@@ -82,7 +82,7 @@ type UserServiceClient interface {
 func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) UserServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	return &userServiceClient{
-		createUser: connect.NewClient[v1.CreateUserRequest, v1.CreateUserResponse](
+		createUser: connect.NewClient[v1.CreateUserRequest, v1.AuthUser](
 			httpClient,
 			baseURL+UserServiceCreateUserProcedure,
 			connect.WithSchema(userServiceCreateUserMethodDescriptor),
@@ -94,13 +94,13 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(userServiceGetUserByProviderAccountMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		getUserByEmail: connect.NewClient[v1.GetUserByEmailRequest, v1.GetUserByEmailResponse](
+		getUserByEmail: connect.NewClient[v1.GetUserByEmailRequest, v1.AuthUser](
 			httpClient,
 			baseURL+UserServiceGetUserByEmailProcedure,
 			connect.WithSchema(userServiceGetUserByEmailMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		getUserByID: connect.NewClient[v1.GetUserByIDRequest, v1.GetUserByIDResponse](
+		getUserByID: connect.NewClient[v1.GetUserByIDRequest, v1.AuthUser](
 			httpClient,
 			baseURL+UserServiceGetUserByIDProcedure,
 			connect.WithSchema(userServiceGetUserByIDMethodDescriptor),
@@ -117,15 +117,15 @@ func NewUserServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // userServiceClient implements UserServiceClient.
 type userServiceClient struct {
-	createUser               *connect.Client[v1.CreateUserRequest, v1.CreateUserResponse]
+	createUser               *connect.Client[v1.CreateUserRequest, v1.AuthUser]
 	getUserByProviderAccount *connect.Client[v1.GetUserByProviderAccountRequest, v1.AuthUser]
-	getUserByEmail           *connect.Client[v1.GetUserByEmailRequest, v1.GetUserByEmailResponse]
-	getUserByID              *connect.Client[v1.GetUserByIDRequest, v1.GetUserByIDResponse]
+	getUserByEmail           *connect.Client[v1.GetUserByEmailRequest, v1.AuthUser]
+	getUserByID              *connect.Client[v1.GetUserByIDRequest, v1.AuthUser]
 	updateUser               *connect.Client[v1.UpdateUserRequest, v1.UpdateUserResponse]
 }
 
 // CreateUser calls ctrlplane.auth.v1.UserService.CreateUser.
-func (c *userServiceClient) CreateUser(ctx context.Context, req *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {
+func (c *userServiceClient) CreateUser(ctx context.Context, req *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.AuthUser], error) {
 	return c.createUser.CallUnary(ctx, req)
 }
 
@@ -135,12 +135,12 @@ func (c *userServiceClient) GetUserByProviderAccount(ctx context.Context, req *c
 }
 
 // GetUserByEmail calls ctrlplane.auth.v1.UserService.GetUserByEmail.
-func (c *userServiceClient) GetUserByEmail(ctx context.Context, req *connect.Request[v1.GetUserByEmailRequest]) (*connect.Response[v1.GetUserByEmailResponse], error) {
+func (c *userServiceClient) GetUserByEmail(ctx context.Context, req *connect.Request[v1.GetUserByEmailRequest]) (*connect.Response[v1.AuthUser], error) {
 	return c.getUserByEmail.CallUnary(ctx, req)
 }
 
 // GetUserByID calls ctrlplane.auth.v1.UserService.GetUserByID.
-func (c *userServiceClient) GetUserByID(ctx context.Context, req *connect.Request[v1.GetUserByIDRequest]) (*connect.Response[v1.GetUserByIDResponse], error) {
+func (c *userServiceClient) GetUserByID(ctx context.Context, req *connect.Request[v1.GetUserByIDRequest]) (*connect.Response[v1.AuthUser], error) {
 	return c.getUserByID.CallUnary(ctx, req)
 }
 
@@ -153,13 +153,13 @@ func (c *userServiceClient) UpdateUser(ctx context.Context, req *connect.Request
 type UserServiceHandler interface {
 	// Creates a new user account associated with the given domain. Domains are unique to organizations. If the domain is
 	// not registered, a new organization will be created and the user assigned to it.
-	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error)
+	CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.AuthUser], error)
 	// Retrieves a user based on their external provider account.
 	GetUserByProviderAccount(context.Context, *connect.Request[v1.GetUserByProviderAccountRequest]) (*connect.Response[v1.AuthUser], error)
 	// Retrieves a user by their email address.
-	GetUserByEmail(context.Context, *connect.Request[v1.GetUserByEmailRequest]) (*connect.Response[v1.GetUserByEmailResponse], error)
+	GetUserByEmail(context.Context, *connect.Request[v1.GetUserByEmailRequest]) (*connect.Response[v1.AuthUser], error)
 	// Retrieves a user by their globally unique identifier.
-	GetUserByID(context.Context, *connect.Request[v1.GetUserByIDRequest]) (*connect.Response[v1.GetUserByIDResponse], error)
+	GetUserByID(context.Context, *connect.Request[v1.GetUserByIDRequest]) (*connect.Response[v1.AuthUser], error)
 	// Updates an existing user account.
 	UpdateUser(context.Context, *connect.Request[v1.UpdateUserRequest]) (*connect.Response[v1.UpdateUserResponse], error)
 }
@@ -221,7 +221,7 @@ func NewUserServiceHandler(svc UserServiceHandler, opts ...connect.HandlerOption
 // UnimplementedUserServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedUserServiceHandler struct{}
 
-func (UnimplementedUserServiceHandler) CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.CreateUserResponse], error) {
+func (UnimplementedUserServiceHandler) CreateUser(context.Context, *connect.Request[v1.CreateUserRequest]) (*connect.Response[v1.AuthUser], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ctrlplane.auth.v1.UserService.CreateUser is not implemented"))
 }
 
@@ -229,11 +229,11 @@ func (UnimplementedUserServiceHandler) GetUserByProviderAccount(context.Context,
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ctrlplane.auth.v1.UserService.GetUserByProviderAccount is not implemented"))
 }
 
-func (UnimplementedUserServiceHandler) GetUserByEmail(context.Context, *connect.Request[v1.GetUserByEmailRequest]) (*connect.Response[v1.GetUserByEmailResponse], error) {
+func (UnimplementedUserServiceHandler) GetUserByEmail(context.Context, *connect.Request[v1.GetUserByEmailRequest]) (*connect.Response[v1.AuthUser], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ctrlplane.auth.v1.UserService.GetUserByEmail is not implemented"))
 }
 
-func (UnimplementedUserServiceHandler) GetUserByID(context.Context, *connect.Request[v1.GetUserByIDRequest]) (*connect.Response[v1.GetUserByIDResponse], error) {
+func (UnimplementedUserServiceHandler) GetUserByID(context.Context, *connect.Request[v1.GetUserByIDRequest]) (*connect.Response[v1.AuthUser], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ctrlplane.auth.v1.UserService.GetUserByID is not implemented"))
 }
 

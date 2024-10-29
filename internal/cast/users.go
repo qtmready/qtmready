@@ -24,6 +24,7 @@ func UserToProto(user *entities.User) *authv1.User {
 		FirstName:  user.FirstName,
 		LastName:   user.LastName,
 		Email:      user.Email,
+		Picture:    user.Picture,
 		IsActive:   user.IsActive,
 		IsVerified: user.IsVerified,
 	}
@@ -58,7 +59,8 @@ func ProtoToCreateUserParams(proto *authv1.CreateUserRequest) entities.CreateUse
 	return entities.CreateUserParams{
 		FirstName: proto.GetFirstName(),
 		LastName:  proto.GetLastName(),
-		Email:     proto.GetEmail(),
+		Lower:     proto.GetEmail(),
+		Picture:   proto.GetPicture(),
 		Password:  string(hashed),
 	}
 }
@@ -77,37 +79,49 @@ func ProtoToUpdateUserParams(proto *authv1.UpdateUserRequest) entities.UpdateUse
 	}
 }
 
-// AuthUserQueryToProto converts a user, accounts, teams, and org byte slices to an authv1.AuthUser protobuf message.
-func AuthUserQueryToProto(user, accounts, teams, org []byte) (*authv1.AuthUser, error) {
-	converted := authv1.AuthUser{
-		Teams:    make([]*authv1.Team, 0),
-		Accounts: make([]*authv1.Account, 0),
-	}
+// AuthUserQueryResponseToProto converts a user, accounts, teams, and org byte slices to an authv1.AuthUser protobuf message.
+func AuthUserQueryResponseToProto(user, orgs, roles, accounts, teams []byte) (*authv1.AuthUser, error) {
+	response := &authv1.AuthUser{}
 
-	if err := json.Unmarshal(user, converted.User); err != nil {
+	usr := &entities.User{}
+	if err := json.Unmarshal(user, usr); err != nil {
 		slog.Error("unmarshalling user", "error", err)
 		return nil, err
 	}
 
-	if err := BytesToSliceTeamProto(teams, converted.Teams); err != nil {
-		slog.Error("unmarshalling team", "error", err)
-		return nil, err
-	}
+	response.User = UserToProto(usr)
 
-	if err := BytesToSliceAccountProto(accounts, converted.Accounts); err != nil {
-		slog.Error("unmarshalling account", "error", err)
-		return nil, err
-	}
-
-	if err := json.Unmarshal(org, converted.Org); err != nil {
+	org := &entities.Org{}
+	if err := json.Unmarshal(orgs, org); err != nil {
 		slog.Error("unmarshalling org", "error", err)
 		return nil, err
 	}
 
-	return &converted, nil
+	response.Org = OrgToProto(org)
+
+	rls, err := BytesToStringSlice(roles)
+	if err != nil {
+		return response, err
+	}
+
+	response.Roles = rls
+
+	if tms, err := BytesToTeamSliceProto(teams); err != nil {
+		return response, err
+	} else {
+		response.Teams = tms
+	}
+
+	if acts, err := BytesToAccountSliceProto(accounts); err != nil {
+		return response, err
+	} else {
+		response.Accounts = acts
+	}
+
+	return response, nil
 }
 
-// BytesToSliceTeamProto converts a byte slice representing a JSON array of Team proto messages to a slice of
+// BytesToTeamSliceProto converts a byte slice representing a JSON array of Team proto messages to a slice of
 // pointers to Team proto messages.
 //
 // It unmarshals the JSON data into a temporary slice of Team proto messages and then appends pointers to each
@@ -115,20 +129,27 @@ func AuthUserQueryToProto(user, accounts, teams, org []byte) (*authv1.AuthUser, 
 // the structs and that the pointers are referencing the correct locations, preventing potential data loss.
 //
 // Note that since slices are reference types in Go, the target slice will be modified in place.
-func BytesToSliceTeamProto(src []byte, tgt []*authv1.Team) error {
-	var deserialized []authv1.Team
+func BytesToTeamSliceProto(src []byte) ([]*authv1.Team, error) {
+	response := make([]*authv1.Team, 0)
+
+	if string(src) == "[null]" {
+		return response, nil
+	}
+
+	deserialized := make([]entities.Team, 0)
+
 	if err := json.Unmarshal(src, &deserialized); err != nil {
-		return err
+		return response, err // pg hack.
 	}
 
 	for idx := range deserialized {
-		tgt = append(tgt, &deserialized[idx])
+		response = append(response, TeamToProto(&deserialized[idx]))
 	}
 
-	return nil
+	return response, nil
 }
 
-// BytesToSliceAccountProto converts a byte slice representing a JSON array of Account proto messages to a slice of
+// BytesToAccountSliceProto converts a byte slice representing a JSON array of Account proto messages to a slice of
 // pointers to Account proto messages.
 //
 // It unmarshals the JSON data into a temporary slice of Team proto messages and then appends pointers to each
@@ -136,15 +157,31 @@ func BytesToSliceTeamProto(src []byte, tgt []*authv1.Team) error {
 // the structs and that the pointers are referencing the correct locations, preventing potential data loss.
 //
 // Note that since slices are reference types in Go, the target slice will be modified in place.
-func BytesToSliceAccountProto(src []byte, tgt []*authv1.Account) error {
-	deserialized := make([]authv1.Account, 0)
+func BytesToAccountSliceProto(src []byte) ([]*authv1.Account, error) {
+	response := make([]*authv1.Account, 0)
+
+	if string(src) == "[null]" { // pg hack.
+		return response, nil
+	}
+
+	deserialized := make([]entities.OauthAccount, 0)
+
 	if err := json.Unmarshal(src, &deserialized); err != nil {
-		return err
+		return response, err
 	}
 
 	for idx := range deserialized {
-		tgt = append(tgt, &deserialized[idx])
+		response = append(response, AccountToProto(&deserialized[idx]))
 	}
 
-	return nil
+	return response, nil
+}
+
+func BytesToStringSlice(src []byte) ([]string, error) {
+	var response []string
+	if err := json.Unmarshal(src, &response); err != nil {
+		return response, err
+	}
+
+	return response, nil
 }

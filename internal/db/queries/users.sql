@@ -1,6 +1,6 @@
 -- name: CreateUser :one
 INSERT INTO users (first_name, last_name, email, password, picture, org_id)
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES ($1, $2, LOWER($3), $4, $5, $6)
 RETURNING *;
 
 -- name: GetUserByID :one
@@ -12,7 +12,7 @@ LIMIT 1;
 -- name: GetUserByEmail :one
 SELECT *
 FROM users
-WHERE email = LOWER($1);
+WHERE email = lower($1);
 
 -- name: GetAuthUserByID :one
 SELECT
@@ -28,16 +28,18 @@ SELECT
     'is_active', usr.is_active,
     'is_verified', usr.is_verified
   ) AS user,
-	json_agg(team.*) AS teams,
-  json_agg(account.*) AS oauth_accounts,
   json_build_object(
     'id', org.id,
     'created_at', org.created_at,
     'updated_at', org.updated_at,
     'name', org.name,
     'domain', org.domain,
-    'slug', org.slug
-  ) AS org
+    'slug', org.slug,
+    'hooks', org.hooks
+  ) AS org,
+  json_agg(role.name) AS roles,
+  json_agg(team.*) AS teams,
+  json_agg(account.*) AS oauth_accounts
 FROM users AS usr
 LEFT JOIN team_users AS tu
   ON usr.id = tu.user_id
@@ -47,6 +49,8 @@ LEFT JOIN oauth_accounts AS account
   ON usr.id = account.user_id
 JOIN orgs AS org
   ON usr.org_id = org.id
+LEFT JOIN user_roles AS role
+  ON usr.id = role.user_id
 WHERE
   usr.id = $1
 GROUP BY
@@ -66,16 +70,18 @@ SELECT
     'is_active', usr.is_active,
     'is_verified', usr.is_verified
   ) AS user,
-	json_agg(team.*) AS teams,
-  json_agg(account.*) AS oauth_accounts,
   json_build_object(
     'id', org.id,
     'created_at', org.created_at,
     'updated_at', org.updated_at,
     'name', org.name,
     'domain', org.domain,
-    'slug', org.slug
-  ) AS org
+    'slug', org.slug,
+    'hooks', org.hooks
+  ) AS org,
+  json_agg(role.name) AS roles,
+  json_agg(team.*) AS teams,
+  json_agg(account.*) AS oauth_accounts
 FROM users AS usr
 LEFT JOIN team_users AS tu
   ON usr.id = tu.user_id
@@ -85,8 +91,10 @@ LEFT JOIN oauth_accounts AS account
   ON usr.id = account.user_id
 JOIN orgs AS org
   ON usr.org_id = org.id
+LEFT JOIN user_roles AS role
+  ON usr.id = role.user_id
 WHERE
-  usr.email = LOWER($1)
+  usr.email = lower($1)
 GROUP BY
   usr.id, org.id;
 
@@ -102,7 +110,7 @@ WHERE
 
 -- name: UpdateUser :one
 UPDATE users
-SET first_name = $2, last_name = $3, email = LOWER($4), org_id = $5
+SET first_name = $2, last_name = $3, email = lower($4), org_id = $5
 WHERE id = $1
 RETURNING *;
 

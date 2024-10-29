@@ -18,33 +18,54 @@ import (
 )
 
 type (
+	// UserService implements the UserServiceHandler interface for managing user operations.
 	UserService struct {
 		authv1connect.UnimplementedUserServiceHandler
 	}
 )
 
+var (
+	NoOrgUUID = uuid.MustParse("00000000-0000-0000-0000-000000000001")
+)
+
+// CreateUser creates a new user on the platform.
+// If the organization with the given domain does not exist, it is created.
+// The first user of an organization is an administrator, subsequent users are assigned the "member" role.
 func (s *UserService) CreateUser(
 	ctx context.Context, req *connect.Request[authv1.CreateUserRequest],
-) (*connect.Response[authv1.CreateUserResponse], error) {
-	params := cast.ProtoToCreateUserParams(req.Msg) // protobuf to create user params (without org id).
-	domain := req.Msg.GetDomain()                   // extract domain to lookup org.
+) (*connect.Response[authv1.AuthUser], error) { // Default public value for new users.
+	role := "member"                                // Default role for new users.
+	params := cast.ProtoToCreateUserParams(req.Msg) // Extract user creation parameters (excluding organization ID).
+	domain := req.Msg.GetDomain()                   // Extract the domain name to locate the organization.
 
-	// Begin a database transaction.
+	// Initiate a database transaction.
 	tx, qtx, err := db.Transaction(ctx)
 	if err != nil {
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
-	defer func() { _ = tx.Rollback(ctx) }() // rollback is deferred to ensure that we rollback on error.
+	defer func() { _ = tx.Rollback(ctx) }() // Rollback is deferred to ensure rollback on error.
 
-	// Get the organization associated with the given domain.
+	// User sign-up without an organization domain.
+	if domain == "" {
+		params.OrgID = NoOrgUUID
+		user, err := qtx.CreateUser(ctx, params)
+
+		if err != nil {
+			return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		}
+
+		return connect.NewResponse(&authv1.AuthUser{User: cast.UserToProto(&user)}), nil
+	}
+
+	// Retrieve the organization associated with the provided domain.
 	org, err := qtx.GetOrgByDomain(ctx, domain)
 	if err != nil {
 		if err != pgx.ErrNoRows {
 			return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 		}
 
-		// Generate a slug for the organization.
+		// Generate a unique slug for the organization based on the domain name.
 		slug := db.CreateSlug(domain)
 
 		// Create the organization in the database.
@@ -52,28 +73,53 @@ func (s *UserService) CreateUser(
 		if err != nil {
 			return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 		}
+
+		role = "admin" // Assign the "admin" role to the first user of the organization.
 	}
 
-	// Set the organization ID in the CreateUserParams struct.
+	// Update the user creation parameters with the organization ID.
 	params.OrgID = org.ID
 
 	// Create the user in the database.
 	user, err := qtx.CreateUser(ctx, params)
 	if err != nil {
-		// Return an internal server error if there's an error creating the user.
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
-	// Commit the database transaction.
+	// Assign the appropriate role to the user within the organization.
+	_, err = qtx.CreateUserRole(ctx, entities.CreateUserRoleParams{
+		Name:   role,
+		UserID: user.ID,
+		OrgID:  org.ID,
+	})
+	if err != nil {
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+	}
+
+	// Commit the database transaction and then Retrieve the user details for accurate relationships.
 	if err := tx.Commit(ctx); err != nil {
-		// Return an internal server error if there's an error committing the transaction.
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
-	// Convert the created user to a protobuf struct and return a successful response.
-	return connect.NewResponse(&authv1.CreateUserResponse{User: cast.UserToProto(&user)}), nil
+	// Retrieve the user details from the database.
+	details, err := db.Queries().GetAuthUserByID(ctx, user.ID)
+	if err != nil {
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+	}
+
+	// Convert the retrieved user details to a protobuf structure.
+	proto, err := cast.AuthUserQueryResponseToProto(
+		details.User, details.Org, details.Roles, details.OauthAccounts, details.Teams,
+	)
+	if err != nil {
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+	}
+
+	// Return a successful response containing the created user information as a protobuf struct.
+	return connect.NewResponse(proto), nil
 }
 
+// GetUserByProviderAccount retrieves a user based on their provider and provider account ID.
 func (s *UserService) GetUserByProviderAccount(
 	ctx context.Context, request *connect.Request[authv1.GetUserByProviderAccountRequest],
 ) (*connect.Response[authv1.AuthUser], error) {
@@ -97,23 +143,26 @@ func (s *UserService) GetUserByProviderAccount(
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
-	ptr, err := db.Queries().GetAuthUserByID(ctx, one.ID)
+	details, err := db.Queries().GetAuthUserByID(ctx, one.ID)
 	if err != nil {
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
-	user, err := cast.AuthUserQueryToProto(ptr.User, ptr.OauthAccounts, ptr.Teams, ptr.Org)
+	proto, err := cast.AuthUserQueryResponseToProto(
+		details.User, details.Org, details.Roles, details.OauthAccounts, details.Teams,
+	)
 	if err != nil {
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
-	return connect.NewResponse(user), nil
+	return connect.NewResponse(proto), nil
 }
 
+// GetUserByEmail retrieves a user based on their email address.
 func (s *UserService) GetUserByEmail(
 	ctx context.Context, req *connect.Request[authv1.GetUserByEmailRequest],
-) (*connect.Response[authv1.GetUserByEmailResponse], error) {
-	user, err := db.Queries().GetUserByEmail(ctx, req.Msg.GetEmail())
+) (*connect.Response[authv1.AuthUser], error) {
+	details, err := db.Queries().GetAuthUserByEmail(ctx, req.Msg.GetEmail())
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, erratic.NewNotFoundError("entity", "users", "email", req.Msg.GetEmail()).ToConnectError()
@@ -122,13 +171,21 @@ func (s *UserService) GetUserByEmail(
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
-	return connect.NewResponse(&authv1.GetUserByEmailResponse{User: cast.UserToProto(&user)}), nil
+	proto, err := cast.AuthUserQueryResponseToProto(
+		details.User, details.Org, details.Roles, details.OauthAccounts, details.Teams,
+	)
+	if err != nil {
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+	}
+
+	return connect.NewResponse(proto), nil
 }
 
+// GetUserByID retrieves a user based on their user ID.
 func (s *UserService) GetUserByID(
 	ctx context.Context, req *connect.Request[authv1.GetUserByIDRequest],
-) (*connect.Response[authv1.GetUserByIDResponse], error) {
-	user, err := db.Queries().GetUserByID(ctx, uuid.MustParse(req.Msg.GetId()))
+) (*connect.Response[authv1.AuthUser], error) {
+	details, err := db.Queries().GetAuthUserByID(ctx, uuid.MustParse(req.Msg.GetId()))
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return nil, erratic.NewNotFoundError("entity", "users").ToConnectError()
@@ -137,9 +194,17 @@ func (s *UserService) GetUserByID(
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
-	return connect.NewResponse(&authv1.GetUserByIDResponse{User: cast.UserToProto(&user)}), nil
+	proto, err := cast.AuthUserQueryResponseToProto(
+		details.User, details.Org, details.Roles, details.OauthAccounts, details.Teams,
+	)
+	if err != nil {
+		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+	}
+
+	return connect.NewResponse(proto), nil
 }
 
+// UpdateUser updates the user details in the database.
 func (s *UserService) UpdateUser(
 	ctx context.Context, req *connect.Request[authv1.UpdateUserRequest],
 ) (*connect.Response[authv1.UpdateUserResponse], error) {
@@ -153,6 +218,7 @@ func (s *UserService) UpdateUser(
 	return connect.NewResponse(&authv1.UpdateUserResponse{User: cast.UserToProto(&user)}), nil
 }
 
+// NewUserSericeServiceHandler creates a new UserServiceHandler instance and returns the service name and handler.
 func NewUserSericeServiceHandler() (string, http.Handler) {
 	return authv1connect.NewUserServiceHandler(&UserService{})
 }

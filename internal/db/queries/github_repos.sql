@@ -40,8 +40,7 @@ SELECT *
 FROM github_repos
 WHERE installation_id = $1 AND github_id = $2;
 
-
--- name: GetGithubReposWithCoreRepo :many
+-- name: GetGithubReposWithCoreRepo :one
 SELECT 
     g.*, 
     json_build_object(
@@ -59,4 +58,10 @@ FROM
 LEFT JOIN 
     repos r ON g.repo_id = r.id
 WHERE 
-    g.full_name = $1;  -- TODO - based on intallation id or some other
+    g.id = $1 -- TODO - based on intallation id or some other
+LIMIT 1;
+
+-- name: GetGithubRepo :one
+SELECT *
+FROM github_repos
+WHERE name = $1 AND full_name = $2 AND github_id = $3; 
