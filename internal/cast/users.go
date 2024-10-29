@@ -59,6 +59,7 @@ func ProtoToCreateUserParams(proto *authv1.CreateUserRequest) entities.CreateUse
 		FirstName: proto.GetFirstName(),
 		LastName:  proto.GetLastName(),
 		Email:     proto.GetEmail(),
+		Picture:   proto.GetPicture(),
 		Password:  string(hashed),
 	}
 }
