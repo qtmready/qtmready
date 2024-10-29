@@ -90,7 +90,7 @@ WHERE
 GROUP BY
   usr.id, org.id;
 
--- name: GetUserByProviderAccount :one
+-- name: GetUserByHookAccount :one
 SELECT
   usr.*
 FROM
@@ -98,7 +98,7 @@ FROM
 JOIN
   oauth_accounts act ON usr.id = act.user_id
 WHERE
-  act.provider = $1 AND act.provider_account_id = $2;
+  act.hook = $1 AND act.hook_account_id = $2;
 
 -- name: UpdateUser :one
 UPDATE users

@@ -13,16 +13,16 @@ import (
 )
 
 const createRepo = `-- name: CreateRepo :one
-INSERT INTO repos (org_id, name, provider, provider_id, default_branch, is_monorepo, threshold, stale_duration)
+INSERT INTO repos (org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, created_at, updated_at, org_id, name, provider, provider_id, default_branch, is_monorepo, threshold, stale_duration
+RETURNING id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration
 `
 
 type CreateRepoParams struct {
 	OrgID         uuid.UUID       `json:"org_id"`
 	Name          string          `json:"name"`
-	Provider      string          `json:"provider"`
-	ProviderID    string          `json:"provider_id"`
+	Hook          string          `json:"hook"`
+	HookID        string          `json:"hook_id"`
 	DefaultBranch string          `json:"default_branch"`
 	IsMonorepo    bool            `json:"is_monorepo"`
 	Threshold     int32           `json:"threshold"`
@@ -33,8 +33,8 @@ func (q *Queries) CreateRepo(ctx context.Context, arg CreateRepoParams) (Repo, e
 	row := q.db.QueryRow(ctx, createRepo,
 		arg.OrgID,
 		arg.Name,
-		arg.Provider,
-		arg.ProviderID,
+		arg.Hook,
+		arg.HookID,
 		arg.DefaultBranch,
 		arg.IsMonorepo,
 		arg.Threshold,
@@ -47,8 +47,8 @@ func (q *Queries) CreateRepo(ctx context.Context, arg CreateRepoParams) (Repo, e
 		&i.UpdatedAt,
 		&i.OrgID,
 		&i.Name,
-		&i.Provider,
-		&i.ProviderID,
+		&i.Hook,
+		&i.HookID,
 		&i.DefaultBranch,
 		&i.IsMonorepo,
 		&i.Threshold,
@@ -68,7 +68,7 @@ func (q *Queries) DeleteRepo(ctx context.Context, id uuid.UUID) error {
 }
 
 const getOrgReposByOrgID = `-- name: GetOrgReposByOrgID :many
-SELECT id, created_at, updated_at, org_id, name, provider, provider_id, default_branch, is_monorepo, threshold, stale_duration
+SELECT id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration
 FROM repos 
 WHERE org_id = $1
 `
@@ -88,8 +88,8 @@ func (q *Queries) GetOrgReposByOrgID(ctx context.Context, orgID uuid.UUID) ([]Re
 			&i.UpdatedAt,
 			&i.OrgID,
 			&i.Name,
-			&i.Provider,
-			&i.ProviderID,
+			&i.Hook,
+			&i.HookID,
 			&i.DefaultBranch,
 			&i.IsMonorepo,
 			&i.Threshold,
@@ -106,7 +106,7 @@ func (q *Queries) GetOrgReposByOrgID(ctx context.Context, orgID uuid.UUID) ([]Re
 }
 
 const getRepoByID = `-- name: GetRepoByID :one
-SELECT id, created_at, updated_at, org_id, name, provider, provider_id, default_branch, is_monorepo, threshold, stale_duration
+SELECT id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration
 FROM repos
 WHERE id = $1
 `
@@ -120,8 +120,8 @@ func (q *Queries) GetRepoByID(ctx context.Context, id uuid.UUID) (Repo, error) {
 		&i.UpdatedAt,
 		&i.OrgID,
 		&i.Name,
-		&i.Provider,
-		&i.ProviderID,
+		&i.Hook,
+		&i.HookID,
 		&i.DefaultBranch,
 		&i.IsMonorepo,
 		&i.Threshold,
@@ -130,19 +130,19 @@ func (q *Queries) GetRepoByID(ctx context.Context, id uuid.UUID) (Repo, error) {
 	return i, err
 }
 
-const getReposByProviderAndProviderID = `-- name: GetReposByProviderAndProviderID :one
-SELECT id, created_at, updated_at, org_id, name, provider, provider_id, default_branch, is_monorepo, threshold, stale_duration
+const getReposByHookAndHookID = `-- name: GetReposByHookAndHookID :one
+SELECT id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration
 FROM repos 
-WHERE provider = $1 AND provider_id = $2
+WHERE hook = $1 AND hook_id = $2
 `
 
-type GetReposByProviderAndProviderIDParams struct {
-	Provider   string `json:"provider"`
-	ProviderID string `json:"provider_id"`
+type GetReposByHookAndHookIDParams struct {
+	Hook   string `json:"hook"`
+	HookID string `json:"hook_id"`
 }
 
-func (q *Queries) GetReposByProviderAndProviderID(ctx context.Context, arg GetReposByProviderAndProviderIDParams) (Repo, error) {
-	row := q.db.QueryRow(ctx, getReposByProviderAndProviderID, arg.Provider, arg.ProviderID)
+func (q *Queries) GetReposByHookAndHookID(ctx context.Context, arg GetReposByHookAndHookIDParams) (Repo, error) {
+	row := q.db.QueryRow(ctx, getReposByHookAndHookID, arg.Hook, arg.HookID)
 	var i Repo
 	err := row.Scan(
 		&i.ID,
@@ -150,8 +150,8 @@ func (q *Queries) GetReposByProviderAndProviderID(ctx context.Context, arg GetRe
 		&i.UpdatedAt,
 		&i.OrgID,
 		&i.Name,
-		&i.Provider,
-		&i.ProviderID,
+		&i.Hook,
+		&i.HookID,
 		&i.DefaultBranch,
 		&i.IsMonorepo,
 		&i.Threshold,
@@ -161,7 +161,7 @@ func (q *Queries) GetReposByProviderAndProviderID(ctx context.Context, arg GetRe
 }
 
 const listRepos = `-- name: ListRepos :many
-SELECT id, created_at, updated_at, org_id, name, provider, provider_id, default_branch, is_monorepo, threshold, stale_duration
+SELECT id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration
 FROM repos
 ORDER BY created_at DESC
 `
@@ -181,8 +181,8 @@ func (q *Queries) ListRepos(ctx context.Context) ([]Repo, error) {
 			&i.UpdatedAt,
 			&i.OrgID,
 			&i.Name,
-			&i.Provider,
-			&i.ProviderID,
+			&i.Hook,
+			&i.HookID,
 			&i.DefaultBranch,
 			&i.IsMonorepo,
 			&i.Threshold,
@@ -202,22 +202,22 @@ const updateRepo = `-- name: UpdateRepo :one
 UPDATE repos
 SET org_id = $2,
     name = $3,
-    provider = $4,
-    provider_id = $5,
+    hook = $4,
+    hook_id = $5,
     default_branch = $6,
     is_monorepo = $7,
     threshold = $8,
     stale_duration = $9
 WHERE id = $1
-RETURNING id, created_at, updated_at, org_id, name, provider, provider_id, default_branch, is_monorepo, threshold, stale_duration
+RETURNING id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration
 `
 
 type UpdateRepoParams struct {
 	ID            uuid.UUID       `json:"id"`
 	OrgID         uuid.UUID       `json:"org_id"`
 	Name          string          `json:"name"`
-	Provider      string          `json:"provider"`
-	ProviderID    string          `json:"provider_id"`
+	Hook          string          `json:"hook"`
+	HookID        string          `json:"hook_id"`
 	DefaultBranch string          `json:"default_branch"`
 	IsMonorepo    bool            `json:"is_monorepo"`
 	Threshold     int32           `json:"threshold"`
@@ -229,8 +229,8 @@ func (q *Queries) UpdateRepo(ctx context.Context, arg UpdateRepoParams) (Repo, e
 		arg.ID,
 		arg.OrgID,
 		arg.Name,
-		arg.Provider,
-		arg.ProviderID,
+		arg.Hook,
+		arg.HookID,
 		arg.DefaultBranch,
 		arg.IsMonorepo,
 		arg.Threshold,
@@ -243,8 +243,8 @@ func (q *Queries) UpdateRepo(ctx context.Context, arg UpdateRepoParams) (Repo, e
 		&i.UpdatedAt,
 		&i.OrgID,
 		&i.Name,
-		&i.Provider,
-		&i.ProviderID,
+		&i.Hook,
+		&i.HookID,
 		&i.DefaultBranch,
 		&i.IsMonorepo,
 		&i.Threshold,
