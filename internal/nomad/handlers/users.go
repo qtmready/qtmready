@@ -102,7 +102,7 @@ func (s *UserService) GetUserByProviderAccount(
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
-	user, err := cast.AuthUserQueryToProto(ptr.User, ptr.OauthAccounts, ptr.Teams, ptr.Org)
+	user, err := cast.AuthUserQueryResponseToProto(ptr.User, ptr.OauthAccounts, ptr.Teams, ptr.Org)
 	if err != nil {
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
