@@ -179,3 +179,12 @@ type User struct {
 	IsActive   bool      `json:"is_active"`
 	IsVerified bool      `json:"is_verified"`
 }
+
+type UserRole struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Name      string    `json:"name"`
+	UserID    uuid.UUID `json:"user_id"`
+	OrgID     uuid.UUID `json:"org_id"`
+}

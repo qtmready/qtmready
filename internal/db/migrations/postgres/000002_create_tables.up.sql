@@ -221,3 +221,19 @@ create trigger update_messaging_updated_at
   after update on messaging
   for each row
   execute function update_updated_at();
+
+-- user_roles::user_roles::create
+create table user_roles (
+  id uuid primary key default uuid_generate_v7(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  name varchar(50) not null,
+  user_id uuid not null references users (id),
+  org_id uuid not null references orgs (id)
+);
+
+-- user_roles::user_roles::trigger
+create trigger update_user_roles_updated_at
+  after update on user_roles
+  for each row
+  execute function update_updated_at();
