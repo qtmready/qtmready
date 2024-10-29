@@ -1,5 +1,5 @@
 -- name: CreateRepo :one
-INSERT INTO repos (org_id, name, provider, provider_id, default_branch, is_monorepo, threshold, stale_duration)
+INSERT INTO repos (org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
@@ -12,8 +12,8 @@ WHERE id = $1;
 UPDATE repos
 SET org_id = $2,
     name = $3,
-    provider = $4,
-    provider_id = $5,
+    hook = $4,
+    hook_id = $5,
     default_branch = $6,
     is_monorepo = $7,
     threshold = $8,
@@ -35,7 +35,7 @@ SELECT *
 FROM repos 
 WHERE org_id = $1; 
 
--- name: GetReposByProviderAndProviderID :one
+-- name: GetReposByHookAndHookID :one
 SELECT *
 FROM repos 
-WHERE provider = $1 AND provider_id = $2; 
+WHERE hook = $1 AND hook_id = $2; 

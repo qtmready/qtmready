@@ -13,21 +13,21 @@ import (
 )
 
 const createMessaging = `-- name: CreateMessaging :one
-INSERT INTO messaging (provider, kind, link_to, data)
+INSERT INTO messaging (hook, kind, link_to, data)
 VALUES ($1, $2, $3, $4)
-RETURNING id, created_at, updated_at, provider, kind, link_to, data
+RETURNING id, created_at, updated_at, hook, kind, link_to, data
 `
 
 type CreateMessagingParams struct {
-	Provider string          `json:"provider"`
-	Kind     string          `json:"kind"`
-	LinkTo   uuid.UUID       `json:"link_to"`
-	Data     json.RawMessage `json:"data"`
+	Hook   string          `json:"hook"`
+	Kind   string          `json:"kind"`
+	LinkTo uuid.UUID       `json:"link_to"`
+	Data   json.RawMessage `json:"data"`
 }
 
 func (q *Queries) CreateMessaging(ctx context.Context, arg CreateMessagingParams) (Messaging, error) {
 	row := q.db.QueryRow(ctx, createMessaging,
-		arg.Provider,
+		arg.Hook,
 		arg.Kind,
 		arg.LinkTo,
 		arg.Data,
@@ -37,7 +37,7 @@ func (q *Queries) CreateMessaging(ctx context.Context, arg CreateMessagingParams
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.Provider,
+		&i.Hook,
 		&i.Kind,
 		&i.LinkTo,
 		&i.Data,
@@ -46,7 +46,7 @@ func (q *Queries) CreateMessaging(ctx context.Context, arg CreateMessagingParams
 }
 
 const getMessagesByLinkTo = `-- name: GetMessagesByLinkTo :many
-SELECT id, created_at, updated_at, provider, kind, link_to, data
+SELECT id, created_at, updated_at, hook, kind, link_to, data
 FROM messaging
 WHERE link_to = $1
 `
@@ -64,7 +64,7 @@ func (q *Queries) GetMessagesByLinkTo(ctx context.Context, linkTo uuid.UUID) ([]
 			&i.ID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
-			&i.Provider,
+			&i.Hook,
 			&i.Kind,
 			&i.LinkTo,
 			&i.Data,

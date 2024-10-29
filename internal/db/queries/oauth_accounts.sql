@@ -1,5 +1,5 @@
 -- name: CreateOAuthAccount :one
-INSERT INTO oauth_accounts (user_id, provider, provider_account_id, expires_at, type)
+INSERT INTO oauth_accounts (user_id, hook, hook_account_id, expires_at, type)
 VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
@@ -13,7 +13,7 @@ SELECT *
 FROM oauth_accounts
 WHERE user_id = $1;
 
--- name: GetOAuthAccountByProviderAccountID :one
+-- name: GetOAuthAccountByHookAccountID :one
 SELECT *
 FROM oauth_accounts
-WHERE provider_account_id = $1 and provider = $2;
+WHERE hook_account_id = $1 and hook = $2;

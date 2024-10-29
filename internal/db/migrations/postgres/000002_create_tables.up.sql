@@ -87,11 +87,11 @@ create trigger update_team_users_updated_at
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now(),
     user_id uuid not null references users (id),
-    provider varchar(255) not null,
-    provider_account_id varchar(255) not null,
+    hook varchar(255) not null,
+    hook_account_id varchar(255) not null,
     expires_at timestamptz not null,
     type varchar(255),
-    constraint oauth_accounts_unique_provider_account unique (provider, provider_account_id)
+    constraint oauth_accounts_unique_hook_account unique (hook, hook_account_id)
   );
 
   -- auth::oauth_accounts::trigger
@@ -107,8 +107,8 @@ create table repos (
   updated_at timestamptz not null default now(),
   org_id uuid not null references orgs (id),
   name varchar(255) not null,
-  provider varchar(255) not null,
-  provider_id varchar(255) not null,
+  hook varchar(255) not null,
+  hook_id varchar(255) not null,
   default_branch varchar(255) not null default 'main',
   is_monorepo boolean not null default false,
   threshold integer not null default 500,
@@ -210,7 +210,7 @@ create table messaging (
   id uuid primary key default uuid_generate_v7(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  provider varchar(255) not null,
+  hook varchar(255) not null,
   kind varchar(255) not null,
   link_to uuid not null,
   data jsonb not null

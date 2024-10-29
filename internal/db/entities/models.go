@@ -106,21 +106,21 @@ type Messaging struct {
 	ID        uuid.UUID       `json:"id"`
 	CreatedAt time.Time       `json:"created_at"`
 	UpdatedAt time.Time       `json:"updated_at"`
-	Provider  string          `json:"provider"`
+	Hook      string          `json:"hook"`
 	Kind      string          `json:"kind"`
 	LinkTo    uuid.UUID       `json:"link_to"`
 	Data      json.RawMessage `json:"data"`
 }
 
 type OauthAccount struct {
-	ID                uuid.UUID   `json:"id"`
-	CreatedAt         time.Time   `json:"created_at"`
-	UpdatedAt         time.Time   `json:"updated_at"`
-	UserID            uuid.UUID   `json:"user_id"`
-	Provider          string      `json:"provider"`
-	ProviderAccountID string      `json:"provider_account_id"`
-	ExpiresAt         time.Time   `json:"expires_at"`
-	Type              pgtype.Text `json:"type"`
+	ID            uuid.UUID   `json:"id"`
+	CreatedAt     time.Time   `json:"created_at"`
+	UpdatedAt     time.Time   `json:"updated_at"`
+	UserID        uuid.UUID   `json:"user_id"`
+	Hook          string      `json:"hook"`
+	HookAccountID string      `json:"hook_account_id"`
+	ExpiresAt     time.Time   `json:"expires_at"`
+	Type          pgtype.Text `json:"type"`
 }
 
 type Org struct {
@@ -138,8 +138,8 @@ type Repo struct {
 	UpdatedAt     time.Time       `json:"updated_at"`
 	OrgID         uuid.UUID       `json:"org_id"`
 	Name          string          `json:"name"`
-	Provider      string          `json:"provider"`
-	ProviderID    string          `json:"provider_id"`
+	Hook          string          `json:"hook"`
+	HookID        string          `json:"hook_id"`
 	DefaultBranch string          `json:"default_branch"`
 	IsMonorepo    bool            `json:"is_monorepo"`
 	Threshold     int32           `json:"threshold"`
