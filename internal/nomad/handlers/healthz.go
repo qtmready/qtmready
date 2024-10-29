@@ -7,8 +7,8 @@ import (
 	"connectrpc.com/connect"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	healthzv1 "go.breu.io/quantm/internal/nomad/proto/ctrlplane/healthz/v1"
-	"go.breu.io/quantm/internal/nomad/proto/ctrlplane/healthz/v1/healthzv1connect"
+	healthzv1 "go.breu.io/quantm/internal/proto/ctrlplane/healthz/v1"
+	"go.breu.io/quantm/internal/proto/ctrlplane/healthz/v1/healthzv1connect"
 )
 
 type (
