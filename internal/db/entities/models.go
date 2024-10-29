@@ -113,14 +113,14 @@ type Messaging struct {
 }
 
 type OauthAccount struct {
-	ID            uuid.UUID   `json:"id"`
-	CreatedAt     time.Time   `json:"created_at"`
-	UpdatedAt     time.Time   `json:"updated_at"`
-	UserID        uuid.UUID   `json:"user_id"`
-	Hook          string      `json:"hook"`
-	HookAccountID string      `json:"hook_account_id"`
-	ExpiresAt     time.Time   `json:"expires_at"`
-	Type          pgtype.Text `json:"type"`
+	ID                uuid.UUID   `json:"id"`
+	CreatedAt         time.Time   `json:"created_at"`
+	UpdatedAt         time.Time   `json:"updated_at"`
+	UserID            uuid.UUID   `json:"user_id"`
+	Provider          string      `json:"provider"`
+	ProviderAccountID string      `json:"provider_account_id"`
+	ExpiresAt         time.Time   `json:"expires_at"`
+	Type              pgtype.Text `json:"type"`
 }
 
 type Org struct {

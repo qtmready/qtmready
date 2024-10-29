@@ -193,24 +193,15 @@ func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (User, error
 	return i, err
 }
 
-const getUserByHookAccount = `-- name: GetUserByHookAccount :one
-SELECT
-  usr.id, usr.created_at, usr.updated_at, usr.org_id, usr.email, usr.first_name, usr.last_name, usr.password, usr.picture, usr.is_active, usr.is_verified
-FROM
-  users usr
-JOIN
-  oauth_accounts act ON usr.id = act.user_id
-WHERE
-  act.hook = $1 AND act.hook_account_id = $2
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, picture, is_active, is_verified
+FROM users
+WHERE id = $1
+LIMIT 1
 `
 
-type GetUserByHookAccountParams struct {
-	Hook          string `json:"hook"`
-	HookAccountID string `json:"hook_account_id"`
-}
-
-func (q *Queries) GetUserByHookAccount(ctx context.Context, arg GetUserByHookAccountParams) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByHookAccount, arg.Hook, arg.HookAccountID)
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByID, id)
 	var i User
 	err := row.Scan(
 		&i.ID,
@@ -228,15 +219,24 @@ func (q *Queries) GetUserByHookAccount(ctx context.Context, arg GetUserByHookAcc
 	return i, err
 }
 
-const getUserByID = `-- name: GetUserByID :one
-SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, picture, is_active, is_verified
-FROM users
-WHERE id = $1
-LIMIT 1
+const getUserByProviderAccount = `-- name: GetUserByProviderAccount :one
+SELECT
+  usr.id, usr.created_at, usr.updated_at, usr.org_id, usr.email, usr.first_name, usr.last_name, usr.password, usr.picture, usr.is_active, usr.is_verified
+FROM
+  users usr
+JOIN
+  oauth_accounts act ON usr.id = act.user_id
+WHERE
+  act.provider = $1 AND act.provider_account_id = $2
 `
 
-func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
-	row := q.db.QueryRow(ctx, getUserByID, id)
+type GetUserByProviderAccountParams struct {
+	Provider          string `json:"provider"`
+	ProviderAccountID string `json:"provider_account_id"`
+}
+
+func (q *Queries) GetUserByProviderAccount(ctx context.Context, arg GetUserByProviderAccountParams) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByProviderAccount, arg.Provider, arg.ProviderAccountID)
 	var i User
 	err := row.Scan(
 		&i.ID,
