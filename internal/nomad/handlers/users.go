@@ -9,12 +9,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
+	"go.breu.io/quantm/internal/cast"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/erratic"
-	"go.breu.io/quantm/internal/nomad/convert"
-	authv1 "go.breu.io/quantm/internal/nomad/proto/ctrlplane/auth/v1"
-	"go.breu.io/quantm/internal/nomad/proto/ctrlplane/auth/v1/authv1connect"
+	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"
+	"go.breu.io/quantm/internal/proto/ctrlplane/auth/v1/authv1connect"
 )
 
 type (
@@ -26,8 +26,8 @@ type (
 func (s *UserService) CreateUser(
 	ctx context.Context, req *connect.Request[authv1.CreateUserRequest],
 ) (*connect.Response[authv1.CreateUserResponse], error) {
-	params := convert.ProtoToCreateUserParams(req.Msg) // protobuf to create user params (without org id).
-	domain := req.Msg.GetDomain()                      // extract domain to lookup org.
+	params := cast.ProtoToCreateUserParams(req.Msg) // protobuf to create user params (without org id).
+	domain := req.Msg.GetDomain()                   // extract domain to lookup org.
 
 	// Begin a database transaction.
 	tx, qtx, err := db.Transaction(ctx)
@@ -71,14 +71,14 @@ func (s *UserService) CreateUser(
 	}
 
 	// Convert the created user to a protobuf struct and return a successful response.
-	return connect.NewResponse(&authv1.CreateUserResponse{User: convert.UserToProto(&user)}), nil
+	return connect.NewResponse(&authv1.CreateUserResponse{User: cast.UserToProto(&user)}), nil
 }
 
 func (s *UserService) GetUserByProviderAccount(
 	ctx context.Context, request *connect.Request[authv1.GetUserByProviderAccountRequest],
 ) (*connect.Response[authv1.AuthUser], error) {
 	params := entities.GetUserByProviderAccountParams{
-		Provider:          convert.ProtoToAuthProvider(request.Msg.GetProvider()),
+		Provider:          cast.ProtoToAuthProvider(request.Msg.GetProvider()),
 		ProviderAccountID: request.Msg.GetProviderAccountId(),
 	}
 
@@ -98,12 +98,11 @@ func (s *UserService) GetUserByProviderAccount(
 	}
 
 	ptr, err := db.Queries().GetAuthUserByID(ctx, one.ID)
-	slog.Info("do we have a user?", "response", ptr)
 	if err != nil {
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
-	user, err := convert.AuthUserQueryToProto(ptr.User, ptr.OauthAccounts, ptr.Teams, ptr.Org)
+	user, err := cast.AuthUserQueryToProto(ptr.User, ptr.OauthAccounts, ptr.Teams, ptr.Org)
 	if err != nil {
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
@@ -123,35 +122,35 @@ func (s *UserService) GetUserByEmail(
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
-	return connect.NewResponse(&authv1.GetUserByEmailResponse{User: convert.UserToProto(&user)}), nil
+	return connect.NewResponse(&authv1.GetUserByEmailResponse{User: cast.UserToProto(&user)}), nil
 }
 
 func (s *UserService) GetUserByID(
 	ctx context.Context, req *connect.Request[authv1.GetUserByIDRequest],
 ) (*connect.Response[authv1.GetUserByIDResponse], error) {
-	user, err := db.Queries().GetUserByID(ctx, uuid.MustParse(req.Msg.GetId().GetValue()))
+	user, err := db.Queries().GetUserByID(ctx, uuid.MustParse(req.Msg.GetId()))
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, erratic.NewNotFoundError("entity", "users", "id", req.Msg.GetId().GetValue()).ToConnectError()
+			return nil, erratic.NewNotFoundError("entity", "users").ToConnectError()
 		}
 
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
-	return connect.NewResponse(&authv1.GetUserByIDResponse{User: convert.UserToProto(&user)}), nil
+	return connect.NewResponse(&authv1.GetUserByIDResponse{User: cast.UserToProto(&user)}), nil
 }
 
 func (s *UserService) UpdateUser(
 	ctx context.Context, req *connect.Request[authv1.UpdateUserRequest],
 ) (*connect.Response[authv1.UpdateUserResponse], error) {
-	params := convert.ProtoToUpdateUserParams(req.Msg)
+	params := cast.ProtoToUpdateUserParams(req.Msg)
 
 	user, err := db.Queries().UpdateUser(ctx, params)
 	if err != nil {
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
 	}
 
-	return connect.NewResponse(&authv1.UpdateUserResponse{User: convert.UserToProto(&user)}), nil
+	return connect.NewResponse(&authv1.UpdateUserResponse{User: cast.UserToProto(&user)}), nil
 }
 
 func NewUserSericeServiceHandler() (string, http.Handler) {
