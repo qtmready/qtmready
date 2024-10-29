@@ -11,14 +11,14 @@ Before you begin, ensure you have the following software installed:
 
 ## Setting Environment
 
-### 1. Clone the Repository
+### Clone the Repository with submodules
 
 ```bash
 git clone https://github.com/quantmHQ/quantm.git
 cd quantm
 ```
 
-### 2. Configure Environment Variables
+### Configure Environment Variables
 
 Copy the `.env.example` file to `.env` and configure it with your specific settings:
 
@@ -26,7 +26,7 @@ Copy the `.env.example` file to `.env` and configure it with your specific setti
 cp .env.example .env
 ```
 
-### 3. Required Services
+### Required Services
 
 Start the necessary services using Docker Compose. This inlcudes
 
@@ -38,7 +38,7 @@ Start the necessary services using Docker Compose. This inlcudes
   docker-compose up -d
   ```
 
-### 4. Running the Application
+### Running the Application
 
 Once you've completed the setup steps, you can run the Quantm.io application using the following methods:
 
@@ -68,6 +68,8 @@ go run ./cmd/quantm # or go run ./cmd/quantm --help for more options
 
 > [!IMPORTANT]
 > For detailed instructions on running specific modules, configurations, and advanced usage, refer to the project documentation.
+
+
 
 ## Project Structure
 
