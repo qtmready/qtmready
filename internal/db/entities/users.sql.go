@@ -13,14 +13,14 @@ import (
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (first_name, last_name, email, password, picture, org_id)
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES ($1, $2, LOWER($3), $4, $5, $6)
 RETURNING id, created_at, updated_at, org_id, email, first_name, last_name, password, picture, is_active, is_verified
 `
 
 type CreateUserParams struct {
 	FirstName string    `json:"first_name"`
 	LastName  string    `json:"last_name"`
-	Email     string    `json:"email"`
+	Lower     string    `json:"lower"`
 	Password  string    `json:"password"`
 	Picture   string    `json:"picture"`
 	OrgID     uuid.UUID `json:"org_id"`
@@ -30,7 +30,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	row := q.db.QueryRow(ctx, createUser,
 		arg.FirstName,
 		arg.LastName,
-		arg.Email,
+		arg.Lower,
 		arg.Password,
 		arg.Picture,
 		arg.OrgID,
@@ -66,8 +66,6 @@ SELECT
     'is_active', usr.is_active,
     'is_verified', usr.is_verified
   ) AS user,
-	json_agg(team.*) AS teams,
-  json_agg(account.*) AS oauth_accounts,
   json_build_object(
     'id', org.id,
     'created_at', org.created_at,
@@ -75,7 +73,10 @@ SELECT
     'name', org.name,
     'domain', org.domain,
     'slug', org.slug
-  ) AS org
+  ) AS org,
+  json_agg(role.name) AS roles,
+  json_agg(team.*) AS teams,
+  json_agg(account.*) AS oauth_accounts
 FROM users AS usr
 LEFT JOIN team_users AS tu
   ON usr.id = tu.user_id
@@ -85,17 +86,20 @@ LEFT JOIN oauth_accounts AS account
   ON usr.id = account.user_id
 JOIN orgs AS org
   ON usr.org_id = org.id
+LEFT JOIN user_roles AS role
+  ON usr.id = role.user_id
 WHERE
-  usr.email = LOWER($1)
+  usr.email = lower($1)
 GROUP BY
   usr.id, org.id
 `
 
 type GetAuthUserByEmailRow struct {
 	User          []byte `json:"user"`
+	Org           []byte `json:"org"`
+	Roles         []byte `json:"roles"`
 	Teams         []byte `json:"teams"`
 	OauthAccounts []byte `json:"oauth_accounts"`
-	Org           []byte `json:"org"`
 }
 
 func (q *Queries) GetAuthUserByEmail(ctx context.Context, lower string) (GetAuthUserByEmailRow, error) {
@@ -103,9 +107,10 @@ func (q *Queries) GetAuthUserByEmail(ctx context.Context, lower string) (GetAuth
 	var i GetAuthUserByEmailRow
 	err := row.Scan(
 		&i.User,
+		&i.Org,
+		&i.Roles,
 		&i.Teams,
 		&i.OauthAccounts,
-		&i.Org,
 	)
 	return i, err
 }
@@ -124,8 +129,6 @@ SELECT
     'is_active', usr.is_active,
     'is_verified', usr.is_verified
   ) AS user,
-	json_agg(team.*) AS teams,
-  json_agg(account.*) AS oauth_accounts,
   json_build_object(
     'id', org.id,
     'created_at', org.created_at,
@@ -133,7 +136,10 @@ SELECT
     'name', org.name,
     'domain', org.domain,
     'slug', org.slug
-  ) AS org
+  ) AS org,
+  json_agg(role.name) AS roles,
+  json_agg(team.*) AS teams,
+  json_agg(account.*) AS oauth_accounts
 FROM users AS usr
 LEFT JOIN team_users AS tu
   ON usr.id = tu.user_id
@@ -143,6 +149,8 @@ LEFT JOIN oauth_accounts AS account
   ON usr.id = account.user_id
 JOIN orgs AS org
   ON usr.org_id = org.id
+LEFT JOIN user_roles AS role
+  ON usr.id = role.user_id
 WHERE
   usr.id = $1
 GROUP BY
@@ -151,9 +159,10 @@ GROUP BY
 
 type GetAuthUserByIDRow struct {
 	User          []byte `json:"user"`
+	Org           []byte `json:"org"`
+	Roles         []byte `json:"roles"`
 	Teams         []byte `json:"teams"`
 	OauthAccounts []byte `json:"oauth_accounts"`
-	Org           []byte `json:"org"`
 }
 
 func (q *Queries) GetAuthUserByID(ctx context.Context, id uuid.UUID) (GetAuthUserByIDRow, error) {
@@ -161,9 +170,10 @@ func (q *Queries) GetAuthUserByID(ctx context.Context, id uuid.UUID) (GetAuthUse
 	var i GetAuthUserByIDRow
 	err := row.Scan(
 		&i.User,
+		&i.Org,
+		&i.Roles,
 		&i.Teams,
 		&i.OauthAccounts,
-		&i.Org,
 	)
 	return i, err
 }
@@ -171,7 +181,7 @@ func (q *Queries) GetAuthUserByID(ctx context.Context, id uuid.UUID) (GetAuthUse
 const getUserByEmail = `-- name: GetUserByEmail :one
 SELECT id, created_at, updated_at, org_id, email, first_name, last_name, password, picture, is_active, is_verified
 FROM users
-WHERE email = LOWER($1)
+WHERE email = lower($1)
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (User, error) {
@@ -256,7 +266,7 @@ func (q *Queries) GetUserByProviderAccount(ctx context.Context, arg GetUserByPro
 
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
-SET first_name = $2, last_name = $3, email = LOWER($4), org_id = $5
+SET first_name = $2, last_name = $3, email = lower($4), org_id = $5
 WHERE id = $1
 RETURNING id, created_at, updated_at, org_id, email, first_name, last_name, password, picture, is_active, is_verified
 `
