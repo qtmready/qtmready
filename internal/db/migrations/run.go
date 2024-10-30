@@ -20,7 +20,7 @@ var (
 )
 
 // Run runs the migrations for the PostgreSQL database.
-func Run(ctx context.Context, connection *config.Connection) error {
+func Run(ctx context.Context, connection *config.Config) error {
 	slog.Info("migrations: running ...")
 
 	if !connection.IsConnected() {
