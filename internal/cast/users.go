@@ -24,6 +24,7 @@ func UserToProto(user *entities.User) *authv1.User {
 		FirstName:  user.FirstName,
 		LastName:   user.LastName,
 		Email:      user.Email,
+		Picture:    user.Picture,
 		IsActive:   user.IsActive,
 		IsVerified: user.IsVerified,
 	}
@@ -142,7 +143,6 @@ func BytesToTeamSliceProto(src []byte) ([]*authv1.Team, error) {
 	}
 
 	for idx := range deserialized {
-		slog.Info("team", "team", deserialized[idx], "src", src)
 		response = append(response, TeamToProto(&deserialized[idx]))
 	}
 
@@ -171,7 +171,6 @@ func BytesToAccountSliceProto(src []byte) ([]*authv1.Account, error) {
 	}
 
 	for idx := range deserialized {
-		slog.Info("account", "idx", idx, "account", deserialized[idx])
 		response = append(response, AccountToProto(&deserialized[idx]))
 	}
 
