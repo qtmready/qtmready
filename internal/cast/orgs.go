@@ -14,5 +14,6 @@ func OrgToProto(org *entities.Org) *authv1.Org {
 		UpdatedAt: timestamppb.New(org.UpdatedAt),
 		Name:      org.Name,
 		Slug:      org.Slug,
+		Domain:    org.Domain,
 	}
 }
