@@ -15,16 +15,21 @@ import (
 	"go.breu.io/graceful"
 
 	pkg_db "go.breu.io/quantm/internal/db"
+	pkg_db_config "go.breu.io/quantm/internal/db/config"
 	"go.breu.io/quantm/internal/db/migrations"
+	pkg_github "go.breu.io/quantm/internal/hooks/github/config"
+	pkg_slack "go.breu.io/quantm/internal/hooks/slack/config"
 	pkg_nomad "go.breu.io/quantm/internal/nomad"
 )
 
 type (
 	// Config defines the application's configuration.
 	Config struct {
-		Nomad   *pkg_nomad.Config `koanf:"NOMAD"`   // Configuration for Nomad.
-		DB      *pkg_db.Config    `koanf:"DB"`      // Configuration for the database.
-		Migrate bool              `koanf:"MIGRATE"` // Flag to enable database migration. This flag is handy during development.
+		Nomad   *pkg_nomad.Config     `koanf:"NOMAD"`   // Configuration for Nomad.
+		DB      *pkg_db_config.Config `koanf:"DB"`      // Configuration for the database.
+		Github  *pkg_github.Config    `koanf:"GITHUB"`  // Configuration for the github.
+		Slack   *pkg_slack.Config     `koanf:"SLACK"`   // Configuration for the slack.
+		Migrate bool                  `koanf:"MIGRATE"` // Flag to enable database migration. This flag is handy during development.
 	}
 
 	// Service is an interface for services that can be started and stopped.

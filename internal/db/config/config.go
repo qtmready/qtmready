@@ -19,13 +19,13 @@ import (
 )
 
 var (
-	_c     *Connection // Global connection instance.
-	_conce sync.Once   // Ensures connection initialization occurs only once.
+	_c     *Config   // Global connection instance.
+	_conce sync.Once // Ensures connection initialization occurs only once.
 )
 
 type (
 	// connection struct holds database connection parameters and the established connection.
-	Connection struct {
+	Config struct {
 		Host      string `json:"host" koanf:"HOST"`             // Database host.
 		Name      string `json:"name" koanf:"NAME"`             // Database name.
 		Port      int    `json:"port" koanf:"PORT"`             // Database port.
@@ -36,13 +36,13 @@ type (
 		conn *pgx.Conn // Database connection.
 	}
 
-	// Option defines functional options for connection.
-	Option func(*Connection)
+	// ConfigOption defines functional options for connection.
+	ConfigOption func(*Config)
 )
 
 var (
-	// DefaultConnection is the default database connection configuration.
-	DefaultConnection = Connection{
+	// DefaultConfig is the default database connection configuration.
+	DefaultConfig = Config{
 		Host:      "localhost",
 		Name:      "ctrlplane",
 		Port:      5432,
@@ -53,7 +53,7 @@ var (
 )
 
 // ConnectionString builds a connection string from connection parameters.
-func (c *Connection) ConnectionString() string {
+func (c *Config) ConnectionString() string {
 	ssl := "disable"
 	if c.EnableSSL {
 		ssl = "require"
@@ -65,7 +65,7 @@ func (c *Connection) ConnectionString() string {
 	)
 }
 
-func (c *Connection) ConnectionURI() string {
+func (c *Config) ConnectionURI() string {
 	ssl := "disable"
 	if c.EnableSSL {
 		ssl = "require"
@@ -83,14 +83,14 @@ func (c *Connection) ConnectionURI() string {
 }
 
 // IsConnected checks if a database connection exists.
-func (c *Connection) IsConnected() bool {
+func (c *Config) IsConnected() bool {
 	return c.conn != nil
 }
 
 // Start establishes a database connection using retry logic.
 //
 // Panics if a connection cannot be established after multiple retries.
-func (c *Connection) Start(ctx context.Context) error {
+func (c *Config) Start(ctx context.Context) error {
 	if c.IsConnected() {
 		slog.Warn("db: already connected.")
 
@@ -135,16 +135,16 @@ func (c *Connection) Start(ctx context.Context) error {
 // Ping checks the database connection health by sending a ping.
 //
 // Returns an error if the ping fails.
-func (c *Connection) Ping(ctx context.Context) error {
+func (c *Config) Ping(ctx context.Context) error {
 	return c.conn.Ping(ctx)
 }
 
-func (c *Connection) Get() *pgx.Conn {
+func (c *Config) Get() *pgx.Conn {
 	return c.conn
 }
 
 // Stop closes the database connection.
-func (c *Connection) Stop(ctx context.Context) error {
+func (c *Config) Stop(ctx context.Context) error {
 	if c.IsConnected() {
 		c.conn.Close(ctx)
 	} else {
@@ -157,7 +157,7 @@ func (c *Connection) Stop(ctx context.Context) error {
 // retryfn returns a function that attempts to establish a database connection.
 //
 // This function is used internally by the `Connect` method for retry logic. The returned function returns an error if the connection fails.
-func (c *Connection) retryfn(ctx context.Context) func() error {
+func (c *Config) retryfn(ctx context.Context) func() error {
 	return func() error {
 		conn, err := pgx.Connect(ctx, c.ConnectionString())
 		if err != nil {
@@ -171,42 +171,42 @@ func (c *Connection) retryfn(ctx context.Context) func() error {
 }
 
 // WithHost sets the database host.
-func WithHost(host string) Option {
-	return func(c *Connection) {
+func WithHost(host string) ConfigOption {
+	return func(c *Config) {
 		c.Host = host
 	}
 }
 
 // WithPort sets the database port.
-func WithPort(port int) Option {
-	return func(c *Connection) {
+func WithPort(port int) ConfigOption {
+	return func(c *Config) {
 		c.Port = port
 	}
 }
 
 // WithName sets the database name.
-func WithName(name string) Option {
-	return func(c *Connection) {
+func WithName(name string) ConfigOption {
+	return func(c *Config) {
 		c.Name = name
 	}
 }
 
 // WithUser sets the database user.
-func WithUser(user string) Option {
-	return func(c *Connection) {
+func WithUser(user string) ConfigOption {
+	return func(c *Config) {
 		c.User = user
 	}
 }
 
 // WithPassword sets the database password.
-func WithPassword(password string) Option {
-	return func(c *Connection) {
+func WithPassword(password string) ConfigOption {
+	return func(c *Config) {
 		c.Password = password
 	}
 }
 
-func WithConfig(config *Connection) Option {
-	return func(c *Connection) {
+func WithConfig(config *Config) ConfigOption {
+	return func(c *Config) {
 		c.Host = config.Host
 		c.Port = config.Port
 		c.Name = config.Name
@@ -219,8 +219,8 @@ func WithConfig(config *Connection) Option {
 // WithConfigFromEnvironment reads connection parameters from environment variables using koanf.
 //
 // Panics if environment variables cannot be read.
-func WithConfigFromEnvironment(opts ...string) Option {
-	return func(c *Connection) {
+func WithConfigFromEnvironment(opts ...string) ConfigOption {
+	return func(c *Config) {
 		var prefix string
 
 		if len(opts) > 0 {
@@ -234,7 +234,7 @@ func WithConfigFromEnvironment(opts ...string) Option {
 		}
 
 		k := koanf.New("__")
-		_ = k.Load(structs.Provider(DefaultConnection, "__"), nil)
+		_ = k.Load(structs.Provider(DefaultConfig, "__"), nil)
 
 		if err := k.Load(env.Provider(prefix, "__", nil), nil); err != nil {
 			panic(err)
@@ -246,14 +246,14 @@ func WithConfigFromEnvironment(opts ...string) Option {
 	}
 }
 
-// Instance creates a new global connection instance with functional options.
+// Instance creates a new global connection instance with functional Configoptions.
 //
 // Uses `sync.Once` to ensure the connection is initialized only once.
-func Instance(opts ...Option) *Connection {
+func Instance(opts ...ConfigOption) *Config {
 	_conce.Do(func() {
 		slog.Info("db: configuring connection ...")
 
-		_c = &Connection{}
+		_c = &Config{}
 
 		for _, opt := range opts {
 			opt(_c)

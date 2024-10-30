@@ -21,7 +21,7 @@ var (
 // TODO - move to function return.
 func WithPostgresMigrations() {
 	// TODO: read from .env
-	c := &config.DefaultConnection
+	c := &config.DefaultConfig
 
 	dir, err := iofs.New(sql, "migrations/postgres")
 	if err != nil {
