@@ -6,6 +6,7 @@ create table orgs (
   name varchar(255) not null,
   domain varchar(255) not null,
   slug varchar(255) not null,
+  hooks jsonb not null default '{"repo":0, "messaging": 0}',
   constraint orgs_domain_unique unique (domain),
   constraint orgs_slug_unique unique (slug)
 );

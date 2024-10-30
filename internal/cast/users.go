@@ -58,7 +58,7 @@ func ProtoToCreateUserParams(proto *authv1.CreateUserRequest) entities.CreateUse
 	return entities.CreateUserParams{
 		FirstName: proto.GetFirstName(),
 		LastName:  proto.GetLastName(),
-		Email:     proto.GetEmail(),
+		Lower:     proto.GetEmail(),
 		Picture:   proto.GetPicture(),
 		Password:  string(hashed),
 	}
@@ -79,7 +79,7 @@ func ProtoToUpdateUserParams(proto *authv1.UpdateUserRequest) entities.UpdateUse
 }
 
 // AuthUserQueryResponseToProto converts a user, accounts, teams, and org byte slices to an authv1.AuthUser protobuf message.
-func AuthUserQueryResponseToProto(user, orgs, accounts, teams []byte) (*authv1.AuthUser, error) {
+func AuthUserQueryResponseToProto(user, orgs, roles, accounts, teams []byte) (*authv1.AuthUser, error) {
 	response := &authv1.AuthUser{}
 
 	usr := &entities.User{}
@@ -98,16 +98,23 @@ func AuthUserQueryResponseToProto(user, orgs, accounts, teams []byte) (*authv1.A
 
 	response.Org = OrgToProto(org)
 
-	if acts, err := BytesToAccountSliceProto(accounts); err != nil {
+	rls, err := BytesToStringSlice(roles)
+	if err != nil {
 		return response, err
-	} else {
-		response.Accounts = acts
 	}
+
+	response.Roles = rls
 
 	if tms, err := BytesToTeamSliceProto(teams); err != nil {
 		return response, err
 	} else {
 		response.Teams = tms
+	}
+
+	if acts, err := BytesToAccountSliceProto(accounts); err != nil {
+		return response, err
+	} else {
+		response.Accounts = acts
 	}
 
 	return response, nil
@@ -123,13 +130,19 @@ func AuthUserQueryResponseToProto(user, orgs, accounts, teams []byte) (*authv1.A
 // Note that since slices are reference types in Go, the target slice will be modified in place.
 func BytesToTeamSliceProto(src []byte) ([]*authv1.Team, error) {
 	response := make([]*authv1.Team, 0)
+
+	if string(src) == "[null]" {
+		return response, nil
+	}
+
 	deserialized := make([]entities.Team, 0)
 
 	if err := json.Unmarshal(src, &deserialized); err != nil {
-		return response, err
+		return response, err // pg hack.
 	}
 
 	for idx := range deserialized {
+		slog.Info("team", "team", deserialized[idx], "src", src)
 		response = append(response, TeamToProto(&deserialized[idx]))
 	}
 
@@ -147,7 +160,12 @@ func BytesToTeamSliceProto(src []byte) ([]*authv1.Team, error) {
 func BytesToAccountSliceProto(src []byte) ([]*authv1.Account, error) {
 	response := make([]*authv1.Account, 0)
 
+	if string(src) == "[null]" { // pg hack.
+		return response, nil
+	}
+
 	deserialized := make([]entities.OauthAccount, 0)
+
 	if err := json.Unmarshal(src, &deserialized); err != nil {
 		return response, err
 	}
@@ -155,6 +173,15 @@ func BytesToAccountSliceProto(src []byte) ([]*authv1.Account, error) {
 	for idx := range deserialized {
 		slog.Info("account", "idx", idx, "account", deserialized[idx])
 		response = append(response, AccountToProto(&deserialized[idx]))
+	}
+
+	return response, nil
+}
+
+func BytesToStringSlice(src []byte) ([]string, error) {
+	var response []string
+	if err := json.Unmarshal(src, &response); err != nil {
+		return response, err
 	}
 
 	return response, nil

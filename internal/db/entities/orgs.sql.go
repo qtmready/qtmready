@@ -7,6 +7,7 @@ package entities
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -18,9 +19,18 @@ ON CONFLICT (id) DO NOTHING
 RETURNING id, created_at, updated_at, name, domain, slug
 `
 
-func (q *Queries) CreateDefaultOrg(ctx context.Context) (Org, error) {
+type CreateDefaultOrgRow struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Name      string    `json:"name"`
+	Domain    string    `json:"domain"`
+	Slug      string    `json:"slug"`
+}
+
+func (q *Queries) CreateDefaultOrg(ctx context.Context) (CreateDefaultOrgRow, error) {
 	row := q.db.QueryRow(ctx, createDefaultOrg)
-	var i Org
+	var i CreateDefaultOrgRow
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedAt,
@@ -35,7 +45,7 @@ func (q *Queries) CreateDefaultOrg(ctx context.Context) (Org, error) {
 const createOrg = `-- name: CreateOrg :one
 INSERT INTO orgs (name, domain, slug)
 VALUES ($1, LOWER($2), $3)
-RETURNING id, created_at, updated_at, name, domain, slug
+RETURNING id, created_at, updated_at, name, domain, slug, hooks
 `
 
 type CreateOrgParams struct {
@@ -54,12 +64,13 @@ func (q *Queries) CreateOrg(ctx context.Context, arg CreateOrgParams) (Org, erro
 		&i.Name,
 		&i.Domain,
 		&i.Slug,
+		&i.Hooks,
 	)
 	return i, err
 }
 
 const getOrgByDomain = `-- name: GetOrgByDomain :one
-SELECT id, created_at, updated_at, name, domain, slug
+SELECT id, created_at, updated_at, name, domain, slug, hooks
 FROM orgs
 WHERE LOWER(domain) = LOWER($1)
 `
@@ -74,6 +85,7 @@ func (q *Queries) GetOrgByDomain(ctx context.Context, lower string) (Org, error)
 		&i.Name,
 		&i.Domain,
 		&i.Slug,
+		&i.Hooks,
 	)
 	return i, err
 }
@@ -82,7 +94,7 @@ const updateOrg = `-- name: UpdateOrg :one
 UPDATE orgs
 SET name = $2, domain = LOWER($3), slug = $4
 WHERE id = $1
-RETURNING id, created_at, updated_at, name, domain, slug
+RETURNING id, created_at, updated_at, name, domain, slug, hooks
 `
 
 type UpdateOrgParams struct {
@@ -107,6 +119,7 @@ func (q *Queries) UpdateOrg(ctx context.Context, arg UpdateOrgParams) (Org, erro
 		&i.Name,
 		&i.Domain,
 		&i.Slug,
+		&i.Hooks,
 	)
 	return i, err
 }
