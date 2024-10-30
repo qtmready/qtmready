@@ -10,6 +10,7 @@ sql:
       - "./queries/orgs.sql"
       - "./queries/oauth_accounts.sql"
       - "./queries/users.sql"
+      - "./queries/user_roles.sql"
       - "./queries/teams.sql"
       - "./queries/team_users.sql"
       - "./queries/repos.sql"

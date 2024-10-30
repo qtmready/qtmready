@@ -81,24 +81,40 @@ create trigger update_team_users_updated_at
   for each row
   execute function update_updated_at();
 
-  -- auth::oauth_accounts::create
-  create table oauth_accounts (
-    id uuid primary key default uuid_generate_v7(),
-    created_at timestamptz not null default now(),
-    updated_at timestamptz not null default now(),
-    user_id uuid not null references users (id),
-    provider varchar(255) not null,
-    provider_account_id varchar(255) not null,
-    expires_at timestamptz not null,
-    type varchar(255),
-    constraint oauth_accounts_unique_provider_account unique (provider, provider_account_id)
-  );
+-- auth::user_roles::create
+create table user_roles (
+  id uuid primary key default uuid_generate_v7(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  name varchar(63) not null,
+  user_id uuid not null references users (id),
+  org_id uuid not null references orgs (id)
+);
 
-  -- auth::oauth_accounts::trigger
-  create trigger update_oauth_accounts_updated_at
-    after update on oauth_accounts
-    for each row
-    execute function update_updated_at();
+-- auth::user_roles::trigger
+create trigger update_user_roles_updated_at
+  after update on user_roles
+  for each row
+  execute function update_updated_at();
+
+-- auth::oauth_accounts::create
+create table oauth_accounts (
+  id uuid primary key default uuid_generate_v7(),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  user_id uuid not null references users (id),
+  provider varchar(255) not null,
+  provider_account_id varchar(255) not null,
+  expires_at timestamptz not null,
+  type varchar(255),
+  constraint oauth_accounts_unique_provider_account unique (provider, provider_account_id)
+);
+
+-- auth::oauth_accounts::trigger
+create trigger update_oauth_accounts_updated_at
+  after update on oauth_accounts
+  for each row
+  execute function update_updated_at();
 
 -- core::repos::create
 create table repos (
@@ -219,21 +235,5 @@ create table messaging (
 -- messaging::messaging::trigger
 create trigger update_messaging_updated_at
   after update on messaging
-  for each row
-  execute function update_updated_at();
-
--- user_roles::user_roles::create
-create table user_roles (
-  id uuid primary key default uuid_generate_v7(),
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  name varchar(50) not null,
-  user_id uuid not null references users (id),
-  org_id uuid not null references orgs (id)
-);
-
--- user_roles::user_roles::trigger
-create trigger update_user_roles_updated_at
-  after update on user_roles
   for each row
   execute function update_updated_at();

@@ -79,11 +79,11 @@ func ProtoToUpdateUserParams(proto *authv1.UpdateUserRequest) entities.UpdateUse
 }
 
 // AuthUserQueryResponseToProto converts a user, accounts, teams, and org byte slices to an authv1.AuthUser protobuf message.
-func AuthUserQueryResponseToProto(bytusr, bytact, bytm, bytorg []byte) (*authv1.AuthUser, error) {
+func AuthUserQueryResponseToProto(user, orgs, accounts, teams []byte) (*authv1.AuthUser, error) {
 	response := &authv1.AuthUser{}
 
 	usr := &entities.User{}
-	if err := json.Unmarshal(bytusr, usr); err != nil {
+	if err := json.Unmarshal(user, usr); err != nil {
 		slog.Error("unmarshalling user", "error", err)
 		return nil, err
 	}
@@ -91,23 +91,23 @@ func AuthUserQueryResponseToProto(bytusr, bytact, bytm, bytorg []byte) (*authv1.
 	response.User = UserToProto(usr)
 
 	org := &entities.Org{}
-	if err := json.Unmarshal(bytorg, org); err != nil {
+	if err := json.Unmarshal(orgs, org); err != nil {
 		slog.Error("unmarshalling org", "error", err)
 		return nil, err
 	}
 
 	response.Org = OrgToProto(org)
 
-	if accounts, err := BytesToAccountSliceProto(bytact); err != nil {
+	if acts, err := BytesToAccountSliceProto(accounts); err != nil {
 		return response, err
 	} else {
-		response.Accounts = accounts
+		response.Accounts = acts
 	}
 
-	if teams, err := BytesToTeamSliceProto(bytm); err != nil {
+	if tms, err := BytesToTeamSliceProto(teams); err != nil {
 		return response, err
 	} else {
-		response.Teams = teams
+		response.Teams = tms
 	}
 
 	return response, nil
