@@ -14,6 +14,11 @@ SELECT id, name
 FROM teams
 WHERE slug = $1;
 
+-- name: GetTeamByID :one
+SELECT *
+FROM teams
+WHERE id = $1;
+
 -- name: UpdateTeam :one
 UPDATE teams
 SET name = $2

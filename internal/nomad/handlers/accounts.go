@@ -21,14 +21,14 @@ type (
 
 func (s *AccountService) GetAccountByProviderAccountID(
 	ctx context.Context,
-	rqst *connect.Request[authv1.GetAccountByProviderAccountIDRequest],
+	req *connect.Request[authv1.GetAccountByProviderAccountIDRequest],
 ) (*connect.Response[authv1.GetAccountByProviderAccountIDResponse], error) {
-	params := cast.ProtoToGetAccountByProviderAccountIDParams(rqst.Msg)
+	params := cast.ProtoToGetAccountByProviderAccountIDParams(req.Msg)
 
 	account, err := db.Queries().GetOAuthAccountByProviderAccountID(ctx, params)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, erratic.NewNotFoundError("entity", "accounts", "provider_id", rqst.Msg.GetProviderAccountId()).ToConnectError()
+			return nil, erratic.NewNotFoundError("entity", "accounts", "provider_id", req.Msg.GetProviderAccountId()).ToConnectError()
 		}
 
 		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()

@@ -67,6 +67,26 @@ func (q *Queries) GetTeam(ctx context.Context, id uuid.UUID) (Team, error) {
 	return i, err
 }
 
+const getTeamByID = `-- name: GetTeamByID :one
+SELECT id, created_at, updated_at, org_id, name, slug
+FROM teams
+WHERE id = $1
+`
+
+func (q *Queries) GetTeamByID(ctx context.Context, id uuid.UUID) (Team, error) {
+	row := q.db.QueryRow(ctx, getTeamByID, id)
+	var i Team
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OrgID,
+		&i.Name,
+		&i.Slug,
+	)
+	return i, err
+}
+
 const getTeamBySlug = `-- name: GetTeamBySlug :one
 SELECT id, name
 FROM teams

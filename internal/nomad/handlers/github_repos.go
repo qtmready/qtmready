@@ -8,32 +8,21 @@ import (
 
 	githubv1 "go.breu.io/quantm/internal/proto/hooks/github/v1"
 	"go.breu.io/quantm/internal/proto/hooks/github/v1/githubv1connect"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type (
 	GithubRepoService struct {
-		githubv1connect.UnimplementedRepoServiceHandler
+		githubv1connect.UnimplementedGithubRepoServiceHandler
 	}
 )
 
-func (s GithubRepoService) CreateRepo(
-	ctx context.Context, req *connect.Request[githubv1.CreateGithubRepoRequest],
-) (*connect.Response[githubv1.CreateGithubRepoResponse], error) {
-	return nil, nil
-}
-
-func (s GithubRepoService) GetGithubRepoByID(
-	ctx context.Context, req *connect.Request[githubv1.GetGithubRepoByIDRequest],
-) (*connect.Response[githubv1.GetGithubRepoByIDResponse], error) {
-	return nil, nil
-}
-
-func (s GithubRepoService) GetGithubRepoByName(
-	ctx context.Context, req *connect.Request[githubv1.GetGithubRepoByNameRequest],
-) (*connect.Response[githubv1.GetGithubRepoByNameResponse], error) {
+func (s *GithubRepoService) GithubInstall(
+	ctx context.Context, req *connect.Request[githubv1.GithubInstallRequest],
+) (*connect.Response[emptypb.Empty], error) {
 	return nil, nil
 }
 
 func NewGithubRepoServiceHandler() (string, http.Handler) {
-	return githubv1connect.NewRepoServiceHandler(&GithubRepoService{})
+	return githubv1connect.NewGithubRepoServiceHandler(&GithubRepoService{})
 }

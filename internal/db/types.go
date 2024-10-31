@@ -7,6 +7,26 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type (
+	String string
+)
+
+// ToUUID is a method on the Name type to parse the Name value to a uuid.UUID.
+// It returns the parsed UUID or an error if parsing fails.
+func (s String) ToUUID() (uuid.UUID, error) {
+	id, err := uuid.Parse(s.ToString())
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return id, nil
+}
+
+// ToString returns the Name as a string.
+func (s String) ToString() string {
+	return string(s)
+}
+
 // ConvertPgTypeUUIDToUUID converts pgtype.UUID to uuid.UUID.
 // Returns a zero UUID if the pgtype.UUID is invalid.
 func ConvertPgTypeUUIDToUUID(pgUUID pgtype.UUID) uuid.UUID {

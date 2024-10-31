@@ -9,6 +9,7 @@ import (
 	context "context"
 	errors "errors"
 	v1 "go.breu.io/quantm/internal/proto/hooks/github/v1"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	http "net/http"
 	strings "strings"
 )
@@ -21,8 +22,8 @@ import (
 const _ = connect.IsAtLeastVersion1_13_0
 
 const (
-	// RepoServiceName is the fully-qualified name of the RepoService service.
-	RepoServiceName = "hooks.github.v1.RepoService"
+	// GithubRepoServiceName is the fully-qualified name of the GithubRepoService service.
+	GithubRepoServiceName = "hooks.github.v1.GithubRepoService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -33,146 +34,83 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// RepoServiceCreateRepoProcedure is the fully-qualified name of the RepoService's CreateRepo RPC.
-	RepoServiceCreateRepoProcedure = "/hooks.github.v1.RepoService/CreateRepo"
-	// RepoServiceGetGithubRepoByIDProcedure is the fully-qualified name of the RepoService's
-	// GetGithubRepoByID RPC.
-	RepoServiceGetGithubRepoByIDProcedure = "/hooks.github.v1.RepoService/GetGithubRepoByID"
-	// RepoServiceGetGithubRepoByNameProcedure is the fully-qualified name of the RepoService's
-	// GetGithubRepoByName RPC.
-	RepoServiceGetGithubRepoByNameProcedure = "/hooks.github.v1.RepoService/GetGithubRepoByName"
+	// GithubRepoServiceGithubInstallProcedure is the fully-qualified name of the GithubRepoService's
+	// GithubInstall RPC.
+	GithubRepoServiceGithubInstallProcedure = "/hooks.github.v1.GithubRepoService/GithubInstall"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	repoServiceServiceDescriptor                   = v1.File_hooks_github_v1_github_proto.Services().ByName("RepoService")
-	repoServiceCreateRepoMethodDescriptor          = repoServiceServiceDescriptor.Methods().ByName("CreateRepo")
-	repoServiceGetGithubRepoByIDMethodDescriptor   = repoServiceServiceDescriptor.Methods().ByName("GetGithubRepoByID")
-	repoServiceGetGithubRepoByNameMethodDescriptor = repoServiceServiceDescriptor.Methods().ByName("GetGithubRepoByName")
+	githubRepoServiceServiceDescriptor             = v1.File_hooks_github_v1_github_proto.Services().ByName("GithubRepoService")
+	githubRepoServiceGithubInstallMethodDescriptor = githubRepoServiceServiceDescriptor.Methods().ByName("GithubInstall")
 )
 
-// RepoServiceClient is a client for the hooks.github.v1.RepoService service.
-type RepoServiceClient interface {
-	// Create org's github provider repo.
-	CreateRepo(context.Context, *connect.Request[v1.CreateGithubRepoRequest]) (*connect.Response[v1.CreateGithubRepoResponse], error)
-	// Get org's github provider repo by id.
-	GetGithubRepoByID(context.Context, *connect.Request[v1.GetGithubRepoByIDRequest]) (*connect.Response[v1.GetGithubRepoByIDResponse], error)
-	// Get org's github provider repo by name.
-	GetGithubRepoByName(context.Context, *connect.Request[v1.GetGithubRepoByNameRequest]) (*connect.Response[v1.GetGithubRepoByNameResponse], error)
+// GithubRepoServiceClient is a client for the hooks.github.v1.GithubRepoService service.
+type GithubRepoServiceClient interface {
+	// complete installation github app hook.
+	GithubInstall(context.Context, *connect.Request[v1.GithubInstallRequest]) (*connect.Response[emptypb.Empty], error)
 }
 
-// NewRepoServiceClient constructs a client for the hooks.github.v1.RepoService service. By default,
-// it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses, and
-// sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the connect.WithGRPC()
-// or connect.WithGRPCWeb() options.
+// NewGithubRepoServiceClient constructs a client for the hooks.github.v1.GithubRepoService service.
+// By default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped
+// responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// connect.WithGRPC() or connect.WithGRPCWeb() options.
 //
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
 // http://api.acme.com or https://acme.com/grpc).
-func NewRepoServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) RepoServiceClient {
+func NewGithubRepoServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) GithubRepoServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
-	return &repoServiceClient{
-		createRepo: connect.NewClient[v1.CreateGithubRepoRequest, v1.CreateGithubRepoResponse](
+	return &githubRepoServiceClient{
+		githubInstall: connect.NewClient[v1.GithubInstallRequest, emptypb.Empty](
 			httpClient,
-			baseURL+RepoServiceCreateRepoProcedure,
-			connect.WithSchema(repoServiceCreateRepoMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
-		getGithubRepoByID: connect.NewClient[v1.GetGithubRepoByIDRequest, v1.GetGithubRepoByIDResponse](
-			httpClient,
-			baseURL+RepoServiceGetGithubRepoByIDProcedure,
-			connect.WithSchema(repoServiceGetGithubRepoByIDMethodDescriptor),
-			connect.WithClientOptions(opts...),
-		),
-		getGithubRepoByName: connect.NewClient[v1.GetGithubRepoByNameRequest, v1.GetGithubRepoByNameResponse](
-			httpClient,
-			baseURL+RepoServiceGetGithubRepoByNameProcedure,
-			connect.WithSchema(repoServiceGetGithubRepoByNameMethodDescriptor),
+			baseURL+GithubRepoServiceGithubInstallProcedure,
+			connect.WithSchema(githubRepoServiceGithubInstallMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
 }
 
-// repoServiceClient implements RepoServiceClient.
-type repoServiceClient struct {
-	createRepo          *connect.Client[v1.CreateGithubRepoRequest, v1.CreateGithubRepoResponse]
-	getGithubRepoByID   *connect.Client[v1.GetGithubRepoByIDRequest, v1.GetGithubRepoByIDResponse]
-	getGithubRepoByName *connect.Client[v1.GetGithubRepoByNameRequest, v1.GetGithubRepoByNameResponse]
+// githubRepoServiceClient implements GithubRepoServiceClient.
+type githubRepoServiceClient struct {
+	githubInstall *connect.Client[v1.GithubInstallRequest, emptypb.Empty]
 }
 
-// CreateRepo calls hooks.github.v1.RepoService.CreateRepo.
-func (c *repoServiceClient) CreateRepo(ctx context.Context, req *connect.Request[v1.CreateGithubRepoRequest]) (*connect.Response[v1.CreateGithubRepoResponse], error) {
-	return c.createRepo.CallUnary(ctx, req)
+// GithubInstall calls hooks.github.v1.GithubRepoService.GithubInstall.
+func (c *githubRepoServiceClient) GithubInstall(ctx context.Context, req *connect.Request[v1.GithubInstallRequest]) (*connect.Response[emptypb.Empty], error) {
+	return c.githubInstall.CallUnary(ctx, req)
 }
 
-// GetGithubRepoByID calls hooks.github.v1.RepoService.GetGithubRepoByID.
-func (c *repoServiceClient) GetGithubRepoByID(ctx context.Context, req *connect.Request[v1.GetGithubRepoByIDRequest]) (*connect.Response[v1.GetGithubRepoByIDResponse], error) {
-	return c.getGithubRepoByID.CallUnary(ctx, req)
+// GithubRepoServiceHandler is an implementation of the hooks.github.v1.GithubRepoService service.
+type GithubRepoServiceHandler interface {
+	// complete installation github app hook.
+	GithubInstall(context.Context, *connect.Request[v1.GithubInstallRequest]) (*connect.Response[emptypb.Empty], error)
 }
 
-// GetGithubRepoByName calls hooks.github.v1.RepoService.GetGithubRepoByName.
-func (c *repoServiceClient) GetGithubRepoByName(ctx context.Context, req *connect.Request[v1.GetGithubRepoByNameRequest]) (*connect.Response[v1.GetGithubRepoByNameResponse], error) {
-	return c.getGithubRepoByName.CallUnary(ctx, req)
-}
-
-// RepoServiceHandler is an implementation of the hooks.github.v1.RepoService service.
-type RepoServiceHandler interface {
-	// Create org's github provider repo.
-	CreateRepo(context.Context, *connect.Request[v1.CreateGithubRepoRequest]) (*connect.Response[v1.CreateGithubRepoResponse], error)
-	// Get org's github provider repo by id.
-	GetGithubRepoByID(context.Context, *connect.Request[v1.GetGithubRepoByIDRequest]) (*connect.Response[v1.GetGithubRepoByIDResponse], error)
-	// Get org's github provider repo by name.
-	GetGithubRepoByName(context.Context, *connect.Request[v1.GetGithubRepoByNameRequest]) (*connect.Response[v1.GetGithubRepoByNameResponse], error)
-}
-
-// NewRepoServiceHandler builds an HTTP handler from the service implementation. It returns the path
-// on which to mount the handler and the handler itself.
+// NewGithubRepoServiceHandler builds an HTTP handler from the service implementation. It returns
+// the path on which to mount the handler and the handler itself.
 //
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
-func NewRepoServiceHandler(svc RepoServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	repoServiceCreateRepoHandler := connect.NewUnaryHandler(
-		RepoServiceCreateRepoProcedure,
-		svc.CreateRepo,
-		connect.WithSchema(repoServiceCreateRepoMethodDescriptor),
+func NewGithubRepoServiceHandler(svc GithubRepoServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	githubRepoServiceGithubInstallHandler := connect.NewUnaryHandler(
+		GithubRepoServiceGithubInstallProcedure,
+		svc.GithubInstall,
+		connect.WithSchema(githubRepoServiceGithubInstallMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	repoServiceGetGithubRepoByIDHandler := connect.NewUnaryHandler(
-		RepoServiceGetGithubRepoByIDProcedure,
-		svc.GetGithubRepoByID,
-		connect.WithSchema(repoServiceGetGithubRepoByIDMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
-	repoServiceGetGithubRepoByNameHandler := connect.NewUnaryHandler(
-		RepoServiceGetGithubRepoByNameProcedure,
-		svc.GetGithubRepoByName,
-		connect.WithSchema(repoServiceGetGithubRepoByNameMethodDescriptor),
-		connect.WithHandlerOptions(opts...),
-	)
-	return "/hooks.github.v1.RepoService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return "/hooks.github.v1.GithubRepoService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case RepoServiceCreateRepoProcedure:
-			repoServiceCreateRepoHandler.ServeHTTP(w, r)
-		case RepoServiceGetGithubRepoByIDProcedure:
-			repoServiceGetGithubRepoByIDHandler.ServeHTTP(w, r)
-		case RepoServiceGetGithubRepoByNameProcedure:
-			repoServiceGetGithubRepoByNameHandler.ServeHTTP(w, r)
+		case GithubRepoServiceGithubInstallProcedure:
+			githubRepoServiceGithubInstallHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
 	})
 }
 
-// UnimplementedRepoServiceHandler returns CodeUnimplemented from all methods.
-type UnimplementedRepoServiceHandler struct{}
+// UnimplementedGithubRepoServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedGithubRepoServiceHandler struct{}
 
-func (UnimplementedRepoServiceHandler) CreateRepo(context.Context, *connect.Request[v1.CreateGithubRepoRequest]) (*connect.Response[v1.CreateGithubRepoResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hooks.github.v1.RepoService.CreateRepo is not implemented"))
-}
-
-func (UnimplementedRepoServiceHandler) GetGithubRepoByID(context.Context, *connect.Request[v1.GetGithubRepoByIDRequest]) (*connect.Response[v1.GetGithubRepoByIDResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hooks.github.v1.RepoService.GetGithubRepoByID is not implemented"))
-}
-
-func (UnimplementedRepoServiceHandler) GetGithubRepoByName(context.Context, *connect.Request[v1.GetGithubRepoByNameRequest]) (*connect.Response[v1.GetGithubRepoByNameResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hooks.github.v1.RepoService.GetGithubRepoByName is not implemented"))
+func (UnimplementedGithubRepoServiceHandler) GithubInstall(context.Context, *connect.Request[v1.GithubInstallRequest]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hooks.github.v1.GithubRepoService.GithubInstall is not implemented"))
 }
