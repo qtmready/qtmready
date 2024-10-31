@@ -34,7 +34,8 @@ SELECT
     'updated_at', org.updated_at,
     'name', org.name,
     'domain', org.domain,
-    'slug', org.slug
+    'slug', org.slug,
+    'hooks', org.hooks
   ) AS org,
   json_agg(role.name) AS roles,
   json_agg(team.*) AS teams,
@@ -75,7 +76,8 @@ SELECT
     'updated_at', org.updated_at,
     'name', org.name,
     'domain', org.domain,
-    'slug', org.slug
+    'slug', org.slug,
+    'hooks', org.hooks
   ) AS org,
   json_agg(role.name) AS roles,
   json_agg(team.*) AS teams,
