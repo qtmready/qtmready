@@ -22,8 +22,8 @@ import (
 const _ = connect.IsAtLeastVersion1_13_0
 
 const (
-	// GithubRepoServiceName is the fully-qualified name of the GithubRepoService service.
-	GithubRepoServiceName = "hooks.github.v1.GithubRepoService"
+	// GithubServiceName is the fully-qualified name of the GithubService service.
+	GithubServiceName = "hooks.github.v1.GithubService"
 )
 
 // These constants are the fully-qualified names of the RPCs defined in this package. They're
@@ -34,83 +34,83 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// GithubRepoServiceGithubInstallProcedure is the fully-qualified name of the GithubRepoService's
+	// GithubServiceGithubInstallProcedure is the fully-qualified name of the GithubService's
 	// GithubInstall RPC.
-	GithubRepoServiceGithubInstallProcedure = "/hooks.github.v1.GithubRepoService/GithubInstall"
+	GithubServiceGithubInstallProcedure = "/hooks.github.v1.GithubService/GithubInstall"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	githubRepoServiceServiceDescriptor             = v1.File_hooks_github_v1_github_proto.Services().ByName("GithubRepoService")
-	githubRepoServiceGithubInstallMethodDescriptor = githubRepoServiceServiceDescriptor.Methods().ByName("GithubInstall")
+	githubServiceServiceDescriptor             = v1.File_hooks_github_v1_github_proto.Services().ByName("GithubService")
+	githubServiceGithubInstallMethodDescriptor = githubServiceServiceDescriptor.Methods().ByName("GithubInstall")
 )
 
-// GithubRepoServiceClient is a client for the hooks.github.v1.GithubRepoService service.
-type GithubRepoServiceClient interface {
+// GithubServiceClient is a client for the hooks.github.v1.GithubService service.
+type GithubServiceClient interface {
 	// complete installation github app hook.
 	GithubInstall(context.Context, *connect.Request[v1.GithubInstallRequest]) (*connect.Response[emptypb.Empty], error)
 }
 
-// NewGithubRepoServiceClient constructs a client for the hooks.github.v1.GithubRepoService service.
-// By default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped
-// responses, and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
+// NewGithubServiceClient constructs a client for the hooks.github.v1.GithubService service. By
+// default, it uses the Connect protocol with the binary Protobuf Codec, asks for gzipped responses,
+// and sends uncompressed requests. To use the gRPC or gRPC-Web protocols, supply the
 // connect.WithGRPC() or connect.WithGRPCWeb() options.
 //
 // The URL supplied here should be the base URL for the Connect or gRPC server (for example,
 // http://api.acme.com or https://acme.com/grpc).
-func NewGithubRepoServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) GithubRepoServiceClient {
+func NewGithubServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) GithubServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
-	return &githubRepoServiceClient{
+	return &githubServiceClient{
 		githubInstall: connect.NewClient[v1.GithubInstallRequest, emptypb.Empty](
 			httpClient,
-			baseURL+GithubRepoServiceGithubInstallProcedure,
-			connect.WithSchema(githubRepoServiceGithubInstallMethodDescriptor),
+			baseURL+GithubServiceGithubInstallProcedure,
+			connect.WithSchema(githubServiceGithubInstallMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
 }
 
-// githubRepoServiceClient implements GithubRepoServiceClient.
-type githubRepoServiceClient struct {
+// githubServiceClient implements GithubServiceClient.
+type githubServiceClient struct {
 	githubInstall *connect.Client[v1.GithubInstallRequest, emptypb.Empty]
 }
 
-// GithubInstall calls hooks.github.v1.GithubRepoService.GithubInstall.
-func (c *githubRepoServiceClient) GithubInstall(ctx context.Context, req *connect.Request[v1.GithubInstallRequest]) (*connect.Response[emptypb.Empty], error) {
+// GithubInstall calls hooks.github.v1.GithubService.GithubInstall.
+func (c *githubServiceClient) GithubInstall(ctx context.Context, req *connect.Request[v1.GithubInstallRequest]) (*connect.Response[emptypb.Empty], error) {
 	return c.githubInstall.CallUnary(ctx, req)
 }
 
-// GithubRepoServiceHandler is an implementation of the hooks.github.v1.GithubRepoService service.
-type GithubRepoServiceHandler interface {
+// GithubServiceHandler is an implementation of the hooks.github.v1.GithubService service.
+type GithubServiceHandler interface {
 	// complete installation github app hook.
 	GithubInstall(context.Context, *connect.Request[v1.GithubInstallRequest]) (*connect.Response[emptypb.Empty], error)
 }
 
-// NewGithubRepoServiceHandler builds an HTTP handler from the service implementation. It returns
-// the path on which to mount the handler and the handler itself.
+// NewGithubServiceHandler builds an HTTP handler from the service implementation. It returns the
+// path on which to mount the handler and the handler itself.
 //
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
-func NewGithubRepoServiceHandler(svc GithubRepoServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	githubRepoServiceGithubInstallHandler := connect.NewUnaryHandler(
-		GithubRepoServiceGithubInstallProcedure,
+func NewGithubServiceHandler(svc GithubServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	githubServiceGithubInstallHandler := connect.NewUnaryHandler(
+		GithubServiceGithubInstallProcedure,
 		svc.GithubInstall,
-		connect.WithSchema(githubRepoServiceGithubInstallMethodDescriptor),
+		connect.WithSchema(githubServiceGithubInstallMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	return "/hooks.github.v1.GithubRepoService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return "/hooks.github.v1.GithubService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case GithubRepoServiceGithubInstallProcedure:
-			githubRepoServiceGithubInstallHandler.ServeHTTP(w, r)
+		case GithubServiceGithubInstallProcedure:
+			githubServiceGithubInstallHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
 	})
 }
 
-// UnimplementedGithubRepoServiceHandler returns CodeUnimplemented from all methods.
-type UnimplementedGithubRepoServiceHandler struct{}
+// UnimplementedGithubServiceHandler returns CodeUnimplemented from all methods.
+type UnimplementedGithubServiceHandler struct{}
 
-func (UnimplementedGithubRepoServiceHandler) GithubInstall(context.Context, *connect.Request[v1.GithubInstallRequest]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hooks.github.v1.GithubRepoService.GithubInstall is not implemented"))
+func (UnimplementedGithubServiceHandler) GithubInstall(context.Context, *connect.Request[v1.GithubInstallRequest]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hooks.github.v1.GithubService.GithubInstall is not implemented"))
 }

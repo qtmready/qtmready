@@ -13,18 +13,18 @@ import (
 )
 
 type (
-	GithubRepoService struct {
-		githubv1connect.UnimplementedGithubRepoServiceHandler
+	GithubService struct {
+		githubv1connect.UnimplementedGithubServiceHandler
 	}
 )
 
-func (s *GithubRepoService) GithubInstall(
+func (s *GithubService) GithubInstall(
 	ctx context.Context, req *connect.Request[githubv1.GithubInstallRequest],
 ) (*connect.Response[emptypb.Empty], error) {
 	slog.Info("completing github installation", "request", req)
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
-func NewGithubRepoServiceHandler() (string, http.Handler) {
-	return githubv1connect.NewGithubRepoServiceHandler(&GithubRepoService{})
+func NewGithubServiceHandler() (string, http.Handler) {
+	return githubv1connect.NewGithubServiceHandler(&GithubService{})
 }
