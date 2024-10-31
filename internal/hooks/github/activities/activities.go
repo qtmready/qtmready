@@ -1,4 +1,4 @@
-package github
+package activities
 
 import (
 	"context"
@@ -8,14 +8,14 @@ import (
 )
 
 type (
-	// Activities groups all the activities for the github hook.
-	Activities struct{}
+	// Entity groups all the activities for the github hook.
+	Entity struct{}
 )
 
 // --- User and Team and Org Management ---
 
 // GetUserByID retrieves a user from the database by their ID.
-func (a *Activities) GetUserByID(ctx context.Context, id db.String) (*entities.User, error) {
+func (a *Entity) GetUserByID(ctx context.Context, id db.String) (*entities.User, error) {
 	// NOTE - I think not an efficient way. looking for better approach.
 	uid, err := id.ToUUID()
 	if err != nil {
@@ -31,7 +31,7 @@ func (a *Activities) GetUserByID(ctx context.Context, id db.String) (*entities.U
 }
 
 // SaveUser saves the provided user to the authentication provider.
-func (a *Activities) SaveUser(ctx context.Context, arg entities.CreateUserParams) (*entities.User, error) {
+func (a *Entity) SaveUser(ctx context.Context, arg entities.CreateUserParams) (*entities.User, error) {
 	created, err := db.Queries().CreateUser(ctx, arg)
 	if err != nil {
 		return nil, err
@@ -41,7 +41,7 @@ func (a *Activities) SaveUser(ctx context.Context, arg entities.CreateUserParams
 }
 
 // SaveTeam saves a new team in the authentication provider.
-func (a *Activities) SaveTeam(ctx context.Context, arg entities.CreateTeamParams) (*entities.Team, error) {
+func (a *Entity) SaveTeam(ctx context.Context, arg entities.CreateTeamParams) (*entities.Team, error) {
 	created, err := db.Queries().CreateTeam(ctx, arg)
 	if err != nil {
 		return nil, err
@@ -51,7 +51,7 @@ func (a *Activities) SaveTeam(ctx context.Context, arg entities.CreateTeamParams
 }
 
 // GetTeamByID retrieves a team by its ID.
-func (a *Activities) GetTeamByID(ctx context.Context, id db.String) (*entities.Team, error) {
+func (a *Entity) GetTeamByID(ctx context.Context, id db.String) (*entities.Team, error) {
 	// NOTE - I think not an efficient way. looking for better approach.
 	teamID, err := id.ToUUID()
 	if err != nil {
@@ -67,7 +67,7 @@ func (a *Activities) GetTeamByID(ctx context.Context, id db.String) (*entities.T
 }
 
 // SaveGithubOrgOrg saves a new github orgnization in the authentication provider.
-func (a *Activities) SaveGithubOrg(ctx context.Context, arg entities.CreateGithubOrgParams) (*entities.GithubOrg, error) {
+func (a *Entity) SaveGithubOrg(ctx context.Context, arg entities.CreateGithubOrgParams) (*entities.GithubOrg, error) {
 	// TODO - handle no github orgnization use case.
 	created, err := db.Queries().CreateGithubOrg(ctx, arg)
 	if err != nil {
@@ -78,7 +78,7 @@ func (a *Activities) SaveGithubOrg(ctx context.Context, arg entities.CreateGithu
 }
 
 // GetGithubOrgByID etrieves a github org by its ID.
-func (a *Activities) GetGithubOrgByID(ctx context.Context, id db.String) (*entities.GithubOrg, error) {
+func (a *Entity) GetGithubOrgByID(ctx context.Context, id db.String) (*entities.GithubOrg, error) {
 	// NOTE - I think not an efficient way. looking for better approach.
 	orgID, err := id.ToUUID()
 	if err != nil {
@@ -96,7 +96,7 @@ func (a *Activities) GetGithubOrgByID(ctx context.Context, id db.String) (*entit
 // --- Installation Management ---
 
 // CreateOrUpdateInstallation creates or updates an Installation.
-func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *entities.GithubInstallation) error {
+func (a *Entity) CreateOrUpdateInstallation(ctx context.Context, payload *entities.GithubInstallation) error {
 	arg := entities.GetGithubInstallationByInstallationIDAndInstallationLoginParams{
 		InstallationID:    payload.InstallationID,
 		InstallationLogin: payload.InstallationLogin,
@@ -140,7 +140,7 @@ func (a *Activities) CreateOrUpdateInstallation(ctx context.Context, payload *en
 }
 
 // GetInstallation gets Installation against given installation_id & github login.
-func (a *Activities) GetInstallation(
+func (a *Entity) GetInstallation(
 	ctx context.Context, id int64, login string,
 ) (*entities.GithubInstallation, error) {
 	params := entities.GetGithubInstallationByInstallationIDAndInstallationLoginParams{
@@ -160,7 +160,7 @@ func (a *Activities) GetInstallation(
 // --- Repository Management ---
 
 // CreateOrUpdateGithubRepo creates or updates a single row for Repo.
-func (a *Activities) CreateOrUpdateGithubRepo(ctx context.Context, payload *entities.GithubRepo) error {
+func (a *Entity) CreateOrUpdateGithubRepo(ctx context.Context, payload *entities.GithubRepo) error {
 	params := entities.GetGithubRepoParams{
 		Name:     payload.Name,
 		FullName: payload.FullName,
@@ -205,7 +205,7 @@ func (a *Activities) CreateOrUpdateGithubRepo(ctx context.Context, payload *enti
 }
 
 // GetCoreRepo gets entity.Repo against given Repo.
-func (*Activities) GetCoreRepo(ctx context.Context, id db.String) (*entities.GetGithubReposWithCoreRepoRow, error) {
+func (*Entity) GetCoreRepo(ctx context.Context, id db.String) (*entities.GetGithubReposWithCoreRepoRow, error) {
 	// NOTE - I think not an efficient way. looking for better approach.
 	gid, err := id.ToUUID()
 	if err != nil {

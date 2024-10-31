@@ -129,6 +129,7 @@ func EchoRequestLogger(ctx echo.Context, values middleware.RequestLoggerValues) 
 			level = slog.LevelWarn
 		} else {
 			var stack []byte
+
 			stack = debug.Stack()
 			attrs = append(attrs, slog.String("stack_trace", string(stack)))
 		}
