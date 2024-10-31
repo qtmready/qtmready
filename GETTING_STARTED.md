@@ -69,8 +69,6 @@ go run ./cmd/quantm # or go run ./cmd/quantm --help for more options
 > [!IMPORTANT]
 > For detailed instructions on running specific modules, configurations, and advanced usage, refer to the project documentation.
 
-
-
 ## Project Structure
 
 This is the overall project hierarchy:
@@ -88,7 +86,8 @@ The `internal` folder is organized into four levels. Higher-level folders can de
 - **Level 0:** - Foundation
 - **Level 1:** - Utilities and Core Abstractions
 - **Level 2:** - Core Logic
-- **Level 3:** - Interfaces and Integration Points
+- **Level 3:** - Integration Points
+- **Level 4:** - Interfaces
 
 Below is the detailed description of each level:
 
@@ -96,20 +95,23 @@ Below is the detailed description of each level:
 
 - `proto`: Contains generated code from protobuf definitions, acting as the shared data structure for communication within the application.
 - `db`: Provides the persistence layer, utilizing `sqlc` for standardized SQL queries and `go-migrate` for database migrations.
-- `observe`:  Standardizes observability, handling metrics, tracing, and logging across the application.
+- `observe`: Standardizes observability, handling metrics, tracing, and logging across the application.
 
 #### Level 1 - Utilities and Core Abstractions
 
 - `cast`: Facilitates data conversion between protobuf definitions and SQL queries, serving as a bridge between data models and the database.
-- `erratic`:  Provides standardized error handling, leveraging the `erratic` package for automatic error logging and utilities for custom error types.
+- `erratic`: Provides standardized error handling, leveraging the `erratic` package for automatic error logging and utilities for custom error types.
 
 #### Level 2 - Core Logic
 
 - `auth`: Implements authentication and authorization mechanisms for securing access to the application.
 - `core`: Encompasses the main business logic, defining core functionalities and workflows.
 
-#### Level 3 - Interfaces and Integration Points
+#### Level 3 - Integration Points
 
-- `hooks`:  Defines a mechanism for registering and invoking hooks, allowing external systems to integrate with specific functionalities within the `core` package.
-- `nomad`:  Provides gRPC server and client for interacting with Nomad, enabling task management, deployment, and resource control.
+- `hooks`: Defines a mechanism for registering and invoking hooks, allowing external systems to integrate with specific functionalities within the `core` package.
+
+#### Level 4 - Interfaces
+
+- `nomad`: Provides gRPC server and client for interacting with Nomad, enabling task management, deployment, and resource control.
 - `web`: Provides the HTTP server (webhooks) for exposing API endpoints for external interactions with the application.

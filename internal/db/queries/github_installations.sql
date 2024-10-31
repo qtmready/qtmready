@@ -1,19 +1,19 @@
--- name: CreateInstallation :one
+-- name: CreateGithubInstallation :one
 INSERT INTO github_installations (org_id, installation_id, installation_login, installation_login_id, installation_type, sender_id, sender_login, status)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
--- name: GetInstallation :one
+-- name: GetGithubInstallation :one
 SELECT *
 FROM github_installations
 WHERE id = $1;
 
--- name: GetInstallationByInstallationIDAndInstallationLogin :one
+-- name: GetGithubInstallationByInstallationIDAndInstallationLogin :one
 SELECT *
 FROM github_installations
 WHERE installation_id = $1 AND installation_login = $2;
 
--- name: UpdateInstallation :one
+-- name: UpdateGithubInstallation :one
 UPDATE github_installations
 SET 
     org_id = $2,
@@ -27,7 +27,7 @@ SET
 WHERE id = $1
 RETURNING *;
 
--- name: DeleteInstallation :one
+-- name: DeleteGithubInstallation :one
 DELETE FROM github_installations
 WHERE id = $1
 RETURNING id;
