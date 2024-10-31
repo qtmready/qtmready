@@ -22,139 +22,161 @@ package config
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/ilyakaznacheev/cleanenv"
+	"github.com/knadh/koanf/providers/env"
+	"github.com/knadh/koanf/providers/structs"
+	"github.com/knadh/koanf/v2"
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/log"
 )
 
-var (
-	once sync.Once
-)
-
 type (
-	Connection interface {
-		GetConnectionString() string
-		Client() client.Client
+	// Config represents the Temporal configuration.
+	Config struct {
+		Namespace string `json:"namespace" koanf:"NAMESPACE"`   // Temporal namespace.
+		Host      string `json:"host" koanf:"HOST"`             // Temporal host.
+		Port      int    `json:"port" koanf:"PORT"`             // Temporal port.
+		EnableSSL bool   `json:"enable_ssl" koanf:"ENABLE_SSL"` // Enable SSL for Temporal communication.
+		Skip      int    `json:"skip" koanf:"LOG_SKIP"`         // Skip frames for logging.
+
+		client client.Client // Temporal client.
+		once   sync.Once     // We can have only one Temporal client per configuration.
 	}
 
-	// config holds the temporal server host and port, the client and all the available queues.
-	//
-	// TODO: The current design is not be ideal for a central multi-tenant solution due to the lack of strong isolation
-	// for each tenant. For complaince, e.g. GDPR, SOC2, ISO27001, HIPAA, etc. we require strong tennant isolation. As
-	// temporal.io provides strong namespace isolation, we can leverage this feature to implement a new design where
-	// the client.Client field is replaced with a map of client.Client organized by tenant ID. A thread-safe method should
-	// be added to the temporal struct to instantiate and return the appropriate client for a specific tenant. For
-	// subsequent requests, the already instantiated client should be returned. This would allow for separate clients to
-	// be created for each tenant, providing strong isolation and meeting compliance requirements.
-	config struct {
-		Host      string `env:"TEMPORAL__HOST" env-default:"temporal"`
-		Port      string `env:"TEMPORAL__PORT" env-default:"7233"`
-		Namespace string `env:"TEMPORAL__NAMESPACE" env-default:"default"`
-
-		logger  *slog.Logger
-		retries uint
-
-		client client.Client
-		once   sync.Once
-	}
-
-	ConfigOption func(*config)
+	ConfigOption func(*Config) // ConfigOption is a function that modifies the Config.
 )
 
-func (t *config) GetConnectionString() string {
-	return fmt.Sprintf("%s:%s", t.Host, t.Port)
+var (
+	// DefaultConfig contains the default configuration values.
+	DefaultConfig = &Config{
+		Namespace: "default",
+		Host:      "localhost",
+		Port:      7233,
+		EnableSSL: false,
+	}
+)
+
+// Address returns the formatted address for the Temporal server.
+func (c *Config) Address() string {
+	return fmt.Sprintf("%s:%d", c.Host, c.Port) // Formatted address string.
 }
 
-func (t *config) Client() client.Client {
-	once.Do(func() {
-		slog.Info("temporal: instantiating ...")
-		t.connect()
+// Client returns the Temporal client.
+func (c *Config) Client() (client.Client, error) {
+	var err error
+
+	c.once.Do(func() {
+		slog.Info("durable: establishing temporal connection ...", "host", c.Host, "port", c.Port)
+
+		err = retry.Do(
+			c.dial,
+			retry.Attempts(10),
+			retry.Delay(1*time.Second),
+			retry.OnRetry(func(attempt uint, err error) {
+				slog.Warn(
+					"durable: unable to establish temporal conntection, retrying ...",
+					"host", c.Host, "port", c.Port,
+					"attempt", attempt, "remaining", 10-attempt,
+					"error", err.Error(),
+				)
+			}),
+		)
 	})
 
-	return t.client
+	return c.client, err
 }
 
-func (t *config) connect() {
-	slog.Info("temporal: connecting ...", slog.String("host", t.Host), slog.String("port", t.Port))
-
-	if t.logger == nil {
-		slog.Warn("temporal: no logger configured, using default ...")
-		t.logger = slog.Default()
-	}
-
-	if err := retry.Do(
-		t.retry,
-		retry.Attempts(t.retries),
-		retry.Delay(1*time.Second),
-		retry.OnRetry(func(attempts uint, err error) {
-			remaining := t.retries - attempts
-			t.logger.Warn(
-				"temporal: retrying connection ...",
-				"host", t.Host, "port", t.Port,
-				"attempts", attempts,
-				"remaining", remaining,
-				"error", err,
-			)
-		}),
-	); err != nil {
-		slog.Error("temporal: retries exhausted, aborting ...", slog.String("error", err.Error()))
-		panic("program exited prematurely ...")
-	}
-}
-
-func (t *config) options() client.Options {
-	return client.Options{
-		HostPort: t.GetConnectionString(),
-		Logger:   log.NewStructuredLogger(t.logger),
-	}
-}
-
-func (t *config) retry() error {
-	c, err := client.Dial(t.options())
+func (c *Config) dial() error {
+	_c, err := client.Dial(c.options())
 	if err != nil {
 		return err
 	}
 
-	t.client = c
-
-	slog.Info("temporal: connected")
+	c.client = _c
 
 	return nil
 }
 
-// WithLogger sets the logger for the Config.
-func WithLogger(logger *slog.Logger) ConfigOption {
-	return func(t *config) {
-		t.logger = logger
+func (c *Config) options() client.Options {
+	return client.Options{
+		HostPort:  c.Address(),
+		Namespace: c.Namespace,
+		Logger:    log.Skip(log.NewStructuredLogger(slog.Default()), c.Skip),
 	}
 }
 
-// FromEnvironment reads the environment variables.
-func FromEnvironment() ConfigOption {
-	return func(t *config) {
-		if err := cleanenv.ReadEnv(t); err != nil {
-			panic(fmt.Errorf("failed to read environment variables: %w", err))
+// WithNamespaceConfig returns a ConfigOption that sets the Temporal namespace.
+func WithNamespaceConfig(namespace string) ConfigOption {
+	return func(c *Config) {
+		c.Namespace = namespace // Set the Temporal namespace.
+	}
+}
+
+// WithHostConfig returns a ConfigOption that sets the Temporal host.
+func WithHostConfig(host string) ConfigOption {
+	return func(c *Config) {
+		c.Host = host // Set the Temporal host.
+	}
+}
+
+// WithPortConfig returns a ConfigOption that sets the Temporal port.
+func WithPortConfig(port int) ConfigOption {
+	return func(c *Config) {
+		c.Port = port // Set the Temporal port.
+	}
+}
+
+// WithSSLConfig returns a ConfigOption that enables or disables TLS/SSL.
+func WithSSLConfig(enableSSL bool) ConfigOption {
+	return func(c *Config) {
+		c.EnableSSL = enableSSL // Enable or disable SSL.
+	}
+}
+
+// WithEnvironmentConfig returns a ConfigOption that loads configuration from environment variables.
+//
+// It reads environment variables prefixed with the specified prefix, or "TEMPORAL__" if no prefix is provided.
+// The environment variable names are mapped to the corresponding struct fields using `koanf` and `structs`.
+//
+// For example, with the prefix "APP__", the environment variable "APP__NAMESPACE" will be used to set the `Namespace` field.
+func WithEnvironmentConfig(opts ...string) ConfigOption {
+	return func(c *Config) {
+		var prefix string
+
+		if len(opts) > 0 {
+			prefix = strings.ToUpper(opts[0]) // Prefix for environment variables.
+
+			if !strings.HasSuffix(prefix, "__") {
+				prefix += "__" // Ensure prefix ends with "__".
+			}
+		} else {
+			prefix = "TEMPORAL__" // Default prefix.
+		}
+
+		k := koanf.New("__")                                   // Create a new `koanf` instance.
+		_ = k.Load(structs.Provider(DefaultConfig, "__"), nil) // Load default values from the struct.
+
+		if err := k.Load(env.Provider(prefix, "__", nil), nil); err != nil {
+			panic(err) // Panic if an error occurs while loading environment variables.
+		}
+
+		if err := k.Unmarshal("", k); err != nil {
+			panic(err) // Panic if an error occurs while unmarshaling values.
 		}
 	}
 }
 
-// WithClientCreation initializes the Temporal client.
-func WithClientCreation() ConfigOption {
-	return func(t *config) {
-		t.Client()
-	}
-}
+// NewConfig creates a new Config instance with the specified options.
+func NewConfig(opts ...ConfigOption) *Config {
+	c := &Config{} // Initialize the Config.
 
-// New creates a new Temporal instance.
-func New(opts ...ConfigOption) Connection {
-	t := &config{retries: 10}
 	for _, opt := range opts {
-		opt(t)
+		opt(c) // Apply each option to the Config.
 	}
 
-	return t
+	return c // Return the configured Config.
 }
