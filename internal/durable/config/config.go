@@ -20,6 +20,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -37,28 +38,35 @@ import (
 type (
 	// Config represents the Temporal configuration.
 	Config struct {
-		Namespace string `json:"namespace" koanf:"NAMESPACE"`   // Temporal namespace.
-		Host      string `json:"host" koanf:"HOST"`             // Temporal host.
-		Port      int    `json:"port" koanf:"PORT"`             // Temporal port.
-		EnableSSL bool   `json:"enable_ssl" koanf:"ENABLE_SSL"` // Enable SSL for Temporal communication.
-		Skip      int    `json:"skip" koanf:"LOG_SKIP"`         // Skip frames for logging.
+		Namespace string `json:"namespace" koanf:"NAMESPACE"` // Temporal namespace.
+		Host      string `json:"host" koanf:"HOST"`           // Temporal host.
+		Port      int    `json:"port" koanf:"PORT"`           // Temporal port.
+		Skip      int    `json:"skip" koanf:"LOG_SKIP"`       // Skip frames for logging.
 
 		client client.Client // Temporal client.
-		once   sync.Once     // We can have only one Temporal client per configuration.
+		once   *sync.Once    // We can have only one Temporal client per configuration.
 	}
 
-	ConfigOption func(*Config) // ConfigOption is a function that modifies the Config.
+	Option func(*Config) // ConfigOption is a function that modifies the Config.
 )
 
 var (
-	// DefaultConfig contains the default configuration values.
-	DefaultConfig = &Config{
+	// Default contains the default configuration values.
+	Default = Config{
 		Namespace: "default",
 		Host:      "localhost",
 		Port:      7233,
-		EnableSSL: false,
+		Skip:      0,
+
+		once: &sync.Once{},
 	}
 )
+
+// Start is a no-op function to satisfy the graceful.Service interface.
+func (c *Config) Start(ctx context.Context) error { return nil }
+
+// Stop is a no-op function to satisfy the graceful.Service interface.
+func (c *Config) Stop(ctx context.Context) error { return nil }
 
 // Address returns the formatted address for the Temporal server.
 func (c *Config) Address() string {
@@ -85,6 +93,14 @@ func (c *Config) Client() (client.Client, error) {
 				)
 			}),
 		)
+
+		if err != nil {
+			slog.Error("durable: unable to establish temporal connection.", "host", c.Host, "port", c.Port, "error", err.Error())
+
+			return
+		}
+
+		slog.Info("durable: temporal connection established", "host", c.Host, "port", c.Port)
 	})
 
 	return c.client, err
@@ -110,30 +126,23 @@ func (c *Config) options() client.Options {
 }
 
 // WithNamespaceConfig returns a ConfigOption that sets the Temporal namespace.
-func WithNamespaceConfig(namespace string) ConfigOption {
+func WithNamespaceConfig(namespace string) Option {
 	return func(c *Config) {
 		c.Namespace = namespace // Set the Temporal namespace.
 	}
 }
 
 // WithHostConfig returns a ConfigOption that sets the Temporal host.
-func WithHostConfig(host string) ConfigOption {
+func WithHostConfig(host string) Option {
 	return func(c *Config) {
 		c.Host = host // Set the Temporal host.
 	}
 }
 
 // WithPortConfig returns a ConfigOption that sets the Temporal port.
-func WithPortConfig(port int) ConfigOption {
+func WithPortConfig(port int) Option {
 	return func(c *Config) {
 		c.Port = port // Set the Temporal port.
-	}
-}
-
-// WithSSLConfig returns a ConfigOption that enables or disables TLS/SSL.
-func WithSSLConfig(enableSSL bool) ConfigOption {
-	return func(c *Config) {
-		c.EnableSSL = enableSSL // Enable or disable SSL.
 	}
 }
 
@@ -142,8 +151,9 @@ func WithSSLConfig(enableSSL bool) ConfigOption {
 // It reads environment variables prefixed with the specified prefix, or "TEMPORAL__" if no prefix is provided.
 // The environment variable names are mapped to the corresponding struct fields using `koanf` and `structs`.
 //
-// For example, with the prefix "APP__", the environment variable "APP__NAMESPACE" will be used to set the `Namespace` field.
-func WithEnvironmentConfig(opts ...string) ConfigOption {
+// For example, with the prefix "APP__", the environment variable "APP__NAMESPACE" will be used to set the `Namespace`
+// field.
+func WithEnvironmentConfig(opts ...string) Option {
 	return func(c *Config) {
 		var prefix string
 
@@ -157,8 +167,8 @@ func WithEnvironmentConfig(opts ...string) ConfigOption {
 			prefix = "TEMPORAL__" // Default prefix.
 		}
 
-		k := koanf.New("__")                                   // Create a new `koanf` instance.
-		_ = k.Load(structs.Provider(DefaultConfig, "__"), nil) // Load default values from the struct.
+		k := koanf.New("__")                             // Create a new `koanf` instance.
+		_ = k.Load(structs.Provider(Default, "__"), nil) // Load default values from the struct.
 
 		if err := k.Load(env.Provider(prefix, "__", nil), nil); err != nil {
 			panic(err) // Panic if an error occurs while loading environment variables.
@@ -170,9 +180,18 @@ func WithEnvironmentConfig(opts ...string) ConfigOption {
 	}
 }
 
-// NewConfig creates a new Config instance with the specified options.
-func NewConfig(opts ...ConfigOption) *Config {
-	c := &Config{} // Initialize the Config.
+func WithConfig(conf *Config) Option {
+	return func(c *Config) {
+		c.Namespace = conf.Namespace
+		c.Host = conf.Host
+		c.Port = conf.Port
+		c.Skip = conf.Skip
+	}
+}
+
+// New creates a new Config instance with the specified options.
+func New(opts ...Option) *Config {
+	c := &Config{once: &sync.Once{}} // Initialize the Config.
 
 	for _, opt := range opts {
 		opt(c) // Apply each option to the Config.

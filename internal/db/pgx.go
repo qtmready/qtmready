@@ -7,7 +7,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 
-	"go.breu.io/quantm/internal/db/config"
+	dbcfg "go.breu.io/quantm/internal/db/config"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 )
@@ -21,7 +21,7 @@ var (
 // TODO - move to function return.
 func WithPostgresMigrations() {
 	// TODO: read from .env
-	c := &config.DefaultConfig
+	c := &dbcfg.Default
 
 	dir, err := iofs.New(sql, "migrations/postgres")
 	if err != nil {

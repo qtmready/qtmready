@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -28,7 +27,7 @@ func TestAccountToProto(t *testing.T) {
 		UserID:            uuid.New(),
 		Provider:          cast.AuthProviderGoogle,
 		ProviderAccountID: "1234567890",
-		Type:              pgtype.Text{String: "user", Valid: true},
+		Type:              "user",
 	}
 
 	pb := cast.AccountToProto(account)
@@ -67,7 +66,7 @@ func TestProtoToAccount(t *testing.T) {
 	assert.Equal(t, uuid.MustParse(pb.GetUserId()), acc.UserID)
 	assert.Equal(t, cast.AuthProviderGoogle, acc.Provider)
 	assert.Equal(t, pb.GetProviderAccountId(), acc.ProviderAccountID)
-	assert.Equal(t, "user", acc.Type.String)
+	assert.Equal(t, "user", acc.Type)
 }
 
 func TestProtoToGetAccountsByUserIDParams(t *testing.T) {
@@ -99,7 +98,7 @@ func TestProtoToCreateAccountParams(t *testing.T) {
 	assert.Equal(t, cast.AuthProviderGoogle, params.Provider)
 	assert.Equal(t, req.GetProviderAccountId(), params.ProviderAccountID)
 	assert.Equal(t, req.GetExpiresAt().AsTime(), params.ExpiresAt)
-	assert.Equal(t, "user", params.Type.String)
+	assert.Equal(t, "user", params.Type)
 }
 
 func TestProtoToGetAccountByIDParams(t *testing.T) {

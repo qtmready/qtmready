@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"log/slog"
 	"net"
 	"net/http"
@@ -50,17 +51,18 @@ func (s *Server) Start(ctx context.Context) error {
 		IdleTimeout:                  time.Second * 60,
 		MaxHeaderBytes:               http.DefaultMaxHeaderBytes,
 		TLSNextProto:                 map[string]func(*http.Server, *tls.Conn, http.Handler){},
-		BaseContext: func(net.Listener) context.Context {
-			return ctx
-		},
-		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
-			return ctx
-		},
+		BaseContext:                  func(net.Listener) context.Context { return ctx },
+		ConnContext:                  func(ctx context.Context, c net.Conn) context.Context { return ctx },
 	}
 
 	slog.Info("nomad: starting", "port", s.config.Port, "ssl", s.config.EnableSSL)
 
-	return s.self.ListenAndServe()
+	err := s.self.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+
+	return err
 }
 
 func (s *Server) Stop(ctx context.Context) error {

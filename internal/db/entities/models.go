@@ -6,7 +6,6 @@ package entities
 
 import (
 	"database/sql/driver"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -57,39 +56,39 @@ func (ns NullTeamRole) Value() (driver.Value, error) {
 }
 
 type GithubInstallation struct {
-	ID                  uuid.UUID   `json:"id"`
-	CreatedAt           time.Time   `json:"created_at"`
-	UpdatedAt           time.Time   `json:"updated_at"`
-	OrgID               uuid.UUID   `json:"org_id"`
-	InstallationID      int64       `json:"installation_id"`
-	InstallationLogin   string      `json:"installation_login"`
-	InstallationLoginID int64       `json:"installation_login_id"`
-	InstallationType    pgtype.Text `json:"installation_type"`
-	SenderID            int64       `json:"sender_id"`
-	SenderLogin         string      `json:"sender_login"`
-	Status              pgtype.Text `json:"status"`
+	ID                  uuid.UUID `json:"id"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
+	OrgID               uuid.UUID `json:"org_id"`
+	InstallationID      int64     `json:"installation_id"`
+	InstallationLogin   string    `json:"installation_login"`
+	InstallationLoginID int64     `json:"installation_login_id"`
+	InstallationType    string    `json:"installation_type"`
+	SenderID            int64     `json:"sender_id"`
+	SenderLogin         string    `json:"sender_login"`
+	IsActive            bool      `json:"is_active"`
 }
 
 type GithubOrg struct {
 	ID             uuid.UUID `json:"id"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
+	OrgID          uuid.UUID `json:"org_id"`
 	InstallationID uuid.UUID `json:"installation_id"`
 	GithubOrgID    int64     `json:"github_org_id"`
 	Name           string    `json:"name"`
 }
 
 type GithubRepo struct {
-	ID             uuid.UUID   `json:"id"`
-	CreatedAt      time.Time   `json:"created_at"`
-	UpdatedAt      time.Time   `json:"updated_at"`
-	RepoID         pgtype.UUID `json:"repo_id"`
-	InstallationID uuid.UUID   `json:"installation_id"`
-	GithubID       int64       `json:"github_id"`
-	Name           string      `json:"name"`
-	FullName       string      `json:"full_name"`
-	Url            string      `json:"url"`
-	IsActive       pgtype.Bool `json:"is_active"`
+	ID             uuid.UUID `json:"id"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	InstallationID uuid.UUID `json:"installation_id"`
+	GithubID       int64     `json:"github_id"`
+	Name           string    `json:"name"`
+	FullName       string    `json:"full_name"`
+	Url            string    `json:"url"`
+	IsActive       bool      `json:"is_active"`
 }
 
 type GithubUser struct {
@@ -103,34 +102,34 @@ type GithubUser struct {
 }
 
 type Messaging struct {
-	ID        uuid.UUID       `json:"id"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
-	Hook      string          `json:"hook"`
-	Kind      string          `json:"kind"`
-	LinkTo    uuid.UUID       `json:"link_to"`
-	Data      json.RawMessage `json:"data"`
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Hook      string    `json:"hook"`
+	Kind      string    `json:"kind"`
+	LinkTo    uuid.UUID `json:"link_to"`
+	Data      []byte    `json:"data"`
 }
 
 type OauthAccount struct {
-	ID                uuid.UUID   `json:"id"`
-	CreatedAt         time.Time   `json:"created_at"`
-	UpdatedAt         time.Time   `json:"updated_at"`
-	UserID            uuid.UUID   `json:"user_id"`
-	Provider          string      `json:"provider"`
-	ProviderAccountID string      `json:"provider_account_id"`
-	ExpiresAt         time.Time   `json:"expires_at"`
-	Type              pgtype.Text `json:"type"`
+	ID                uuid.UUID `json:"id"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+	UserID            uuid.UUID `json:"user_id"`
+	Provider          string    `json:"provider"`
+	ProviderAccountID string    `json:"provider_account_id"`
+	ExpiresAt         time.Time `json:"expires_at"`
+	Type              string    `json:"type"`
 }
 
 type Org struct {
-	ID        uuid.UUID       `json:"id"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
-	Name      string          `json:"name"`
-	Domain    string          `json:"domain"`
-	Slug      string          `json:"slug"`
-	Hooks     json.RawMessage `json:"hooks"`
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Name      string    `json:"name"`
+	Domain    string    `json:"domain"`
+	Slug      string    `json:"slug"`
+	Hooks     []byte    `json:"hooks"`
 }
 
 type Repo struct {
@@ -140,11 +139,13 @@ type Repo struct {
 	OrgID         uuid.UUID       `json:"org_id"`
 	Name          string          `json:"name"`
 	Hook          string          `json:"hook"`
-	HookID        string          `json:"hook_id"`
+	HookID        uuid.UUID       `json:"hook_id"`
 	DefaultBranch string          `json:"default_branch"`
 	IsMonorepo    bool            `json:"is_monorepo"`
 	Threshold     int32           `json:"threshold"`
 	StaleDuration pgtype.Interval `json:"stale_duration"`
+	Url           string          `json:"url"`
+	IsActive      bool            `json:"is_active"`
 }
 
 type Team struct {

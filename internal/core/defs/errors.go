@@ -17,7 +17,6 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-
 package defs
 
 import (
@@ -40,7 +39,6 @@ type (
 	}
 
 	queueError struct {
-		pr   *RepoIOPullRequest
 		repo *Repo
 		code int
 	}
@@ -61,15 +59,6 @@ func (e *nilError) Error() string {
 func (e *queueError) Error() string {
 	msg := ""
 
-	switch e.code {
-	case 10400:
-		msg = fmt.Sprintf("unable to schedule pr %d in repo %s", e.pr.Number, e.repo.Name)
-	case 10409:
-		msg = fmt.Sprintf("pr %d in repo %s is already scheduled", e.pr.Number, e.repo.Name)
-	default:
-		msg = fmt.Sprintf("unknown error for pr %d in repo %s", e.pr.Number, e.repo.Name)
-	}
-
 	return msg
 }
 
@@ -88,24 +77,4 @@ func NewProviderNotFoundError(name string) error {
 // and which provider it should be registered with.
 func NewResourceNotFoundError(name string, provider string) error {
 	return &resourceNotFoundError{name, provider}
-}
-
-// NewQueueSchedulingError creates an error for when a pull request cannot be scheduled.
-//
-// It takes a RepoIOPullRequest and a Repo, returning an error that indicates
-// the pull request could not be scheduled for the given repository.
-func NewQueueSchedulingError(pr *RepoIOPullRequest, repo *Repo) error {
-	return &queueError{pr, repo, 10400}
-}
-
-// NewQueueDuplicatedError creates an error for when a pull request is already scheduled.
-//
-// It takes a RepoIOPullRequest and a Repo, returning an error that indicates
-// the pull request is already scheduled for the given repository.
-func NewQueueDuplicatedError(pr *RepoIOPullRequest, repo *Repo) error {
-	return &queueError{pr, repo, 10409}
-}
-
-func NewNilError(name string, kind string) error {
-	return &nilError{name, kind}
 }

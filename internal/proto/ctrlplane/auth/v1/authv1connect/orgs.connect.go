@@ -9,6 +9,7 @@ import (
 	context "context"
 	errors "errors"
 	v1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	http "net/http"
 	strings "strings"
 )
@@ -37,17 +38,16 @@ const (
 	OrgServiceCreateOrgProcedure = "/ctrlplane.auth.v1.OrgService/CreateOrg"
 	// OrgServiceGetOrgByIDProcedure is the fully-qualified name of the OrgService's GetOrgByID RPC.
 	OrgServiceGetOrgByIDProcedure = "/ctrlplane.auth.v1.OrgService/GetOrgByID"
-	// OrgServiceUpdateOrgByIDProcedure is the fully-qualified name of the OrgService's UpdateOrgByID
-	// RPC.
-	OrgServiceUpdateOrgByIDProcedure = "/ctrlplane.auth.v1.OrgService/UpdateOrgByID"
+	// OrgServiceSetOrgHooksProcedure is the fully-qualified name of the OrgService's SetOrgHooks RPC.
+	OrgServiceSetOrgHooksProcedure = "/ctrlplane.auth.v1.OrgService/SetOrgHooks"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	orgServiceServiceDescriptor             = v1.File_ctrlplane_auth_v1_orgs_proto.Services().ByName("OrgService")
-	orgServiceCreateOrgMethodDescriptor     = orgServiceServiceDescriptor.Methods().ByName("CreateOrg")
-	orgServiceGetOrgByIDMethodDescriptor    = orgServiceServiceDescriptor.Methods().ByName("GetOrgByID")
-	orgServiceUpdateOrgByIDMethodDescriptor = orgServiceServiceDescriptor.Methods().ByName("UpdateOrgByID")
+	orgServiceServiceDescriptor           = v1.File_ctrlplane_auth_v1_orgs_proto.Services().ByName("OrgService")
+	orgServiceCreateOrgMethodDescriptor   = orgServiceServiceDescriptor.Methods().ByName("CreateOrg")
+	orgServiceGetOrgByIDMethodDescriptor  = orgServiceServiceDescriptor.Methods().ByName("GetOrgByID")
+	orgServiceSetOrgHooksMethodDescriptor = orgServiceServiceDescriptor.Methods().ByName("SetOrgHooks")
 )
 
 // OrgServiceClient is a client for the ctrlplane.auth.v1.OrgService service.
@@ -56,8 +56,8 @@ type OrgServiceClient interface {
 	CreateOrg(context.Context, *connect.Request[v1.CreateOrgRequest]) (*connect.Response[v1.CreateOrgResponse], error)
 	// Retrieves an organization by its globally unique identifier.
 	GetOrgByID(context.Context, *connect.Request[v1.GetOrgByIDRequest]) (*connect.Response[v1.GetOrgByIDResponse], error)
-	// Updates an existing organization.
-	UpdateOrgByID(context.Context, *connect.Request[v1.UpdateOrgByIDRequest]) (*connect.Response[v1.UpdateOrgByIDResponse], error)
+	// Set the hooks for an organization.
+	SetOrgHooks(context.Context, *connect.Request[v1.SetOrgHooksRequest]) (*connect.Response[emptypb.Empty], error)
 }
 
 // NewOrgServiceClient constructs a client for the ctrlplane.auth.v1.OrgService service. By default,
@@ -82,10 +82,10 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 			connect.WithSchema(orgServiceGetOrgByIDMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
-		updateOrgByID: connect.NewClient[v1.UpdateOrgByIDRequest, v1.UpdateOrgByIDResponse](
+		setOrgHooks: connect.NewClient[v1.SetOrgHooksRequest, emptypb.Empty](
 			httpClient,
-			baseURL+OrgServiceUpdateOrgByIDProcedure,
-			connect.WithSchema(orgServiceUpdateOrgByIDMethodDescriptor),
+			baseURL+OrgServiceSetOrgHooksProcedure,
+			connect.WithSchema(orgServiceSetOrgHooksMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -93,9 +93,9 @@ func NewOrgServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...
 
 // orgServiceClient implements OrgServiceClient.
 type orgServiceClient struct {
-	createOrg     *connect.Client[v1.CreateOrgRequest, v1.CreateOrgResponse]
-	getOrgByID    *connect.Client[v1.GetOrgByIDRequest, v1.GetOrgByIDResponse]
-	updateOrgByID *connect.Client[v1.UpdateOrgByIDRequest, v1.UpdateOrgByIDResponse]
+	createOrg   *connect.Client[v1.CreateOrgRequest, v1.CreateOrgResponse]
+	getOrgByID  *connect.Client[v1.GetOrgByIDRequest, v1.GetOrgByIDResponse]
+	setOrgHooks *connect.Client[v1.SetOrgHooksRequest, emptypb.Empty]
 }
 
 // CreateOrg calls ctrlplane.auth.v1.OrgService.CreateOrg.
@@ -108,9 +108,9 @@ func (c *orgServiceClient) GetOrgByID(ctx context.Context, req *connect.Request[
 	return c.getOrgByID.CallUnary(ctx, req)
 }
 
-// UpdateOrgByID calls ctrlplane.auth.v1.OrgService.UpdateOrgByID.
-func (c *orgServiceClient) UpdateOrgByID(ctx context.Context, req *connect.Request[v1.UpdateOrgByIDRequest]) (*connect.Response[v1.UpdateOrgByIDResponse], error) {
-	return c.updateOrgByID.CallUnary(ctx, req)
+// SetOrgHooks calls ctrlplane.auth.v1.OrgService.SetOrgHooks.
+func (c *orgServiceClient) SetOrgHooks(ctx context.Context, req *connect.Request[v1.SetOrgHooksRequest]) (*connect.Response[emptypb.Empty], error) {
+	return c.setOrgHooks.CallUnary(ctx, req)
 }
 
 // OrgServiceHandler is an implementation of the ctrlplane.auth.v1.OrgService service.
@@ -119,8 +119,8 @@ type OrgServiceHandler interface {
 	CreateOrg(context.Context, *connect.Request[v1.CreateOrgRequest]) (*connect.Response[v1.CreateOrgResponse], error)
 	// Retrieves an organization by its globally unique identifier.
 	GetOrgByID(context.Context, *connect.Request[v1.GetOrgByIDRequest]) (*connect.Response[v1.GetOrgByIDResponse], error)
-	// Updates an existing organization.
-	UpdateOrgByID(context.Context, *connect.Request[v1.UpdateOrgByIDRequest]) (*connect.Response[v1.UpdateOrgByIDResponse], error)
+	// Set the hooks for an organization.
+	SetOrgHooks(context.Context, *connect.Request[v1.SetOrgHooksRequest]) (*connect.Response[emptypb.Empty], error)
 }
 
 // NewOrgServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -141,10 +141,10 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 		connect.WithSchema(orgServiceGetOrgByIDMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
-	orgServiceUpdateOrgByIDHandler := connect.NewUnaryHandler(
-		OrgServiceUpdateOrgByIDProcedure,
-		svc.UpdateOrgByID,
-		connect.WithSchema(orgServiceUpdateOrgByIDMethodDescriptor),
+	orgServiceSetOrgHooksHandler := connect.NewUnaryHandler(
+		OrgServiceSetOrgHooksProcedure,
+		svc.SetOrgHooks,
+		connect.WithSchema(orgServiceSetOrgHooksMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/ctrlplane.auth.v1.OrgService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -153,8 +153,8 @@ func NewOrgServiceHandler(svc OrgServiceHandler, opts ...connect.HandlerOption) 
 			orgServiceCreateOrgHandler.ServeHTTP(w, r)
 		case OrgServiceGetOrgByIDProcedure:
 			orgServiceGetOrgByIDHandler.ServeHTTP(w, r)
-		case OrgServiceUpdateOrgByIDProcedure:
-			orgServiceUpdateOrgByIDHandler.ServeHTTP(w, r)
+		case OrgServiceSetOrgHooksProcedure:
+			orgServiceSetOrgHooksHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -172,6 +172,6 @@ func (UnimplementedOrgServiceHandler) GetOrgByID(context.Context, *connect.Reque
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ctrlplane.auth.v1.OrgService.GetOrgByID is not implemented"))
 }
 
-func (UnimplementedOrgServiceHandler) UpdateOrgByID(context.Context, *connect.Request[v1.UpdateOrgByIDRequest]) (*connect.Response[v1.UpdateOrgByIDResponse], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ctrlplane.auth.v1.OrgService.UpdateOrgByID is not implemented"))
+func (UnimplementedOrgServiceHandler) SetOrgHooks(context.Context, *connect.Request[v1.SetOrgHooksRequest]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ctrlplane.auth.v1.OrgService.SetOrgHooks is not implemented"))
 }

@@ -1,4 +1,4 @@
-package config
+package dbcfg
 
 import (
 	"context"
@@ -41,8 +41,8 @@ type (
 )
 
 var (
-	// DefaultConfig is the default database connection configuration.
-	DefaultConfig = Config{
+	// Default is the default database connection configuration.
+	Default = Config{
 		Host:      "localhost",
 		Name:      "ctrlplane",
 		Port:      5432,
@@ -207,6 +207,12 @@ func WithPassword(password string) ConfigOption {
 
 func WithConfig(config *Config) ConfigOption {
 	return func(c *Config) {
+		if c.IsConnected() {
+			slog.Warn("db: already connected.")
+
+			return
+		}
+
 		c.Host = config.Host
 		c.Port = config.Port
 		c.Name = config.Name
@@ -234,7 +240,7 @@ func WithConfigFromEnvironment(opts ...string) ConfigOption {
 		}
 
 		k := koanf.New("__")
-		_ = k.Load(structs.Provider(DefaultConfig, "__"), nil)
+		_ = k.Load(structs.Provider(Default, "__"), nil)
 
 		if err := k.Load(env.Provider(prefix, "__", nil), nil); err != nil {
 			panic(err)

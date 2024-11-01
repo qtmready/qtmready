@@ -7,40 +7,9 @@ package entities
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 )
-
-const createDefaultOrg = `-- name: CreateDefaultOrg :one
-INSERT INTO orgs (id, name, domain, slug)
-VALUES ('00000000-0000-0000-0000-000000000001', 'No Org', 'example.com', 'no-org')
-ON CONFLICT (id) DO NOTHING
-RETURNING id, created_at, updated_at, name, domain, slug
-`
-
-type CreateDefaultOrgRow struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Name      string    `json:"name"`
-	Domain    string    `json:"domain"`
-	Slug      string    `json:"slug"`
-}
-
-func (q *Queries) CreateDefaultOrg(ctx context.Context) (CreateDefaultOrgRow, error) {
-	row := q.db.QueryRow(ctx, createDefaultOrg)
-	var i CreateDefaultOrgRow
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Name,
-		&i.Domain,
-		&i.Slug,
-	)
-	return i, err
-}
 
 const createOrg = `-- name: CreateOrg :one
 INSERT INTO orgs (name, domain, slug)
@@ -88,6 +57,22 @@ func (q *Queries) GetOrgByDomain(ctx context.Context, lower string) (Org, error)
 		&i.Hooks,
 	)
 	return i, err
+}
+
+const setOrgHooks = `-- name: SetOrgHooks :exec
+UPDATE orgs
+SET hooks = $2
+WHERE id = $1
+`
+
+type SetOrgHooksParams struct {
+	ID    uuid.UUID `json:"id"`
+	Hooks []byte    `json:"hooks"`
+}
+
+func (q *Queries) SetOrgHooks(ctx context.Context, arg SetOrgHooksParams) error {
+	_, err := q.db.Exec(ctx, setOrgHooks, arg.ID, arg.Hooks)
+	return err
 }
 
 const updateOrg = `-- name: UpdateOrg :one

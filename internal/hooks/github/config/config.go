@@ -1,22 +1,17 @@
-package config
+package githubcfg
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"net/http"
-	"sync"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	gh "github.com/google/go-github/v62/github"
 
 	"go.breu.io/quantm/internal/db"
 	pkgerrors "go.breu.io/quantm/internal/providers/github/errors"
-)
-
-var (
-	_c    *Config   // Global connection instance.
-	_once sync.Once // Ensures connection initialization occurs only once.
 )
 
 type (
@@ -28,7 +23,16 @@ type (
 		PrivateKey         string `koanf:"PRIVATE_KEY"`           // Private key for the GitHub API.
 		PrivateKeyIsBase64 bool   `koanf:"PRIVATE_KEY_IS_BASE64"` // If true, the private key is base64 encoded.
 	}
+
+	// ConfigOption is a function that modifies a Config.
+	ConfigOption func(*Config)
 )
+
+// Start is a no-op function that satisfies the graceful Service interface.
+func (cfg *Config) Start(ctx context.Context) error { return nil }
+
+// Stop is a no-op function that satisfies the graceful Service interface.
+func (cfg *Config) Stop(ctx context.Context) error { return nil }
 
 // SignPayload generates a signature for a given payload.
 //
@@ -69,20 +73,4 @@ func (cfg *Config) GetClientForInstallationID(installationID db.Int64) (*gh.Clie
 	client := gh.NewClient(&http.Client{Transport: transport})
 
 	return client, nil
-}
-
-// Instance returns the singleton instance of the GitHub configuration.
-//
-// The function uses a `sync.Once` to ensure that the configuration is initialized only once. It initializes the
-// instance with the `WithConfigFromEnv` option, which reads the configuration from environment variables.
-func Instance(opts ...ConfigOption) *Config {
-	_once.Do(func() {
-		_c = &Config{}
-
-		for _, opt := range opts {
-			opt(_c)
-		}
-	})
-
-	return _c
 }

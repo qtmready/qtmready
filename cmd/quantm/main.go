@@ -6,131 +6,95 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
-	"github.com/knadh/koanf/providers/env"
-	"github.com/knadh/koanf/providers/structs"
-	"github.com/knadh/koanf/v2"
-	flag "github.com/spf13/pflag"
+	"go.breu.io/durex/queues"
 	"go.breu.io/graceful"
 
-	pkg_db "go.breu.io/quantm/internal/db"
-	pkg_db_config "go.breu.io/quantm/internal/db/config"
+	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/migrations"
-	pkg_github "go.breu.io/quantm/internal/hooks/github/config"
-	pkg_slack "go.breu.io/quantm/internal/hooks/slack/config"
-	pkg_nomad "go.breu.io/quantm/internal/nomad"
+	"go.breu.io/quantm/internal/durable"
+	githubacts "go.breu.io/quantm/internal/hooks/github/activities"
+	githubcfg "go.breu.io/quantm/internal/hooks/github/config"
+	githubwfs "go.breu.io/quantm/internal/hooks/github/workflows"
+	"go.breu.io/quantm/internal/nomad"
 )
 
-type (
-	// Config defines the application's configuration.
-	Config struct {
-		Nomad   *pkg_nomad.Config     `koanf:"NOMAD"`   // Configuration for Nomad.
-		DB      *pkg_db_config.Config `koanf:"DB"`      // Configuration for the database.
-		Github  *pkg_github.Config    `koanf:"GITHUB"`  // Configuration for the github.
-		Slack   *pkg_slack.Config     `koanf:"SLACK"`   // Configuration for the slack.
-		Migrate bool                  `koanf:"MIGRATE"` // Flag to enable database migration. This flag is handy during development.
-	}
-
-	// Service is an interface for services that can be started and stopped.
-	Service interface {
-		Start(context.Context) error // Starts the service.
-		Stop(context.Context) error  // Stops the service.
-	}
-
-	// Services represents a list of services.
-	Services []Service
+const (
+	DB      = "db"
+	Durable = "durable"
+	Github  = "github"
+	Nomad   = "nomad"
+	HooksQ  = "hooks_q"
+	Webhook = "webhook"
 )
 
-// main starts the application.
 func main() {
-	// Initialize context, channels, and timeout.
+	cfg := &Config{}
+	cfg.Load()
+
+	configure_logger(cfg.Debug)
+	auth.SetSecret(cfg.Secret)
+
 	ctx := context.Background()
-	release := make(chan any, 1)
-	rx_errors := make(chan error)
-	timeout := time.Second * 10
+	quit := make(chan os.Signal, 1)
 
-	terminate := make(chan os.Signal, 1)
-	signal.Notify(terminate, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt)
+	githubcfg.Configure(githubcfg.WithConfig(cfg.Github))
 
-	conf := configure()                     // Read configuration from environment and flags.
-	svcs := make(Services, 0)               // Initialize an empty list of services.
-	cleanups := make([]graceful.Cleanup, 0) // Initialize an empty list of cleanup functions.
+	if err := durable.Configure(durable.WithConfig(cfg.Durable)); err != nil {
+		slog.Error("unable to configure durable layer", "error", err.Error())
+		os.Exit(1)
+	}
 
-	// Append Nomad and database services to the list.
-	svcs = append(svcs, nomad(conf.Nomad))
-	svcs = append(svcs, db(conf.DB))
+	queues.SetDefaultPrefix("ai.ctrlplane.")
+	configure_qhooks()
 
-	// If migration is enabled, append the migration service to the list.
-	if conf.Migrate {
-		if err := migrations.Run(ctx, conf.DB); err != nil {
-			slog.Error("main: unable to run migrations, cannot continue ...", "error", err.Error())
+	nmd := nomad.New(nomad.WithConfig(cfg.Nomad))
+	app := graceful.New()
 
-			os.Exit(1)
+	app.Add(DB, db.Connection(db.WithConfig(cfg.DB)))
+	app.Add(Durable, durable.Instance())
+	app.Add(Github, githubcfg.Instance())
+	app.Add(Nomad, nmd, DB, Durable, Github)
+	app.Add(HooksQ, durable.OnHooks(), DB, Durable, Github)
+	app.Add(Webhook, NewWebhookServer(), Durable, Github)
+
+	if cfg.Migrate {
+		if err := migrations.Run(ctx, cfg.DB); err != nil {
+			slog.Error("unable to migrate database", "error", err.Error())
 		}
+
+		os.Exit(0)
 	}
 
-	// Start each service in a goroutine, registering cleanup functions for graceful shutdown.
-	for _, svc := range svcs {
-		cleanups = append(cleanups, svc.Stop)
-		graceful.Go(ctx, graceful.GrabAndGo(svc.Start, ctx), rx_errors)
+	if err := app.Start(ctx); err != nil {
+		slog.Error("unable to start service", "error", err.Error())
+		os.Exit(1)
 	}
 
-	// Wait for termination signal or service start error.
-	select {
-	case rx := <-terminate:
-		slog.Info("main: shutdown requested ...", "signal", rx.String())
-	case err := <-rx_errors:
-		slog.Error("main: unable to start ...", "error", err.Error())
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt)
+	<-quit
+
+	if err := app.Stop(ctx); err != nil {
+		slog.Error("unable to stop service", "error", err.Error())
+		os.Exit(1)
 	}
 
-	// Initiate graceful shutdown, waiting for cleanups to complete.
-	code := graceful.Shutdown(ctx, cleanups, release, timeout, 0)
-	if code == 1 {
-		slog.Warn("main: failed to shutdown gracefully, exiting ...")
-	} else {
-		slog.Info("main: shutdown complete, exiting ...")
-	}
+	slog.Info("service stopped, exiting...")
 
-	os.Exit(code)
+	os.Exit(0)
 }
 
-// nomad constructs a Nomad service with the given configuration.
-func nomad(config *pkg_nomad.Config) Service {
-	return pkg_nomad.New(pkg_nomad.WithConfig(config))
-}
+func configure_qhooks() {
+	q := durable.OnHooks()
 
-// db constructs a database service with the given configuration.
-func db(config *pkg_db.Config) Service {
-	return pkg_db.Connection(pkg_db.WithConfig(config))
-}
+	q.CreateWorker()
 
-// configure reads configuration from environment variables and default values.
-func configure() *Config {
-	conf := &Config{Nomad: &pkg_nomad.DefaultConfig, DB: &pkg_db.DefaultConfig, Migrate: false}
+	if q != nil {
+		q.RegisterWorkflow(githubwfs.Install)
+		q.RegisterActivity(&githubacts.Install{})
 
-	k := koanf.New("__")
-
-	// Load default values from the Config struct.
-	if err := k.Load(structs.Provider(conf, "__"), nil); err != nil {
-		panic(err)
+		q.RegisterWorkflow(githubwfs.SyncRepos)
+		q.RegisterActivity(&githubacts.InstallRepos{})
 	}
-
-	// Load environment variables with the "__" delimiter.
-	if err := k.Load(env.Provider("", "__", nil), nil); err != nil {
-		panic(err)
-	}
-
-	// Unmarshal configuration from the Koanf instance to the Config struct.
-	if err := k.Unmarshal("", conf); err != nil {
-		panic(err)
-	}
-
-	// Add -m or --migrate flag to enable database migration.
-	if !conf.Migrate {
-		flag.BoolVarP(&conf.Migrate, "migrate", "m", false, "run database migrations")
-		flag.Parse()
-	}
-
-	return conf
 }

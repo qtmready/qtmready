@@ -15,7 +15,6 @@ sql:
       - "./queries/team_users.sql"
       - "./queries/repos.sql"
       - "./queries/github_installations.sql"
-      - "./queries/github_orgs.sql"
       - "./queries/github_users.sql"
       - "./queries/github_repos.sql"
       - "./queries/messaging.sql"
@@ -39,11 +38,6 @@ sql:
           - db_type: "varchar"
             go_type:
               type: "string"
-
-          - db_type: "jsonb"
-            go_type:
-              import: "encoding/json"
-              type: "RawMessage"
 
           - db_type: "boolean"
             go_type:
