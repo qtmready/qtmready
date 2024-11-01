@@ -14,7 +14,7 @@ type (
 )
 
 var (
-	DefaultConfig = config.DefaultConfig
+	DefaultConfig = config.Default
 )
 
 func WithConfig(conf *Config) config.ConfigOption {
