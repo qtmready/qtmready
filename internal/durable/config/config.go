@@ -43,7 +43,7 @@ type (
 		Skip      int    `json:"skip" koanf:"LOG_SKIP"`       // Skip frames for logging.
 
 		client client.Client // Temporal client.
-		once   sync.Once     // We can have only one Temporal client per configuration.
+		once   *sync.Once    // We can have only one Temporal client per configuration.
 	}
 
 	Option func(*Config) // ConfigOption is a function that modifies the Config.
@@ -56,6 +56,8 @@ var (
 		Host:      "localhost",
 		Port:      7233,
 		Skip:      0,
+
+		once: &sync.Once{},
 	}
 )
 
@@ -182,7 +184,7 @@ func WithConfig(conf *Config) Option {
 
 // New creates a new Config instance with the specified options.
 func New(opts ...Option) *Config {
-	c := &Config{} // Initialize the Config.
+	c := &Config{once: &sync.Once{}} // Initialize the Config.
 
 	for _, opt := range opts {
 		opt(c) // Apply each option to the Config.
