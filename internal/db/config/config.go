@@ -1,4 +1,4 @@
-package config
+package dbcfg
 
 import (
 	"context"

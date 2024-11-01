@@ -70,7 +70,8 @@ func main() {
 		slog.Warn("main: durable service not configured, this may cause issues ...")
 	}
 
-	configure_q_hooks(queues)
+	q_prefix()
+	q_hooks(queues)
 
 	svcs = append(svcs, db(conf.DB))
 	svcs = append(svcs, nomad(conf.Nomad))
