@@ -12,6 +12,7 @@ import (
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
 	flag "github.com/spf13/pflag"
+	"go.breu.io/durex/queues"
 	"go.breu.io/graceful"
 
 	pkg_db "go.breu.io/quantm/internal/db"
@@ -54,8 +55,9 @@ func main() {
 	terminate := make(chan os.Signal, 1)
 	signal.Notify(terminate, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt)
 
-	conf := configure()                     // Read configuration from environment and flags.
-	svcs := make(Services, 0)               // Initialize an empty list of services.
+	conf := configure()       // Read configuration from environment and flags.
+	svcs := make(Services, 0) // Initialize an empty list of services.
+	queues := make(queues.Queues)
 	cleanups := make([]graceful.Cleanup, 0) // Initialize an empty list of cleanup functions.
 
 	if conf.Durable != nil {
@@ -68,8 +70,9 @@ func main() {
 		slog.Warn("main: durable service not configured, this may cause issues ...")
 	}
 
+	configure_q_hooks(queues)
+
 	svcs = append(svcs, db(conf.DB))
-	// Append Nomad and database services to the list.
 	svcs = append(svcs, nomad(conf.Nomad))
 
 	// If migration is enabled, append the migration service to the list.
@@ -85,6 +88,11 @@ func main() {
 	for _, svc := range svcs {
 		cleanups = append(cleanups, svc.Stop)
 		graceful.Go(ctx, graceful.GrabAndGo(svc.Start, ctx), rx_errors)
+	}
+
+	for _, q := range queues {
+		cleanups = append(cleanups, q.Shutdown)
+		graceful.Go(ctx, q.Start, rx_errors)
 	}
 
 	// Wait for termination signal or service start error.
