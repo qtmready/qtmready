@@ -6,15 +6,19 @@ import (
 	"go.breu.io/durex/queues"
 
 	pkg_durable "go.breu.io/quantm/internal/durable"
-	github "go.breu.io/quantm/internal/hooks/github/workflows"
+	githubwfs "go.breu.io/quantm/internal/hooks/github/workflows"
 )
 
-func configure_q_hooks(q queues.Queues) {
+func q_prefix() {
+	queues.SetDefaultPrefix("ai.ctrlplane.")
+}
+
+func q_hooks(q queues.Queues) {
 	slog.Info("main: configuring hooks queue ...")
 
 	pkg_durable.OnHooks().CreateWorker()
 
-	pkg_durable.OnHooks().RegisterWorkflow(github.Install)
+	pkg_durable.OnHooks().RegisterWorkflow(githubwfs.Install)
 
 	q[pkg_durable.OnHooks().Name()] = pkg_durable.OnHooks()
 

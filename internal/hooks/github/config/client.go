@@ -1,4 +1,4 @@
-package config
+package githubcfg
 
 type (
 	// ConfigOption represents a function that modifies the GitHub configuration.

@@ -9,7 +9,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
 
-	"go.breu.io/quantm/internal/db/config"
+	dbcfg "go.breu.io/quantm/internal/db/config"
 
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 )
@@ -20,7 +20,7 @@ var (
 )
 
 // Run runs the migrations for the PostgreSQL database.
-func Run(ctx context.Context, connection *config.Config) error {
+func Run(ctx context.Context, connection *dbcfg.Config) error {
 	slog.Info("migrations: running ...")
 
 	if !connection.IsConnected() {

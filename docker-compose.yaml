@@ -41,6 +41,19 @@ services:
     networks:
       - ctrlplane
 
+  temporal-ui:
+    container_name: temporal-ui
+    depends_on:
+      - temporal
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: http://localhost:3000
+    image: temporalio/ui:2.31.2
+    ports:
+      - 8080:8080
+    networks:
+      - ctrlplane
+
   ################################
   # quantm.io ctrlplane
   ################################
