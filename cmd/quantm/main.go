@@ -15,8 +15,8 @@ import (
 	"go.breu.io/graceful"
 
 	pkg_db "go.breu.io/quantm/internal/db"
-	pkg_db_config "go.breu.io/quantm/internal/db/config"
 	"go.breu.io/quantm/internal/db/migrations"
+	pkg_durable "go.breu.io/quantm/internal/durable"
 	pkg_github "go.breu.io/quantm/internal/hooks/github/config"
 	pkg_slack "go.breu.io/quantm/internal/hooks/slack/config"
 	pkg_nomad "go.breu.io/quantm/internal/nomad"
@@ -25,11 +25,12 @@ import (
 type (
 	// Config defines the application's configuration.
 	Config struct {
-		Nomad   *pkg_nomad.Config     `koanf:"NOMAD"`   // Configuration for Nomad.
-		DB      *pkg_db_config.Config `koanf:"DB"`      // Configuration for the database.
-		Github  *pkg_github.Config    `koanf:"GITHUB"`  // Configuration for the github.
-		Slack   *pkg_slack.Config     `koanf:"SLACK"`   // Configuration for the slack.
-		Migrate bool                  `koanf:"MIGRATE"` // Flag to enable database migration. This flag is handy during development.
+		DB      *pkg_db.Config      `koanf:"DB"`      // Configuration for the database.
+		Durable *pkg_durable.Config `koanf:"DURABLE"` // Configuration for the durable.
+		Nomad   *pkg_nomad.Config   `koanf:"NOMAD"`   // Configuration for Nomad.
+		Github  *pkg_github.Config  `koanf:"GITHUB"`  // Configuration for the github.
+		Slack   *pkg_slack.Config   `koanf:"SLACK"`   // Configuration for the slack.
+		Migrate bool                `koanf:"MIGRATE"` // Flag to enable database migration.
 	}
 
 	// Service is an interface for services that can be started and stopped.
@@ -57,17 +58,27 @@ func main() {
 	svcs := make(Services, 0)               // Initialize an empty list of services.
 	cleanups := make([]graceful.Cleanup, 0) // Initialize an empty list of cleanup functions.
 
+	if conf.Durable != nil {
+		if err := durable(conf.Durable); err != nil {
+			slog.Error("main: unable to start durable service ...", "error", err.Error())
+
+			os.Exit(1)
+		}
+	} else {
+		slog.Warn("main: durable service not configured, this may cause issues ...")
+	}
+
+	svcs = append(svcs, db(conf.DB))
 	// Append Nomad and database services to the list.
 	svcs = append(svcs, nomad(conf.Nomad))
-	svcs = append(svcs, db(conf.DB))
 
 	// If migration is enabled, append the migration service to the list.
 	if conf.Migrate {
 		if err := migrations.Run(ctx, conf.DB); err != nil {
 			slog.Error("main: unable to run migrations, cannot continue ...", "error", err.Error())
-
-			os.Exit(1)
 		}
+
+		os.Exit(1)
 	}
 
 	// Start each service in a goroutine, registering cleanup functions for graceful shutdown.
@@ -105,9 +116,18 @@ func db(config *pkg_db.Config) Service {
 	return pkg_db.Connection(pkg_db.WithConfig(config))
 }
 
+func durable(config *pkg_durable.Config) error {
+	return pkg_durable.Configure(pkg_durable.WithConfig(config))
+}
+
 // configure reads configuration from environment variables and default values.
 func configure() *Config {
-	conf := &Config{Nomad: &pkg_nomad.DefaultConfig, DB: &pkg_db.DefaultConfig, Migrate: false}
+	conf := &Config{
+		DB:      &pkg_db.DefaultConfig,
+		Durable: &pkg_durable.DefaultConfig,
+		Nomad:   &pkg_nomad.DefaultConfig,
+		Migrate: false,
+	}
 
 	k := koanf.New("__")
 
