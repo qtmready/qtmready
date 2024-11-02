@@ -125,7 +125,7 @@ create table repos (
   org_id uuid not null references orgs (id),
   name varchar(255) not null,
   hook varchar(255) not null,
-  hook_id varchar(255) not null,
+  hook_id uuid not null,
   default_branch varchar(255) not null default 'main',
   is_monorepo boolean not null default false,
   threshold integer not null default 500,
@@ -147,10 +147,10 @@ create table github_installations (
   installation_id bigint not null,
   installation_login varchar(255) not null,
   installation_login_id bigint not null,
-  installation_type varchar(255),
+  installation_type varchar(255) not null,
   sender_id bigint not null,
   sender_login varchar(255) not null,
-  status varchar(255),
+  is_active boolean not null default true,
   constraint github_installations_installation_id_unique unique (installation_id)
 );
 

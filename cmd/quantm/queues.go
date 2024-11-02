@@ -6,6 +6,7 @@ import (
 	"go.breu.io/durex/queues"
 
 	pkg_durable "go.breu.io/quantm/internal/durable"
+	githubacts "go.breu.io/quantm/internal/hooks/github/activities"
 	githubwfs "go.breu.io/quantm/internal/hooks/github/workflows"
 )
 
@@ -19,6 +20,7 @@ func q_hooks(q queues.Queues) {
 	pkg_durable.OnHooks().CreateWorker()
 
 	pkg_durable.OnHooks().RegisterWorkflow(githubwfs.Install)
+	pkg_durable.OnHooks().RegisterActivity(&githubacts.Install{})
 
 	q[pkg_durable.OnHooks().Name()] = pkg_durable.OnHooks()
 

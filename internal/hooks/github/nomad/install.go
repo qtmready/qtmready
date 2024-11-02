@@ -1,4 +1,4 @@
-package handlers
+package githubnmd
 
 import (
 	"context"
@@ -22,8 +22,8 @@ type (
 	}
 )
 
-func (s *GithubService) GithubInstall(
-	ctx context.Context, req *connect.Request[githubv1.GithubInstallRequest],
+func (s *GithubService) Install(
+	ctx context.Context, req *connect.Request[githubv1.InstallRequest],
 ) (*connect.Response[emptypb.Empty], error) {
 	opts := ghdefs.NewInstallWorkflowOptions(req.Msg.InstallationId, req.Msg.Action)
 	args := ghdefs.RequestInstall{
@@ -34,7 +34,7 @@ func (s *GithubService) GithubInstall(
 
 	_, err := durable.OnHooks().SignalWithStartWorkflow(ctx, opts, ghdefs.SignalRequestInstall, args, githubwfs.Install)
 	if err != nil {
-		return nil, erratic.NewInternalServerError("failed to schedule workflow").ToConnectError()
+		return nil, erratic.NewInternalServerError().AddHint("reason", "unable to schedule workflow").ToConnectError()
 	}
 
 	return connect.NewResponse(&emptypb.Empty{}), nil

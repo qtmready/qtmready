@@ -1,4 +1,4 @@
-package handlers
+package authnmd
 
 import (
 	"context"
@@ -16,7 +16,9 @@ import (
 )
 
 type (
-	AccountService struct{}
+	AccountService struct {
+		authv1connect.UnimplementedAccountServiceHandler
+	}
 )
 
 func (s *AccountService) GetAccountByProviderAccountID(
