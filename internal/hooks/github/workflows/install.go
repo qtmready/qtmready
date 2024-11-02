@@ -51,7 +51,7 @@ func Install(ctx workflow.Context) error {
 		return err
 	}
 
-	state.post(ctx)
+	state.sync(ctx)
 
 	return nil
 }
@@ -69,7 +69,7 @@ func (s *InstallWorkflowState) done() bool {
 	return s.status.request && s.status.wehook
 }
 
-func (s *InstallWorkflowState) post(ctx workflow.Context) {}
+func (s *InstallWorkflowState) sync(ctx workflow.Context) {}
 
 func NewInstallWorkflowState(ctx workflow.Context) *InstallWorkflowState {
 	return &InstallWorkflowState{

@@ -38,7 +38,7 @@ func NewBadRequestError(args ...string) *QuantmError {
 
 // NewUnauthorizedError creates a new 401 Unauthorized error.
 func NewUnauthorizedError(args ...string) *QuantmError {
-	return New(http.StatusUnauthorized, "Are you logged in?", args...)
+	return New(http.StatusUnauthorized, "Not Authorized", args...)
 }
 
 func NewForbiddenError(args ...string) *QuantmError {

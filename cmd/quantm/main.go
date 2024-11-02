@@ -15,23 +15,23 @@ import (
 	"go.breu.io/durex/queues"
 	"go.breu.io/graceful"
 
-	pkg_db "go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/migrations"
-	pkg_durable "go.breu.io/quantm/internal/durable"
-	pkg_github "go.breu.io/quantm/internal/hooks/github/config"
+	"go.breu.io/quantm/internal/durable"
+	githubcfg "go.breu.io/quantm/internal/hooks/github/config"
 	pkg_slack "go.breu.io/quantm/internal/hooks/slack/config"
-	pkg_nomad "go.breu.io/quantm/internal/nomad"
+	"go.breu.io/quantm/internal/nomad"
 )
 
 type (
 	// Config defines the application's configuration.
 	Config struct {
-		DB      *pkg_db.Config      `koanf:"DB"`      // Configuration for the database.
-		Durable *pkg_durable.Config `koanf:"DURABLE"` // Configuration for the durable.
-		Nomad   *pkg_nomad.Config   `koanf:"NOMAD"`   // Configuration for Nomad.
-		Github  *pkg_github.Config  `koanf:"GITHUB"`  // Configuration for the github.
-		Slack   *pkg_slack.Config   `koanf:"SLACK"`   // Configuration for the slack.
-		Migrate bool                `koanf:"MIGRATE"` // Flag to enable database migration.
+		DB      *db.Config        `koanf:"DB"`      // Configuration for the database.
+		Durable *durable.Config   `koanf:"DURABLE"` // Configuration for the durable.
+		Nomad   *nomad.Config     `koanf:"NOMAD"`   // Configuration for Nomad.
+		Github  *githubcfg.Config `koanf:"GITHUB"`  // Configuration for the github.
+		Slack   *pkg_slack.Config `koanf:"SLACK"`   // Configuration for the slack.
+		Migrate bool              `koanf:"MIGRATE"` // Flag to enable database migration.
 	}
 
 	// Service is an interface for services that can be started and stopped.
@@ -46,7 +46,6 @@ type (
 
 // main starts the application.
 func main() {
-	// Initialize context, channels, and timeout.
 	ctx := context.Background()
 	release := make(chan any, 1)
 	rx_errors := make(chan error)
@@ -55,13 +54,13 @@ func main() {
 	terminate := make(chan os.Signal, 1)
 	signal.Notify(terminate, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt)
 
-	conf := configure()       // Read configuration from environment and flags.
-	svcs := make(Services, 0) // Initialize an empty list of services.
-	queues := make(queues.Queues)
+	conf := read_env()                      // Read configuration from environment and flags.
+	svcs := make(Services, 0)               // Initialize an empty list of services.
+	queues := make(queues.Queues)           // Initialize an empty list of queues.
 	cleanups := make([]graceful.Cleanup, 0) // Initialize an empty list of cleanup functions.
 
 	if conf.Durable != nil {
-		if err := durable(conf.Durable); err != nil {
+		if err := configure_durable(conf.Durable); err != nil {
 			slog.Error("main: unable to start durable service ...", "error", err.Error())
 
 			os.Exit(1)
@@ -73,8 +72,8 @@ func main() {
 	q_prefix()
 	q_hooks(queues)
 
-	svcs = append(svcs, db(conf.DB))
-	svcs = append(svcs, nomad(conf.Nomad))
+	svcs = append(svcs, configure_db(conf.DB))
+	svcs = append(svcs, configure_nomad(conf.Nomad))
 
 	// If migration is enabled, append the migration service to the list.
 	if conf.Migrate {
@@ -82,7 +81,7 @@ func main() {
 			slog.Error("main: unable to run migrations, cannot continue ...", "error", err.Error())
 		}
 
-		os.Exit(1)
+		os.Exit(0)
 	}
 
 	// Start each service in a goroutine, registering cleanup functions for graceful shutdown.
@@ -115,26 +114,12 @@ func main() {
 	os.Exit(code)
 }
 
-// nomad constructs a Nomad service with the given configuration.
-func nomad(config *pkg_nomad.Config) Service {
-	return pkg_nomad.New(pkg_nomad.WithConfig(config))
-}
-
-// db constructs a database service with the given configuration.
-func db(config *pkg_db.Config) Service {
-	return pkg_db.Connection(pkg_db.WithConfig(config))
-}
-
-func durable(config *pkg_durable.Config) error {
-	return pkg_durable.Configure(pkg_durable.WithConfig(config))
-}
-
-// configure reads configuration from environment variables and default values.
-func configure() *Config {
+// read_env reads configuration from environment variables and default values.
+func read_env() *Config {
 	conf := &Config{
-		DB:      &pkg_db.DefaultConfig,
-		Durable: &pkg_durable.DefaultConfig,
-		Nomad:   &pkg_nomad.DefaultConfig,
+		DB:      &db.DefaultConfig,
+		Durable: &durable.DefaultConfig,
+		Nomad:   &nomad.DefaultConfig,
 		Migrate: false,
 	}
 
@@ -162,4 +147,18 @@ func configure() *Config {
 	}
 
 	return conf
+}
+
+// configure_db constructs a database service with the given configuration.
+func configure_db(config *db.Config) Service {
+	return db.Connection(db.WithConfig(config))
+}
+
+func configure_durable(config *durable.Config) error {
+	return durable.Configure(durable.WithConfig(config))
+}
+
+// configure_nomad constructs a Nomad service with the given configuration.
+func configure_nomad(config *nomad.Config) Service {
+	return nomad.New(nomad.WithConfig(config))
 }
