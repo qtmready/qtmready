@@ -57,17 +57,17 @@ func (ns NullTeamRole) Value() (driver.Value, error) {
 }
 
 type GithubInstallation struct {
-	ID                  uuid.UUID   `json:"id"`
-	CreatedAt           time.Time   `json:"created_at"`
-	UpdatedAt           time.Time   `json:"updated_at"`
-	OrgID               uuid.UUID   `json:"org_id"`
-	InstallationID      int64       `json:"installation_id"`
-	InstallationLogin   string      `json:"installation_login"`
-	InstallationLoginID int64       `json:"installation_login_id"`
-	InstallationType    pgtype.Text `json:"installation_type"`
-	SenderID            int64       `json:"sender_id"`
-	SenderLogin         string      `json:"sender_login"`
-	Status              pgtype.Text `json:"status"`
+	ID                  uuid.UUID `json:"id"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
+	OrgID               uuid.UUID `json:"org_id"`
+	InstallationID      int64     `json:"installation_id"`
+	InstallationLogin   string    `json:"installation_login"`
+	InstallationLoginID int64     `json:"installation_login_id"`
+	InstallationType    string    `json:"installation_type"`
+	SenderID            int64     `json:"sender_id"`
+	SenderLogin         string    `json:"sender_login"`
+	IsActive            bool      `json:"is_active"`
 }
 
 type GithubOrg struct {
@@ -140,7 +140,7 @@ type Repo struct {
 	OrgID         uuid.UUID       `json:"org_id"`
 	Name          string          `json:"name"`
 	Hook          string          `json:"hook"`
-	HookID        string          `json:"hook_id"`
+	HookID        uuid.UUID       `json:"hook_id"`
 	DefaultBranch string          `json:"default_branch"`
 	IsMonorepo    bool            `json:"is_monorepo"`
 	Threshold     int32           `json:"threshold"`

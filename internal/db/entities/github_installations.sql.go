@@ -9,24 +9,24 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createGithubInstallation = `-- name: CreateGithubInstallation :one
-INSERT INTO github_installations (org_id, installation_id, installation_login, installation_login_id, installation_type, sender_id, sender_login, status)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, created_at, updated_at, org_id, installation_id, installation_login, installation_login_id, installation_type, sender_id, sender_login, status
+INSERT INTO github_installations (
+  org_id, installation_id, installation_login, installation_login_id, installation_type, sender_id, sender_login
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, created_at, updated_at, org_id, installation_id, installation_login, installation_login_id, installation_type, sender_id, sender_login, is_active
 `
 
 type CreateGithubInstallationParams struct {
-	OrgID               uuid.UUID   `json:"org_id"`
-	InstallationID      int64       `json:"installation_id"`
-	InstallationLogin   string      `json:"installation_login"`
-	InstallationLoginID int64       `json:"installation_login_id"`
-	InstallationType    pgtype.Text `json:"installation_type"`
-	SenderID            int64       `json:"sender_id"`
-	SenderLogin         string      `json:"sender_login"`
-	Status              pgtype.Text `json:"status"`
+	OrgID               uuid.UUID `json:"org_id"`
+	InstallationID      int64     `json:"installation_id"`
+	InstallationLogin   string    `json:"installation_login"`
+	InstallationLoginID int64     `json:"installation_login_id"`
+	InstallationType    string    `json:"installation_type"`
+	SenderID            int64     `json:"sender_id"`
+	SenderLogin         string    `json:"sender_login"`
 }
 
 func (q *Queries) CreateGithubInstallation(ctx context.Context, arg CreateGithubInstallationParams) (GithubInstallation, error) {
@@ -38,7 +38,6 @@ func (q *Queries) CreateGithubInstallation(ctx context.Context, arg CreateGithub
 		arg.InstallationType,
 		arg.SenderID,
 		arg.SenderLogin,
-		arg.Status,
 	)
 	var i GithubInstallation
 	err := row.Scan(
@@ -52,25 +51,13 @@ func (q *Queries) CreateGithubInstallation(ctx context.Context, arg CreateGithub
 		&i.InstallationType,
 		&i.SenderID,
 		&i.SenderLogin,
-		&i.Status,
+		&i.IsActive,
 	)
 	return i, err
 }
 
-const deleteGithubInstallation = `-- name: DeleteGithubInstallation :one
-DELETE FROM github_installations
-WHERE id = $1
-RETURNING id
-`
-
-func (q *Queries) DeleteGithubInstallation(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, deleteGithubInstallation, id)
-	err := row.Scan(&id)
-	return id, err
-}
-
 const getGithubInstallation = `-- name: GetGithubInstallation :one
-SELECT id, created_at, updated_at, org_id, installation_id, installation_login, installation_login_id, installation_type, sender_id, sender_login, status
+SELECT id, created_at, updated_at, org_id, installation_id, installation_login, installation_login_id, installation_type, sender_id, sender_login, is_active
 FROM github_installations
 WHERE id = $1
 `
@@ -89,13 +76,38 @@ func (q *Queries) GetGithubInstallation(ctx context.Context, id uuid.UUID) (Gith
 		&i.InstallationType,
 		&i.SenderID,
 		&i.SenderLogin,
-		&i.Status,
+		&i.IsActive,
+	)
+	return i, err
+}
+
+const getGithubInstallationByInstallationID = `-- name: GetGithubInstallationByInstallationID :one
+SELECT id, created_at, updated_at, org_id, installation_id, installation_login, installation_login_id, installation_type, sender_id, sender_login, is_active
+FROM github_installations
+WHERE installation_id = $1
+`
+
+func (q *Queries) GetGithubInstallationByInstallationID(ctx context.Context, installationID int64) (GithubInstallation, error) {
+	row := q.db.QueryRow(ctx, getGithubInstallationByInstallationID, installationID)
+	var i GithubInstallation
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OrgID,
+		&i.InstallationID,
+		&i.InstallationLogin,
+		&i.InstallationLoginID,
+		&i.InstallationType,
+		&i.SenderID,
+		&i.SenderLogin,
+		&i.IsActive,
 	)
 	return i, err
 }
 
 const getGithubInstallationByInstallationIDAndInstallationLogin = `-- name: GetGithubInstallationByInstallationIDAndInstallationLogin :one
-SELECT id, created_at, updated_at, org_id, installation_id, installation_login, installation_login_id, installation_type, sender_id, sender_login, status
+SELECT id, created_at, updated_at, org_id, installation_id, installation_login, installation_login_id, installation_type, sender_id, sender_login, is_active
 FROM github_installations
 WHERE installation_id = $1 AND installation_login = $2
 `
@@ -119,14 +131,14 @@ func (q *Queries) GetGithubInstallationByInstallationIDAndInstallationLogin(ctx 
 		&i.InstallationType,
 		&i.SenderID,
 		&i.SenderLogin,
-		&i.Status,
+		&i.IsActive,
 	)
 	return i, err
 }
 
 const updateGithubInstallation = `-- name: UpdateGithubInstallation :one
 UPDATE github_installations
-SET 
+SET
     org_id = $2,
     installation_id = $3,
     installation_login = $4,
@@ -134,21 +146,21 @@ SET
     installation_type = $6,
     sender_id = $7,
     sender_login = $8,
-    status = $9
+    is_active = $9
 WHERE id = $1
-RETURNING id, created_at, updated_at, org_id, installation_id, installation_login, installation_login_id, installation_type, sender_id, sender_login, status
+RETURNING id, created_at, updated_at, org_id, installation_id, installation_login, installation_login_id, installation_type, sender_id, sender_login, is_active
 `
 
 type UpdateGithubInstallationParams struct {
-	ID                  uuid.UUID   `json:"id"`
-	OrgID               uuid.UUID   `json:"org_id"`
-	InstallationID      int64       `json:"installation_id"`
-	InstallationLogin   string      `json:"installation_login"`
-	InstallationLoginID int64       `json:"installation_login_id"`
-	InstallationType    pgtype.Text `json:"installation_type"`
-	SenderID            int64       `json:"sender_id"`
-	SenderLogin         string      `json:"sender_login"`
-	Status              pgtype.Text `json:"status"`
+	ID                  uuid.UUID `json:"id"`
+	OrgID               uuid.UUID `json:"org_id"`
+	InstallationID      int64     `json:"installation_id"`
+	InstallationLogin   string    `json:"installation_login"`
+	InstallationLoginID int64     `json:"installation_login_id"`
+	InstallationType    string    `json:"installation_type"`
+	SenderID            int64     `json:"sender_id"`
+	SenderLogin         string    `json:"sender_login"`
+	IsActive            bool      `json:"is_active"`
 }
 
 func (q *Queries) UpdateGithubInstallation(ctx context.Context, arg UpdateGithubInstallationParams) (GithubInstallation, error) {
@@ -161,7 +173,7 @@ func (q *Queries) UpdateGithubInstallation(ctx context.Context, arg UpdateGithub
 		arg.InstallationType,
 		arg.SenderID,
 		arg.SenderLogin,
-		arg.Status,
+		arg.IsActive,
 	)
 	var i GithubInstallation
 	err := row.Scan(
@@ -175,7 +187,7 @@ func (q *Queries) UpdateGithubInstallation(ctx context.Context, arg UpdateGithub
 		&i.InstallationType,
 		&i.SenderID,
 		&i.SenderLogin,
-		&i.Status,
+		&i.IsActive,
 	)
 	return i, err
 }

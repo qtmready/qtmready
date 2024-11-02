@@ -22,7 +22,7 @@ type CreateRepoParams struct {
 	OrgID         uuid.UUID       `json:"org_id"`
 	Name          string          `json:"name"`
 	Hook          string          `json:"hook"`
-	HookID        string          `json:"hook_id"`
+	HookID        uuid.UUID       `json:"hook_id"`
 	DefaultBranch string          `json:"default_branch"`
 	IsMonorepo    bool            `json:"is_monorepo"`
 	Threshold     int32           `json:"threshold"`
@@ -137,8 +137,8 @@ WHERE hook = $1 AND hook_id = $2
 `
 
 type GetReposByHookAndHookIDParams struct {
-	Hook   string `json:"hook"`
-	HookID string `json:"hook_id"`
+	Hook   string    `json:"hook"`
+	HookID uuid.UUID `json:"hook_id"`
 }
 
 func (q *Queries) GetReposByHookAndHookID(ctx context.Context, arg GetReposByHookAndHookIDParams) (Repo, error) {
@@ -217,7 +217,7 @@ type UpdateRepoParams struct {
 	OrgID         uuid.UUID       `json:"org_id"`
 	Name          string          `json:"name"`
 	Hook          string          `json:"hook"`
-	HookID        string          `json:"hook_id"`
+	HookID        uuid.UUID       `json:"hook_id"`
 	DefaultBranch string          `json:"default_branch"`
 	IsMonorepo    bool            `json:"is_monorepo"`
 	Threshold     int32           `json:"threshold"`
