@@ -7,6 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"go.breu.io/durex/queues"
 	"go.breu.io/graceful"
 
 	"go.breu.io/quantm/internal/db"
@@ -23,6 +24,7 @@ const (
 	Github  = "github"
 	Nomad   = "nomad"
 	HooksQ  = "hooks_q"
+	Webhook = "webhook"
 )
 
 func main() {
@@ -39,6 +41,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	queues.SetDefaultPrefix("io.ctrlplane.")
 	configure_qhooks()
 
 	nmd := nomad.New(nomad.WithConfig(cfg.Nomad))
@@ -49,6 +52,7 @@ func main() {
 	app.Add(Github, githubcfg.Instance())
 	app.Add(Nomad, nmd, DB, Durable, Github)
 	app.Add(HooksQ, durable.OnHooks(), DB, Durable, Github)
+	app.Add(Webhook, NewWebhookServer(), Durable, Github)
 
 	if err := app.Start(ctx); err != nil {
 		slog.Error("unable to start service", "error", err.Error())
