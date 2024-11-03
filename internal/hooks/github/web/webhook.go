@@ -155,10 +155,12 @@ func (h *Webhook) install(ctx echo.Context, event WebhookEvent, id string) error
 	return ctx.NoContent(http.StatusNoContent)
 }
 
+// push handles the push event.
 func (h *Webhook) push(ctx echo.Context, event WebhookEvent, id string) error {
 	return nil
 }
 
+// pr handles the pull request event.
 func (h *Webhook) pr(ctx echo.Context, event WebhookEvent, id string) error {
 	return nil
 }

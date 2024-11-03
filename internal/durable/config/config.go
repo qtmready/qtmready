@@ -20,6 +20,7 @@
 package config
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -60,6 +61,12 @@ var (
 		once: &sync.Once{},
 	}
 )
+
+// Start is a no-op function to satisfy the graceful.Service interface.
+func (c *Config) Start(ctx context.Context) error { return nil }
+
+// Stop is a no-op function to satisfy the graceful.Service interface.
+func (c *Config) Stop(ctx context.Context) error { return nil }
 
 // Address returns the formatted address for the Temporal server.
 func (c *Config) Address() string {

@@ -1,6 +1,7 @@
 package githubcfg
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -26,6 +27,12 @@ type (
 	// ConfigOption is a function that modifies a Config.
 	ConfigOption func(*Config)
 )
+
+// Start is a no-op function that satisfies the graceful Service interface.
+func (cfg *Config) Start(ctx context.Context) error { return nil }
+
+// Stop is a no-op function that satisfies the graceful Service interface.
+func (cfg *Config) Stop(ctx context.Context) error { return nil }
 
 // SignPayload generates a signature for a given payload.
 //
