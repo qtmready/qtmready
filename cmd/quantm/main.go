@@ -11,6 +11,8 @@ import (
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	flag "github.com/spf13/pflag"
 	"go.breu.io/durex/queues"
 	"go.breu.io/graceful"
@@ -19,6 +21,7 @@ import (
 	"go.breu.io/quantm/internal/db/migrations"
 	"go.breu.io/quantm/internal/durable"
 	githubcfg "go.breu.io/quantm/internal/hooks/github/config"
+	githubweb "go.breu.io/quantm/internal/hooks/github/web"
 	pkg_slack "go.breu.io/quantm/internal/hooks/slack/config"
 	"go.breu.io/quantm/internal/nomad"
 )
@@ -161,4 +164,20 @@ func configure_durable(config *durable.Config) error {
 // configure_nomad constructs a Nomad service with the given configuration.
 func configure_nomad(config *nomad.Config) Service {
 	return nomad.New(nomad.WithConfig(config))
+}
+
+func configure_webhooks() *echo.Echo {
+	server := echo.New()
+
+	server.HideBanner = true
+	server.HidePort = true
+
+	server.Use(middleware.CORS())
+	server.Use(middleware.Recover())
+
+	github := &githubweb.Webhook{}
+
+	server.GET("/github/webhook", github.Handler)
+
+	return server
 }
