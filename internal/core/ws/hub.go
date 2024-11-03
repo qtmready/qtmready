@@ -331,7 +331,7 @@ func (h *hub) worker() {
 
 	h.queue.RegisterActivity(&Activities{})
 
-	if err := h.queue.Start(); err != nil {
+	if err := h.queue.Start(context.Background()); err != nil {
 		h.stop <- true
 	}
 

@@ -62,6 +62,18 @@ func Configure(opts ...ConfigOption) error {
 	return err
 }
 
+func Instance(opts ...ConfigOption) *Config {
+	if configured == nil {
+		slog.Warn("durable: instance not configured, configuring using default configuration")
+
+		if err := Configure(opts...); err != nil {
+			panic(err)
+		}
+	}
+
+	return configured
+}
+
 // Client returns the configured Temporal client.
 //
 // If the client is not yet initialized, it will be initialized using the default configuration.
