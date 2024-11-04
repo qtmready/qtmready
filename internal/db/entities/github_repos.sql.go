@@ -14,121 +14,27 @@ import (
 )
 
 const createGithubRepo = `-- name: CreateGithubRepo :one
-INSERT INTO github_repos (repo_id, installation_id, github_id, name, full_name, url, is_active)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO github_repos (installation_id, github_id, name, full_name, url)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
 `
 
 type CreateGithubRepoParams struct {
-	RepoID         pgtype.UUID `json:"repo_id"`
-	InstallationID uuid.UUID   `json:"installation_id"`
-	GithubID       int64       `json:"github_id"`
-	Name           string      `json:"name"`
-	FullName       string      `json:"full_name"`
-	Url            string      `json:"url"`
-	IsActive       pgtype.Bool `json:"is_active"`
+	InstallationID uuid.UUID `json:"installation_id"`
+	GithubID       int64     `json:"github_id"`
+	Name           string    `json:"name"`
+	FullName       string    `json:"full_name"`
+	Url            string    `json:"url"`
 }
 
 func (q *Queries) CreateGithubRepo(ctx context.Context, arg CreateGithubRepoParams) (GithubRepo, error) {
 	row := q.db.QueryRow(ctx, createGithubRepo,
-		arg.RepoID,
 		arg.InstallationID,
 		arg.GithubID,
 		arg.Name,
 		arg.FullName,
 		arg.Url,
-		arg.IsActive,
 	)
-	var i GithubRepo
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.RepoID,
-		&i.InstallationID,
-		&i.GithubID,
-		&i.Name,
-		&i.FullName,
-		&i.Url,
-		&i.IsActive,
-	)
-	return i, err
-}
-
-const deleteGithubRepo = `-- name: DeleteGithubRepo :one
-DELETE FROM github_repos
-WHERE id = $1
-RETURNING id
-`
-
-func (q *Queries) DeleteGithubRepo(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, deleteGithubRepo, id)
-	err := row.Scan(&id)
-	return id, err
-}
-
-const getGithubRepo = `-- name: GetGithubRepo :one
-SELECT id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
-FROM github_repos
-WHERE name = $1 AND full_name = $2 AND github_id = $3
-`
-
-type GetGithubRepoParams struct {
-	Name     string `json:"name"`
-	FullName string `json:"full_name"`
-	GithubID int64  `json:"github_id"`
-}
-
-func (q *Queries) GetGithubRepo(ctx context.Context, arg GetGithubRepoParams) (GithubRepo, error) {
-	row := q.db.QueryRow(ctx, getGithubRepo, arg.Name, arg.FullName, arg.GithubID)
-	var i GithubRepo
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.RepoID,
-		&i.InstallationID,
-		&i.GithubID,
-		&i.Name,
-		&i.FullName,
-		&i.Url,
-		&i.IsActive,
-	)
-	return i, err
-}
-
-const getGithubRepoByFullName = `-- name: GetGithubRepoByFullName :one
-SELECT id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
-FROM github_repos
-WHERE full_name = $1
-`
-
-func (q *Queries) GetGithubRepoByFullName(ctx context.Context, fullName string) (GithubRepo, error) {
-	row := q.db.QueryRow(ctx, getGithubRepoByFullName, fullName)
-	var i GithubRepo
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.RepoID,
-		&i.InstallationID,
-		&i.GithubID,
-		&i.Name,
-		&i.FullName,
-		&i.Url,
-		&i.IsActive,
-	)
-	return i, err
-}
-
-const getGithubRepoByGithubID = `-- name: GetGithubRepoByGithubID :one
-SELECT id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
-FROM github_repos
-WHERE github_id = $1
-`
-
-func (q *Queries) GetGithubRepoByGithubID(ctx context.Context, githubID int64) (GithubRepo, error) {
-	row := q.db.QueryRow(ctx, getGithubRepoByGithubID, githubID)
 	var i GithubRepo
 	err := row.Scan(
 		&i.ID,
@@ -198,30 +104,6 @@ func (q *Queries) GetGithubRepoByInstallationIDAndGithubID(ctx context.Context, 
 	return i, err
 }
 
-const getGithubRepoByName = `-- name: GetGithubRepoByName :one
-SELECT id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
-FROM github_repos
-WHERE name = $1
-`
-
-func (q *Queries) GetGithubRepoByName(ctx context.Context, name string) (GithubRepo, error) {
-	row := q.db.QueryRow(ctx, getGithubRepoByName, name)
-	var i GithubRepo
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.RepoID,
-		&i.InstallationID,
-		&i.GithubID,
-		&i.Name,
-		&i.FullName,
-		&i.Url,
-		&i.IsActive,
-	)
-	return i, err
-}
-
 const getGithubReposWithCoreRepo = `-- name: GetGithubReposWithCoreRepo :one
 SELECT
     g.id, g.created_at, g.updated_at, g.repo_id, g.installation_id, g.github_id, g.name, g.full_name, g.url, g.is_active,
@@ -254,7 +136,7 @@ type GetGithubReposWithCoreRepoRow struct {
 	Name           string      `json:"name"`
 	FullName       string      `json:"full_name"`
 	Url            string      `json:"url"`
-	IsActive       pgtype.Bool `json:"is_active"`
+	IsActive       bool        `json:"is_active"`
 	Repo           []byte      `json:"repo"`
 }
 
@@ -277,53 +159,29 @@ func (q *Queries) GetGithubReposWithCoreRepo(ctx context.Context, id uuid.UUID) 
 	return i, err
 }
 
-const updateGithubRepo = `-- name: UpdateGithubRepo :one
+const setRepoIDonGihubRepo = `-- name: SetRepoIDonGihubRepo :exec
 UPDATE github_repos
-SET repo_id = $2,
-    installation_id = $3,
-    github_id = $4,
-    name = $5,
-    full_name = $6,
-    url = $7,
-    is_active = $8
+SET repo_id = $2
 WHERE id = $1
-RETURNING id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
 `
 
-type UpdateGithubRepoParams struct {
-	ID             uuid.UUID   `json:"id"`
-	RepoID         pgtype.UUID `json:"repo_id"`
-	InstallationID uuid.UUID   `json:"installation_id"`
-	GithubID       int64       `json:"github_id"`
-	Name           string      `json:"name"`
-	FullName       string      `json:"full_name"`
-	Url            string      `json:"url"`
-	IsActive       pgtype.Bool `json:"is_active"`
+type SetRepoIDonGihubRepoParams struct {
+	ID     uuid.UUID   `json:"id"`
+	RepoID pgtype.UUID `json:"repo_id"`
 }
 
-func (q *Queries) UpdateGithubRepo(ctx context.Context, arg UpdateGithubRepoParams) (GithubRepo, error) {
-	row := q.db.QueryRow(ctx, updateGithubRepo,
-		arg.ID,
-		arg.RepoID,
-		arg.InstallationID,
-		arg.GithubID,
-		arg.Name,
-		arg.FullName,
-		arg.Url,
-		arg.IsActive,
-	)
-	var i GithubRepo
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.RepoID,
-		&i.InstallationID,
-		&i.GithubID,
-		&i.Name,
-		&i.FullName,
-		&i.Url,
-		&i.IsActive,
-	)
-	return i, err
+func (q *Queries) SetRepoIDonGihubRepo(ctx context.Context, arg SetRepoIDonGihubRepoParams) error {
+	_, err := q.db.Exec(ctx, setRepoIDonGihubRepo, arg.ID, arg.RepoID)
+	return err
+}
+
+const suspendedGithubRepo = `-- name: SuspendedGithubRepo :exec
+UPDATE github_repos
+SET is_active = false
+WHERE id = $1
+`
+
+func (q *Queries) SuspendedGithubRepo(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, suspendedGithubRepo, id)
+	return err
 }

@@ -14,7 +14,7 @@ import (
 const createGithubOrg = `-- name: CreateGithubOrg :one
 INSERT INTO github_orgs (installation_id, github_org_id, name)
 VALUES ($1, $2, $3)
-RETURNING id, created_at, updated_at, installation_id, github_org_id, name
+RETURNING id, created_at, updated_at, org_id, installation_id, github_org_id, name
 `
 
 type CreateGithubOrgParams struct {
@@ -30,6 +30,7 @@ func (q *Queries) CreateGithubOrg(ctx context.Context, arg CreateGithubOrgParams
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OrgID,
 		&i.InstallationID,
 		&i.GithubOrgID,
 		&i.Name,
@@ -48,7 +49,7 @@ func (q *Queries) DeleteGithubOrg(ctx context.Context, id uuid.UUID) error {
 }
 
 const getGithubOrgByGithubOrgID = `-- name: GetGithubOrgByGithubOrgID :one
-SELECT id, created_at, updated_at, installation_id, github_org_id, name
+SELECT id, created_at, updated_at, org_id, installation_id, github_org_id, name
 FROM github_orgs
 WHERE github_org_id = $1
 `
@@ -60,6 +61,7 @@ func (q *Queries) GetGithubOrgByGithubOrgID(ctx context.Context, githubOrgID int
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OrgID,
 		&i.InstallationID,
 		&i.GithubOrgID,
 		&i.Name,
@@ -68,7 +70,7 @@ func (q *Queries) GetGithubOrgByGithubOrgID(ctx context.Context, githubOrgID int
 }
 
 const getGithubOrgByID = `-- name: GetGithubOrgByID :one
-SELECT id, created_at, updated_at, installation_id, github_org_id, name
+SELECT id, created_at, updated_at, org_id, installation_id, github_org_id, name
 FROM github_orgs
 WHERE id = $1
 `
@@ -80,6 +82,7 @@ func (q *Queries) GetGithubOrgByID(ctx context.Context, id uuid.UUID) (GithubOrg
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OrgID,
 		&i.InstallationID,
 		&i.GithubOrgID,
 		&i.Name,
@@ -88,7 +91,7 @@ func (q *Queries) GetGithubOrgByID(ctx context.Context, id uuid.UUID) (GithubOrg
 }
 
 const getGithubOrgByInstallationID = `-- name: GetGithubOrgByInstallationID :many
-SELECT id, created_at, updated_at, installation_id, github_org_id, name
+SELECT id, created_at, updated_at, org_id, installation_id, github_org_id, name
 FROM github_orgs
 WHERE installation_id = $1
 `
@@ -106,6 +109,7 @@ func (q *Queries) GetGithubOrgByInstallationID(ctx context.Context, installation
 			&i.ID,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.OrgID,
 			&i.InstallationID,
 			&i.GithubOrgID,
 			&i.Name,
@@ -124,7 +128,7 @@ const updateGithubOrg = `-- name: UpdateGithubOrg :one
 UPDATE github_orgs
 SET installation_id = $2, github_org_id = $3, name = $4
 WHERE id = $1
-RETURNING id, created_at, updated_at, installation_id, github_org_id, name
+RETURNING id, created_at, updated_at, org_id, installation_id, github_org_id, name
 `
 
 type UpdateGithubOrgParams struct {
@@ -146,6 +150,7 @@ func (q *Queries) UpdateGithubOrg(ctx context.Context, arg UpdateGithubOrgParams
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.OrgID,
 		&i.InstallationID,
 		&i.GithubOrgID,
 		&i.Name,
