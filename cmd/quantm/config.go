@@ -21,7 +21,7 @@ type (
 		Github  *githubcfg.Config `koanf:"GITHUB"`  // Configuration for the github.
 		Slack   *pkg_slack.Config `koanf:"SLACK"`   // Configuration for the slack.
 
-		Secret  string `koanf:"SECRET"`  //
+		Secret  string `koanf:"SECRET"`  // Secret key for JWE.
 		Debug   bool   `koanf:"DEBUG"`   // Flag to enable debug mode.
 		Migrate bool   `koanf:"MIGRATE"` // Flag to enable database migration.
 	}
