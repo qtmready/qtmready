@@ -76,6 +76,10 @@ func (s *InstallWorkflowState) on_webhook(ctx workflow.Context) defs.ChannelHand
 		s.entity.InstallationType = s.webhook.Installation.Account.Type
 		s.entity.SenderID = s.webhook.Sender.ID
 		s.entity.SenderLogin = s.webhook.Sender.Login
+
+		if s.webhook.Action != "created" && s.webhook.Action != "updated" {
+			s.status.request = true
+		}
 	}
 }
 
