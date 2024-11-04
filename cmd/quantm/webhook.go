@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"net/http"
 
 	"github.com/labstack/echo/v4"
 
@@ -15,7 +17,12 @@ type (
 )
 
 func (w *WebhookService) Start(ctx context.Context) error {
-	return w.Echo.Start(":8000")
+	err := w.Echo.Start(":8000")
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+
+	return err
 }
 
 func (w *WebhookService) Stop(ctx context.Context) error {
