@@ -10,6 +10,7 @@ import (
 	"go.breu.io/durex/queues"
 	"go.breu.io/graceful"
 
+	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/durable"
 	githubacts "go.breu.io/quantm/internal/hooks/github/activities"
@@ -31,6 +32,9 @@ func main() {
 	cfg := &Config{}
 	cfg.Load()
 
+	configure_logger(cfg.Debug)
+	auth.SetSecret(cfg.Secret)
+
 	ctx := context.Background()
 	quit := make(chan os.Signal, 1)
 
@@ -41,7 +45,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	queues.SetDefaultPrefix("io.ctrlplane.")
+	queues.SetDefaultPrefix("ai.ctrlplane.")
 	configure_qhooks()
 
 	nmd := nomad.New(nomad.WithConfig(cfg.Nomad))

@@ -3,8 +3,8 @@ package githubweb
 import (
 	"bytes"
 	"io"
+	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/labstack/echo/v4"
 
@@ -136,15 +136,33 @@ func (h *Webhook) on(event WebhookEvent) (WebhookEventHandler, bool) {
 func (h *Webhook) install(ctx echo.Context, event WebhookEvent, id string) error {
 	payload := &githubdefs.WebhookInstall{}
 	if err := ctx.Bind(payload); err != nil {
+		slog.Info("failed to bind payload", "error", err.Error())
 		return erratic.NewBadRequestError("reason", "invalid payload")
 	}
 
-	num, ok := githubv1.SetupAction_value[strings.ToUpper(payload.Action)]
-	if !ok {
-		return erratic.NewBadRequestError("reason", "invalid setup action", "action", payload.Action)
+	action := githubv1.SetupAction_UNSPECIFIED
+
+	switch payload.Action {
+	case "created":
+		action = githubv1.SetupAction_INSTALL
+	case "updated":
+		action = githubv1.SetupAction_UPDATE
+	case "deleted":
+		action = githubv1.SetupAction_DELETE
+	case "new_permissions_accepted":
+		action = githubv1.SetupAction_NEW_PERMISSIONS_ACCEPTED
+	case "suspend":
+		action = githubv1.SetupAction_SUSPEND
+	case "unsuspend":
+		action = githubv1.SetupAction_UNSUSPEND
 	}
 
-	action := githubv1.SetupAction(num)
+	if action == githubv1.SetupAction_UNSPECIFIED {
+		slog.Warn("unsupported action during github install", "action", payload.Action)
+
+		return ctx.NoContent(http.StatusNoContent)
+	}
+
 	opts := githubdefs.NewInstallWorkflowOptions(payload.Installation.ID, action)
 
 	_, err := durable.
