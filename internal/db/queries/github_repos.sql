@@ -10,12 +10,12 @@ WHERE id = $1;
 
 -- name: UpdateGithubRepo :one
 UPDATE github_repos
-SET repo_id = $2, 
-    installation_id = $3, 
-    github_id = $4, 
-    name = $5, 
-    full_name = $6, 
-    url = $7, 
+SET repo_id = $2,
+    installation_id = $3,
+    github_id = $4,
+    name = $5,
+    full_name = $6,
+    url = $7,
     is_active = $8
 WHERE id = $1
 RETURNING *;
@@ -24,6 +24,11 @@ RETURNING *;
 DELETE FROM github_repos
 WHERE id = $1
 RETURNING id;
+
+-- name: GetGithubRepoByGithubID :one
+SELECT *
+FROM github_repos
+WHERE github_id = $1;
 
 -- name: GetGithubRepoByFullName :one
 SELECT *
@@ -41,8 +46,8 @@ FROM github_repos
 WHERE installation_id = $1 AND github_id = $2;
 
 -- name: GetGithubReposWithCoreRepo :one
-SELECT 
-    g.*, 
+SELECT
+    g.*,
     json_build_object(
         'repo_id', r.id,
         'repo_name', r.name,
@@ -53,15 +58,15 @@ SELECT
         'threshold', r.threshold,
         'stale_duration', r.stale_duration
     ) AS repo
-FROM 
+FROM
     github_repos g
-LEFT JOIN 
+LEFT JOIN
     repos r ON g.repo_id = r.id
-WHERE 
+WHERE
     g.id = $1 -- TODO - based on intallation id or some other
 LIMIT 1;
 
 -- name: GetGithubRepo :one
 SELECT *
 FROM github_repos
-WHERE name = $1 AND full_name = $2 AND github_id = $3; 
+WHERE name = $1 AND full_name = $2 AND github_id = $3;

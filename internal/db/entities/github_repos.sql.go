@@ -121,6 +121,30 @@ func (q *Queries) GetGithubRepoByFullName(ctx context.Context, fullName string) 
 	return i, err
 }
 
+const getGithubRepoByGithubID = `-- name: GetGithubRepoByGithubID :one
+SELECT id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
+FROM github_repos
+WHERE github_id = $1
+`
+
+func (q *Queries) GetGithubRepoByGithubID(ctx context.Context, githubID int64) (GithubRepo, error) {
+	row := q.db.QueryRow(ctx, getGithubRepoByGithubID, githubID)
+	var i GithubRepo
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.RepoID,
+		&i.InstallationID,
+		&i.GithubID,
+		&i.Name,
+		&i.FullName,
+		&i.Url,
+		&i.IsActive,
+	)
+	return i, err
+}
+
 const getGithubRepoByID = `-- name: GetGithubRepoByID :one
 SELECT id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
 FROM github_repos
@@ -199,8 +223,8 @@ func (q *Queries) GetGithubRepoByName(ctx context.Context, name string) (GithubR
 }
 
 const getGithubReposWithCoreRepo = `-- name: GetGithubReposWithCoreRepo :one
-SELECT 
-    g.id, g.created_at, g.updated_at, g.repo_id, g.installation_id, g.github_id, g.name, g.full_name, g.url, g.is_active, 
+SELECT
+    g.id, g.created_at, g.updated_at, g.repo_id, g.installation_id, g.github_id, g.name, g.full_name, g.url, g.is_active,
     json_build_object(
         'repo_id', r.id,
         'repo_name', r.name,
@@ -211,11 +235,11 @@ SELECT
         'threshold', r.threshold,
         'stale_duration', r.stale_duration
     ) AS repo
-FROM 
+FROM
     github_repos g
-LEFT JOIN 
+LEFT JOIN
     repos r ON g.repo_id = r.id
-WHERE 
+WHERE
     g.id = $1 -- TODO - based on intallation id or some other
 LIMIT 1
 `
@@ -255,12 +279,12 @@ func (q *Queries) GetGithubReposWithCoreRepo(ctx context.Context, id uuid.UUID) 
 
 const updateGithubRepo = `-- name: UpdateGithubRepo :one
 UPDATE github_repos
-SET repo_id = $2, 
-    installation_id = $3, 
-    github_id = $4, 
-    name = $5, 
-    full_name = $6, 
-    url = $7, 
+SET repo_id = $2,
+    installation_id = $3,
+    github_id = $4,
+    name = $5,
+    full_name = $6,
+    url = $7,
     is_active = $8
 WHERE id = $1
 RETURNING id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active

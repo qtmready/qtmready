@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
@@ -42,4 +43,32 @@ func (a *Install) GetOrCreateInstallation(
 	}
 
 	return nil, err
+}
+
+func (a *Install) GetOrCreateRepo(ctx context.Context, entity *entities.GithubRepo) error {
+	_, err := db.Queries().GetGithubRepoByGithubID(ctx, entity.GithubID)
+	if err == nil {
+		return nil
+	}
+
+	if errors.Is(err, pgx.ErrNoRows) {
+		create := entities.CreateGithubRepoParams{
+			RepoID:         entity.RepoID,
+			InstallationID: entity.InstallationID,
+			GithubID:       entity.GithubID,
+			Name:           entity.Name,
+			FullName:       entity.FullName,
+			Url:            entity.Url,
+			IsActive:       pgtype.Bool{Bool: true, Valid: true},
+		}
+
+		_, err = db.Queries().CreateGithubRepo(ctx, create)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	return err
 }
