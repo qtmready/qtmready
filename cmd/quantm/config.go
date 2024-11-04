@@ -20,7 +20,10 @@ type (
 		Nomad   *nomad.Config     `koanf:"NOMAD"`   // Configuration for Nomad.
 		Github  *githubcfg.Config `koanf:"GITHUB"`  // Configuration for the github.
 		Slack   *pkg_slack.Config `koanf:"SLACK"`   // Configuration for the slack.
-		Migrate bool              `koanf:"MIGRATE"` // Flag to enable database migration.
+
+		Secret  string `koanf:"SECRET"`  //
+		Debug   bool   `koanf:"DEBUG"`   // Flag to enable debug mode.
+		Migrate bool   `koanf:"MIGRATE"` // Flag to enable database migration.
 	}
 )
 

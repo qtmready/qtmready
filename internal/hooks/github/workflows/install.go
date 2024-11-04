@@ -13,7 +13,7 @@ import (
 
 type (
 	StatusInstall struct {
-		wehook  bool
+		webhook bool
 		request bool
 	}
 
@@ -37,7 +37,7 @@ func Install(ctx workflow.Context) error {
 	selector.AddReceive(rqst, state.on_request(ctx))
 
 	wb := workflow.GetSignalChannel(ctx, githubdefs.SignalWebhookInstall.String())
-	selector.AddReceive(wb, state.on_webhook)
+	selector.AddReceive(wb, state.on_webhook(ctx))
 
 	for !state.done() {
 		selector.Select(ctx)
@@ -60,13 +60,27 @@ func (s *InstallWorkflowState) on_request(ctx workflow.Context) defs.ChannelHand
 	return func(rx workflow.ReceiveChannel, more bool) {
 		rx.Receive(ctx, s.request)
 		s.status.request = true
+
+		s.entity.OrgID = s.request.OrgID
 	}
 }
 
-func (s *InstallWorkflowState) on_webhook(rx workflow.ReceiveChannel, more bool) {}
+func (s *InstallWorkflowState) on_webhook(ctx workflow.Context) defs.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		rx.Receive(ctx, s.webhook)
+		s.status.webhook = true
+
+		s.entity.InstallationID = s.webhook.Installation.ID
+		s.entity.InstallationLogin = s.webhook.Installation.Account.Login
+		s.entity.InstallationLoginID = s.webhook.Installation.Account.ID
+		s.entity.InstallationType = s.webhook.Installation.Account.Type
+		s.entity.SenderID = s.webhook.Sender.ID
+		s.entity.SenderLogin = s.webhook.Sender.Login
+	}
+}
 
 func (s *InstallWorkflowState) done() bool {
-	return s.status.request && s.status.wehook
+	return s.status.request && s.status.webhook
 }
 
 func (s *InstallWorkflowState) sync(ctx workflow.Context) {}
@@ -74,6 +88,8 @@ func (s *InstallWorkflowState) sync(ctx workflow.Context) {}
 func NewInstallWorkflowState(ctx workflow.Context) *InstallWorkflowState {
 	return &InstallWorkflowState{
 		log:     workflow.GetLogger(ctx),
+		status:  StatusInstall{webhook: false, request: false},
+		entity:  &entities.GithubInstallation{},
 		request: &githubdefs.RequestInstall{},
 		webhook: &githubdefs.WebhookInstall{},
 	}
