@@ -74,6 +74,7 @@ type GithubOrg struct {
 	ID             uuid.UUID `json:"id"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
+	OrgID          uuid.UUID `json:"org_id"`
 	InstallationID uuid.UUID `json:"installation_id"`
 	GithubOrgID    int64     `json:"github_org_id"`
 	Name           string    `json:"name"`
@@ -89,7 +90,7 @@ type GithubRepo struct {
 	Name           string      `json:"name"`
 	FullName       string      `json:"full_name"`
 	Url            string      `json:"url"`
-	IsActive       pgtype.Bool `json:"is_active"`
+	IsActive       bool        `json:"is_active"`
 }
 
 type GithubUser struct {

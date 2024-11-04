@@ -87,8 +87,6 @@ func (s *InstallWorkflowState) done() bool {
 	return s.status.request && s.status.webhook
 }
 
-func (s *InstallWorkflowState) sync(ctx workflow.Context) {}
-
 func NewInstallWorkflowState(ctx workflow.Context) *InstallWorkflowState {
 	return &InstallWorkflowState{
 		log:     workflow.GetLogger(ctx),

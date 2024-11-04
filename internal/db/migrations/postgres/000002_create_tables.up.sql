@@ -168,6 +168,7 @@ create table github_orgs (
   id uuid primary key default uuid_generate_v7(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
+  org_id uuid not null references orgs (id),
   installation_id uuid not null references github_installations (id) not null,
   github_org_id bigint not null,
   name varchar(255) not null
@@ -210,7 +211,7 @@ create table github_repos (
   name varchar(255) not null,
   full_name varchar(255) not null,
   url varchar(255) not null,
-  is_active boolean
+  is_active boolean not null default true
 );
 
 -- integrations/github::github_repos::index
@@ -230,7 +231,7 @@ create table messaging (
   hook varchar(255) not null,
   kind varchar(255) not null,
   link_to uuid not null,
-  data jsonb not null
+  data jsonb not null default '{}'
 );
 
 -- messaging::messaging::trigger

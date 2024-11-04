@@ -5,14 +5,13 @@ import (
 	"errors"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
+	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
 )
 
 type (
-	// Install groups all the activities required for the Github Installation.
 	Install struct{}
 )
 
@@ -45,30 +44,24 @@ func (a *Install) GetOrCreateInstallation(
 	return nil, err
 }
 
-func (a *Install) GetOrCreateRepo(ctx context.Context, entity *entities.GithubRepo) error {
-	_, err := db.Queries().GetGithubRepoByGithubID(ctx, entity.GithubID)
-	if err == nil {
-		return nil
+func (a *Install) SyncRepos(ctx context.Context, repos []githubdefs.PartialRepository) error {
+	tx, qtx, err := db.Transaction(ctx)
+	if err != nil {
+		return err
 	}
 
-	if errors.Is(err, pgx.ErrNoRows) {
-		create := entities.CreateGithubRepoParams{
-			RepoID:         entity.RepoID,
-			InstallationID: entity.InstallationID,
-			GithubID:       entity.GithubID,
-			Name:           entity.Name,
-			FullName:       entity.FullName,
-			Url:            entity.Url,
-			IsActive:       pgtype.Bool{Bool: true, Valid: true},
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	for _, repo := range repos {
+		_, err := qtx.GetGithubRepoByGithubID(ctx, repo.ID)
+		if err == nil {
+			continue
 		}
 
-		_, err = db.Queries().CreateGithubRepo(ctx, create)
-		if err != nil {
+		if !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
-
-		return nil
 	}
 
-	return err
+	return nil
 }
