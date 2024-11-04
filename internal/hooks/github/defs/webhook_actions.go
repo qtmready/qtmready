@@ -1,5 +1,9 @@
 package githubdefs
 
+const (
+	NoCommit = "0000000000000000000000000000000000000000"
+)
+
 // Installation actions.
 const (
 	InstallationCreated                = "created"

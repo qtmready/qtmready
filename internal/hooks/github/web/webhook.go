@@ -33,6 +33,8 @@ type (
 	WebhookEventHandlers map[WebhookEvent]WebhookEventHandler
 )
 
+func (e WebhookEvent) String() string { return string(e) }
+
 const (
 	WebhookEventNone                                WebhookEvent = ""
 	WebhookEventAppAuthorization                    WebhookEvent = "github_app_authorization"
@@ -157,7 +159,27 @@ func (h *Webhook) install(ctx echo.Context, event WebhookEvent, id string) error
 
 // push handles the push event.
 func (h *Webhook) push(ctx echo.Context, event WebhookEvent, id string) error {
-	return nil
+	payload := &githubdefs.Push{}
+	if err := ctx.Bind(payload); err != nil {
+		return erratic.NewBadRequestError("reason", "invalid payload")
+	}
+
+	if payload.After == githubdefs.NoCommit {
+		return ctx.NoContent(http.StatusNoContent)
+	}
+
+	event = WebhookEvent(ctx.Request().Header.Get("X-GitHub-Event"))
+	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
+	opts := githubdefs.NewPushWorkflowOptions(payload.Installation, payload.Repository.Name, event.String(), delievery)
+
+	_, err := durable.
+		OnHooks().
+		SignalWithStartWorkflow(ctx.Request().Context(), opts, githubdefs.SignalWebhookPush, payload, githubwfs.Push)
+	if err != nil {
+		return erratic.NewInternalServerError("reason", "failed to signal workflow", "error", err.Error())
+	}
+
+	return ctx.NoContent(http.StatusNoContent)
 }
 
 // pr handles the pull request event.
