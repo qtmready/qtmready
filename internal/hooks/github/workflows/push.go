@@ -14,7 +14,6 @@ type (
 	}
 )
 
-// Install installs the Github Integration.
 func Push(ctx workflow.Context) error {
 	state := NewPushWorkflowState(ctx)
 	selector := workflow.NewSelector(ctx)
