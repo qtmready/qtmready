@@ -51,8 +51,6 @@ func Install(ctx workflow.Context) error {
 		return err
 	}
 
-	state.sync(ctx)
-
 	return nil
 }
 
