@@ -45,9 +45,11 @@ func Install(ctx workflow.Context) error {
 
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	// Get or create the installation.
-	err := workflow.ExecuteActivity(ctx, state.do.GetOrCreateInstallation, state.entity).Get(ctx, state.entity)
-	if err != nil {
+	if err := workflow.ExecuteActivity(ctx, state.do.GetOrCreateInstallation, state.entity).Get(ctx, state.entity); err != nil {
+		return err
+	}
+
+	if err := workflow.ExecuteActivity(ctx, state.do.SyncRepos, state.webhook).Get(ctx, nil); err != nil {
 		return err
 	}
 
