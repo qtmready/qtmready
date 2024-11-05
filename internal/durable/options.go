@@ -196,9 +196,13 @@ func WithKind(kind string) WorkflowOptionBuilder {
 }
 
 // WithMeta sets the meta for the workflow.
-func WithMeta(meta map[string]string) WorkflowOptionBuilder {
+func WithMeta(k, v string) WorkflowOptionBuilder {
 	return func(o *WorkflowOptions) {
-		o.Meta = meta
+		if o.Meta == nil {
+			o.Meta = make(map[string]string)
+		}
+
+		o.Meta[k] = v
 	}
 }
 
