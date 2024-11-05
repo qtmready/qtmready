@@ -23,6 +23,11 @@ UPDATE github_repos
 SET is_active = false
 WHERE id = $1;
 
+-- name: ActivateGithubRepo :exec
+UPDATE github_repos
+SET is_active = true
+WHERE id = $1;
+
 -- name: GetGithubReposWithCoreRepo :one
 SELECT
     g.*,

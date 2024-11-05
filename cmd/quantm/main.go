@@ -12,6 +12,7 @@ import (
 
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/db"
+	"go.breu.io/quantm/internal/db/migrations"
 	"go.breu.io/quantm/internal/durable"
 	githubacts "go.breu.io/quantm/internal/hooks/github/activities"
 	githubcfg "go.breu.io/quantm/internal/hooks/github/config"
@@ -57,6 +58,13 @@ func main() {
 	app.Add(Nomad, nmd, DB, Durable, Github)
 	app.Add(HooksQ, durable.OnHooks(), DB, Durable, Github)
 	app.Add(Webhook, NewWebhookServer(), Durable, Github)
+
+	if cfg.Migrate {
+		if err := migrations.Run(ctx, cfg.DB); err != nil {
+			slog.Error("unable to migrate database", "error", err.Error())
+			os.Exit(1)
+		}
+	}
 
 	if err := app.Start(ctx); err != nil {
 		slog.Error("unable to start service", "error", err.Error())
