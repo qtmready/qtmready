@@ -5,9 +5,9 @@ import (
 )
 
 type (
-	SyncRepoActivity struct {
-		InstallationID uuid.UUID           `json:"installation_id"`
-		Repos          []PartialRepository `json:"repos"`
-		IsDeleted      bool                `json:"is_deleted"`
+	SyncRepo struct {
+		InstallationID uuid.UUID         `json:"installation_id"`
+		Repo           PartialRepository `json:"repo"`
+		IsDeleted      bool              `json:"is_deleted"`
 	}
 )

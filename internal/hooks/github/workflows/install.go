@@ -28,7 +28,11 @@ type (
 	}
 )
 
-// Install installs the Github Integration.
+// Install handles the installation, and associate org with installation id based on incoming signals
+// (webhook, complete installation request).
+// Critically, it synchronizes the GitHub installation with the internal system.
+//
+// NOTE: This workflow must not be executed directly, rather always use SignalWithStartWorkflow.
 func Install(ctx workflow.Context) error {
 	state := NewInstallWorkflowState(ctx)
 	selector := workflow.NewSelector(ctx)
@@ -49,8 +53,14 @@ func Install(ctx workflow.Context) error {
 		return err
 	}
 
-	if err := workflow.ExecuteActivity(ctx, state.do.SyncRepos, state.webhook).Get(ctx, nil); err != nil {
-		return err
+	for _, repo := range state.webhook.Repositories {
+		payload := &githubdefs.SyncRepo{InstallationID: state.entity.ID, Repo: repo}
+
+		selector.AddFuture(workflow.ExecuteActivity(ctx, state.do.AddRepoForInstall, payload), func(f workflow.Future) {})
+	}
+
+	for range state.webhook.Repositories {
+		selector.Select(ctx)
 	}
 
 	return nil

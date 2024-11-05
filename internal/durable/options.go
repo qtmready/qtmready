@@ -75,6 +75,9 @@ func (o *WorkflowOptions) ParentWorkflowID() string {
 // IDSuffix returns the sanitized suffix of the workflow ID.
 func (o *WorkflowOptions) IDSuffix() string {
 	parts := []string{}
+	if o.Hook != nil {
+		parts = append(parts, *o.Hook)
+	}
 
 	// Subject
 	if o.Subject != nil {

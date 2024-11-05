@@ -25,6 +25,10 @@ type (
 func (s *GithubService) Install(
 	ctx context.Context, req *connect.Request[githubv1.InstallRequest],
 ) (*connect.Response[emptypb.Empty], error) {
+	if req.Msg.Action != githubv1.SetupAction_INSTALL {
+		return connect.NewResponse(&emptypb.Empty{}), nil
+	}
+
 	opts := ghdefs.NewInstallWorkflowOptions(req.Msg.InstallationId, req.Msg.Action)
 	args := ghdefs.RequestInstall{
 		InstallationID: req.Msg.InstallationId,
