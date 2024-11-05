@@ -13,6 +13,17 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const activateGithubRepo = `-- name: ActivateGithubRepo :exec
+UPDATE github_repos
+SET is_active = true
+WHERE id = $1
+`
+
+func (q *Queries) ActivateGithubRepo(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, activateGithubRepo, id)
+	return err
+}
+
 const createGithubRepo = `-- name: CreateGithubRepo :one
 INSERT INTO github_repos (installation_id, github_id, name, full_name, url)
 VALUES ($1, $2, $3, $4, $5)

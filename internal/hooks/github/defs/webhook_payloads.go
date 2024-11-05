@@ -11,8 +11,8 @@ type (
 	WebhookInstallRepos struct {
 		Action              string              `json:"action"`
 		Installation        Installation        `json:"installation"`
-		RepositoriesAdeed   []PartialRepository `json:"repositories_added"`
-		RepositoriesRemoved []PartialRepository `json:"repositories_removed"`
 		RepositorySelection string              `json:"repository_selection"`
+		RepositoriesAdded   []PartialRepository `json:"repositories_added"`
+		RepositoriesRemoved []PartialRepository `json:"repositories_removed"`
 	}
 )

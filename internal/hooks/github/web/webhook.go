@@ -122,9 +122,10 @@ func (h *Webhook) Handler(ctx echo.Context) error {
 // on returns the event handler for the given event type.
 func (h *Webhook) on(event WebhookEvent) (WebhookEventHandler, bool) {
 	handlers := WebhookEventHandlers{
-		WebhookEventInstallation: h.install,
-		WebhookEventPush:         h.push,
-		WebhookEventPullRequest:  h.pr,
+		WebhookEventInstallation:             h.install,
+		WebhookEventInstallationRepositories: h.install_repos,
+		WebhookEventPush:                     h.push,
+		WebhookEventPullRequest:              h.pr,
 	}
 
 	fn, ok := handlers[event]
@@ -175,6 +176,22 @@ func (h *Webhook) install(ctx echo.Context, event WebhookEvent, id string) error
 	return ctx.NoContent(http.StatusNoContent)
 }
 
+func (h *Webhook) install_repos(ctx echo.Context, _ WebhookEvent, id string) error {
+	payload := &githubdefs.WebhookInstallRepos{}
+	if err := ctx.Bind(payload); err != nil {
+		return erratic.NewBadRequestError("reason", "invalid payload")
+	}
+
+	opts := githubdefs.NewInstallReposWorkflowOptions(payload.Installation.ID, payload.Action, id)
+
+	_, err := durable.OnHooks().ExecuteWorkflow(ctx.Request().Context(), opts, githubwfs.InstallRepos, payload)
+	if err != nil {
+		return erratic.NewInternalServerError("reason", "failed to signal workflow", "error", err.Error())
+	}
+
+	return ctx.NoContent(http.StatusNoContent)
+}
+
 // push handles the push event.
 func (h *Webhook) push(ctx echo.Context, event WebhookEvent, id string) error {
 	payload := &githubdefs.Push{}
@@ -186,7 +203,6 @@ func (h *Webhook) push(ctx echo.Context, event WebhookEvent, id string) error {
 		return ctx.NoContent(http.StatusNoContent)
 	}
 
-	event = WebhookEvent(ctx.Request().Header.Get("X-GitHub-Event"))
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
 	opts := githubdefs.NewPushWorkflowOptions(payload.Installation, payload.Repository.Name, event.String(), delievery)
 
