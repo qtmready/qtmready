@@ -11,6 +11,8 @@ import (
 )
 
 type (
+	// WebhookService is a webserver to manage webhooks for all the hooks. It conforms to the graceful.Service
+	// interface, allowing for graceful start and shutdown. It wraps echo.Echo to provide this functionality.
 	WebhookService struct {
 		*echo.Echo
 	}

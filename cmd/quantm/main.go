@@ -93,5 +93,8 @@ func configure_qhooks() {
 	if q != nil {
 		q.RegisterWorkflow(githubwfs.Install)
 		q.RegisterActivity(&githubacts.Install{})
+
+		q.RegisterWorkflow(githubwfs.InstallRepos)
+		q.RegisterActivity(&githubacts.InstallRepos{})
 	}
 }
