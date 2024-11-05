@@ -62,8 +62,9 @@ func main() {
 	if cfg.Migrate {
 		if err := migrations.Run(ctx, cfg.DB); err != nil {
 			slog.Error("unable to migrate database", "error", err.Error())
-			os.Exit(1)
 		}
+
+		os.Exit(0)
 	}
 
 	if err := app.Start(ctx); err != nil {
@@ -80,6 +81,8 @@ func main() {
 	}
 
 	slog.Info("service stopped, exiting...")
+
+	os.Exit(0)
 }
 
 func configure_qhooks() {
