@@ -4,7 +4,6 @@ import (
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
 	corev1 "go.breu.io/quantm/internal/proto/ctrlplane/core/v1"
 )
@@ -20,7 +19,7 @@ func CoreRepoToProto(repo *entities.Repo) *corev1.Repo {
 		HookId:        repo.HookID.String(),
 		DefaultBranch: repo.DefaultBranch,
 		Threshold:     repo.Threshold,
-		StaleDuration: db.IntervalToDurationString(repo.StaleDuration),
+		StaleDuration: PgIntervalToDuration(repo.StaleDuration),
 		OrgId:         repo.OrgID.String(),
 	}
 }
@@ -39,6 +38,6 @@ func ProtoToCoreRepo(proto *corev1.Repo) *entities.Repo {
 		HookID:        uuid.MustParse(proto.GetHookId()),
 		DefaultBranch: proto.GetDefaultBranch(),
 		Threshold:     proto.GetThreshold(),
-		StaleDuration: db.StringToInterval(proto.GetStaleDuration()),
+		StaleDuration: DurationToPgInterval(proto.GetStaleDuration()),
 	}
 }

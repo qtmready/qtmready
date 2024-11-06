@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const activateGithubRepo = `-- name: ActivateGithubRepo :exec
@@ -138,17 +137,17 @@ LIMIT 1
 `
 
 type GetGithubReposWithCoreRepoRow struct {
-	ID             uuid.UUID   `json:"id"`
-	CreatedAt      time.Time   `json:"created_at"`
-	UpdatedAt      time.Time   `json:"updated_at"`
-	RepoID         pgtype.UUID `json:"repo_id"`
-	InstallationID uuid.UUID   `json:"installation_id"`
-	GithubID       int64       `json:"github_id"`
-	Name           string      `json:"name"`
-	FullName       string      `json:"full_name"`
-	Url            string      `json:"url"`
-	IsActive       bool        `json:"is_active"`
-	Repo           []byte      `json:"repo"`
+	ID             uuid.UUID `json:"id"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	RepoID         uuid.UUID `json:"repo_id"`
+	InstallationID uuid.UUID `json:"installation_id"`
+	GithubID       int64     `json:"github_id"`
+	Name           string    `json:"name"`
+	FullName       string    `json:"full_name"`
+	Url            string    `json:"url"`
+	IsActive       bool      `json:"is_active"`
+	Repo           []byte    `json:"repo"`
 }
 
 func (q *Queries) GetGithubReposWithCoreRepo(ctx context.Context, id uuid.UUID) (GetGithubReposWithCoreRepoRow, error) {
@@ -177,8 +176,8 @@ WHERE id = $1
 `
 
 type SetRepoIDonGihubRepoParams struct {
-	ID     uuid.UUID   `json:"id"`
-	RepoID pgtype.UUID `json:"repo_id"`
+	ID     uuid.UUID `json:"id"`
+	RepoID uuid.UUID `json:"repo_id"`
 }
 
 func (q *Queries) SetRepoIDonGihubRepo(ctx context.Context, arg SetRepoIDonGihubRepoParams) error {

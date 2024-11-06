@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createOAuthAccount = `-- name: CreateOAuthAccount :one
@@ -20,11 +19,11 @@ RETURNING id, created_at, updated_at, user_id, provider, provider_account_id, ex
 `
 
 type CreateOAuthAccountParams struct {
-	UserID            uuid.UUID   `json:"user_id"`
-	Provider          string      `json:"provider"`
-	ProviderAccountID string      `json:"provider_account_id"`
-	ExpiresAt         time.Time   `json:"expires_at"`
-	Type              pgtype.Text `json:"type"`
+	UserID            uuid.UUID `json:"user_id"`
+	Provider          string    `json:"provider"`
+	ProviderAccountID string    `json:"provider_account_id"`
+	ExpiresAt         time.Time `json:"expires_at"`
+	Type              string    `json:"type"`
 }
 
 func (q *Queries) CreateOAuthAccount(ctx context.Context, arg CreateOAuthAccountParams) (OauthAccount, error) {

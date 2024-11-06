@@ -81,16 +81,16 @@ type GithubOrg struct {
 }
 
 type GithubRepo struct {
-	ID             uuid.UUID   `json:"id"`
-	CreatedAt      time.Time   `json:"created_at"`
-	UpdatedAt      time.Time   `json:"updated_at"`
-	RepoID         pgtype.UUID `json:"repo_id"`
-	InstallationID uuid.UUID   `json:"installation_id"`
-	GithubID       int64       `json:"github_id"`
-	Name           string      `json:"name"`
-	FullName       string      `json:"full_name"`
-	Url            string      `json:"url"`
-	IsActive       bool        `json:"is_active"`
+	ID             uuid.UUID `json:"id"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	RepoID         uuid.UUID `json:"repo_id"`
+	InstallationID uuid.UUID `json:"installation_id"`
+	GithubID       int64     `json:"github_id"`
+	Name           string    `json:"name"`
+	FullName       string    `json:"full_name"`
+	Url            string    `json:"url"`
+	IsActive       bool      `json:"is_active"`
 }
 
 type GithubUser struct {
@@ -114,14 +114,14 @@ type Messaging struct {
 }
 
 type OauthAccount struct {
-	ID                uuid.UUID   `json:"id"`
-	CreatedAt         time.Time   `json:"created_at"`
-	UpdatedAt         time.Time   `json:"updated_at"`
-	UserID            uuid.UUID   `json:"user_id"`
-	Provider          string      `json:"provider"`
-	ProviderAccountID string      `json:"provider_account_id"`
-	ExpiresAt         time.Time   `json:"expires_at"`
-	Type              pgtype.Text `json:"type"`
+	ID                uuid.UUID `json:"id"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
+	UserID            uuid.UUID `json:"user_id"`
+	Provider          string    `json:"provider"`
+	ProviderAccountID string    `json:"provider_account_id"`
+	ExpiresAt         time.Time `json:"expires_at"`
+	Type              string    `json:"type"`
 }
 
 type Org struct {

@@ -2,7 +2,6 @@ package cast
 
 import (
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"go.breu.io/quantm/internal/db/entities"
@@ -19,7 +18,7 @@ func AccountToProto(account *entities.OauthAccount) *authv1.Account {
 		UserId:            account.UserID.String(),
 		Provider:          AuthProviderToProto(account.Provider),
 		ProviderAccountId: account.ProviderAccountID,
-		Kind:              account.Type.String,
+		Kind:              account.Type,
 	}
 }
 
@@ -33,7 +32,7 @@ func ProtoToAccount(proto *authv1.Account) *entities.OauthAccount {
 		Provider:          ProtoToAuthProvider(proto.GetProvider()),
 		ProviderAccountID: proto.GetProviderAccountId(),
 		ExpiresAt:         proto.GetExpiresAt().AsTime(),
-		Type:              pgtype.Text{String: proto.GetKind(), Valid: true},
+		Type:              proto.GetKind(),
 	}
 }
 
@@ -49,7 +48,7 @@ func ProtoToCreateAccountParams(proto *authv1.CreateAccountRequest) entities.Cre
 		Provider:          ProtoToAuthProvider(proto.GetProvider()),
 		ProviderAccountID: proto.GetProviderAccountId(),
 		ExpiresAt:         proto.GetExpiresAt().AsTime(),
-		Type:              pgtype.Text{String: proto.GetKind(), Valid: true},
+		Type:              proto.GetKind(),
 	}
 }
 

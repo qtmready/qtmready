@@ -107,7 +107,7 @@ create table oauth_accounts (
   provider varchar(255) not null,
   provider_account_id varchar(255) not null,
   expires_at timestamptz not null,
-  type varchar(255),
+  type varchar(255) not null,
   constraint oauth_accounts_unique_provider_account unique (provider, provider_account_id)
 );
 
@@ -129,7 +129,7 @@ create table repos (
   default_branch varchar(255) not null default 'main',
   is_monorepo boolean not null default false,
   threshold integer not null default 500,
-  stale_duration interval default '2 days'
+  stale_duration interval not null default '2 days'
 );
 
 -- core::repos::trigger
@@ -205,7 +205,7 @@ create table github_repos (
   id uuid primary key default uuid_generate_v7(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  repo_id uuid null references repos (id),
+  repo_id uuid not null references repos (id),
   installation_id uuid not null references github_installations (id),
   github_id bigint not null,
   name varchar(255) not null,
