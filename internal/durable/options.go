@@ -120,8 +120,9 @@ func (o *WorkflowOptions) IDSuffix() string {
 	sanitized := make([]string, 0)
 
 	for _, part := range parts {
-		if strings.TrimSpace(part) != "" {
-			sanitized = append(sanitized, part)
+		trim := strings.TrimSpace(part)
+		if trim != "" {
+			sanitized = append(sanitized, trim)
 		}
 	}
 

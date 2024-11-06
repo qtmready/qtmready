@@ -182,9 +182,9 @@ func (h *Webhook) install_repos(ctx echo.Context, _ WebhookEvent, id string) err
 		return erratic.NewBadRequestError("reason", "invalid payload")
 	}
 
-	opts := githubdefs.NewInstallReposWorkflowOptions(payload.Installation.ID, payload.Action, id)
+	opts := githubdefs.NewSyncReposWorkflows(payload.Installation.ID, payload.Action, id)
 
-	_, err := durable.OnHooks().ExecuteWorkflow(ctx.Request().Context(), opts, githubwfs.InstallRepos, payload)
+	_, err := durable.OnHooks().ExecuteWorkflow(ctx.Request().Context(), opts, githubwfs.SyncRepos, payload)
 	if err != nil {
 		return erratic.NewInternalServerError("reason", "failed to signal workflow", "error", err.Error())
 	}

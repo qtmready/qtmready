@@ -3,7 +3,9 @@ services:
   # required services
   #
   # - temporal: for workflow management
-  # - zitadel: for identity and access management
+  # - zitadel: for identity and access management (maybe)
+  # - questdb: for time series data (evalutation)
+  # - clickhouse: for time series data (evaluation)
   ################################
 
   # temporal.io
@@ -55,6 +57,45 @@ services:
       - ctrlplane
 
   ################################
+  # questdb.io
+  ################################
+
+  questdb:
+    container_name: questdb
+    image: questdb/questdb:8.1.4
+    environment:
+      QDB_PG_USER: ${QUESTDB__USER}
+      QDB_PG_PASSWORD: ${QUESTDB__PASS}
+    ports:
+      - "8812:8812"
+      - "10001:9000"
+    volumes:
+      - questdb-data:/var/lib/questdb
+    networks:
+      - ctrlplane
+
+  ################################
+  # clickhouse.io
+  ################################
+
+  clickhouse:
+    container_name: clickhouse
+    image: clickhouse/clickhouse-server:24.8
+    environment:
+      CLICKHOUSE_DB: ${CLICKHOUSE__DB}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_USER: ${CLICKHOUSE__USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE__PASS}
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - clickhouse-logs:/var/log/clickhouse-server/
+    networks:
+      - ctrlplane
+
+  ################################
   # quantm.io ctrlplane
   ################################
 
@@ -82,6 +123,9 @@ networks:
 
 volumes:
   temporal-db-data: {}
+  questdb-data: {}
+  clickhouse-data: {}
+  clickhouse-logs: {}
   ctrlplane-db-data: {}
 # services:
 #   # common

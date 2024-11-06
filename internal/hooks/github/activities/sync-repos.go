@@ -23,7 +23,7 @@ func (a *InstallRepos) RepoRemoved(ctx context.Context, payload *githubdefs.Sync
 	return SuspendRepo(ctx, payload)
 }
 
-func (a *InstallRepos) GetInstallationforInstallRepos(ctx context.Context, id int64) (*entities.GithubInstallation, error) {
+func (a *InstallRepos) GetInstallationForSync(ctx context.Context, id int64) (*entities.GithubInstallation, error) {
 	install, err := db.Queries().GetGithubInstallationByInstallationID(ctx, id)
 	if err == nil {
 		return &install, nil

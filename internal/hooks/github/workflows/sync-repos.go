@@ -9,15 +9,17 @@ import (
 	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
 )
 
-func InstallRepos(ctx workflow.Context, payload *githubdefs.WebhookInstallRepos) error {
+func SyncRepos(ctx workflow.Context, payload *githubdefs.WebhookInstallRepos) error {
 	selector := workflow.NewSelector(ctx)
 	acts := &githubacts.InstallRepos{}
-	over := make([]string, len(payload.RepositoriesAdded)+len(payload.RepositoriesRemoved))
+	total := make([]string, len(payload.RepositoriesAdded)+len(payload.RepositoriesRemoved))
 	install := &entities.GithubInstallation{}
 
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	if err := workflow.ExecuteActivity(ctx, acts.GetInstallationforInstallRepos, payload.Installation.ID).Get(ctx, install); err != nil {
+	if err := workflow.
+		ExecuteActivity(ctx, acts.GetInstallationForSync, payload.Installation.ID).
+		Get(ctx, install); err != nil {
 		return err
 	}
 
@@ -33,7 +35,7 @@ func InstallRepos(ctx workflow.Context, payload *githubdefs.WebhookInstallRepos)
 		selector.AddFuture(workflow.ExecuteActivity(ctx, acts.RepoRemoved, payload), func(f workflow.Future) {})
 	}
 
-	for range over {
+	for range total {
 		selector.Select(ctx)
 	}
 
