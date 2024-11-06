@@ -13,10 +13,3 @@ RETURNING *;
 SELECT *
 FROM orgs
 WHERE LOWER(domain) = LOWER($1);
-
--- name: CreateDefaultOrg :one
-INSERT INTO orgs (id, name, domain, slug)
-VALUES ('00000000-0000-0000-0000-000000000001', 'No Org', 'example.com', 'no-org')
-ON CONFLICT (id) DO NOTHING
-RETURNING id, created_at, updated_at, name, domain, slug;
-
