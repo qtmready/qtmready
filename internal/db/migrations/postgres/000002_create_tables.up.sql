@@ -205,7 +205,6 @@ create table github_repos (
   id uuid primary key default uuid_generate_v7(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  repo_id uuid not null references repos (id),
   installation_id uuid not null references github_installations (id),
   github_id bigint not null,
   name varchar(255) not null,

@@ -7,7 +7,6 @@ package entities
 
 import (
 	"context"
-	"time"
 
 	"github.com/google/uuid"
 )
@@ -26,7 +25,7 @@ func (q *Queries) ActivateGithubRepo(ctx context.Context, id uuid.UUID) error {
 const createGithubRepo = `-- name: CreateGithubRepo :one
 INSERT INTO github_repos (installation_id, github_id, name, full_name, url)
 VALUES ($1, $2, $3, $4, $5)
-RETURNING id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
+RETURNING id, created_at, updated_at, installation_id, github_id, name, full_name, url, is_active
 `
 
 type CreateGithubRepoParams struct {
@@ -50,7 +49,6 @@ func (q *Queries) CreateGithubRepo(ctx context.Context, arg CreateGithubRepoPara
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.RepoID,
 		&i.InstallationID,
 		&i.GithubID,
 		&i.Name,
@@ -62,7 +60,7 @@ func (q *Queries) CreateGithubRepo(ctx context.Context, arg CreateGithubRepoPara
 }
 
 const getGithubRepoByID = `-- name: GetGithubRepoByID :one
-SELECT id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
+SELECT id, created_at, updated_at, installation_id, github_id, name, full_name, url, is_active
 FROM github_repos
 WHERE id = $1
 `
@@ -74,7 +72,6 @@ func (q *Queries) GetGithubRepoByID(ctx context.Context, id uuid.UUID) (GithubRe
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.RepoID,
 		&i.InstallationID,
 		&i.GithubID,
 		&i.Name,
@@ -86,7 +83,7 @@ func (q *Queries) GetGithubRepoByID(ctx context.Context, id uuid.UUID) (GithubRe
 }
 
 const getGithubRepoByInstallationIDAndGithubID = `-- name: GetGithubRepoByInstallationIDAndGithubID :one
-SELECT id, created_at, updated_at, repo_id, installation_id, github_id, name, full_name, url, is_active
+SELECT id, created_at, updated_at, installation_id, github_id, name, full_name, url, is_active
 FROM github_repos
 WHERE installation_id = $1 AND github_id = $2
 `
@@ -103,7 +100,6 @@ func (q *Queries) GetGithubRepoByInstallationIDAndGithubID(ctx context.Context, 
 		&i.ID,
 		&i.CreatedAt,
 		&i.UpdatedAt,
-		&i.RepoID,
 		&i.InstallationID,
 		&i.GithubID,
 		&i.Name,
@@ -112,77 +108,6 @@ func (q *Queries) GetGithubRepoByInstallationIDAndGithubID(ctx context.Context, 
 		&i.IsActive,
 	)
 	return i, err
-}
-
-const getGithubReposWithCoreRepo = `-- name: GetGithubReposWithCoreRepo :one
-SELECT
-    g.id, g.created_at, g.updated_at, g.repo_id, g.installation_id, g.github_id, g.name, g.full_name, g.url, g.is_active,
-    json_build_object(
-        'repo_id', r.id,
-        'repo_name', r.name,
-        'provider', r.provider,
-        'provider_id', r.provider_id,
-        'default_branch', r.default_branch,
-        'is_monorepo', r.is_monorepo,
-        'threshold', r.threshold,
-        'stale_duration', r.stale_duration
-    ) AS repo
-FROM
-    github_repos g
-LEFT JOIN
-    repos r ON g.repo_id = r.id
-WHERE
-    g.id = $1 -- TODO - based on intallation id or some other
-LIMIT 1
-`
-
-type GetGithubReposWithCoreRepoRow struct {
-	ID             uuid.UUID `json:"id"`
-	CreatedAt      time.Time `json:"created_at"`
-	UpdatedAt      time.Time `json:"updated_at"`
-	RepoID         uuid.UUID `json:"repo_id"`
-	InstallationID uuid.UUID `json:"installation_id"`
-	GithubID       int64     `json:"github_id"`
-	Name           string    `json:"name"`
-	FullName       string    `json:"full_name"`
-	Url            string    `json:"url"`
-	IsActive       bool      `json:"is_active"`
-	Repo           []byte    `json:"repo"`
-}
-
-func (q *Queries) GetGithubReposWithCoreRepo(ctx context.Context, id uuid.UUID) (GetGithubReposWithCoreRepoRow, error) {
-	row := q.db.QueryRow(ctx, getGithubReposWithCoreRepo, id)
-	var i GetGithubReposWithCoreRepoRow
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.RepoID,
-		&i.InstallationID,
-		&i.GithubID,
-		&i.Name,
-		&i.FullName,
-		&i.Url,
-		&i.IsActive,
-		&i.Repo,
-	)
-	return i, err
-}
-
-const setRepoIDonGihubRepo = `-- name: SetRepoIDonGihubRepo :exec
-UPDATE github_repos
-SET repo_id = $2
-WHERE id = $1
-`
-
-type SetRepoIDonGihubRepoParams struct {
-	ID     uuid.UUID `json:"id"`
-	RepoID uuid.UUID `json:"repo_id"`
-}
-
-func (q *Queries) SetRepoIDonGihubRepo(ctx context.Context, arg SetRepoIDonGihubRepoParams) error {
-	_, err := q.db.Exec(ctx, setRepoIDonGihubRepo, arg.ID, arg.RepoID)
-	return err
 }
 
 const suspendedGithubRepo = `-- name: SuspendedGithubRepo :exec

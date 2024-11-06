@@ -15,7 +15,6 @@ sql:
       - "./queries/team_users.sql"
       - "./queries/repos.sql"
       - "./queries/github_installations.sql"
-      - "./queries/github_orgs.sql"
       - "./queries/github_users.sql"
       - "./queries/github_repos.sql"
       - "./queries/messaging.sql"
