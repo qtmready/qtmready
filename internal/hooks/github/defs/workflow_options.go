@@ -25,7 +25,7 @@ func NewInstallWorkflowOptions(install_id int64, action githubv1.SetupAction) *d
 	)
 }
 
-// NewInstallReposWorkflowOptions standardize the workflow options for InstallRepos Workflow.
+// NewSyncReposWorkflows standardize the workflow options for InstallRepos Workflow.
 //
 //	io.ctrlplane.hooks.github.install.${installation_id}.repos.${action}.${action_id}
 //
@@ -33,12 +33,12 @@ func NewInstallWorkflowOptions(install_id int64, action githubv1.SetupAction) *d
 // workflow options would be:
 //
 //	io.ctrlplane.hooks.github.install.1234.repos.created.abcdef123-4567-8901-2345-678901234567
-func NewInstallReposWorkflowOptions(install_id int64, action string, action_id string) *durable.WorkflowOptions {
+func NewSyncReposWorkflows(install_id int64, action string, action_id string) *durable.WorkflowOptions {
 	return durable.NewWorkflowOptions(
 		durable.WithHook("github"),
 		durable.WithSubject("install"),
 		durable.WithSubjectID(cast.Int64ToString(install_id)),
-		durable.WithScope("repos"),
+		durable.WithScope("sync-repos"),
 		durable.WithAction(strings.ToLower(action)),
 		durable.WithActionID(action_id),
 	)

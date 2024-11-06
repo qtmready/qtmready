@@ -56,7 +56,7 @@ func Install(ctx workflow.Context) error {
 	for _, repo := range state.webhook.Repositories {
 		payload := &githubdefs.SyncRepo{InstallationID: state.entity.ID, Repo: repo}
 
-		selector.AddFuture(workflow.ExecuteActivity(ctx, state.do.AddRepoForInstall, payload), func(f workflow.Future) {})
+		selector.AddFuture(workflow.ExecuteActivity(ctx, state.do.AddRepoToInstall, payload), func(f workflow.Future) {})
 	}
 
 	for range state.webhook.Repositories {

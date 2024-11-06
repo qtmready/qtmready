@@ -13,8 +13,8 @@ type (
 		AccessTokensURL     string     `json:"access_tokens_url"`
 		RepositoriesURL     string     `json:"repositories_url"`
 		HTMLUrl             string     `json:"html_url"`
-		AppID               int        `json:"app_id"`
-		TargetID            int        `json:"target_id"`
+		AppID               int64      `json:"app_id"`
+		TargetID            int64      `json:"target_id"`
 		TargetType          string     `json:"target_type"`
 		Permissions         Permission `json:"permissions"`
 		Events              []string   `json:"events"`
