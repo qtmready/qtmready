@@ -10,6 +10,7 @@ func DefaultServer(opts ...Option) *Server {
 	srv := New(opts...)
 
 	srv.add(authnmd.NewAccountSericeServiceHandler())
+	srv.add(authnmd.NewOrgServiceServiceHandler())
 	srv.add(authnmd.NewUserSericeServiceHandler())
 
 	srv.add(githubnmd.NewGithubServiceHandler())

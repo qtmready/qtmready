@@ -6,7 +6,6 @@ package entities
 
 import (
 	"database/sql/driver"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -103,13 +102,13 @@ type GithubUser struct {
 }
 
 type Messaging struct {
-	ID        uuid.UUID       `json:"id"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
-	Hook      string          `json:"hook"`
-	Kind      string          `json:"kind"`
-	LinkTo    uuid.UUID       `json:"link_to"`
-	Data      json.RawMessage `json:"data"`
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Hook      string    `json:"hook"`
+	Kind      string    `json:"kind"`
+	LinkTo    uuid.UUID `json:"link_to"`
+	Data      []byte    `json:"data"`
 }
 
 type OauthAccount struct {
@@ -124,13 +123,13 @@ type OauthAccount struct {
 }
 
 type Org struct {
-	ID        uuid.UUID       `json:"id"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
-	Name      string          `json:"name"`
-	Domain    string          `json:"domain"`
-	Slug      string          `json:"slug"`
-	Hooks     json.RawMessage `json:"hooks"`
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Name      string    `json:"name"`
+	Domain    string    `json:"domain"`
+	Slug      string    `json:"slug"`
+	Hooks     []byte    `json:"hooks"`
 }
 
 type Repo struct {

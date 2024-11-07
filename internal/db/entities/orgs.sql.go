@@ -59,6 +59,22 @@ func (q *Queries) GetOrgByDomain(ctx context.Context, lower string) (Org, error)
 	return i, err
 }
 
+const setOrgHooks = `-- name: SetOrgHooks :exec
+UPDATE orgs
+SET hooks = $2
+WHERE id = $1
+`
+
+type SetOrgHooksParams struct {
+	ID    uuid.UUID `json:"id"`
+	Hooks []byte    `json:"hooks"`
+}
+
+func (q *Queries) SetOrgHooks(ctx context.Context, arg SetOrgHooksParams) error {
+	_, err := q.db.Exec(ctx, setOrgHooks, arg.ID, arg.Hooks)
+	return err
+}
+
 const updateOrg = `-- name: UpdateOrg :one
 UPDATE orgs
 SET name = $2, domain = LOWER($3), slug = $4

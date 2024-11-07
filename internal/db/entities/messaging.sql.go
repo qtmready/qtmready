@@ -7,7 +7,6 @@ package entities
 
 import (
 	"context"
-	"encoding/json"
 
 	"github.com/google/uuid"
 )
@@ -19,10 +18,10 @@ RETURNING id, created_at, updated_at, hook, kind, link_to, data
 `
 
 type CreateMessagingParams struct {
-	Hook   string          `json:"hook"`
-	Kind   string          `json:"kind"`
-	LinkTo uuid.UUID       `json:"link_to"`
-	Data   json.RawMessage `json:"data"`
+	Hook   string    `json:"hook"`
+	Kind   string    `json:"kind"`
+	LinkTo uuid.UUID `json:"link_to"`
+	Data   []byte    `json:"data"`
 }
 
 func (q *Queries) CreateMessaging(ctx context.Context, arg CreateMessagingParams) (Messaging, error) {

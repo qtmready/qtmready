@@ -39,11 +39,6 @@ sql:
             go_type:
               type: "string"
 
-          - db_type: "jsonb"
-            go_type:
-              import: "encoding/json"
-              type: "RawMessage"
-
           - db_type: "boolean"
             go_type:
               type: "bool"
