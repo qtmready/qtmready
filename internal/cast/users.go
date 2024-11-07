@@ -132,10 +132,6 @@ func AuthUserQueryResponseToProto(user, orgs, roles, accounts, teams []byte) (*a
 func BytesToTeamSliceProto(src []byte) ([]*authv1.Team, error) {
 	response := make([]*authv1.Team, 0)
 
-	if string(src) == "[null]" {
-		return response, nil
-	}
-
 	deserialized := make([]entities.Team, 0)
 
 	if err := json.Unmarshal(src, &deserialized); err != nil {
@@ -159,10 +155,6 @@ func BytesToTeamSliceProto(src []byte) ([]*authv1.Team, error) {
 // Note that since slices are reference types in Go, the target slice will be modified in place.
 func BytesToAccountSliceProto(src []byte) ([]*authv1.Account, error) {
 	response := make([]*authv1.Account, 0)
-
-	if string(src) == "[null]" { // pg hack.
-		return response, nil
-	}
 
 	deserialized := make([]entities.OauthAccount, 0)
 
