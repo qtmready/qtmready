@@ -24,7 +24,7 @@ func SyncRepos(ctx workflow.Context, payload *githubdefs.WebhookInstallRepos) er
 	}
 
 	for _, repo := range payload.RepositoriesAdded {
-		payload := &githubdefs.SyncRepo{InstallationID: install.ID, Repo: repo}
+		payload := &githubdefs.SyncRepo{InstallationID: install.ID, Repo: repo, OrgID: install.OrgID}
 
 		selector.AddFuture(workflow.ExecuteActivity(ctx, acts.RepoAdded, payload), func(f workflow.Future) {})
 	}

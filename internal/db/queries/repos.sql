@@ -1,6 +1,6 @@
 -- name: CreateRepo :one
-INSERT INTO repos (org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+INSERT INTO repos (org_id, name, hook, hook_id, url)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetRepoByID :one
@@ -39,3 +39,13 @@ WHERE org_id = $1;
 SELECT *
 FROM repos 
 WHERE hook = $1 AND hook_id = $2; 
+
+-- name: SuspendedRepoByHookID :exec
+UPDATE repos
+SET is_active = false
+WHERE hook_id = $1;
+
+-- name: ActivateRepoByHookID :exec
+UPDATE repos
+SET is_active = true
+WHERE hook_id = $1;
