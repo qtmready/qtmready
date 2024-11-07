@@ -32,6 +32,7 @@ import (
 	"go.step.sm/crypto/jose"
 	"golang.org/x/crypto/hkdf"
 
+	"go.breu.io/quantm/internal/erratic"
 	"go.breu.io/quantm/internal/shared"
 )
 
@@ -45,8 +46,8 @@ const (
 type (
 	// Claims represents the payload of the JWT token.
 	Claims struct {
-		jwt.Claims      // Standard JWT claims.
-		User       User `json:"user"` // User information.
+		jwt.Claims // Standard JWT claims.
+		// User       User `json:"user"` // User information.
 	}
 
 	// JWTEncodeParams contains the parameters for JWT encoding.
@@ -115,7 +116,7 @@ func DecodeJWE(token string) (*Claims, error) {
 
 	// Validate expiration.
 	if time.Now().Unix() > int64(*claims.Expiry) {
-		return nil, ErrTokenExpired
+		return nil, erratic.NewUnauthorizedError("reason", "token expired")
 	}
 
 	return claims, nil
