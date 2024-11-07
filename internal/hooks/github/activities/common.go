@@ -15,13 +15,20 @@ import (
 // AddRepo adds a new GitHub repository to the database.
 // If the repository already exists, it will be activated.
 func AddRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
+	tx, qtx, err := db.Transaction(ctx)
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = tx.Rollback(ctx) }()
+
 	repo, err := db.Queries().GetGithubRepoByInstallationIDAndGithubID(ctx, entities.GetGithubRepoByInstallationIDAndGithubIDParams{
 		InstallationID: payload.InstallationID,
 		GithubID:       payload.Repo.ID,
 	})
 
 	if err == nil {
-		err = db.Queries().ActivateGithubRepo(ctx, repo.ID)
+		err = qtx.ActivateGithubRepo(ctx, repo.ID)
 		if err != nil {
 			return err
 		}
@@ -41,9 +48,30 @@ func AddRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 		Url:            fmt.Sprintf("https://github.com/%s", payload.Repo.FullName),
 	}
 
-	_, err = db.Queries().CreateGithubRepo(ctx, create)
+	created, err := qtx.CreateGithubRepo(ctx, create)
+	if err != nil {
+		return err
+	}
 
-	return err
+	// create core repo
+	reqst := entities.CreateRepoParams{
+		OrgID:  payload.OrgID,
+		Hook:   "github",
+		HookID: created.ID,
+		Name:   payload.Repo.Name,
+		Url:    fmt.Sprintf("https://github.com/%s", payload.Repo.FullName),
+	}
+
+	_, err = qtx.CreateRepo(ctx, reqst)
+	if err != nil {
+		return err
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // SuspendRepo suspends a GitHub repository from the database.
@@ -55,8 +83,24 @@ func SuspendRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 	})
 
 	if err == nil {
-		err = db.Queries().SuspendedGithubRepo(ctx, repo.ID)
+		tx, qtx, err := db.Transaction(ctx)
 		if err != nil {
+			return err
+		}
+
+		defer func() { _ = tx.Rollback(ctx) }()
+
+		err = qtx.SuspendedGithubRepo(ctx, repo.ID)
+		if err != nil {
+			return err
+		}
+
+		err = qtx.SuspendedRepoByHookID(ctx, repo.ID)
+		if err != nil {
+			return err
+		}
+
+		if err = tx.Commit(ctx); err != nil {
 			return err
 		}
 

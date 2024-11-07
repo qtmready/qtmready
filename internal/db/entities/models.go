@@ -144,6 +144,8 @@ type Repo struct {
 	IsMonorepo    bool            `json:"is_monorepo"`
 	Threshold     int32           `json:"threshold"`
 	StaleDuration pgtype.Interval `json:"stale_duration"`
+	Url           string          `json:"url"`
+	IsActive      bool            `json:"is_active"`
 }
 
 type Team struct {
