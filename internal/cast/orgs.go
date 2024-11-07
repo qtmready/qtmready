@@ -11,15 +11,8 @@ import (
 	commonv1 "go.breu.io/quantm/internal/proto/ctrlplane/common/v1"
 )
 
-type (
-	OrgHooks struct {
-		Repo      int32 `json:"repo"`
-		Messaging int32 `json:"messaging"`
-	}
-)
-
 func OrgToProto(org *entities.Org) *authv1.Org {
-	unmarshalled := &OrgHooks{}
+	unmarshalled := &authv1.OrgHooks{}
 
 	if err := json.Unmarshal(org.Hooks, unmarshalled); err != nil {
 		slog.Error("failed to unmarshal org hooks", "error", err)

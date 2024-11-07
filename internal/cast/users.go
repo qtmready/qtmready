@@ -3,6 +3,7 @@ package cast
 import (
 	"encoding/json"
 	"log/slog"
+	"time"
 
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -10,6 +11,18 @@ import (
 
 	"go.breu.io/quantm/internal/db/entities"
 	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"
+)
+
+type (
+	AuthOrg struct {
+		ID        string           `json:"id"`
+		CreatedAt time.Time        `json:"created_at"`
+		UpdatedAt time.Time        `json:"updated_at"`
+		Name      string           `json:"name"`
+		Domain    string           `json:"domain"`
+		Slug      string           `json:"slug"`
+		Hooks     *authv1.OrgHooks `json:"hooks"`
+	}
 )
 
 // UserToProto converts a User entity to its protobuf representation.
@@ -91,13 +104,21 @@ func AuthUserQueryResponseToProto(user, orgs, roles, accounts, teams []byte) (*a
 
 	response.User = UserToProto(usr)
 
-	org := &entities.Org{}
+	org := &AuthOrg{}
 	if err := json.Unmarshal(orgs, org); err != nil {
 		slog.Error("unmarshalling org", "error", err)
 		return nil, err
 	}
 
-	response.Org = OrgToProto(org)
+	response.Org = &authv1.Org{
+		Id:        org.ID,
+		CreatedAt: timestamppb.New(org.CreatedAt),
+		UpdatedAt: timestamppb.New(org.UpdatedAt),
+		Name:      org.Name,
+		Domain:    org.Domain,
+		Slug:      org.Slug,
+		Hooks:     org.Hooks,
+	}
 
 	rls, err := BytesToStringSlice(roles)
 	if err != nil {
