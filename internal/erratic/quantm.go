@@ -2,17 +2,15 @@ package erratic
 
 import (
 	"log/slog"
-	"net/http"
+	"runtime"
 
 	"connectrpc.com/connect"
-	"github.com/go-playground/validator/v10"
 	"google.golang.org/genproto/googleapis/rpc/errdetails"
-	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/runtime/protoiface"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/utils"
 )
 
 type (
@@ -26,6 +24,8 @@ type (
 		Code    int    `json:"code"`    // HTTP status code of the error.
 		Message string `json:"message"` // Human-readable message describing the error.
 		Hints   Hints  `json:"hints"`   // Additional information about the error.
+
+		internal error // internal error, if any.
 	}
 )
 
@@ -34,9 +34,28 @@ func (e *QuantmError) Error() string {
 	return e.Message
 }
 
+// Wrap sets the internal error field of QuantmError.
+func (e *QuantmError) Wrap(err error) *QuantmError {
+	e.internal = err
+
+	return e
+}
+
+// Unwrap returns the internal error of the QuantmError.
+func (e *QuantmError) Unwrap() error {
+	return e.internal
+}
+
 // SetHintsWith sets the ErrorDetails field of the APIError.
 func (e *QuantmError) SetHintsWith(hints Hints) *QuantmError {
-	e.Hints = hints
+	if e.Hints == nil {
+		e.Hints = make(Hints)
+	}
+
+	for k, v := range hints {
+		e.Hints[k] = v
+	}
+
 	return e
 }
 
@@ -51,28 +70,63 @@ func (e *QuantmError) AddHint(key, value string) *QuantmError {
 	return e
 }
 
-// SetVaidationErrors formats a validator.ValidationErrors object into the ErrorDetails field.
-func (e *QuantmError) SetVaidationErrors(err error) *QuantmError {
-	valid, ok := err.(validator.ValidationErrors)
-	if !ok {
-		return e
+// WithReason adds a "reason" hint to the error.
+func (e *QuantmError) WithReason(reason string) *QuantmError {
+	if e.Hints == nil {
+		e.Hints = make(Hints)
 	}
 
-	for _, v := range valid {
-		_ = e.AddHint(v.Field(), v.Tag())
-	}
+	e.Hints["reason"] = reason
 
 	return e
 }
 
-// DataBaseError sets the ErrorDetails field of the APIError with information related to a database error.
-func (e *QuantmError) DataBaseError(err error) *QuantmError {
-	return e.AddHint("reason", "database error").AddHint("internal", err.Error())
+// WithResource adds a "resource" hint to the error.
+func (e *QuantmError) WithResource(resource string) *QuantmError {
+	if e.Hints == nil {
+		e.Hints = make(Hints)
+	}
+
+	e.Hints["resource"] = resource
+
+	return e
 }
 
-// SetInternal sets the ErrorDetails field of the APIError with an internal error message.
-func (e *QuantmError) SetInternal(err error) *QuantmError {
-	return e.AddHint("internal", err.Error())
+// WithStack adds a "stack" hint to the error containing the current stack trace.
+func (e *QuantmError) WithStack(stack string) *QuantmError {
+	if e.Hints == nil {
+		e.Hints = make(Hints)
+	}
+
+	buf := make([]byte, 1024)
+	buf = buf[:runtime.Stack(buf, false)]
+	e.Hints["stack"] = string(buf)
+
+	return e
+}
+
+// WithHint adds a hint to the error.
+func (e *QuantmError) WithHint(key, value string) *QuantmError {
+	if e.Hints == nil {
+		e.Hints = make(Hints)
+	}
+
+	e.Hints[key] = value
+
+	return e
+}
+
+// WithHints adds multiple hints to the error.
+func (e *QuantmError) WithHints(hints Hints) *QuantmError {
+	if e.Hints == nil {
+		e.Hints = make(Hints)
+	}
+
+	for k, v := range hints {
+		e.Hints[k] = v
+	}
+
+	return e
 }
 
 // ToProto converts the QuantmError to a gRPC error.
@@ -80,24 +134,8 @@ func (e *QuantmError) SetInternal(err error) *QuantmError {
 // It maps the HTTP status code to a corresponding gRPC error code, sets the error message,
 // and attaches additional information as error details.
 func (e *QuantmError) ToProto() *status.Status {
-	code := codes.Unknown
-
-	// Map HTTP status code to gRPC error code and create a new grpc status.
-
-	switch e.Code {
-	case http.StatusBadRequest:
-		code = codes.InvalidArgument
-	case http.StatusUnauthorized:
-		code = codes.Unauthenticated
-	case http.StatusForbidden:
-		code = codes.PermissionDenied
-	case http.StatusNotFound:
-		code = codes.NotFound
-	case http.StatusInternalServerError:
-		code = codes.Internal
-	}
-
-	sts := status.New(code, e.Message)
+	code := CodeToProto(e.Code)
+	grpc := status.New(code, e.Message)
 
 	// Creating error details from the hints. See
 	//
@@ -123,9 +161,9 @@ func (e *QuantmError) ToProto() *status.Status {
 
 	details = append(details, anyinfo)
 
-	if internal, ok := e.Hints["internal"]; ok {
+	if stack, ok := e.Hints["stack"]; ok {
 		trace := &errdetails.DebugInfo{
-			StackEntries: []string{internal},
+			StackEntries: []string{stack},
 			Detail:       "See stack entries for internal details.",
 		}
 
@@ -135,36 +173,22 @@ func (e *QuantmError) ToProto() *status.Status {
 		}
 
 		details = append(details, anytrace)
-
-		delete(e.Hints, "internal")
 	}
 
-	// Finally, attach the error details to the status.
-
-	detailed, err := sts.WithDetails(details...)
+	detailed, err := grpc.WithDetails(details...)
 	if err != nil {
-		return sts
+		return grpc
 	}
 
 	return detailed
 }
 
+// ToConnectError converts the QuantmError to a Connect error.
+//
+// It maps the HTTP status code to a corresponding Connect error code, sets the error message,
+// and attaches additional information as error details.
 func (e *QuantmError) ToConnectError() *connect.Error {
-	code := connect.CodeUnknown
-
-	switch e.Code {
-	case http.StatusBadRequest:
-		code = connect.CodeInvalidArgument
-	case http.StatusUnauthorized:
-		code = connect.CodeUnauthenticated
-	case http.StatusForbidden:
-		code = connect.CodePermissionDenied
-	case http.StatusNotFound:
-		code = connect.CodeNotFound
-	case http.StatusInternalServerError:
-		code = connect.CodeInternal
-	}
-
+	code := CodeToConnect(e.Code)
 	err := connect.NewError(code, e)
 
 	for key, val := range e.Hints {
@@ -187,11 +211,11 @@ func (e *QuantmError) ToConnectError() *connect.Error {
 //
 // The function receives an error code, a human-readable message, and optional key-value pairs for additional
 // information.
-func New(code int, message string, args ...string) *QuantmError {
+func New(code int, message string, fields ...string) *QuantmError {
 	return &QuantmError{
-		ID:      shared.Idempotent(),
+		ID:      utils.Idempotent(),
 		Code:    code,
 		Message: message,
-		Hints:   NewErrorDetails(args...),
+		Hints:   NewHints(fields...),
 	}
 }

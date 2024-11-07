@@ -42,8 +42,6 @@ import (
 
 	"github.com/sethvargo/go-password/password"
 	"github.com/stretchr/testify/suite"
-
-	"go.breu.io/quantm/internal/shared"
 )
 
 type (
@@ -55,8 +53,6 @@ type (
 )
 
 func (s *EncryptedFieldTestSuite) SetupSuite() {
-	shared.InitServiceForTest() // instantiate the service with a random secret
-
 	sensitive := password.MustGenerate(32, 8, 8, false, false)
 	s.sensitive = Sensitive(sensitive)
 }

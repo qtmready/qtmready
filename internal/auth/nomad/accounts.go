@@ -11,6 +11,7 @@ import (
 	"go.breu.io/quantm/internal/cast"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/erratic"
+	"go.breu.io/quantm/internal/observe/intercept"
 	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"
 	"go.breu.io/quantm/internal/proto/ctrlplane/auth/v1/authv1connect"
 )
@@ -33,7 +34,7 @@ func (s *AccountService) GetAccountByProviderAccountID(
 			return nil, erratic.NewNotFoundError("entity", "accounts", "provider_id", req.Msg.GetProviderAccountId()).ToConnectError()
 		}
 
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	proto := &authv1.GetAccountByProviderAccountIDResponse{Account: cast.AccountToProto(&account)}
@@ -49,7 +50,7 @@ func (s *AccountService) GetAccountsByUserID(
 
 	accounts, err := db.Queries().GetOAuthAccountsByUserID(ctx, id)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToProto().Err()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToProto().Err()
 	}
 
 	proto := make([]*authv1.Account, len(accounts))
@@ -68,7 +69,7 @@ func (s *AccountService) CreateAccount(
 
 	account, err := db.Queries().CreateOAuthAccount(ctx, params)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToProto().Err()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToProto().Err()
 	}
 
 	return connect.NewResponse(&authv1.CreateAccountResponse{Account: cast.AccountToProto(&account)}), nil
@@ -89,5 +90,8 @@ func (s *AccountService) GetAccountByID(
 }
 
 func NewAccountSericeServiceHandler() (string, http.Handler) {
-	return authv1connect.NewAccountServiceHandler(&AccountService{})
+	return authv1connect.NewAccountServiceHandler(
+		&AccountService{},
+		connect.WithInterceptors((intercept.RequestLogger())),
+	)
 }

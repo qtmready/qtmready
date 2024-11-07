@@ -13,6 +13,7 @@ import (
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/erratic"
+	"go.breu.io/quantm/internal/observe/intercept"
 	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"
 	"go.breu.io/quantm/internal/proto/ctrlplane/auth/v1/authv1connect"
 )
@@ -41,7 +42,7 @@ func (s *UserService) CreateUser(
 	// Initiate a database transaction.
 	tx, qtx, err := db.Transaction(ctx)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	defer func() { _ = tx.Rollback(ctx) }() // Rollback is deferred to ensure rollback on error.
@@ -52,7 +53,7 @@ func (s *UserService) CreateUser(
 		user, err := qtx.CreateUser(ctx, params)
 
 		if err != nil {
-			return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+			return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 		}
 
 		return connect.NewResponse(&authv1.AuthUser{User: cast.UserToProto(&user)}), nil
@@ -62,7 +63,7 @@ func (s *UserService) CreateUser(
 	org, err := qtx.GetOrgByDomain(ctx, domain)
 	if err != nil {
 		if err != pgx.ErrNoRows {
-			return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+			return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 		}
 
 		// Generate a unique slug for the organization based on the domain name.
@@ -71,7 +72,7 @@ func (s *UserService) CreateUser(
 		// Create the organization in the database.
 		org, err = qtx.CreateOrg(ctx, entities.CreateOrgParams{Name: domain, Lower: domain, Slug: slug})
 		if err != nil {
-			return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+			return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 		}
 
 		role = "admin" // Assign the "admin" role to the first user of the organization.
@@ -83,7 +84,7 @@ func (s *UserService) CreateUser(
 	// Create the user in the database.
 	user, err := qtx.CreateUser(ctx, params)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	// Assign the appropriate role to the user within the organization.
@@ -93,18 +94,18 @@ func (s *UserService) CreateUser(
 		OrgID:  org.ID,
 	})
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	// Commit the database transaction and then Retrieve the user details for accurate relationships.
 	if err := tx.Commit(ctx); err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	// Retrieve the user details from the database.
 	details, err := db.Queries().GetAuthUserByID(ctx, user.ID)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	// Convert the retrieved user details to a protobuf structure.
@@ -112,7 +113,7 @@ func (s *UserService) CreateUser(
 		details.User, details.Org, details.Roles, details.OauthAccounts, details.Teams,
 	)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	// Return a successful response containing the created user information as a protobuf struct.
@@ -140,19 +141,19 @@ func (s *UserService) GetUserByProviderAccount(
 
 		slog.Error("unable to get error", "error", err.Error())
 
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	details, err := db.Queries().GetAuthUserByID(ctx, one.ID)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	proto, err := cast.AuthUserQueryResponseToProto(
 		details.User, details.Org, details.Roles, details.OauthAccounts, details.Teams,
 	)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	return connect.NewResponse(proto), nil
@@ -168,14 +169,14 @@ func (s *UserService) GetUserByEmail(
 			return nil, erratic.NewNotFoundError("entity", "users", "email", req.Msg.GetEmail()).ToConnectError()
 		}
 
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	proto, err := cast.AuthUserQueryResponseToProto(
 		details.User, details.Org, details.Roles, details.OauthAccounts, details.Teams,
 	)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	return connect.NewResponse(proto), nil
@@ -191,14 +192,14 @@ func (s *UserService) GetUserByID(
 			return nil, erratic.NewNotFoundError("entity", "users").ToConnectError()
 		}
 
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	proto, err := cast.AuthUserQueryResponseToProto(
 		details.User, details.Org, details.Roles, details.OauthAccounts, details.Teams,
 	)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	return connect.NewResponse(proto), nil
@@ -212,7 +213,7 @@ func (s *UserService) UpdateUser(
 
 	user, err := db.Queries().UpdateUser(ctx, params)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	return connect.NewResponse(&authv1.UpdateUserResponse{User: cast.UserToProto(&user)}), nil
@@ -220,5 +221,8 @@ func (s *UserService) UpdateUser(
 
 // NewUserSericeServiceHandler creates a new UserServiceHandler instance and returns the service name and handler.
 func NewUserSericeServiceHandler() (string, http.Handler) {
-	return authv1connect.NewUserServiceHandler(&UserService{})
+	return authv1connect.NewUserServiceHandler(
+		&UserService{},
+		connect.WithInterceptors(intercept.RequestLogger()),
+	)
 }

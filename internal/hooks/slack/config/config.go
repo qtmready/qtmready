@@ -5,8 +5,6 @@ import (
 	"sync"
 
 	"github.com/slack-go/slack"
-
-	"go.breu.io/quantm/internal/shared"
 )
 
 var (
@@ -20,6 +18,7 @@ type (
 		ClientID     string `koanf:"CLIENT_ID"`
 		ClientSecret string `koanf:"CLIENT_SECRET"`
 		RedirectURL  string `koanf:"REDIRECT_URL"`
+		Debug        bool   `koanf:"DEBUG"`
 	}
 
 	ConfigOption func(*Config)
@@ -30,7 +29,7 @@ func GetSlackClient(token string) (*slack.Client, error) {
 	lgr := &logger{slog.Default().WithGroup("slack")}
 	client := slack.New(
 		token,
-		slack.OptionDebug(shared.Service().GetDebug()),
+		slack.OptionDebug(_c.Debug),
 		slack.OptionLog(lgr),
 	)
 

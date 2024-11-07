@@ -52,11 +52,11 @@ var (
 
 // OrgServiceClient is a client for the ctrlplane.auth.v1.OrgService service.
 type OrgServiceClient interface {
-	// Creates a new organization.
+	// CreateOrg creates a new organization.
 	CreateOrg(context.Context, *connect.Request[v1.CreateOrgRequest]) (*connect.Response[v1.CreateOrgResponse], error)
-	// Retrieves an organization by its globally unique identifier.
+	// GetOrgByID retrieves an organization by its globally unique identifier.
 	GetOrgByID(context.Context, *connect.Request[v1.GetOrgByIDRequest]) (*connect.Response[v1.GetOrgByIDResponse], error)
-	// Set the hooks for an organization.
+	// SetOrgHooks sets the hooks for an organization.
 	SetOrgHooks(context.Context, *connect.Request[v1.SetOrgHooksRequest]) (*connect.Response[emptypb.Empty], error)
 }
 
@@ -115,11 +115,11 @@ func (c *orgServiceClient) SetOrgHooks(ctx context.Context, req *connect.Request
 
 // OrgServiceHandler is an implementation of the ctrlplane.auth.v1.OrgService service.
 type OrgServiceHandler interface {
-	// Creates a new organization.
+	// CreateOrg creates a new organization.
 	CreateOrg(context.Context, *connect.Request[v1.CreateOrgRequest]) (*connect.Response[v1.CreateOrgResponse], error)
-	// Retrieves an organization by its globally unique identifier.
+	// GetOrgByID retrieves an organization by its globally unique identifier.
 	GetOrgByID(context.Context, *connect.Request[v1.GetOrgByIDRequest]) (*connect.Response[v1.GetOrgByIDResponse], error)
-	// Set the hooks for an organization.
+	// SetOrgHooks sets the hooks for an organization.
 	SetOrgHooks(context.Context, *connect.Request[v1.SetOrgHooksRequest]) (*connect.Response[emptypb.Empty], error)
 }
 

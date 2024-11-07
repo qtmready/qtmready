@@ -5,8 +5,8 @@ import (
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/quantm/internal/core/defs"
 	"go.breu.io/quantm/internal/db/entities"
+	"go.breu.io/quantm/internal/durable"
 	githubacts "go.breu.io/quantm/internal/hooks/github/activities"
 	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
 )
@@ -66,7 +66,7 @@ func Install(ctx workflow.Context) error {
 	return nil
 }
 
-func (s *InstallWorkflowState) on_request(ctx workflow.Context) defs.ChannelHandler {
+func (s *InstallWorkflowState) on_request(ctx workflow.Context) durable.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		rx.Receive(ctx, s.request)
 		s.status.request = true
@@ -75,7 +75,7 @@ func (s *InstallWorkflowState) on_request(ctx workflow.Context) defs.ChannelHand
 	}
 }
 
-func (s *InstallWorkflowState) on_webhook(ctx workflow.Context) defs.ChannelHandler {
+func (s *InstallWorkflowState) on_webhook(ctx workflow.Context) durable.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		rx.Receive(ctx, s.webhook)
 		s.status.webhook = true

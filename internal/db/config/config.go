@@ -124,7 +124,7 @@ func (c *Config) Start(ctx context.Context) error {
 	)
 
 	if err != nil {
-		return status.NewConnectionError().AddHint("error", err.Error())
+		return status.NewConnectionError().Wrap(err)
 	}
 
 	slog.Info("db: connected.")
