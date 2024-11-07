@@ -7,7 +7,6 @@ require (
 	connectrpc.com/connect v1.17.0
 	github.com/Guilospanck/gocqlxmock v1.0.1
 	github.com/Guilospanck/igocqlx v1.0.0
-	github.com/Pallinder/go-randomdata v1.2.0
 	github.com/avast/retry-go/v4 v4.6.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.11.0
 	github.com/deepmap/oapi-codegen/v2 v2.1.0
@@ -20,7 +19,6 @@ require (
 	github.com/gosimple/slug v1.14.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jackc/pgx/v5 v5.7.1
-	github.com/jxskiss/base62 v1.1.0
 	github.com/knadh/koanf/providers/env v1.0.0
 	github.com/knadh/koanf/providers/structs v0.1.0
 	github.com/knadh/koanf/v2 v2.1.1
