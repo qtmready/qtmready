@@ -37,17 +37,18 @@ type (
 	EventSubject struct {
 		ID     uuid.UUID `json:"id"`      // ID is the ID of the subject.
 		Name   string    `json:"name"`    // Name of the database table.
-		TeamID uuid.UUID `json:"team_id"` // TeamID is the ID of the team that the subject belongs to.
+		OrgID  uuid.UUID `json:"org_id"`  // OrgID is the ID of the organization that the subject belongs to.
+		TeamID uuid.UUID `json:"team_id"` // Team ID of the subject's team in the organization. It can be null uuid.
 		UserID uuid.UUID `json:"user_id"` // UserID is the ID of the user that the subject belongs to. It can be null uuid.
 	}
 
 	// Event represents an event.
-	Event[T EventPayload, H EventHook] struct {
+	Event[H EventHook, P EventPayload] struct {
 		Version EventVersion    `json:"version"` // Version is the version of the event.
 		ID      uuid.UUID       `json:"id"`      // ID is the ID of the event.
 		Context EventContext[H] `json:"context"` // Context is the context of the event.
 		Subject EventSubject    `json:"subject"` // Subject is the subject of the event.
-		Payload T               `json:"payload"` // Payload is the payload of the event.
+		Payload P               `json:"payload"` // Payload is the payload of the event.
 	}
 )
 
@@ -61,7 +62,7 @@ type (
 //
 //	event := &Event[EventPayload, EventHook]{}
 //	event.SetSource("example/repo")
-func (e *Event[T, H]) SetSource(src string) *Event[T, H] {
+func (e *Event[H, P]) SetSource(src string) *Event[H, P] {
 	e.Context.Source = src
 
 	return e
@@ -75,14 +76,14 @@ func (e *Event[T, H]) SetSource(src string) *Event[T, H] {
 //
 //	event := &Event[EventPayload, EventHook]{}
 //	event.SetParent(id)
-func (e *Event[T, H]) SetParent(id uuid.UUID) *Event[T, H] {
+func (e *Event[H, P]) SetParent(id uuid.UUID) *Event[H, P] {
 	e.Context.ParentID = id
 
 	return e
 }
 
 // SetTimestamp updates the timestamp field of the EventContext for the Event struct and returns the event.
-func (e *Event[T, H]) SetTimestamp(t time.Time) *Event[T, H] {
+func (e *Event[H, P]) SetTimestamp(t time.Time) *Event[H, P] {
 	e.Context.Timestamp = t
 
 	return e
@@ -91,21 +92,21 @@ func (e *Event[T, H]) SetTimestamp(t time.Time) *Event[T, H] {
 // -- Scope --
 
 // SetScopeBranch sets the scope of the Event to EventScopeBranch and returns the event.
-func (e *Event[T, H]) SetScopeBranch() *Event[T, H] {
+func (e *Event[H, P]) SetScopeBranch() *Event[H, P] {
 	e.Context.Scope = EventScopeBranch
 
 	return e
 }
 
 // SetScopeTag sets the scope of the Event to EventScopeTag and returns the event.
-func (e *Event[T, H]) SetScopeTag() *Event[T, H] {
+func (e *Event[H, P]) SetScopeTag() *Event[H, P] {
 	e.Context.Scope = EventScopeTag
 
 	return e
 }
 
 // SetScopePush sets the scope of the Event to EventScopePush and returns the event.
-func (e *Event[T, H]) SetScopePush() *Event[T, H] {
+func (e *Event[H, P]) SetScopePush() *Event[H, P] {
 	e.Context.Scope = EventScopePush
 
 	return e
