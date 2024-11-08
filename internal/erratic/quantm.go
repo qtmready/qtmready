@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/runtime/protoiface"
 	"google.golang.org/protobuf/types/known/anypb"
 
-	"go.breu.io/quantm/internal/shared"
+	"go.breu.io/quantm/internal/utils"
 )
 
 type (
@@ -189,7 +189,7 @@ func (e *QuantmError) ToConnectError() *connect.Error {
 // information.
 func New(code int, message string, fields ...string) *QuantmError {
 	return &QuantmError{
-		ID:      shared.Idempotent(),
+		ID:      utils.Idempotent(),
 		Code:    code,
 		Message: message,
 		Hints:   NewHints(fields...),
