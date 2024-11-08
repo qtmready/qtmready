@@ -37,7 +37,7 @@ func (s *OrgService) SetOrgHooks(
 
 	err = db.Queries().SetOrgHooks(ctx, params)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().DataBaseError(err).ToConnectError()
+		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
 	return connect.NewResponse(&emptypb.Empty{}), nil
