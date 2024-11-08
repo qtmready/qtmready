@@ -4,7 +4,7 @@ import (
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/quantm/internal/core/defs"
+	"go.breu.io/quantm/internal/durable"
 	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
 )
 
@@ -24,7 +24,7 @@ func Push(ctx workflow.Context) error {
 	return nil
 }
 
-func (s *PushWorkflowState) on_push(ctx workflow.Context) defs.ChannelHandler {
+func (s *PushWorkflowState) on_push(ctx workflow.Context) durable.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {}
 }
 

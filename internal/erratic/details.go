@@ -10,7 +10,7 @@ type (
 	Hints map[string]string
 )
 
-func NewErrorDetails(args ...string) Hints {
+func NewHints(args ...string) Hints {
 	odd := false
 
 	if len(args)%2 != 0 {

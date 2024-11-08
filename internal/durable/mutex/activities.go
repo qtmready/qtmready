@@ -17,26 +17,36 @@
 // an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 // specific language governing permissions and limitations under the License.
 
-package code
+package mutex
 
 import (
-	"fmt"
+	"context"
+
+	"go.temporal.io/sdk/workflow"
 )
 
-type (
-	RebaseError struct {
-		SHA           string
-		CommitMessage string
+// PrepareMutexActivity prepares a mutex for a given resource.
+//
+// It either stars a new mutex workflow or signals an existing one to schedule a new lock.  It prepares the mutex for a
+// given resource by creating a MutexState with initial values and using SignalWithStartWorkflow to manage the
+// workflow.  Errors indicate issues during workflow signal or start. Success returns a workflow.Execution with the
+// workflow's ID and RunID.
+func PrepareMutexActivity(ctx context.Context, payload *Handler) (*workflow.Execution, error) {
+	state := &MutexState{
+		Status:  MutexStatusAcquiring,
+		Handler: payload,
+		Timeout: payload.Timeout,
+		Persist: true,
 	}
-)
 
-func (e *RebaseError) Error() string {
-	return fmt.Sprintf("could not apply %s... %s", e.SHA, e.CommitMessage)
-}
+	exe, err := Queue().SignalWithStartWorkflow(
+		ctx,
+		MutexWorkflowOptions(payload.ResourceID),
+		WorkflowSignalPrepare,
+		payload,
+		MutexWorkflow,
+		state,
+	)
 
-func NewRebaseError(sha, msg string) error {
-	return &RebaseError{
-		SHA:           sha,
-		CommitMessage: msg,
-	}
+	return &workflow.Execution{ID: exe.GetID(), RunID: exe.GetRunID()}, err
 }
