@@ -11,6 +11,7 @@ import (
 	"go.breu.io/quantm/internal/cast"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/erratic"
+	"go.breu.io/quantm/internal/observe/intercept"
 	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"
 	"go.breu.io/quantm/internal/proto/ctrlplane/auth/v1/authv1connect"
 )
@@ -89,5 +90,8 @@ func (s *AccountService) GetAccountByID(
 }
 
 func NewAccountSericeServiceHandler() (string, http.Handler) {
-	return authv1connect.NewAccountServiceHandler(&AccountService{})
+	return authv1connect.NewAccountServiceHandler(
+		&AccountService{},
+		connect.WithInterceptors((intercept.RequestLogger())),
+	)
 }
