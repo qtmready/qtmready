@@ -23,6 +23,7 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// OrgHooks contains the status of the hooks for an organization.
 type OrgHooks struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -170,7 +171,7 @@ func (x *Org) GetHooks() *OrgHooks {
 	return nil
 }
 
-// Request to create a new organization.
+// CreateOrgRequest is the request to create a new organization.
 type CreateOrgRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -232,7 +233,7 @@ func (x *CreateOrgRequest) GetSlug() string {
 	return ""
 }
 
-// Response containing the newly created organization.
+// CreateOrgResponse is the response to creating a new organization.
 type CreateOrgResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -278,7 +279,8 @@ func (x *CreateOrgResponse) GetOrg() *Org {
 	return nil
 }
 
-// Request to retrieve an organization by its unique identifier.
+// GetOrgByIDRequest is the request to retrieve an organization by its unique
+// identifier.
 type GetOrgByIDRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -324,7 +326,8 @@ func (x *GetOrgByIDRequest) GetId() string {
 	return ""
 }
 
-// Response containing the retrieved organization.
+// GetOrgByIDResponse is the response to retrieving an organization by its unique
+// identifier.
 type GetOrgByIDResponse struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -370,6 +373,7 @@ func (x *GetOrgByIDResponse) GetOrg() *Org {
 	return nil
 }
 
+// SetOrgHooksRequest is the request to set the hooks for an organization.
 type SetOrgHooksRequest struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
