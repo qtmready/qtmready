@@ -11,7 +11,7 @@ import (
 	gh "github.com/google/go-github/v62/github"
 
 	"go.breu.io/quantm/internal/db"
-	pkgerrors "go.breu.io/quantm/internal/providers/github/errors"
+	pkgerrors "go.breu.io/quantm/internal/hooks/github/errors"
 )
 
 type (

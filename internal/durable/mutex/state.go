@@ -25,7 +25,7 @@ import (
 	"go.breu.io/durex/queues"
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/quantm/internal/core/defs"
+	"go.breu.io/quantm/internal/durable/defs"
 )
 
 type (

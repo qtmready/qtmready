@@ -187,11 +187,11 @@ func (e *QuantmError) ToConnectError() *connect.Error {
 //
 // The function receives an error code, a human-readable message, and optional key-value pairs for additional
 // information.
-func New(code int, message string, args ...string) *QuantmError {
+func New(code int, message string, fields ...string) *QuantmError {
 	return &QuantmError{
 		ID:      shared.Idempotent(),
 		Code:    code,
 		Message: message,
-		Hints:   NewErrorDetails(args...),
+		Hints:   NewHints(fields...),
 	}
 }
