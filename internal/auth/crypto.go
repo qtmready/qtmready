@@ -33,7 +33,6 @@ import (
 	"golang.org/x/crypto/hkdf"
 
 	"go.breu.io/quantm/internal/erratic"
-	"go.breu.io/quantm/internal/shared"
 )
 
 const (
@@ -63,11 +62,11 @@ type (
 //
 // It generates a JWE key using the `Derive` function, creates an encrypter, marshals the payload to JSON, encrypts
 // the payload, serializes the JWE token, and returns the serialized token.
-func EncodeJWE(params JWTEncodeParams) (string, error) {
+func EncodeJWE(secret string, params JWTEncodeParams) (string, error) {
 	// Generate a JWE key.
 	key := jose.JSONWebKey{
-		Key:       Derive(),
-		KeyID:     base64.RawURLEncoding.EncodeToString(Derive()),
+		Key:       Derive(secret),
+		KeyID:     base64.RawURLEncoding.EncodeToString(Derive(secret)),
 		Algorithm: alg,
 		Use:       "enc",
 	}
@@ -103,8 +102,8 @@ func EncodeJWE(params JWTEncodeParams) (string, error) {
 //
 // It decrypts the token using the `Derive` function, unmarshals the payload, and validates the expiration time. If the
 // token is valid, it returns the decoded claims.
-func DecodeJWE(token string) (*Claims, error) {
-	enc, err := jose.Decrypt([]byte(token), jose.WithAlg(string(jose.A256CBC_HS512)), jose.WithPassword(Derive()))
+func DecodeJWE(secret, token string) (*Claims, error) {
+	enc, err := jose.Decrypt([]byte(token), jose.WithAlg(string(jose.A256CBC_HS512)), jose.WithPassword(Derive(secret)))
 	if err != nil {
 		return nil, err
 	}
@@ -131,8 +130,8 @@ func info() string {
 //
 // It uses the HMAC-SHA256 hash function, the secret key from the shared package, the salt, and the info string to
 // derive a 64-byte key. This ensures that the key is unique and unpredictable.
-func Derive() []byte {
-	kdf := hkdf.New(sha256.New, []byte(shared.Service().GetSecret()), []byte(salt), []byte(info()))
+func Derive(secret string) []byte {
+	kdf := hkdf.New(sha256.New, []byte(secret), []byte(salt), []byte(info()))
 	key := make([]byte, 64)
 	_, _ = io.ReadFull(kdf, key)
 

@@ -43,9 +43,20 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"io"
-
-	"go.breu.io/quantm/internal/shared"
+	"sync/atomic"
 )
+
+const (
+	_secret string = "set me"
+)
+
+var (
+	_defaultsecret atomic.Value
+)
+
+func init()                { _defaultsecret.Store(_secret) }
+func Secret() string       { return _defaultsecret.Load().(string) }
+func SetSecret(val string) { _defaultsecret.Store(val) }
 
 type (
 	// Sensitive represents a string encrypted using AES-GCM.
@@ -107,7 +118,7 @@ func (sen Sensitive) String() string {
 
 // secret truncates or pads the secret to 32 bytes for AES-GCM.
 func (sen Sensitive) secret() []byte {
-	s := []byte(shared.Service().GetSecret())
+	s := []byte(_secret)
 
 	if len(s) > 32 {
 		return s[:32]
