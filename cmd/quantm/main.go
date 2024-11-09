@@ -18,13 +18,16 @@ import (
 	githubcfg "go.breu.io/quantm/internal/hooks/github/config"
 	githubwfs "go.breu.io/quantm/internal/hooks/github/workflows"
 	"go.breu.io/quantm/internal/nomad"
+	"go.breu.io/quantm/internal/pulse"
 )
 
 const (
 	DB      = "db"
 	Durable = "durable"
+	Pulse   = "pulse"
 	Github  = "github"
 	Nomad   = "nomad"
+	CoreQ   = "core_q"
 	HooksQ  = "hooks_q"
 	Webhook = "webhook"
 )
@@ -32,6 +35,8 @@ const (
 func main() {
 	cfg := &Config{}
 	cfg.Load()
+
+	slog.Info("starting quantm", "clickhouse", cfg.Pulse.Clickhouse, "qdb", cfg.Pulse.QuestDB)
 
 	configure_logger(cfg.Debug)
 	auth.SetSecret(cfg.Secret)
@@ -47,16 +52,20 @@ func main() {
 	}
 
 	queues.SetDefaultPrefix("ai.ctrlplane.")
+
+	configure_qcore()
 	configure_qhooks()
 
 	nmd := nomad.New(nomad.WithConfig(cfg.Nomad))
 	app := graceful.New()
 
 	app.Add(DB, db.Connection(db.WithConfig(cfg.DB)))
+	app.Add(Pulse, pulse.Instance(pulse.WithConfig(cfg.Pulse)))
 	app.Add(Durable, durable.Instance())
 	app.Add(Github, githubcfg.Instance())
-	app.Add(Nomad, nmd, DB, Durable, Github)
-	app.Add(HooksQ, durable.OnHooks(), DB, Durable, Github)
+	app.Add(CoreQ, durable.OnCore(), DB, Durable, Pulse, Github)
+	app.Add(HooksQ, durable.OnHooks(), DB, Durable, Pulse, Github)
+	app.Add(Nomad, nmd, DB, Durable, Pulse, Github)
 	app.Add(Webhook, NewWebhookServer(), Durable, Github)
 
 	if cfg.Migrate {
@@ -83,6 +92,16 @@ func main() {
 	slog.Info("service stopped, exiting...")
 
 	os.Exit(0)
+}
+
+func configure_qcore() {
+	q := durable.OnCore()
+
+	q.CreateWorker()
+
+	if q != nil {
+		slog.Warn("queues/core: no workflows or activities registered")
+	}
 }
 
 func configure_qhooks() {

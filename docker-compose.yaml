@@ -64,11 +64,11 @@ services:
     container_name: questdb
     image: questdb/questdb:8.1.4
     environment:
-      QDB_PG_USER: ${QUESTDB__USER}
-      QDB_PG_PASSWORD: ${QUESTDB__PASS}
+      QDB_PG_USER: ${PULSE__QDB__USER}
+      QDB_PG_PASSWORD: ${PULSE__QDB__PASS}
     ports:
-      - "8812:8812"
-      - "10001:9000"
+      # - "6060:8812" # we don't want to pollute the 8xxx ports
+      - "6060:9000" # we don't want to pollute the 9xxx ports
     volumes:
       - questdb-data:/var/lib/questdb
     networks:
@@ -82,13 +82,13 @@ services:
     container_name: clickhouse
     image: clickhouse/clickhouse-server:24.8
     environment:
-      CLICKHOUSE_DB: ${CLICKHOUSE__DB}
+      CLICKHOUSE_DB: ${PULSE__CH__NAME}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
-      CLICKHOUSE_USER: ${CLICKHOUSE__USER}
-      CLICKHOUSE_PASSWORD: ${CLICKHOUSE__PASS}
+      CLICKHOUSE_USER: ${PULSE__CH__USER}
+      CLICKHOUSE_PASSWORD: ${PULSE__CH__PASS}
     ports:
-      - "8123:8123"
-      - "9000:9000"
+      - "6665:8123"
+      - "6666:9000"
     volumes:
       - clickhouse-data:/var/lib/clickhouse
       - clickhouse-logs:/var/log/clickhouse-server/
