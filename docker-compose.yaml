@@ -67,8 +67,8 @@ services:
       QDB_PG_USER: ${QUESTDB__USER}
       QDB_PG_PASSWORD: ${QUESTDB__PASS}
     ports:
-      - "8812:8812"
-      - "10001:9000"
+      - "6060:8812" # we don't want to pollute the 8xxx ports
+      - "6061:9000" # we don't want to pollute the 9xxx ports
     volumes:
       - questdb-data:/var/lib/questdb
     networks:
@@ -87,8 +87,8 @@ services:
       CLICKHOUSE_USER: ${CLICKHOUSE__USER}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE__PASS}
     ports:
-      - "8123:8123"
-      - "9000:9000"
+      - "6665:8123"
+      - "6666:9000"
     volumes:
       - clickhouse-data:/var/lib/clickhouse
       - clickhouse-logs:/var/log/clickhouse-server/
