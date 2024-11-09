@@ -13,7 +13,6 @@ import (
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/erratic"
-	"go.breu.io/quantm/internal/observe/intercept"
 	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"
 	"go.breu.io/quantm/internal/proto/ctrlplane/auth/v1/authv1connect"
 )
@@ -44,9 +43,9 @@ func (s *OrgService) SetOrgHooks(
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
-func NewOrgServiceServiceHandler() (string, http.Handler) {
+func NewOrgServiceServiceHandler(opts ...connect.HandlerOption) (string, http.Handler) {
 	return authv1connect.NewOrgServiceHandler(
 		&OrgService{},
-		connect.WithInterceptors(intercept.RequestLogger()),
+		opts...,
 	)
 }

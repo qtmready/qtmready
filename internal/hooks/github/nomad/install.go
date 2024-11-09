@@ -44,6 +44,6 @@ func (s *GithubService) Install(
 	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
-func NewGithubServiceHandler() (string, http.Handler) {
-	return githubv1connect.NewGithubServiceHandler(&GithubService{})
+func NewGithubServiceHandler(opts ...connect.HandlerOption) (string, http.Handler) {
+	return githubv1connect.NewGithubServiceHandler(&GithubService{}, opts...)
 }

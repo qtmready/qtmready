@@ -13,7 +13,6 @@ import (
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/erratic"
-	"go.breu.io/quantm/internal/observe/intercept"
 	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"
 	"go.breu.io/quantm/internal/proto/ctrlplane/auth/v1/authv1connect"
 )
@@ -220,9 +219,6 @@ func (s *UserService) UpdateUser(
 }
 
 // NewUserSericeServiceHandler creates a new UserServiceHandler instance and returns the service name and handler.
-func NewUserSericeServiceHandler() (string, http.Handler) {
-	return authv1connect.NewUserServiceHandler(
-		&UserService{},
-		connect.WithInterceptors(intercept.RequestLogger()),
-	)
+func NewUserSericeServiceHandler(opts ...connect.HandlerOption) (string, http.Handler) {
+	return authv1connect.NewUserServiceHandler(&UserService{}, opts...)
 }
