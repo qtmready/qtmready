@@ -27,6 +27,7 @@ const (
 	Pulse   = "pulse"
 	Github  = "github"
 	Nomad   = "nomad"
+	CoreQ   = "core_q"
 	HooksQ  = "hooks_q"
 	Webhook = "webhook"
 )
@@ -49,6 +50,8 @@ func main() {
 	}
 
 	queues.SetDefaultPrefix("ai.ctrlplane.")
+
+	configure_qcore()
 	configure_qhooks()
 
 	nmd := nomad.New(nomad.WithConfig(cfg.Nomad))
@@ -58,8 +61,9 @@ func main() {
 	app.Add(Pulse, pulse.Instance(pulse.WithConfig(cfg.Pulse)))
 	app.Add(Durable, durable.Instance())
 	app.Add(Github, githubcfg.Instance())
-	app.Add(Nomad, nmd, DB, Durable, Pulse, Github)
+	app.Add(CoreQ, durable.OnCore(), DB, Durable, Pulse, Github)
 	app.Add(HooksQ, durable.OnHooks(), DB, Durable, Pulse, Github)
+	app.Add(Nomad, nmd, DB, Durable, Pulse, Github)
 	app.Add(Webhook, NewWebhookServer(), Durable, Github)
 
 	if cfg.Migrate {
@@ -86,6 +90,16 @@ func main() {
 	slog.Info("service stopped, exiting...")
 
 	os.Exit(0)
+}
+
+func configure_qcore() {
+	q := durable.OnCore()
+
+	q.CreateWorker()
+
+	if q != nil {
+		slog.Warn("queues/core: no workflows or activities registered")
+	}
 }
 
 func configure_qhooks() {
