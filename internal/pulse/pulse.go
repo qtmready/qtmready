@@ -1,7 +1,7 @@
 package pulse
 
 import (
-	"context"
+	"log/slog"
 	"sync"
 
 	"go.breu.io/quantm/internal/pulse/config"
@@ -13,18 +13,22 @@ type (
 )
 
 var (
+	DefaultConfig = config.DefaultConfig
+
 	_c   *Config
 	once sync.Once
 )
 
-func Configure(opts ...Option) *Config {
+func WithConfig(cfg *Config) Option {
+	return config.WithConfig(cfg)
+}
+
+func Instance(opts ...Option) *Config {
 	once.Do(func() {
+		slog.Info("pulse: configuring ...")
+
 		_c = config.New(opts...)
 	})
 
 	return _c
-}
-
-func Add(ctx context.Context) error {
-	return nil
 }

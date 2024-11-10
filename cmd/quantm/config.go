@@ -11,12 +11,14 @@ import (
 	githubcfg "go.breu.io/quantm/internal/hooks/github/config"
 	pkg_slack "go.breu.io/quantm/internal/hooks/slack/config"
 	"go.breu.io/quantm/internal/nomad"
+	"go.breu.io/quantm/internal/pulse"
 )
 
 type (
 	Config struct {
 		DB      *db.Config        `koanf:"DB"`      // Configuration for the database.
 		Durable *durable.Config   `koanf:"DURABLE"` // Configuration for the durable.
+		Pulse   *pulse.Config     `koanf:"PULSE"`   // Configuration for the pulse.
 		Nomad   *nomad.Config     `koanf:"NOMAD"`   // Configuration for Nomad.
 		Github  *githubcfg.Config `koanf:"GITHUB"`  // Configuration for the github.
 		Slack   *pkg_slack.Config `koanf:"SLACK"`   // Configuration for the slack.
@@ -31,6 +33,7 @@ func (c *Config) Load() {
 	c.DB = &db.DefaultConfig
 	c.Durable = &durable.DefaultConfig
 	c.Nomad = &nomad.DefaultConfig
+	c.Pulse = &pulse.DefaultConfig
 	c.Github = &githubcfg.Config{}
 	c.Slack = &pkg_slack.Config{}
 

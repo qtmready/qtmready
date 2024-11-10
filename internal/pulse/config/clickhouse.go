@@ -3,6 +3,7 @@ package config
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
@@ -36,7 +37,9 @@ var (
 	}
 )
 
-func (c *Clickhouse) connect(_ context.Context) error {
+func (c *Clickhouse) connect(ctx context.Context) error {
+	slog.Info("pulse/clickhose: connecting clickhouse ...", "host", c.Host, "port", c.Port, "user", c.User, "name", c.Name)
+
 	conn, err := clickhouse.Open(&clickhouse.Options{
 		Addr: []string{c.GetAddress()},
 		Auth: clickhouse.Auth{
@@ -49,7 +52,13 @@ func (c *Clickhouse) connect(_ context.Context) error {
 		return err
 	}
 
+	if err := conn.Ping(ctx); err != nil {
+		return err
+	}
+
 	c.conn = conn
+
+	slog.Info("pulse/clickhose: clickhouse connected.")
 
 	return nil
 }

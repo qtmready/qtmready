@@ -18,11 +18,13 @@ import (
 	githubcfg "go.breu.io/quantm/internal/hooks/github/config"
 	githubwfs "go.breu.io/quantm/internal/hooks/github/workflows"
 	"go.breu.io/quantm/internal/nomad"
+	"go.breu.io/quantm/internal/pulse"
 )
 
 const (
 	DB      = "db"
 	Durable = "durable"
+	Pulse   = "pulse"
 	Github  = "github"
 	Nomad   = "nomad"
 	HooksQ  = "hooks_q"
@@ -53,10 +55,11 @@ func main() {
 	app := graceful.New()
 
 	app.Add(DB, db.Connection(db.WithConfig(cfg.DB)))
+	app.Add(Pulse, pulse.Instance(pulse.WithConfig(cfg.Pulse)))
 	app.Add(Durable, durable.Instance())
 	app.Add(Github, githubcfg.Instance())
-	app.Add(Nomad, nmd, DB, Durable, Github)
-	app.Add(HooksQ, durable.OnHooks(), DB, Durable, Github)
+	app.Add(Nomad, nmd, DB, Durable, Pulse, Github)
+	app.Add(HooksQ, durable.OnHooks(), DB, Durable, Pulse, Github)
 	app.Add(Webhook, NewWebhookServer(), Durable, Github)
 
 	if cfg.Migrate {

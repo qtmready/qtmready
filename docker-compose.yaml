@@ -67,8 +67,8 @@ services:
       QDB_PG_USER: ${QUESTDB__USER}
       QDB_PG_PASSWORD: ${QUESTDB__PASS}
     ports:
-      - "6060:8812" # we don't want to pollute the 8xxx ports
-      - "6061:9000" # we don't want to pollute the 9xxx ports
+      # - "6060:8812" # we don't want to pollute the 8xxx ports
+      - "6060:9000" # we don't want to pollute the 9xxx ports
     volumes:
       - questdb-data:/var/lib/questdb
     networks:
