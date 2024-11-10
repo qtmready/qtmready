@@ -8,6 +8,7 @@ require (
 	github.com/avast/retry-go/v4 v4.6.0
 	github.com/bradleyfalzon/ghinstallation/v2 v2.11.0
 	github.com/go-jose/go-jose/v4 v4.0.4
+	github.com/gobeam/stringy v0.0.7
 	github.com/gocql/gocql v1.7.0
 	github.com/google/go-github/v62 v62.0.0
 	github.com/gosimple/slug v1.14.0
@@ -16,6 +17,7 @@ require (
 	github.com/knadh/koanf/providers/structs v0.1.0
 	github.com/knadh/koanf/v2 v2.1.1
 	github.com/labstack/echo/v4 v4.12.0
+	github.com/questdb/go-questdb-client/v3 v3.2.0
 	github.com/sethvargo/go-password v0.3.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.9.0
