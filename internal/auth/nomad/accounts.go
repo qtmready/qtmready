@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"go.breu.io/quantm/internal/cast"
+	authcast "go.breu.io/quantm/internal/auth/cast"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/erratic"
 	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"
@@ -25,7 +25,7 @@ func (s *AccountService) GetAccountByProviderAccountID(
 	ctx context.Context,
 	req *connect.Request[authv1.GetAccountByProviderAccountIDRequest],
 ) (*connect.Response[authv1.GetAccountByProviderAccountIDResponse], error) {
-	params := cast.ProtoToGetAccountByProviderAccountIDParams(req.Msg)
+	params := authcast.ProtoToGetAccountByProviderAccountIDParams(req.Msg)
 
 	account, err := db.Queries().GetOAuthAccountByProviderAccountID(ctx, params)
 	if err != nil {
@@ -36,7 +36,7 @@ func (s *AccountService) GetAccountByProviderAccountID(
 		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
-	proto := &authv1.GetAccountByProviderAccountIDResponse{Account: cast.AccountToProto(&account)}
+	proto := &authv1.GetAccountByProviderAccountIDResponse{Account: authcast.AccountToProto(&account)}
 
 	return connect.NewResponse(proto), nil
 }
@@ -54,7 +54,7 @@ func (s *AccountService) GetAccountsByUserID(
 
 	proto := make([]*authv1.Account, len(accounts))
 	for i, account := range accounts {
-		proto[i] = cast.AccountToProto(&account)
+		proto[i] = authcast.AccountToProto(&account)
 	}
 
 	return connect.NewResponse(&authv1.GetAccountsByUserIDResponse{Accounts: proto}), nil
@@ -64,14 +64,14 @@ func (s *AccountService) CreateAccount(
 	ctx context.Context,
 	req *connect.Request[authv1.CreateAccountRequest],
 ) (*connect.Response[authv1.CreateAccountResponse], error) {
-	params := cast.ProtoToCreateAccountParams(req.Msg)
+	params := authcast.ProtoToCreateAccountParams(req.Msg)
 
 	account, err := db.Queries().CreateOAuthAccount(ctx, params)
 	if err != nil {
 		return nil, erratic.NewInternalServerError().Wrap(err).ToProto().Err()
 	}
 
-	return connect.NewResponse(&authv1.CreateAccountResponse{Account: cast.AccountToProto(&account)}), nil
+	return connect.NewResponse(&authv1.CreateAccountResponse{Account: authcast.AccountToProto(&account)}), nil
 }
 
 func (s *AccountService) GetAccountByID(
@@ -85,7 +85,7 @@ func (s *AccountService) GetAccountByID(
 		return nil, erratic.NewNotFoundError("entity", "accounts", "id", req.Msg.GetId()).ToProto().Err()
 	}
 
-	return connect.NewResponse(&authv1.GetAccountByIDResponse{Account: cast.AccountToProto(&account)}), nil
+	return connect.NewResponse(&authv1.GetAccountByIDResponse{Account: authcast.AccountToProto(&account)}), nil
 }
 
 func NewAccountSericeServiceHandler(opts ...connect.HandlerOption) (string, http.Handler) {
