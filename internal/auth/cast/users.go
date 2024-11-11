@@ -1,4 +1,4 @@
-package cast
+package authcast
 
 import (
 	"encoding/json"
