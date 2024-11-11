@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	query__events__create = `
+	statement__clickhouse__event__create = `
 CREATE TABLE IF NOT EXISTS %s (
   version EventVersion,
   id UUID,
@@ -38,5 +38,5 @@ func create_table_name(kind, slug string) string {
 
 func QueryCreateEventsTable(slug string) string {
 	table := create_table_name("events", slug)
-	return fmt.Sprintf(query__events__create, table)
+	return fmt.Sprintf(statement__clickhouse__event__create, table)
 }
