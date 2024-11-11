@@ -9,6 +9,8 @@ import (
 type (
 	// EventPayload represents all available event payloads.
 	EventPayload interface {
-		eventsv1.GitRef | eventsv1.Push
+		eventsv1.GitRef |
+			eventsv1.Push |
+			eventsv1.DetectRepoChange | eventsv1.RepoChange
 	}
 )
