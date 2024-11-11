@@ -1,7 +1,7 @@
 package cast
 
 import (
-	commonv1 "go.breu.io/quantm/internal/proto/ctrlplane/common/v1"
+	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"
 )
 
 const (
@@ -10,24 +10,24 @@ const (
 	AuthProviderGoogle  = "google"
 )
 
-func AuthProviderToProto(provider string) commonv1.AuthProvider {
+func AuthProviderToProto(provider string) authv1.AuthProvider {
 	switch provider {
 	case AuthProviderGithub:
-		return commonv1.AuthProvider_AUTH_PROVIDER_GITHUB
+		return authv1.AuthProvider_AUTH_PROVIDER_GITHUB
 	case AuthProviderGoogle:
-		return commonv1.AuthProvider_AUTH_PROVIDER_GOOGLE
+		return authv1.AuthProvider_AUTH_PROVIDER_GOOGLE
 	default:
-		return commonv1.AuthProvider_AUTH_PROVIDER_UNSPECIFIED
+		return authv1.AuthProvider_AUTH_PROVIDER_UNSPECIFIED
 	}
 }
 
-func ProtoToAuthProvider(proto commonv1.AuthProvider) string {
+func ProtoToAuthProvider(proto authv1.AuthProvider) string {
 	switch proto {
-	case commonv1.AuthProvider_AUTH_PROVIDER_GITHUB:
+	case authv1.AuthProvider_AUTH_PROVIDER_GITHUB:
 		return AuthProviderGithub
-	case commonv1.AuthProvider_AUTH_PROVIDER_GOOGLE:
+	case authv1.AuthProvider_AUTH_PROVIDER_GOOGLE:
 		return AuthProviderGoogle
-	case commonv1.AuthProvider_AUTH_PROVIDER_UNSPECIFIED:
+	case authv1.AuthProvider_AUTH_PROVIDER_UNSPECIFIED:
 		return AuthProviderUnknown
 	default:
 		return AuthProviderUnknown

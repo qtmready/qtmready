@@ -12,7 +12,6 @@ import (
 	"go.breu.io/quantm/internal/cast"
 	"go.breu.io/quantm/internal/db/entities"
 	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"
-	commonv1 "go.breu.io/quantm/internal/proto/ctrlplane/common/v1"
 )
 
 func TestAccountToProto(t *testing.T) {
@@ -37,7 +36,7 @@ func TestAccountToProto(t *testing.T) {
 	assert.True(t, proto.Equal(pb.GetUpdatedAt(), timestamppb.New(account.UpdatedAt)))
 	assert.True(t, proto.Equal(pb.GetExpiresAt(), timestamppb.New(account.ExpiresAt)))
 	assert.Equal(t, account.UserID.String(), pb.GetUserId())
-	assert.Equal(t, commonv1.AuthProvider_AUTH_PROVIDER_GOOGLE, pb.GetProvider())
+	assert.Equal(t, authv1.AuthProvider_AUTH_PROVIDER_GOOGLE, pb.GetProvider())
 	assert.Equal(t, account.ProviderAccountID, pb.GetProviderAccountId())
 	assert.Equal(t, "user", pb.GetKind())
 }
@@ -52,7 +51,7 @@ func TestProtoToAccount(t *testing.T) {
 		UpdatedAt:         timestamppb.New(now),
 		ExpiresAt:         timestamppb.New(now.Add(time.Hour * 24)),
 		UserId:            uuid.New().String(),
-		Provider:          commonv1.AuthProvider_AUTH_PROVIDER_GOOGLE,
+		Provider:          authv1.AuthProvider_AUTH_PROVIDER_GOOGLE,
 		ProviderAccountId: "1234567890",
 		Kind:              "user",
 	}
@@ -86,7 +85,7 @@ func TestProtoToCreateAccountParams(t *testing.T) {
 	now := time.Now()
 	req := &authv1.CreateAccountRequest{
 		UserId:            uuid.New().String(),
-		Provider:          commonv1.AuthProvider_AUTH_PROVIDER_GOOGLE,
+		Provider:          authv1.AuthProvider_AUTH_PROVIDER_GOOGLE,
 		ProviderAccountId: "1234567890",
 		ExpiresAt:         timestamppb.New(now),
 		Kind:              "user",
@@ -116,7 +115,7 @@ func TestProtoToGetAccountByProviderAccountIDParams(t *testing.T) {
 	t.Parallel()
 
 	req := &authv1.GetAccountByProviderAccountIDRequest{
-		Provider:          commonv1.AuthProvider_AUTH_PROVIDER_GOOGLE,
+		Provider:          authv1.AuthProvider_AUTH_PROVIDER_GOOGLE,
 		ProviderAccountId: "1234567890",
 	}
 
