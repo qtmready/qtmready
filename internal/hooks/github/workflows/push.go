@@ -4,8 +4,11 @@ import (
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/quantm/internal/durable"
+	"go.breu.io/quantm/internal/events"
+	githubacts "go.breu.io/quantm/internal/hooks/github/activities"
 	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
+	commonv1 "go.breu.io/quantm/internal/proto/ctrlplane/common/v1"
+	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
 type (
@@ -14,22 +17,16 @@ type (
 	}
 )
 
-func Push(ctx workflow.Context) error {
-	state := NewPushWorkflowState(ctx)
-	selector := workflow.NewSelector(ctx)
+func Push(ctx workflow.Context, payload *githubdefs.Push) error {
+	acts := &githubacts.Push{}
 
-	rqst := workflow.GetSignalChannel(ctx, githubdefs.SignalWebhookPush.String())
-	selector.AddReceive(rqst, state.on_push(ctx))
+	var event *events.Event[commonv1.RepoHook, eventsv1.Push]
+
+	if err := workflow.
+		ExecuteActivity(ctx, acts.ConvertToPushEvent, payload).
+		Get(ctx, &event); err != nil {
+		return err
+	}
 
 	return nil
-}
-
-func (s *PushWorkflowState) on_push(ctx workflow.Context) durable.ChannelHandler {
-	return func(rx workflow.ReceiveChannel, more bool) {}
-}
-
-func NewPushWorkflowState(ctx workflow.Context) *PushWorkflowState {
-	return &PushWorkflowState{
-		log: workflow.GetLogger(ctx),
-	}
 }
