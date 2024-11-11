@@ -8,7 +8,7 @@ import (
 
 	"go.breu.io/quantm/internal/db/entities"
 	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"
-	commonv1 "go.breu.io/quantm/internal/proto/ctrlplane/common/v1"
+	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
 func OrgToProto(org *entities.Org) *authv1.Org {
@@ -19,8 +19,8 @@ func OrgToProto(org *entities.Org) *authv1.Org {
 	}
 
 	hooks := authv1.OrgHooks{
-		Repo:      commonv1.RepoHook(unmarshalled.Repo),
-		Messaging: commonv1.MessagingHook(unmarshalled.Messaging),
+		Repo:      eventsv1.RepoHook(unmarshalled.Repo),
+		Messaging: eventsv1.MessagingHook(unmarshalled.Messaging),
 	}
 
 	return &authv1.Org{
