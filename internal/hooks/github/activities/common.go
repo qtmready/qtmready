@@ -1,20 +1,54 @@
-package githubacts
+package activities
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
-	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
+	"go.breu.io/quantm/internal/events"
+	"go.breu.io/quantm/internal/hooks/github/cast"
+	"go.breu.io/quantm/internal/hooks/github/defs"
+	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
-// AddRepo adds a new GitHub repository to the database.
-// If the repository already exists, it will be activated.
-func AddRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
+func HydrateRepoEvent(ctx context.Context, payload *defs.HydrateRepoEventPayload) (*defs.HydratedRepoEvent, error) {
+	install, err := db.Queries().GetGithubInstallationByInstallationID(ctx, payload.InstallationID)
+	if err != nil {
+		return nil, err
+	}
+
+	row, err := db.Queries().GetRepo(ctx, entities.GetRepoParams{InstallationID: install.ID, GithubID: payload.RepoID})
+	if err != nil {
+		slog.Error("unable to get hydrated repo", "error", err.Error())
+		return nil, err
+	}
+
+	hydrated := cast.RowToHydratedRepoEvent(row)
+
+	// TODO: handle if no rows are fetched.
+	if payload.Email != "" {
+		user, err := db.Queries().GetUserByEmail(ctx, payload.Email)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, err
+			}
+		}
+
+		hydrated.User = &user
+	}
+
+	// TODO: Query for Parent ID.
+
+	return hydrated, nil
+}
+
+// AddRepo adds a new GitHub repository to the database. If the repository already exists, it will be activated.
+func AddRepo(ctx context.Context, payload *defs.SyncRepoPayload) error {
 	tx, qtx, err := db.Transaction(ctx)
 	if err != nil {
 		return err
@@ -56,7 +90,7 @@ func AddRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 	// create core repo
 	reqst := entities.CreateRepoParams{
 		OrgID:  payload.OrgID,
-		Hook:   "github",
+		Hook:   int32(eventsv1.RepoHook_REPO_HOOK_GITHUB),
 		HookID: created.ID,
 		Name:   payload.Repo.Name,
 		Url:    fmt.Sprintf("https://github.com/%s", payload.Repo.FullName),
@@ -76,11 +110,15 @@ func AddRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 
 // SuspendRepo suspends a GitHub repository from the database.
 // If the repository does not exist, it will be ignored.
-func SuspendRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
-	repo, err := db.Queries().GetGithubRepoByInstallationIDAndGithubID(ctx, entities.GetGithubRepoByInstallationIDAndGithubIDParams{
-		InstallationID: payload.InstallationID,
-		GithubID:       payload.Repo.ID,
-	})
+func SuspendRepo(ctx context.Context, payload *defs.SyncRepoPayload) error {
+	repo, err := db.Queries().
+		GetGithubRepoByInstallationIDAndGithubID(
+			ctx,
+			entities.GetGithubRepoByInstallationIDAndGithubIDParams{
+				InstallationID: payload.InstallationID,
+				GithubID:       payload.Repo.ID,
+			},
+		)
 
 	if err == nil {
 		tx, qtx, err := db.Transaction(ctx)
@@ -112,4 +150,8 @@ func SuspendRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 	}
 
 	return err
+}
+
+func SignalToRepo[P events.Payload](ctx context.Context, hydrated *defs.HydratedQuantmEvent[P]) error {
+	return nil
 }

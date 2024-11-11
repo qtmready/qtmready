@@ -1,11 +1,11 @@
-package githubdefs
+package defs
 
 import (
 	"strings"
 
-	"go.breu.io/quantm/internal/cast"
 	"go.breu.io/quantm/internal/durable"
 	githubv1 "go.breu.io/quantm/internal/proto/hooks/github/v1"
+	"go.breu.io/quantm/internal/utils"
 )
 
 // NewInstallWorkflowOptions standardize the workflow options for Install Workflow.
@@ -20,7 +20,7 @@ func NewInstallWorkflowOptions(install_id int64, action githubv1.SetupAction) *d
 	return durable.NewWorkflowOptions(
 		durable.WithHook("github"),
 		durable.WithSubject("install"),
-		durable.WithSubjectID(cast.Int64ToString(install_id)),
+		durable.WithSubjectID(utils.Int64ToString(install_id)),
 		durable.WithAction(strings.ToLower(action.String())),
 	)
 }
@@ -37,7 +37,7 @@ func NewSyncReposWorkflows(install_id int64, action string, action_id string) *d
 	return durable.NewWorkflowOptions(
 		durable.WithHook("github"),
 		durable.WithSubject("install"),
-		durable.WithSubjectID(cast.Int64ToString(install_id)),
+		durable.WithSubjectID(utils.Int64ToString(install_id)),
 		durable.WithScope("sync-repos"),
 		durable.WithAction(strings.ToLower(action)),
 		durable.WithActionID(action_id),
@@ -53,7 +53,7 @@ func NewPushWorkflowOptions(id int64, repo, action, event_id string) *durable.Wo
 		durable.WithSubject("repo"),
 		durable.WithSubjectID(repo),
 		durable.WithScope("push"),
-		durable.WithScopeID(cast.Int64ToString(id)),
+		durable.WithScopeID(utils.Int64ToString(id)),
 		durable.WithAction(action),
 		durable.WithActionID(event_id),
 	)
@@ -107,7 +107,7 @@ func NewRefWorkflowOptions(repo_id int64, ref, scope, scope_id, action, event_id
 	return durable.NewWorkflowOptions(
 		durable.WithHook("github"),
 		durable.WithSubject("repo"),
-		durable.WithSubjectID(cast.Int64ToString(repo_id)),
+		durable.WithSubjectID(utils.Int64ToString(repo_id)),
 		durable.WithKind(ref),
 		durable.WithScope(scope),
 		durable.WithScopeID(scope_id),

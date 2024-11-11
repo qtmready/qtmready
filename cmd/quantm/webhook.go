@@ -8,7 +8,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	githubweb "go.breu.io/quantm/internal/hooks/github/web"
+	"go.breu.io/quantm/internal/hooks/github"
 )
 
 type (
@@ -20,6 +20,8 @@ type (
 )
 
 func (w *WebhookService) Start(ctx context.Context) error {
+	slog.Info("webhook: starting ...", "port", 8000)
+
 	err := w.Echo.Start(":8000")
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
@@ -37,11 +39,9 @@ func NewWebhookServer() *WebhookService {
 	webhook.HideBanner = true
 	webhook.HidePort = true
 
-	github := &githubweb.Webhook{}
+	github := &github.Webhook{}
 
 	webhook.POST("/webhooks/github", github.Handler)
-
-	slog.Info("webhook server started", "port", 8000)
 
 	return &WebhookService{webhook}
 }

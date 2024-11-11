@@ -10,7 +10,8 @@ WHERE id = $1;
 
 -- name: UpdateRepo :one
 UPDATE repos
-SET org_id = $2,
+SET
+    org_id = $2,
     name = $3,
     hook = $4,
     hook_id = $5,
@@ -28,17 +29,18 @@ WHERE id = $1;
 -- name: ListRepos :many
 SELECT *
 FROM repos
-ORDER BY created_at DESC;
+WHERE org_id = $1
+ORDER BY updated_at DESC;
 
 -- name: GetOrgReposByOrgID :many
 SELECT *
-FROM repos 
-WHERE org_id = $1; 
+FROM repos
+WHERE org_id = $1;
 
 -- name: GetReposByHookAndHookID :one
 SELECT *
-FROM repos 
-WHERE hook = $1 AND hook_id = $2; 
+FROM repos
+WHERE hook = $1 AND hook_id = $2;
 
 -- name: SuspendedRepoByHookID :exec
 UPDATE repos
@@ -49,3 +51,19 @@ WHERE hook_id = $1;
 UPDATE repos
 SET is_active = true
 WHERE hook_id = $1;
+
+-- name: GetRepo :one
+SELECT
+  sqlc.embed(repo),
+  sqlc.embed(msg),
+  sqlc.embed(org)
+FROM
+  github_repos gr
+JOIN
+  repos repo ON gr.id = repo.hook_id
+LEFT JOIN
+  messaging msg ON msg.link_to = repo.id
+JOIN
+  orgs org ON repo.org_id = org.id
+WHERE
+  gr.installation_id = $1 AND gr.github_id = $2;

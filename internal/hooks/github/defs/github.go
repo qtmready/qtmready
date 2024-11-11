@@ -1,4 +1,4 @@
-package githubdefs
+package defs
 
 import (
 	"time"
@@ -78,7 +78,7 @@ type (
 		TreeID    string      `json:"tree_id"`
 		Distinct  bool        `json:"distinct"`
 		Message   string      `json:"message"`
-		Timestamp time.Time   `json:"timestamp"`
+		Timestamp Timestamp   `json:"timestamp"`
 		URL       string      `json:"url"`
 		Author    UserPartial `json:"author"`
 		Committer UserPartial `json:"committer"`
@@ -90,20 +90,20 @@ type (
 	Commits []Commit
 
 	Push struct {
-		Ref          string     `json:"ref"`
-		Before       string     `json:"before"`
-		After        string     `json:"after"`
-		Created      bool       `json:"created"`
-		Deleted      bool       `json:"deleted"`
-		Forced       bool       `json:"forced"`
-		BaseRef      *string    `json:"base_ref"`
-		Compare      string     `json:"compare"`
-		Commits      []Commit   `json:"commits"`
-		HeadCommit   Commit     `json:"head_commit"`
-		Repository   Repository `json:"repository"`
-		Pusher       Pusher     `json:"pusher"`
-		Sender       User       `json:"sender"`
-		Installation int64      `json:"installation"`
+		Ref          string       `json:"ref"`
+		Before       string       `json:"before"`
+		After        string       `json:"after"`
+		Created      bool         `json:"created"`
+		Deleted      bool         `json:"deleted"`
+		Forced       bool         `json:"forced"`
+		BaseRef      *string      `json:"base_ref"`
+		Compare      string       `json:"compare"`
+		Commits      []Commit     `json:"commits"`
+		HeadCommit   Commit       `json:"head_commit"`
+		Repository   Repository   `json:"repository"`
+		Pusher       Pusher       `json:"pusher"`
+		Sender       User         `json:"sender"`
+		Installation Installation `json:"installation"`
 	}
 
 	Repository struct {
@@ -152,9 +152,9 @@ type (
 		NotificationsURL string    `json:"notifications_url"`
 		LabelsURL        string    `json:"labels_url"`
 		ReleasesURL      string    `json:"releases_url"`
-		CreatedAt        time.Time `json:"created_at"`
-		UpdatedAt        time.Time `json:"updated_at"`
-		PushedAt         time.Time `json:"pushed_at"`
+		CreatedAt        Timestamp `json:"created_at"`
+		UpdatedAt        Timestamp `json:"updated_at"`
+		PushedAt         Timestamp `json:"pushed_at"`
 		GitURL           string    `json:"git_url"`
 		SSHUrl           string    `json:"ssh_url"`
 		CloneURL         string    `json:"clone_url"`

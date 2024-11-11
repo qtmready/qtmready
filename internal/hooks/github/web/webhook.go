@@ -1,4 +1,4 @@
-package githubweb
+package web
 
 import (
 	"bytes"
@@ -10,9 +10,9 @@ import (
 
 	"go.breu.io/quantm/internal/durable"
 	"go.breu.io/quantm/internal/erratic"
-	githubcfg "go.breu.io/quantm/internal/hooks/github/config"
-	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
-	githubwfs "go.breu.io/quantm/internal/hooks/github/workflows"
+	"go.breu.io/quantm/internal/hooks/github/config"
+	"go.breu.io/quantm/internal/hooks/github/defs"
+	"go.breu.io/quantm/internal/hooks/github/workflows"
 	githubv1 "go.breu.io/quantm/internal/proto/hooks/github/v1"
 )
 
@@ -97,7 +97,7 @@ func (h *Webhook) Handler(ctx echo.Context) error {
 	ctx.Request().Body = io.NopCloser(bytes.NewBuffer(body))
 
 	// Verify the signature. Return an unauthorized error if the signature is invalid.
-	if err := githubcfg.Instance().VerifyWebhookSignature(body, signature); err != nil {
+	if err := config.Instance().VerifyWebhookSignature(body, signature); err != nil {
 		return erratic.NewUnauthorizedError().AddHint("reason", "invalid signature")
 	}
 
@@ -135,7 +135,7 @@ func (h *Webhook) on(event WebhookEvent) (WebhookEventHandler, bool) {
 
 // install handles the installation event.
 func (h *Webhook) install(ctx echo.Context, event WebhookEvent, id string) error {
-	payload := &githubdefs.WebhookInstall{}
+	payload := &defs.WebhookInstall{}
 	if err := ctx.Bind(payload); err != nil {
 		slog.Info("failed to bind payload", "error", err.Error())
 		return erratic.NewBadRequestError("reason", "invalid payload")
@@ -164,11 +164,11 @@ func (h *Webhook) install(ctx echo.Context, event WebhookEvent, id string) error
 		return ctx.NoContent(http.StatusNoContent)
 	}
 
-	opts := githubdefs.NewInstallWorkflowOptions(payload.Installation.ID, action)
+	opts := defs.NewInstallWorkflowOptions(payload.Installation.ID, action)
 
 	_, err := durable.
 		OnHooks().
-		SignalWithStartWorkflow(ctx.Request().Context(), opts, githubdefs.SignalWebhookInstall, payload, githubwfs.Install)
+		SignalWithStartWorkflow(ctx.Request().Context(), opts, defs.SignalWebhookInstall, payload, workflows.Install)
 	if err != nil {
 		return erratic.NewInternalServerError("reason", "failed to signal workflow", "error", err.Error())
 	}
@@ -177,14 +177,14 @@ func (h *Webhook) install(ctx echo.Context, event WebhookEvent, id string) error
 }
 
 func (h *Webhook) install_repos(ctx echo.Context, _ WebhookEvent, id string) error {
-	payload := &githubdefs.WebhookInstallRepos{}
+	payload := &defs.WebhookInstallRepos{}
 	if err := ctx.Bind(payload); err != nil {
 		return erratic.NewBadRequestError("reason", "invalid payload")
 	}
 
-	opts := githubdefs.NewSyncReposWorkflows(payload.Installation.ID, payload.Action, id)
+	opts := defs.NewSyncReposWorkflows(payload.Installation.ID, payload.Action, id)
 
-	_, err := durable.OnHooks().ExecuteWorkflow(ctx.Request().Context(), opts, githubwfs.SyncRepos, payload)
+	_, err := durable.OnHooks().ExecuteWorkflow(ctx.Request().Context(), opts, workflows.SyncRepos, payload)
 	if err != nil {
 		return erratic.NewInternalServerError("reason", "failed to signal workflow", "error", err.Error())
 	}
@@ -194,22 +194,24 @@ func (h *Webhook) install_repos(ctx echo.Context, _ WebhookEvent, id string) err
 
 // push handles the push event.
 func (h *Webhook) push(ctx echo.Context, event WebhookEvent, id string) error {
-	payload := &githubdefs.Push{}
+	payload := &defs.Push{}
 	if err := ctx.Bind(payload); err != nil {
+		slog.Error("failed to bind payload", "error", err.Error())
 		return erratic.NewBadRequestError("reason", "invalid payload")
 	}
 
-	if payload.After == githubdefs.NoCommit {
+	if payload.After == defs.NoCommit {
 		return ctx.NoContent(http.StatusNoContent)
 	}
 
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
-	opts := githubdefs.NewPushWorkflowOptions(payload.Installation, payload.Repository.Name, event.String(), delievery)
+	opts := defs.NewPushWorkflowOptions(payload.Installation.ID, payload.Repository.Name, event.String(), delievery)
 
 	_, err := durable.
 		OnHooks().
-		SignalWithStartWorkflow(ctx.Request().Context(), opts, githubdefs.SignalWebhookPush, payload, githubwfs.Push)
+		ExecuteWorkflow(ctx.Request().Context(), opts, workflows.Push, payload)
 	if err != nil {
+		slog.Error("failed to signal workflow", "error", err.Error())
 		return erratic.NewInternalServerError("reason", "failed to signal workflow", "error", err.Error())
 	}
 

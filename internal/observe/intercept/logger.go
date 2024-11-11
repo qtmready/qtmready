@@ -15,7 +15,7 @@ import (
 func RequestLogger() connect.UnaryInterceptorFunc {
 	intercept := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
-			slog.Info(req.Spec().Procedure, "method", req.HTTPMethod(), "any", req.Any(), "headers", req.Header())
+			slog.Info(req.Spec().Procedure, "method", req.HTTPMethod())
 
 			return next(ctx, req)
 		})

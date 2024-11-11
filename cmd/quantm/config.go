@@ -8,20 +8,20 @@ import (
 
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/durable"
-	githubcfg "go.breu.io/quantm/internal/hooks/github/config"
-	pkg_slack "go.breu.io/quantm/internal/hooks/slack/config"
+	"go.breu.io/quantm/internal/hooks/github"
+	"go.breu.io/quantm/internal/hooks/slack"
 	"go.breu.io/quantm/internal/nomad"
 	"go.breu.io/quantm/internal/pulse"
 )
 
 type (
 	Config struct {
-		DB      *db.Config        `koanf:"DB"`      // Configuration for the database.
-		Durable *durable.Config   `koanf:"DURABLE"` // Configuration for the durable.
-		Pulse   *pulse.Config     `koanf:"PULSE"`   // Configuration for the pulse.
-		Nomad   *nomad.Config     `koanf:"NOMAD"`   // Configuration for Nomad.
-		Github  *githubcfg.Config `koanf:"GITHUB"`  // Configuration for the github.
-		Slack   *pkg_slack.Config `koanf:"SLACK"`   // Configuration for the slack.
+		DB      *db.Config      `koanf:"DB"`      // Configuration for the database.
+		Durable *durable.Config `koanf:"DURABLE"` // Configuration for the durable.
+		Pulse   *pulse.Config   `koanf:"PULSE"`   // Configuration for the pulse.
+		Nomad   *nomad.Config   `koanf:"NOMAD"`   // Configuration for Nomad.
+		Github  *github.Config  `koanf:"GITHUB"`  // Configuration for the github.
+		Slack   *slack.Config   `koanf:"SLACK"`   // Configuration for the slack.
 
 		Secret  string `koanf:"SECRET"`  // Secret key for JWE.
 		Debug   bool   `koanf:"DEBUG"`   // Flag to enable debug mode.
@@ -34,8 +34,8 @@ func (c *Config) Load() {
 	c.Durable = &durable.DefaultConfig
 	c.Nomad = &nomad.DefaultConfig
 	c.Pulse = &pulse.DefaultConfig
-	c.Github = &githubcfg.Config{}
-	c.Slack = &pkg_slack.Config{}
+	c.Github = &github.Config{}
+	c.Slack = &slack.Config{}
 
 	k := koanf.New("__")
 

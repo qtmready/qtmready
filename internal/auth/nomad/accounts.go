@@ -1,4 +1,4 @@
-package authnmd
+package nomad
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	"go.breu.io/quantm/internal/cast"
+	"go.breu.io/quantm/internal/auth/cast"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/erratic"
 	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"

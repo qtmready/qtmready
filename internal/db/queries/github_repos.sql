@@ -22,3 +22,4 @@ WHERE id = $1;
 UPDATE github_repos
 SET is_active = true
 WHERE id = $1;
+

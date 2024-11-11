@@ -4,112 +4,94 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-
-	commonv1 "go.breu.io/quantm/internal/proto/ctrlplane/common/v1"
 )
 
 type (
-	// EventHook represents a hook for events. It can be either a RepoHook or a MessageHook.
-	EventHook interface {
-		commonv1.RepoHook | commonv1.MessagingHook
-	}
-
-	// EventContext represents the contextual information surrounding an event.
-	//
-	// This context is crucial for understanding and processing the event.
-	EventContext[H EventHook] struct {
-		ParentID  uuid.UUID   `json:"parent_id"` // ParentID is the ID of preceding related event (tracing chains).
-		Hook      H           `json:"hook"`      // Hook is the Event origin (e.g., GitHub, GitLab, GCP).
-		Scope     EventScope  `json:"scope"`     // Scope is the Event category (e.g., branch, pull_request).
-		Action    EventAction `json:"action"`    // Action is the Triggering action (e.g., created, updated, merged).
-		Source    string      `json:"source"`    // Source is the Event source.
-		Timestamp time.Time   `json:"timestamp"` // Timestamp is the Event occurrence time.
-	}
-
-	// EventSubject represents the entity within the system that is the subject of an event.
-	//
-	// It encapsulates:
-	//   - ID: The unique identifier of the entity i.e. the primary key within its respective database table.
-	//   - Name: The name of the entity's corresponding database table. This provides context for the event's subject.
-	//     For instance, an event related to a branch would have "repos" as the subject name, as branches are associated
-	//     with repositories.
-	//   - TeamID: The unique identifier of the team to which this entity belongs. This allows for team-based filtering
-	//     and organization
-	//     of events.
-	EventSubject struct {
-		ID     uuid.UUID `json:"id"`      // ID is the ID of the subject.
-		Name   string    `json:"name"`    // Name of the database table.
-		OrgID  uuid.UUID `json:"org_id"`  // OrgID is the ID of the organization that the subject belongs to.
-		TeamID uuid.UUID `json:"team_id"` // Team ID of the subject's team in the organization. It can be null uuid.
-		UserID uuid.UUID `json:"user_id"` // UserID is the ID of the user that the subject belongs to. It can be null uuid.
-	}
-
 	// Event represents an event.
-	Event[H EventHook, P EventPayload] struct {
-		Version EventVersion    `json:"version"` // Version is the version of the event.
-		ID      uuid.UUID       `json:"id"`      // ID is the ID of the event.
-		Context EventContext[H] `json:"context"` // Context is the context of the event.
-		Subject EventSubject    `json:"subject"` // Subject is the subject of the event.
-		Payload P               `json:"payload"` // Payload is the payload of the event.
+	Event[H Hook, P Payload] struct {
+		Version   EventVersion `json:"version"`   // Version is the version of the event.
+		ID        uuid.UUID    `json:"id"`        // ID is the ID of the event.
+		Timestamp time.Time    `json:"timestamp"` // Timestamp is the Event occurrence time.
+		Context   Context[H]   `json:"context"`   // Context is the context of the event.
+		Subject   Subject      `json:"subject"`   // Subject is the subject of the event.
+		Payload   *P           `json:"payload"`   // Payload is the payload of the event.
 	}
 )
 
-// -- Context --
-
-// SetSource sets the source field of the EventContext for the Event struct and returns the event.
-//
-// The src parameter specifies the source of the event, such as the name of the repository.
-//
-// Example usage:
-//
-//	event := &Event[EventPayload, EventHook]{}
-//	event.SetSource("example/repo")
-func (e *Event[H, P]) SetSource(src string) *Event[H, P] {
-	e.Context.Source = src
-
-	return e
-}
-
-// SetParent sets the parentID field of the EventContext for the Event struct and returns the event.
-//
-// The id parameter specifies the parent ID of the event, which can be used to trace the event chain.
-//
-// Example usage:
-//
-//	event := &Event[EventPayload, EventHook]{}
-//	event.SetParent(id)
 func (e *Event[H, P]) SetParent(id uuid.UUID) *Event[H, P] {
 	e.Context.ParentID = id
 
 	return e
 }
 
-// SetTimestamp updates the timestamp field of the EventContext for the Event struct and returns the event.
-func (e *Event[H, P]) SetTimestamp(t time.Time) *Event[H, P] {
-	e.Context.Timestamp = t
+func (e *Event[H, P]) SettHook(hook H) *Event[H, P] {
+	e.Context.Hook = hook
 
 	return e
 }
 
-// -- Scope --
-
-// SetScopeBranch sets the scope of the Event to EventScopeBranch and returns the event.
-func (e *Event[H, P]) SetScopeBranch() *Event[H, P] {
-	e.Context.Scope = EventScopeBranch
+func (e *Event[H, P]) SetScope(scope Scope) *Event[H, P] {
+	e.Context.Scope = scope
 
 	return e
 }
 
-// SetScopeTag sets the scope of the Event to EventScopeTag and returns the event.
-func (e *Event[H, P]) SetScopeTag() *Event[H, P] {
-	e.Context.Scope = EventScopeTag
+func (e *Event[H, P]) SetAction(action EventAction) *Event[H, P] {
+	e.Context.Action = action
 
 	return e
 }
 
-// SetScopePush sets the scope of the Event to EventScopePush and returns the event.
-func (e *Event[H, P]) SetScopePush() *Event[H, P] {
-	e.Context.Scope = EventScopePush
+func (e *Event[H, P]) SetSource(source string) *Event[H, P] {
+	e.Context.Source = source
 
 	return e
+}
+
+func (e *Event[H, P]) SetSubjectID(id uuid.UUID) *Event[H, P] {
+	e.Subject.ID = id
+
+	return e
+}
+
+func (e *Event[H, P]) SetSubjectName(name string) *Event[H, P] {
+	e.Subject.Name = name
+
+	return e
+}
+
+func (e *Event[H, P]) SetOrg(id uuid.UUID) *Event[H, P] {
+	e.Subject.OrgID = id
+
+	return e
+}
+
+func (e *Event[H, P]) SetTeam(id uuid.UUID) *Event[H, P] {
+	e.Subject.TeamID = id
+
+	return e
+}
+
+func (e *Event[H, P]) SetUser(id uuid.UUID) *Event[H, P] {
+	e.Subject.UserID = id
+
+	return e
+}
+
+func (e *Event[H, P]) SetPayload(payload *P) *Event[H, P] {
+	e.Payload = payload
+
+	return e
+}
+
+func New[H Hook, P Payload]() *Event[H, P] {
+	event := &Event[H, P]{
+		Version:   EventVersionDefault,
+		ID:        MustUUID(),
+		Timestamp: time.Now(),
+		Context:   Context[H]{},
+		Subject:   Subject{},
+	}
+
+	return event
 }

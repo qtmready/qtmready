@@ -1,4 +1,4 @@
-package authnmd
+package nomad
 
 import (
 	"context"

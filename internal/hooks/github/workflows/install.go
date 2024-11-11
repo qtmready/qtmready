@@ -1,4 +1,4 @@
-package githubwfs
+package workflows
 
 import (
 	"go.breu.io/durex/dispatch"
@@ -7,8 +7,8 @@ import (
 
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/durable"
-	githubacts "go.breu.io/quantm/internal/hooks/github/activities"
-	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
+	"go.breu.io/quantm/internal/hooks/github/activities"
+	"go.breu.io/quantm/internal/hooks/github/defs"
 )
 
 type (
@@ -18,11 +18,11 @@ type (
 	}
 
 	InstallWorkflowState struct {
-		do      *githubacts.Install
+		do      *activities.Install
 		status  StatusInstall
 		entity  *entities.GithubInstallation
-		request *githubdefs.RequestInstall
-		webhook *githubdefs.WebhookInstall
+		request *defs.RequestInstall
+		webhook *defs.WebhookInstall
 
 		log log.Logger
 	}
@@ -37,10 +37,10 @@ func Install(ctx workflow.Context) error {
 	state := NewInstallWorkflowState(ctx)
 	selector := workflow.NewSelector(ctx)
 
-	rqst := workflow.GetSignalChannel(ctx, githubdefs.SignalRequestInstall.String())
+	rqst := workflow.GetSignalChannel(ctx, defs.SignalRequestInstall.String())
 	selector.AddReceive(rqst, state.on_request(ctx))
 
-	wb := workflow.GetSignalChannel(ctx, githubdefs.SignalWebhookInstall.String())
+	wb := workflow.GetSignalChannel(ctx, defs.SignalWebhookInstall.String())
 	selector.AddReceive(wb, state.on_webhook(ctx))
 
 	for !state.done() {
@@ -54,8 +54,7 @@ func Install(ctx workflow.Context) error {
 	}
 
 	for _, repo := range state.webhook.Repositories {
-		payload := &githubdefs.SyncRepo{InstallationID: state.entity.ID, Repo: repo, OrgID: state.entity.OrgID}
-
+		payload := &defs.SyncRepoPayload{InstallationID: state.entity.ID, Repo: repo, OrgID: state.entity.OrgID}
 		selector.AddFuture(workflow.ExecuteActivity(ctx, state.do.AddRepoToInstall, payload), func(f workflow.Future) {})
 	}
 
@@ -102,7 +101,7 @@ func NewInstallWorkflowState(ctx workflow.Context) *InstallWorkflowState {
 		log:     workflow.GetLogger(ctx),
 		status:  StatusInstall{webhook: false, request: false},
 		entity:  &entities.GithubInstallation{},
-		request: &githubdefs.RequestInstall{},
-		webhook: &githubdefs.WebhookInstall{},
+		request: &defs.RequestInstall{},
+		webhook: &defs.WebhookInstall{},
 	}
 }

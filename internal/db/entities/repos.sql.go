@@ -32,7 +32,7 @@ RETURNING id, created_at, updated_at, org_id, name, hook, hook_id, default_branc
 type CreateRepoParams struct {
 	OrgID  uuid.UUID `json:"org_id"`
 	Name   string    `json:"name"`
-	Hook   string    `json:"hook"`
+	Hook   int32     `json:"hook"`
 	HookID uuid.UUID `json:"hook_id"`
 	Url    string    `json:"url"`
 }
@@ -76,7 +76,7 @@ func (q *Queries) DeleteRepo(ctx context.Context, id uuid.UUID) error {
 
 const getOrgReposByOrgID = `-- name: GetOrgReposByOrgID :many
 SELECT id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration, url, is_active
-FROM repos 
+FROM repos
 WHERE org_id = $1
 `
 
@@ -114,6 +114,69 @@ func (q *Queries) GetOrgReposByOrgID(ctx context.Context, orgID uuid.UUID) ([]Re
 	return items, nil
 }
 
+const getRepo = `-- name: GetRepo :one
+SELECT
+  repo.id, repo.created_at, repo.updated_at, repo.org_id, repo.name, repo.hook, repo.hook_id, repo.default_branch, repo.is_monorepo, repo.threshold, repo.stale_duration, repo.url, repo.is_active,
+  msg.id, msg.created_at, msg.updated_at, msg.hook, msg.kind, msg.link_to, msg.data,
+  org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug, org.hooks
+FROM
+  github_repos gr
+JOIN
+  repos repo ON gr.id = repo.hook_id
+LEFT JOIN
+  messaging msg ON msg.link_to = repo.id
+JOIN
+  orgs org ON repo.org_id = org.id
+WHERE
+  gr.installation_id = $1 AND gr.github_id = $2
+`
+
+type GetRepoParams struct {
+	InstallationID uuid.UUID `json:"installation_id"`
+	GithubID       int64     `json:"github_id"`
+}
+
+type GetRepoRow struct {
+	Repo      Repo      `json:"repo"`
+	Messaging Messaging `json:"messaging"`
+	Org       Org       `json:"org"`
+}
+
+func (q *Queries) GetRepo(ctx context.Context, arg GetRepoParams) (GetRepoRow, error) {
+	row := q.db.QueryRow(ctx, getRepo, arg.InstallationID, arg.GithubID)
+	var i GetRepoRow
+	err := row.Scan(
+		&i.Repo.ID,
+		&i.Repo.CreatedAt,
+		&i.Repo.UpdatedAt,
+		&i.Repo.OrgID,
+		&i.Repo.Name,
+		&i.Repo.Hook,
+		&i.Repo.HookID,
+		&i.Repo.DefaultBranch,
+		&i.Repo.IsMonorepo,
+		&i.Repo.Threshold,
+		&i.Repo.StaleDuration,
+		&i.Repo.Url,
+		&i.Repo.IsActive,
+		&i.Messaging.ID,
+		&i.Messaging.CreatedAt,
+		&i.Messaging.UpdatedAt,
+		&i.Messaging.Hook,
+		&i.Messaging.Kind,
+		&i.Messaging.LinkTo,
+		&i.Messaging.Data,
+		&i.Org.ID,
+		&i.Org.CreatedAt,
+		&i.Org.UpdatedAt,
+		&i.Org.Name,
+		&i.Org.Domain,
+		&i.Org.Slug,
+		&i.Org.Hooks,
+	)
+	return i, err
+}
+
 const getRepoByID = `-- name: GetRepoByID :one
 SELECT id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration, url, is_active
 FROM repos
@@ -143,12 +206,12 @@ func (q *Queries) GetRepoByID(ctx context.Context, id uuid.UUID) (Repo, error) {
 
 const getReposByHookAndHookID = `-- name: GetReposByHookAndHookID :one
 SELECT id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration, url, is_active
-FROM repos 
+FROM repos
 WHERE hook = $1 AND hook_id = $2
 `
 
 type GetReposByHookAndHookIDParams struct {
-	Hook   string    `json:"hook"`
+	Hook   int32     `json:"hook"`
 	HookID uuid.UUID `json:"hook_id"`
 }
 
@@ -176,11 +239,12 @@ func (q *Queries) GetReposByHookAndHookID(ctx context.Context, arg GetReposByHoo
 const listRepos = `-- name: ListRepos :many
 SELECT id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration, url, is_active
 FROM repos
-ORDER BY created_at DESC
+WHERE org_id = $1
+ORDER BY updated_at DESC
 `
 
-func (q *Queries) ListRepos(ctx context.Context) ([]Repo, error) {
-	rows, err := q.db.Query(ctx, listRepos)
+func (q *Queries) ListRepos(ctx context.Context, orgID uuid.UUID) ([]Repo, error) {
+	rows, err := q.db.Query(ctx, listRepos, orgID)
 	if err != nil {
 		return nil, err
 	}
@@ -226,7 +290,8 @@ func (q *Queries) SuspendedRepoByHookID(ctx context.Context, hookID uuid.UUID) e
 
 const updateRepo = `-- name: UpdateRepo :one
 UPDATE repos
-SET org_id = $2,
+SET
+    org_id = $2,
     name = $3,
     hook = $4,
     hook_id = $5,
@@ -242,7 +307,7 @@ type UpdateRepoParams struct {
 	ID            uuid.UUID       `json:"id"`
 	OrgID         uuid.UUID       `json:"org_id"`
 	Name          string          `json:"name"`
-	Hook          string          `json:"hook"`
+	Hook          int32           `json:"hook"`
 	HookID        uuid.UUID       `json:"hook_id"`
 	DefaultBranch string          `json:"default_branch"`
 	IsMonorepo    bool            `json:"is_monorepo"`

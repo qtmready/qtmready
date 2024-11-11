@@ -1,35 +1,65 @@
-package githubwfs
+package workflows
 
 import (
-	"go.temporal.io/sdk/log"
+	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/quantm/internal/durable"
-	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
+	"go.breu.io/quantm/internal/events"
+	"go.breu.io/quantm/internal/hooks/github/activities"
+	"go.breu.io/quantm/internal/hooks/github/cast"
+	"go.breu.io/quantm/internal/hooks/github/defs"
+	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
-type (
-	PushWorkflowState struct {
-		log log.Logger
+func Push(ctx workflow.Context, push *defs.Push) error {
+	acts := &activities.Push{}
+	ctx = dispatch.WithDefaultActivityContext(ctx)
+
+	proto := cast.PushToProto(push)
+	meta := &defs.HydratedRepoEvent{}
+
+	{
+		payload := &defs.HydrateRepoEventPayload{
+			RepoID:         push.Repository.ID,
+			InstallationID: push.Installation.ID,
+			Email:          push.Pusher.Email,
+		}
+		if err := workflow.ExecuteActivity(ctx, acts.HydratePushEvent, payload).Get(ctx, meta); err != nil {
+			return err
+		}
 	}
-)
 
-func Push(ctx workflow.Context) error {
-	state := NewPushWorkflowState(ctx)
-	selector := workflow.NewSelector(ctx)
+	action := events.EventActionCreated
 
-	rqst := workflow.GetSignalChannel(ctx, githubdefs.SignalWebhookPush.String())
-	selector.AddReceive(rqst, state.on_push(ctx))
-
-	return nil
-}
-
-func (s *PushWorkflowState) on_push(ctx workflow.Context) durable.ChannelHandler {
-	return func(rx workflow.ReceiveChannel, more bool) {}
-}
-
-func NewPushWorkflowState(ctx workflow.Context) *PushWorkflowState {
-	return &PushWorkflowState{
-		log: workflow.GetLogger(ctx),
+	if push.Deleted {
+		action = events.EventActionDeleted
 	}
+
+	if push.Forced {
+		action = events.EventActionForced
+	}
+
+	event := events.
+		New[eventsv1.RepoHook, eventsv1.Push]().
+		SettHook(eventsv1.RepoHook_REPO_HOOK_GITHUB).
+		SetParent(meta.ParentID).
+		SetScope(events.ScopePush).
+		SetAction(action).
+		SetSource(meta.Repo.Url).
+		SetOrg(meta.Repo.OrgID).
+		SetPayload(&proto)
+
+	if meta.Team != nil {
+		event.SetTeam(meta.Team.ID)
+	}
+
+	if meta.User != nil {
+		event.SetUser(meta.User.ID)
+	}
+
+	// TODO: persist the event right after creation.
+
+	hevent := &defs.HydratedQuantmEvent[eventsv1.Push]{Event: event, Meta: meta}
+
+	return workflow.ExecuteActivity(ctx, acts.SignalGithubPushEventToRepo, hevent).Get(ctx, nil)
 }
