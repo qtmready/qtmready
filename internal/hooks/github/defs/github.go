@@ -179,3 +179,19 @@ type (
 		MasterBranch     string    `json:"master_branch"`
 	}
 )
+
+func (p *Push) RepoID() int64 {
+	return p.Repository.ID
+}
+
+func (p *Push) InstallationID() int64 {
+	return p.Installation
+}
+
+func (p *Push) RepoName() string {
+	return p.Repository.Name
+}
+
+func (p *Push) SenderID() int64 {
+	return p.Sender.ID
+}

@@ -4,13 +4,61 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
+	"go.breu.io/quantm/internal/events"
 	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
+	commonv1 "go.breu.io/quantm/internal/proto/ctrlplane/common/v1"
 )
+
+func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
+	ctx context.Context, params *githubdefs.RepoEventPayload,
+) (*events.Event[H, P], error) {
+	var event *events.Event[H, P]
+
+	install, err := db.Queries().GetGithubInstallationByInstallationID(ctx, params.InstallationID)
+	if err != nil {
+		return nil, nil
+	}
+
+	repo, err := db.Queries().GetGithubRepoByInstallationIDAndGithubID(ctx, entities.GetGithubRepoByInstallationIDAndGithubIDParams{
+		InstallationID: install.ID,
+		GithubID:       params.RepoID,
+	})
+	if err != nil {
+		return nil, nil
+	}
+
+	// TODO - get the team and the user.
+	id := uuid.New()
+
+	event = &events.Event[H, P]{
+		ID:      id,
+		Version: events.EventVersionDefault,
+		Context: events.EventContext[H]{
+			ParentID:  id,
+			Hook:      H(commonv1.RepoHook_REPO_HOOK_GITHUB),
+			Scope:     params.Scope,
+			Action:    params.Action,
+			Source:    repo.Url,
+			Timestamp: time.Now(),
+		},
+		Subject: events.EventSubject{
+			ID:     repo.ID,
+			Name:   repo.Name,
+			OrgID:  install.OrgID,
+			TeamID: uuid.Nil, // TODO - need to set after github oauth flow is done
+			UserID: uuid.Nil, // TODO - need to set after github oauth flow is done
+		},
+	}
+
+	return event, nil
+}
 
 // AddRepo adds a new GitHub repository to the database.
 // If the repository already exists, it will be activated.
