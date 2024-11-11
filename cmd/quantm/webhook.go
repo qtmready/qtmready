@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -33,9 +34,14 @@ func (w *WebhookService) Stop(ctx context.Context) error {
 
 func NewWebhookServer() *WebhookService {
 	webhook := echo.New()
+	webhook.HideBanner = true
+	webhook.HidePort = true
+
 	github := &githubweb.Webhook{}
 
 	webhook.POST("/webhooks/github", github.Handler)
+
+	slog.Info("webhook server started", "port", 8000)
 
 	return &WebhookService{webhook}
 }

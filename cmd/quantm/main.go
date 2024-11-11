@@ -36,6 +36,8 @@ func main() {
 	cfg := &Config{}
 	cfg.Load()
 
+	slog.Info("starting quantm", "clickhouse", cfg.Pulse.Clickhouse, "qdb", cfg.Pulse.QuestDB)
+
 	configure_logger(cfg.Debug)
 	auth.SetSecret(cfg.Secret)
 
