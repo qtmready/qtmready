@@ -49,3 +49,23 @@ WHERE hook_id = $1;
 UPDATE repos
 SET is_active = true
 WHERE hook_id = $1;
+
+-- name: GetRepoByInstallationIDAndGithubID :one
+SELECT 
+  r.id,
+  r.org_id,
+  r.name,
+  r.hook,
+  r.hook_id,
+  r.default_branch,
+  r.is_monorepo,
+  r.threshold,
+  r.stale_duration,
+  r.url,
+  r.is_active
+FROM 
+  github_repos gr
+JOIN 
+  repos r ON gr.id = r.hook_id
+WHERE 
+  gr.installation_id = $1 AND gr.github_id = $2;

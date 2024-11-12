@@ -141,6 +141,65 @@ func (q *Queries) GetRepoByID(ctx context.Context, id uuid.UUID) (Repo, error) {
 	return i, err
 }
 
+const getRepoByInstallationIDAndGithubID = `-- name: GetRepoByInstallationIDAndGithubID :one
+SELECT 
+  r.id,
+  r.org_id,
+  r.name,
+  r.hook,
+  r.hook_id,
+  r.default_branch,
+  r.is_monorepo,
+  r.threshold,
+  r.stale_duration,
+  r.url,
+  r.is_active
+FROM 
+  github_repos gr
+JOIN 
+  repos r ON gr.id = r.hook_id
+WHERE 
+  gr.installation_id = $1 AND gr.github_id = $2
+`
+
+type GetRepoByInstallationIDAndGithubIDParams struct {
+	InstallationID uuid.UUID `json:"installation_id"`
+	GithubID       int64     `json:"github_id"`
+}
+
+type GetRepoByInstallationIDAndGithubIDRow struct {
+	ID            uuid.UUID       `json:"id"`
+	OrgID         uuid.UUID       `json:"org_id"`
+	Name          string          `json:"name"`
+	Hook          string          `json:"hook"`
+	HookID        uuid.UUID       `json:"hook_id"`
+	DefaultBranch string          `json:"default_branch"`
+	IsMonorepo    bool            `json:"is_monorepo"`
+	Threshold     int32           `json:"threshold"`
+	StaleDuration pgtype.Interval `json:"stale_duration"`
+	Url           string          `json:"url"`
+	IsActive      bool            `json:"is_active"`
+}
+
+func (q *Queries) GetRepoByInstallationIDAndGithubID(ctx context.Context, arg GetRepoByInstallationIDAndGithubIDParams) (GetRepoByInstallationIDAndGithubIDRow, error) {
+	row := q.db.QueryRow(ctx, getRepoByInstallationIDAndGithubID, arg.InstallationID, arg.GithubID)
+	var i GetRepoByInstallationIDAndGithubIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.OrgID,
+		&i.Name,
+		&i.Hook,
+		&i.HookID,
+		&i.DefaultBranch,
+		&i.IsMonorepo,
+		&i.Threshold,
+		&i.StaleDuration,
+		&i.Url,
+		&i.IsActive,
+	)
+	return i, err
+}
+
 const getReposByHookAndHookID = `-- name: GetReposByHookAndHookID :one
 SELECT id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration, url, is_active
 FROM repos 
