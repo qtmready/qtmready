@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"go.breu.io/durex/queues"
 
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
@@ -18,8 +19,8 @@ import (
 
 func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
 	ctx context.Context, params *githubdefs.RepoEventPayload,
-) (*events.Event[H, P], error) {
-	var event *events.Event[H, P]
+) (*githubdefs.Trigger[H, P], error) {
+	var event events.Event[H, P]
 
 	install, err := db.Queries().GetGithubInstallationByInstallationID(ctx, params.InstallationID)
 	if err != nil {
@@ -27,7 +28,9 @@ func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
 	}
 
 	// get the core repo from hook_repo (join)
-	repo, err := db.Queries().GetRepoByInstallationIDAndGithubID(ctx, entities.GetRepoByInstallationIDAndGithubIDParams{
+	// TODO - may change the query and get the user and team info
+	// TODO - convert the messaging byte into entity
+	repo, err := db.Queries().GetRepo(ctx, entities.GetRepoParams{
 		InstallationID: install.ID,
 		GithubID:       params.RepoID,
 	})
@@ -37,7 +40,7 @@ func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
 
 	id := uuid.New()
 
-	event = &events.Event[H, P]{
+	event = events.Event[H, P]{
 		ID:      id,
 		Version: events.EventVersionDefault,
 		Context: events.EventContext[H]{
@@ -57,7 +60,12 @@ func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
 		},
 	}
 
-	return event, nil
+	tr := &githubdefs.Trigger[H, P]{
+		Event: &event,
+		Repo:  &repo,
+	}
+
+	return tr, nil
 }
 
 // AddRepo adds a new GitHub repository to the database.
@@ -160,4 +168,9 @@ func SuspendRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 	}
 
 	return err
+}
+
+// SignalCoreRepoCtrl signals the core repository control workflow with the given signal and payload.
+func SignalCoreRepoCtrl(ctx context.Context, repo *entities.Repo, signal queues.Signal, payload any) error {
+	return nil
 }
