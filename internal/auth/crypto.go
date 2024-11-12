@@ -45,8 +45,9 @@ const (
 type (
 	// Claims represents the payload of the JWT token.
 	Claims struct {
-		jwt.Claims // Standard JWT claims.
-		// User       User `json:"user"` // User information.
+		jwt.Claims        // Standard JWT claims.
+		UserID     string `json:"user_id"` // User ID.
+		OrgID      string `json:"org_id"`  // Organization ID.
 	}
 
 	// JWTEncodeParams contains the parameters for JWT encoding.

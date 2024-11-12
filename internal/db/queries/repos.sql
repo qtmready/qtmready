@@ -28,17 +28,18 @@ WHERE id = $1;
 -- name: ListRepos :many
 SELECT *
 FROM repos
-ORDER BY created_at DESC;
+WHERE org_id = $1
+ORDER BY updated_at DESC;
 
 -- name: GetOrgReposByOrgID :many
 SELECT *
-FROM repos 
-WHERE org_id = $1; 
+FROM repos
+WHERE org_id = $1;
 
 -- name: GetReposByHookAndHookID :one
 SELECT *
-FROM repos 
-WHERE hook = $1 AND hook_id = $2; 
+FROM repos
+WHERE hook = $1 AND hook_id = $2;
 
 -- name: SuspendedRepoByHookID :exec
 UPDATE repos
