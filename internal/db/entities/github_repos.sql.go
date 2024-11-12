@@ -9,7 +9,6 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const activateGithubRepo = `-- name: ActivateGithubRepo :exec
@@ -107,81 +106,6 @@ func (q *Queries) GetGithubRepoByInstallationIDAndGithubID(ctx context.Context, 
 		&i.FullName,
 		&i.Url,
 		&i.IsActive,
-	)
-	return i, err
-}
-
-const getGithubRepoWithRepo = `-- name: GetGithubRepoWithRepo :one
-SELECT 
-  gr.id AS github_repo_id,
-  gr.installation_id,
-  gr.github_id,
-  gr.name AS github_repo_name,
-  gr.full_name,
-  gr.url AS github_repo_url,
-  gr.is_active AS github_repo_is_active,
-  r.id AS repo_id,
-  r.org_id,
-  r.name,
-  r.hook,
-  r.hook_id,
-  r.default_branch,
-  r.is_monorepo,
-  r.threshold,
-  r.stale_duration,
-  r.url AS repo_url,
-  r.is_active AS repo_is_active
-FROM 
-  github_repos gr
-JOIN 
-  repos r ON gr.id = r.hook_id
-WHERE 
-  gr.id = $1
-`
-
-type GetGithubRepoWithRepoRow struct {
-	GithubRepoID       uuid.UUID       `json:"github_repo_id"`
-	InstallationID     uuid.UUID       `json:"installation_id"`
-	GithubID           int64           `json:"github_id"`
-	GithubRepoName     string          `json:"github_repo_name"`
-	FullName           string          `json:"full_name"`
-	GithubRepoUrl      string          `json:"github_repo_url"`
-	GithubRepoIsActive bool            `json:"github_repo_is_active"`
-	RepoID             uuid.UUID       `json:"repo_id"`
-	OrgID              uuid.UUID       `json:"org_id"`
-	Name               string          `json:"name"`
-	Hook               string          `json:"hook"`
-	HookID             uuid.UUID       `json:"hook_id"`
-	DefaultBranch      string          `json:"default_branch"`
-	IsMonorepo         bool            `json:"is_monorepo"`
-	Threshold          int32           `json:"threshold"`
-	StaleDuration      pgtype.Interval `json:"stale_duration"`
-	RepoUrl            string          `json:"repo_url"`
-	RepoIsActive       bool            `json:"repo_is_active"`
-}
-
-func (q *Queries) GetGithubRepoWithRepo(ctx context.Context, id uuid.UUID) (GetGithubRepoWithRepoRow, error) {
-	row := q.db.QueryRow(ctx, getGithubRepoWithRepo, id)
-	var i GetGithubRepoWithRepoRow
-	err := row.Scan(
-		&i.GithubRepoID,
-		&i.InstallationID,
-		&i.GithubID,
-		&i.GithubRepoName,
-		&i.FullName,
-		&i.GithubRepoUrl,
-		&i.GithubRepoIsActive,
-		&i.RepoID,
-		&i.OrgID,
-		&i.Name,
-		&i.Hook,
-		&i.HookID,
-		&i.DefaultBranch,
-		&i.IsMonorepo,
-		&i.Threshold,
-		&i.StaleDuration,
-		&i.RepoUrl,
-		&i.RepoIsActive,
 	)
 	return i, err
 }

@@ -26,7 +26,8 @@ func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
 		return nil, nil
 	}
 
-	repo, err := db.Queries().GetGithubRepoByInstallationIDAndGithubID(ctx, entities.GetGithubRepoByInstallationIDAndGithubIDParams{
+	// get the core repo from hook_repo (join)
+	repo, err := db.Queries().GetRepoByInstallationIDAndGithubID(ctx, entities.GetRepoByInstallationIDAndGithubIDParams{
 		InstallationID: install.ID,
 		GithubID:       params.RepoID,
 	})
@@ -34,7 +35,6 @@ func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
 		return nil, nil
 	}
 
-	// TODO - get the team and the user.
 	id := uuid.New()
 
 	event = &events.Event[H, P]{
