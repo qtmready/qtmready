@@ -13,6 +13,7 @@ func RepoToProto(repo *entities.Repo) *corev1.Repo {
 		Id:            repo.ID.String(),
 		CreatedAt:     timestamppb.New(repo.CreatedAt),
 		UpdatedAt:     timestamppb.New(repo.UpdatedAt),
+		OrgId:         repo.OrgID.String(),
 		Name:          repo.Name,
 		Hook:          repo.Hook,
 		HookId:        repo.HookID.String(),
@@ -20,7 +21,8 @@ func RepoToProto(repo *entities.Repo) *corev1.Repo {
 		IsMonorepo:    repo.IsMonorepo,
 		Threshold:     repo.Threshold,
 		StaleDuration: db.IntervalToProto(repo.StaleDuration),
-		OrgId:         repo.OrgID.String(),
+		Url:           repo.Url,
+		IsActive:      repo.IsActive,
 	}
 }
 
