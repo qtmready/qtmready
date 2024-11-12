@@ -76,7 +76,7 @@ func (q *Queries) DeleteRepo(ctx context.Context, id uuid.UUID) error {
 
 const getOrgReposByOrgID = `-- name: GetOrgReposByOrgID :many
 SELECT id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration, url, is_active
-FROM repos 
+FROM repos
 WHERE org_id = $1
 `
 
@@ -213,7 +213,7 @@ func (q *Queries) GetRepoByID(ctx context.Context, id uuid.UUID) (Repo, error) {
 
 const getReposByHookAndHookID = `-- name: GetReposByHookAndHookID :one
 SELECT id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration, url, is_active
-FROM repos 
+FROM repos
 WHERE hook = $1 AND hook_id = $2
 `
 
@@ -246,11 +246,12 @@ func (q *Queries) GetReposByHookAndHookID(ctx context.Context, arg GetReposByHoo
 const listRepos = `-- name: ListRepos :many
 SELECT id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration, url, is_active
 FROM repos
-ORDER BY created_at DESC
+WHERE org_id = $1
+ORDER BY updated_at DESC
 `
 
-func (q *Queries) ListRepos(ctx context.Context) ([]Repo, error) {
-	rows, err := q.db.Query(ctx, listRepos)
+func (q *Queries) ListRepos(ctx context.Context, orgID uuid.UUID) ([]Repo, error) {
+	rows, err := q.db.Query(ctx, listRepos, orgID)
 	if err != nil {
 		return nil, err
 	}

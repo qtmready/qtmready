@@ -9,6 +9,7 @@ import (
 	context "context"
 	errors "errors"
 	v1 "go.breu.io/quantm/internal/proto/ctrlplane/core/v1"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	http "net/http"
 	strings "strings"
 )
@@ -40,6 +41,8 @@ const (
 	// RepoServiceGetOrgReposByOrgIDProcedure is the fully-qualified name of the RepoService's
 	// GetOrgReposByOrgID RPC.
 	RepoServiceGetOrgReposByOrgIDProcedure = "/ctrlplane.core.v1.RepoService/GetOrgReposByOrgID"
+	// RepoServiceListReposProcedure is the fully-qualified name of the RepoService's ListRepos RPC.
+	RepoServiceListReposProcedure = "/ctrlplane.core.v1.RepoService/ListRepos"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
@@ -48,6 +51,7 @@ var (
 	repoServiceCreateRepoMethodDescriptor         = repoServiceServiceDescriptor.Methods().ByName("CreateRepo")
 	repoServiceGetRepoByIDMethodDescriptor        = repoServiceServiceDescriptor.Methods().ByName("GetRepoByID")
 	repoServiceGetOrgReposByOrgIDMethodDescriptor = repoServiceServiceDescriptor.Methods().ByName("GetOrgReposByOrgID")
+	repoServiceListReposMethodDescriptor          = repoServiceServiceDescriptor.Methods().ByName("ListRepos")
 )
 
 // RepoServiceClient is a client for the ctrlplane.core.v1.RepoService service.
@@ -58,6 +62,8 @@ type RepoServiceClient interface {
 	GetRepoByID(context.Context, *connect.Request[v1.GetRepoByIDRequest]) (*connect.Response[v1.GetRepoByIDResponse], error)
 	// Get org's core repo by org_id.
 	GetOrgReposByOrgID(context.Context, *connect.Request[v1.GetOrgReposByOrgIDRequest]) (*connect.Response[v1.GetOrgReposByOrgIDResponse], error)
+	// List all org's repos.
+	ListRepos(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.ListReposResponse], error)
 }
 
 // NewRepoServiceClient constructs a client for the ctrlplane.core.v1.RepoService service. By
@@ -88,6 +94,12 @@ func NewRepoServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(repoServiceGetOrgReposByOrgIDMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
+		listRepos: connect.NewClient[emptypb.Empty, v1.ListReposResponse](
+			httpClient,
+			baseURL+RepoServiceListReposProcedure,
+			connect.WithSchema(repoServiceListReposMethodDescriptor),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -96,6 +108,7 @@ type repoServiceClient struct {
 	createRepo         *connect.Client[v1.CreateRepoRequest, v1.CreateRepoResponse]
 	getRepoByID        *connect.Client[v1.GetRepoByIDRequest, v1.GetRepoByIDResponse]
 	getOrgReposByOrgID *connect.Client[v1.GetOrgReposByOrgIDRequest, v1.GetOrgReposByOrgIDResponse]
+	listRepos          *connect.Client[emptypb.Empty, v1.ListReposResponse]
 }
 
 // CreateRepo calls ctrlplane.core.v1.RepoService.CreateRepo.
@@ -113,6 +126,11 @@ func (c *repoServiceClient) GetOrgReposByOrgID(ctx context.Context, req *connect
 	return c.getOrgReposByOrgID.CallUnary(ctx, req)
 }
 
+// ListRepos calls ctrlplane.core.v1.RepoService.ListRepos.
+func (c *repoServiceClient) ListRepos(ctx context.Context, req *connect.Request[emptypb.Empty]) (*connect.Response[v1.ListReposResponse], error) {
+	return c.listRepos.CallUnary(ctx, req)
+}
+
 // RepoServiceHandler is an implementation of the ctrlplane.core.v1.RepoService service.
 type RepoServiceHandler interface {
 	// Create org's core repo.
@@ -121,6 +139,8 @@ type RepoServiceHandler interface {
 	GetRepoByID(context.Context, *connect.Request[v1.GetRepoByIDRequest]) (*connect.Response[v1.GetRepoByIDResponse], error)
 	// Get org's core repo by org_id.
 	GetOrgReposByOrgID(context.Context, *connect.Request[v1.GetOrgReposByOrgIDRequest]) (*connect.Response[v1.GetOrgReposByOrgIDResponse], error)
+	// List all org's repos.
+	ListRepos(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.ListReposResponse], error)
 }
 
 // NewRepoServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -147,6 +167,12 @@ func NewRepoServiceHandler(svc RepoServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(repoServiceGetOrgReposByOrgIDMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
+	repoServiceListReposHandler := connect.NewUnaryHandler(
+		RepoServiceListReposProcedure,
+		svc.ListRepos,
+		connect.WithSchema(repoServiceListReposMethodDescriptor),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/ctrlplane.core.v1.RepoService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case RepoServiceCreateRepoProcedure:
@@ -155,6 +181,8 @@ func NewRepoServiceHandler(svc RepoServiceHandler, opts ...connect.HandlerOption
 			repoServiceGetRepoByIDHandler.ServeHTTP(w, r)
 		case RepoServiceGetOrgReposByOrgIDProcedure:
 			repoServiceGetOrgReposByOrgIDHandler.ServeHTTP(w, r)
+		case RepoServiceListReposProcedure:
+			repoServiceListReposHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -174,4 +202,8 @@ func (UnimplementedRepoServiceHandler) GetRepoByID(context.Context, *connect.Req
 
 func (UnimplementedRepoServiceHandler) GetOrgReposByOrgID(context.Context, *connect.Request[v1.GetOrgReposByOrgIDRequest]) (*connect.Response[v1.GetOrgReposByOrgIDResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ctrlplane.core.v1.RepoService.GetOrgReposByOrgID is not implemented"))
+}
+
+func (UnimplementedRepoServiceHandler) ListRepos(context.Context, *connect.Request[emptypb.Empty]) (*connect.Response[v1.ListReposResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("ctrlplane.core.v1.RepoService.ListRepos is not implemented"))
 }
