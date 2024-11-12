@@ -3,7 +3,6 @@ package auth
 import (
 	"context"
 	"errors"
-	"log/slog"
 	"strings"
 
 	"connectrpc.com/connect"
@@ -23,7 +22,6 @@ func NomadAuthenticator() connect.UnaryInterceptorFunc {
 				}
 
 				if cliams != nil {
-					slog.Info("auth: claims", "claims", cliams)
 					ctx = context.WithValue(ctx, AuthContextUser, cliams.UserID)
 					ctx = context.WithValue(ctx, AuthContextOrg, cliams.OrgID)
 				}
