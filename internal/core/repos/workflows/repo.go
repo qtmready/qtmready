@@ -1,4 +1,4 @@
-package corewfs
+package reposwfs
 
 import (
 	"go.temporal.io/sdk/workflow"

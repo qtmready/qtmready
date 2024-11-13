@@ -10,8 +10,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"go.breu.io/durex/queues"
 
-	coredefs "go.breu.io/quantm/internal/core/repos/defs"
-	corewfs "go.breu.io/quantm/internal/core/repos/workflows"
+	reposdefs "go.breu.io/quantm/internal/core/repos/defs"
+	reposwfs "go.breu.io/quantm/internal/core/repos/workflows"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/durable"
@@ -179,10 +179,10 @@ func SignalCoreRepo(
 ) error {
 	_, err := durable.OnCore().SignalWithStartWorkflow(
 		ctx,
-		coredefs.RepoWorkflowOptions("", repo.Name, repo.ID),
+		reposdefs.RepoWorkflowOptions("", repo.Name, repo.ID),
 		signal,
 		payload,
-		corewfs.Repo,
+		reposwfs.Repo,
 		repo,
 	)
 
