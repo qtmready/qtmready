@@ -1,4 +1,4 @@
-package coredefs
+package reposdefs
 
 import (
 	"github.com/google/uuid"
