@@ -19,12 +19,15 @@ type (
 func Push(ctx workflow.Context, payload *githubdefs.Push) error {
 	acts := &githubacts.Push{}
 
-	var result *githubdefs.Trigger[commonv1.RepoHook, eventsv1.Push]
+	var eventory *githubdefs.Eventory[commonv1.RepoHook, eventsv1.Push]
 	if err := workflow.
 		ExecuteActivity(ctx, acts.ConvertToPushEvent, payload).
-		Get(ctx, &result); err != nil {
+		Get(ctx, &eventory); err != nil {
 		return err
 	}
 
-	return nil
+	// TODO - need to confirm the signature
+	return workflow.ExecuteActivity(
+		ctx, githubacts.SignalCoreRepo, eventory.Repo, githubdefs.SignalWebhookPush, eventory.Event).
+		Get(ctx, nil)
 }
