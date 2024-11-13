@@ -1,6 +1,9 @@
 package githubwfs
 
 import (
+	"log/slog"
+
+	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"
 
@@ -25,6 +28,10 @@ func Push(ctx workflow.Context, payload *githubdefs.Push) error {
 		Get(ctx, &eventory); err != nil {
 		return err
 	}
+
+	ctx = dispatch.WithDefaultActivityContext(ctx)
+
+	slog.Info("github/push: dispatching event ...")
 
 	// TODO - need to confirm the signature
 	return workflow.ExecuteActivity(
