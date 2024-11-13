@@ -12,9 +12,9 @@ import (
 func Repo(ctx workflow.Context, repo *entities.GetRepoRow) error {
 	selector := workflow.NewSelector(ctx)
 
+	// TODO - need to discuss how to set the state for repo and base state
 	state := &reposstate.RepoState{}
 
-	// channels
 	// push event
 	push := workflow.GetSignalChannel(ctx, reposdefs.RepoIOSignalPush.String())
 	selector.AddReceive(push, state.OnPush(ctx))
