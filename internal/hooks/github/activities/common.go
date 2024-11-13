@@ -10,8 +10,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"go.breu.io/durex/queues"
 
+	coredefs "go.breu.io/quantm/internal/core/repos/defs"
+	corewfs "go.breu.io/quantm/internal/core/repos/workflows"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
+	"go.breu.io/quantm/internal/durable"
 	"go.breu.io/quantm/internal/events"
 	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
 	commonv1 "go.breu.io/quantm/internal/proto/ctrlplane/common/v1"
@@ -19,7 +22,7 @@ import (
 
 func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
 	ctx context.Context, params *githubdefs.RepoEventPayload,
-) (*githubdefs.Trigger[H, P], error) {
+) (*githubdefs.Eventory[H, P], error) {
 	var event events.Event[H, P]
 
 	install, err := db.Queries().GetGithubInstallationByInstallationID(ctx, params.InstallationID)
@@ -60,7 +63,7 @@ func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
 		},
 	}
 
-	tr := &githubdefs.Trigger[H, P]{
+	tr := &githubdefs.Eventory[H, P]{
 		Event: &event,
 		Repo:  &repo,
 	}
@@ -170,7 +173,18 @@ func SuspendRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 	return err
 }
 
-// SignalCoreRepoCtrl signals the core repository control workflow with the given signal and payload.
-func SignalCoreRepoCtrl(ctx context.Context, repo *entities.Repo, signal queues.Signal, payload any) error {
-	return nil
+// SignalCoreRepo signals the core repository control workflow with the given signal and payload.
+func SignalCoreRepo(
+	ctx context.Context, repo *entities.GetRepoRow, signal queues.Signal, payload any,
+) error {
+	_, err := durable.OnCore().SignalWithStartWorkflow(
+		ctx,
+		coredefs.RepoWorkflowOptions("", repo.Name, repo.ID),
+		signal,
+		payload,
+		corewfs.Repo,
+		repo,
+	)
+
+	return err
 }

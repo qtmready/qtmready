@@ -6,7 +6,7 @@ import (
 )
 
 type (
-	Trigger[H events.EventHook, P events.EventPayload] struct {
+	Eventory[H events.EventHook, P events.EventPayload] struct {
 		Event *events.Event[H, P]
 		Repo  *entities.GetRepoRow
 	}
