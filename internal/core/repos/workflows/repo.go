@@ -3,10 +3,21 @@ package reposwfs
 import (
 	"go.temporal.io/sdk/workflow"
 
+	reposdefs "go.breu.io/quantm/internal/core/repos/defs"
+	reposstate "go.breu.io/quantm/internal/core/repos/state"
 	"go.breu.io/quantm/internal/db/entities"
 )
 
 // Repo manages the event loop for a repository, acting as a central router to orchestrate repository workflows.
 func Repo(ctx workflow.Context, repo *entities.GetRepoRow) error {
+	selector := workflow.NewSelector(ctx)
+
+	state := &reposstate.RepoState{}
+
+	// channels
+	// push event
+	push := workflow.GetSignalChannel(ctx, reposdefs.RepoIOSignalPush.String())
+	selector.AddReceive(push, state.OnPush(ctx))
+
 	return nil
 }
