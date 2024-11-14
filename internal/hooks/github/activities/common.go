@@ -16,6 +16,7 @@ import (
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/durable"
 	"go.breu.io/quantm/internal/events"
+	githubcast "go.breu.io/quantm/internal/hooks/github/cast"
 	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
 	commonv1 "go.breu.io/quantm/internal/proto/ctrlplane/common/v1"
 )
@@ -23,27 +24,31 @@ import (
 func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
 	ctx context.Context, params *githubdefs.RepoEventPayload,
 ) (*githubdefs.Eventory[H, P], error) {
-	var event events.Event[H, P]
+	var event *events.Event[H, P]
 
 	install, err := db.Queries().GetGithubInstallationByInstallationID(ctx, params.InstallationID)
 	if err != nil {
-		return nil, nil
+		return nil, err
 	}
 
 	// get the core repo from hook_repo (join)
 	// TODO - may change the query and get the user and team info
-	// TODO - convert the messaging byte into entity
-	repo, err := db.Queries().GetRepo(ctx, entities.GetRepoParams{
+	repo_row, err := db.Queries().GetRepo(ctx, entities.GetRepoParams{
 		InstallationID: install.ID,
 		GithubID:       params.RepoID,
 	})
 	if err != nil {
-		return nil, nil
+		return nil, err
+	}
+
+	// convert the messaging and org byte into entity
+	repo, err := githubcast.ConvertGetRepoRowToCoreRepo(repo_row)
+	if err != nil {
+		return nil, err
 	}
 
 	id := uuid.New()
-
-	event = events.Event[H, P]{
+	event = &events.Event[H, P]{
 		ID:      id,
 		Version: events.EventVersionDefault,
 		Context: events.EventContext[H]{
@@ -64,8 +69,8 @@ func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
 	}
 
 	tr := &githubdefs.Eventory[H, P]{
-		Event: &event,
-		Repo:  &repo,
+		Event: event,
+		Repo:  repo,
 	}
 
 	return tr, nil
@@ -175,7 +180,7 @@ func SuspendRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 
 // SignalCoreRepo signals the core repository control workflow with the given signal and payload.
 func SignalCoreRepo(
-	ctx context.Context, repo *entities.GetRepoRow, signal queues.Signal, payload any,
+	ctx context.Context, repo *reposdefs.CoreRepo, signal queues.Signal, payload any,
 ) error {
 	_, err := durable.OnCore().SignalWithStartWorkflow(
 		ctx,

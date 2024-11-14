@@ -5,11 +5,10 @@ import (
 
 	reposdefs "go.breu.io/quantm/internal/core/repos/defs"
 	reposstate "go.breu.io/quantm/internal/core/repos/state"
-	"go.breu.io/quantm/internal/db/entities"
 )
 
 // Repo manages the event loop for a repository, acting as a central router to orchestrate repository workflows.
-func Repo(ctx workflow.Context, repo *entities.GetRepoRow) error {
+func Repo(ctx workflow.Context, repo *reposdefs.CoreRepo) error {
 	selector := workflow.NewSelector(ctx)
 
 	// TODO - need to discuss how to set the state for repo and base state

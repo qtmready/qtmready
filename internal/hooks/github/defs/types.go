@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"go.breu.io/quantm/internal/db/entities"
+	reposdefs "go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/events"
 )
 
@@ -55,6 +55,6 @@ func (t Timestamp) Time() time.Time {
 type (
 	Eventory[H events.EventHook, P events.EventPayload] struct {
 		Event *events.Event[H, P]
-		Repo  *entities.GetRepoRow
+		Repo  *reposdefs.CoreRepo
 	}
 )

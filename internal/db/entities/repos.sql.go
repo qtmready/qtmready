@@ -138,8 +138,7 @@ SELECT
     'id', o.id,
     'name', o.name,
     'domain', o.domain,
-    'slug', o.slug,
-    'hooks', o.hooks
+    'slug', o.slug
   ) AS org
 FROM 
   github_repos gr
