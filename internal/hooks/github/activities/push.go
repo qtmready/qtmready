@@ -3,6 +3,8 @@ package githubacts
 import (
 	"context"
 
+	"go.breu.io/durex/queues"
+	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/events"
 	githubcast "go.breu.io/quantm/internal/hooks/github/cast"
 	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
@@ -34,4 +36,10 @@ func (p *Push) ConvertToPushEvent(
 	resp.Event.Payload = *githubcast.PushToProto(payload)
 
 	return resp, nil
+}
+
+func (p *Push) SignalCoreRepo(
+	ctx context.Context, repo *entities.GetRepoRow, signal queues.Signal, payload any,
+) error {
+	return SignalCoreRepo(ctx, repo, signal, payload)
 }
