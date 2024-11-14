@@ -133,13 +133,22 @@ SELECT
     'kind', m.kind,
     'link_to', m.link_to,
     'data', m.data
-  ) AS messaging
+  ) AS messaging,
+  json_build_object(
+    'id', o.id,
+    'name', o.name,
+    'domain', o.domain,
+    'slug', o.slug,
+    'hooks', o.hooks
+  ) AS org
 FROM 
   github_repos gr
 JOIN 
   repos r ON gr.id = r.hook_id
 LEFT JOIN 
   messaging m ON m.link_to = r.id
+JOIN 
+  orgs o ON r.org_id = o.id
 WHERE 
   gr.installation_id = $1 AND gr.github_id = $2
 `
@@ -162,6 +171,7 @@ type GetRepoRow struct {
 	Url           string          `json:"url"`
 	IsActive      bool            `json:"is_active"`
 	Messaging     []byte          `json:"messaging"`
+	Org           []byte          `json:"org"`
 }
 
 func (q *Queries) GetRepo(ctx context.Context, arg GetRepoParams) (GetRepoRow, error) {
@@ -180,6 +190,7 @@ func (q *Queries) GetRepo(ctx context.Context, arg GetRepoParams) (GetRepoRow, e
 		&i.Url,
 		&i.IsActive,
 		&i.Messaging,
+		&i.Org,
 	)
 	return i, err
 }
