@@ -28,7 +28,7 @@ func CommitsToProto(commits []githubdefs.Commit) []*eventsv1.Commit {
 			Sha:       commit.ID,
 			Message:   commit.Message,
 			Url:       commit.URL,
-			Timestamp: timestamppb.New(commit.Timestamp),
+			Timestamp: timestamppb.New(commit.Timestamp.Time()),
 			Added:     commit.Added,
 			Removed:   commit.Removed,
 			Modified:  commit.Modified,

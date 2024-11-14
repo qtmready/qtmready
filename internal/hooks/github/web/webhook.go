@@ -204,11 +204,11 @@ func (h *Webhook) push(ctx echo.Context, event WebhookEvent, id string) error {
 	}
 
 	delievery := ctx.Request().Header.Get("X-GitHub-Delivery")
-	opts := githubdefs.NewPushWorkflowOptions(payload.Installation, payload.Repository.Name, event.String(), delievery)
+	opts := githubdefs.NewPushWorkflowOptions(payload.Installation.ID, payload.Repository.Name, event.String(), delievery)
 
 	_, err := durable.
 		OnHooks().
-		SignalWithStartWorkflow(ctx.Request().Context(), opts, githubdefs.SignalWebhookPush, payload, githubwfs.Push)
+		SignalWithStartWorkflow(ctx.Request().Context(), opts, githubdefs.SignalWebhookPush, "", githubwfs.Push, payload)
 	if err != nil {
 		return erratic.NewInternalServerError("reason", "failed to signal workflow", "error", err.Error())
 	}
