@@ -115,5 +115,8 @@ func configure_qhooks() {
 
 		q.RegisterWorkflow(githubwfs.SyncRepos)
 		q.RegisterActivity(&githubacts.InstallRepos{})
+
+		q.RegisterWorkflow(githubwfs.Push)
+		q.RegisterActivity(&githubacts.Push{})
 	}
 }
