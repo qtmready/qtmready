@@ -70,12 +70,21 @@ SELECT
     'kind', m.kind,
     'link_to', m.link_to,
     'data', m.data
-  ) AS messaging
+  ) AS messaging,
+  json_build_object(
+    'id', o.id,
+    'name', o.name,
+    'domain', o.domain,
+    'slug', o.slug,
+    'hooks', o.hooks
+  ) AS org
 FROM 
   github_repos gr
 JOIN 
   repos r ON gr.id = r.hook_id
 LEFT JOIN 
   messaging m ON m.link_to = r.id
+JOIN 
+  orgs o ON r.org_id = o.id
 WHERE 
   gr.installation_id = $1 AND gr.github_id = $2;
