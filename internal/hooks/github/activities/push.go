@@ -20,7 +20,7 @@ type (
 
 func (p *Push) ConvertToPushEvent(
 	ctx context.Context, payload *githubdefs.Push,
-) (*githubdefs.Eventory[commonv1.RepoHook, eventsv1.Push], error) {
+) (*githubdefs.RepoEvent[commonv1.RepoHook, eventsv1.Push], error) {
 	// Populate and set the quantum event
 	params := &githubdefs.RepoEventPayload{
 		InstallationID: payload.InstallationID(),
