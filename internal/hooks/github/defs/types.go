@@ -53,7 +53,7 @@ func (t Timestamp) Time() time.Time {
 }
 
 type (
-	Eventory[H events.EventHook, P events.EventPayload] struct {
+	RepoEvent[H events.EventHook, P events.EventPayload] struct {
 		Event *events.Event[H, P]
 		Repo  *reposdefs.CoreRepo
 	}

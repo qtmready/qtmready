@@ -23,7 +23,7 @@ func Push(ctx workflow.Context, payload *githubdefs.Push) error {
 	acts := &githubacts.Push{}
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	var eventory *githubdefs.Eventory[commonv1.RepoHook, eventsv1.Push]
+	var eventory *githubdefs.RepoEvent[commonv1.RepoHook, eventsv1.Push]
 	if err := workflow.
 		ExecuteActivity(ctx, acts.ConvertToPushEvent, payload).
 		Get(ctx, &eventory); err != nil {

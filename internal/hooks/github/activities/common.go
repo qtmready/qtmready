@@ -21,9 +21,9 @@ import (
 	commonv1 "go.breu.io/quantm/internal/proto/ctrlplane/common/v1"
 )
 
-func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
+func PopulateRepoEvent[H commonv1.RepoHook, P events.EventPayload](
 	ctx context.Context, params *githubdefs.RepoEventPayload,
-) (*githubdefs.Eventory[H, P], error) {
+) (*githubdefs.RepoEvent[H, P], error) {
 	var event *events.Event[H, P]
 
 	install, err := db.Queries().GetGithubInstallationByInstallationID(ctx, params.InstallationID)
@@ -33,7 +33,7 @@ func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
 
 	// get the core repo from hook_repo (join)
 	// TODO - may change the query and get the user and team info
-	repo_row, err := db.Queries().GetRepo(ctx, entities.GetRepoParams{
+	row, err := db.Queries().GetRepo(ctx, entities.GetRepoParams{
 		InstallationID: install.ID,
 		GithubID:       params.RepoID,
 	})
@@ -42,12 +42,12 @@ func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
 	}
 
 	// convert the messaging and org byte into entity
-	repo, err := githubcast.ConvertGetRepoRowToCoreRepo(repo_row)
+	repo, err := githubcast.ConvertGetRepoRowToCoreRepo(row)
 	if err != nil {
 		return nil, err
 	}
 
-	id := uuid.New()
+	id := events.MustUUID()
 	event = &events.Event[H, P]{
 		ID:      id,
 		Version: events.EventVersionDefault,
@@ -68,12 +68,7 @@ func PopulateRepoEvent[H events.EventHook, P events.EventPayload](
 		},
 	}
 
-	tr := &githubdefs.Eventory[H, P]{
-		Event: event,
-		Repo:  repo,
-	}
-
-	return tr, nil
+	return &githubdefs.RepoEvent[H, P]{Event: event, Repo: repo}, nil
 }
 
 // AddRepo adds a new GitHub repository to the database.

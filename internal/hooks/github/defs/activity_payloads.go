@@ -15,10 +15,10 @@ type (
 	}
 
 	RepoEventPayload struct {
-		RepoID         int64
-		InstallationID int64
-		Action         events.EventAction
-		Scope          events.EventScope
+		RepoID         int64              `json:"repo_id"`
+		InstallationID int64              `json:"installation_id"`
+		Action         events.EventAction `json:"action"`
+		Scope          events.EventScope  `json:"scope"`
 
 		// TODO - may add the senderID for user.
 	}
