@@ -20,6 +20,8 @@ type (
 )
 
 func (w *WebhookService) Start(ctx context.Context) error {
+	slog.Info("webhook: starting ...", "port", 8000)
+
 	err := w.Echo.Start(":8000")
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
@@ -40,8 +42,6 @@ func NewWebhookServer() *WebhookService {
 	github := &githubweb.Webhook{}
 
 	webhook.POST("/webhooks/github", github.Handler)
-
-	slog.Info("webhook server started", "port", 8000)
 
 	return &WebhookService{webhook}
 }

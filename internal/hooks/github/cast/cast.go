@@ -27,9 +27,9 @@ func PushToProto(payload *githubdefs.Push) *eventsv1.Push {
 }
 
 func CommitsToProto(commits []githubdefs.Commit) []*eventsv1.Commit {
-	comts := make([]*eventsv1.Commit, len(commits))
+	result := make([]*eventsv1.Commit, len(commits))
 	for i, commit := range commits {
-		comts[i] = &eventsv1.Commit{
+		result[i] = &eventsv1.Commit{
 			Sha:       commit.ID,
 			Message:   commit.Message,
 			Url:       commit.URL,
@@ -40,7 +40,7 @@ func CommitsToProto(commits []githubdefs.Commit) []*eventsv1.Commit {
 		}
 	}
 
-	return comts
+	return result
 }
 
 func ConvertGetRepoRowToCoreRepo(row entities.GetRepoRow) (*reposdefs.CoreRepo, error) {
