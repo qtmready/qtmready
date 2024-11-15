@@ -36,8 +36,6 @@ func main() {
 	cfg := &Config{}
 	cfg.Load()
 
-	slog.Info("starting quantm", "clickhouse", cfg.Pulse.Clickhouse, "qdb", cfg.Pulse.QuestDB)
-
 	configure_logger(cfg.Debug)
 	auth.SetSecret(cfg.Secret)
 
@@ -66,7 +64,7 @@ func main() {
 	app.Add(CoreQ, durable.OnCore(), DB, Durable, Pulse, Github)
 	app.Add(HooksQ, durable.OnHooks(), DB, Durable, Pulse, Github)
 	app.Add(Nomad, nmd, DB, Durable, Pulse, Github)
-	app.Add(Webhook, NewWebhookServer(), Durable, Github)
+	app.Add(Webhook, NewWebhookServer(), DB, Durable, Github)
 
 	if cfg.Migrate {
 		if err := migrations.Run(ctx, cfg.DB); err != nil {

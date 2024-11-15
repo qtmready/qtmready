@@ -2,6 +2,12 @@ package errors
 
 import (
 	"errors"
+
+	"go.breu.io/quantm/internal/erratic"
+)
+
+type (
+	GithubError erratic.QuantmError
 )
 
 var (
