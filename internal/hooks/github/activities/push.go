@@ -9,7 +9,6 @@ import (
 	"go.breu.io/quantm/internal/events"
 	githubcast "go.breu.io/quantm/internal/hooks/github/cast"
 	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
-	commonv1 "go.breu.io/quantm/internal/proto/ctrlplane/common/v1"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
@@ -20,7 +19,7 @@ type (
 
 func (p *Push) ConvertToPushEvent(
 	ctx context.Context, payload *githubdefs.Push,
-) (*githubdefs.RepoEvent[commonv1.RepoHook, eventsv1.Push], error) {
+) (*githubdefs.RepoEvent[eventsv1.RepoHook, eventsv1.Push], error) {
 	// Populate and set the quantum event
 	params := &githubdefs.RepoEventPayload{
 		InstallationID: payload.InstallationID(),
@@ -29,7 +28,7 @@ func (p *Push) ConvertToPushEvent(
 		Scope:          events.EventScopePush,
 	}
 
-	resp, err := PopulateRepoEvent[commonv1.RepoHook, eventsv1.Push](ctx, params)
+	resp, err := PopulateRepoEvent[eventsv1.RepoHook, eventsv1.Push](ctx, params)
 	if err != nil {
 		return nil, err
 	}
