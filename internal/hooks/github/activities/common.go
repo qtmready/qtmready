@@ -19,9 +19,10 @@ import (
 	githubcast "go.breu.io/quantm/internal/hooks/github/cast"
 	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
 	commonv1 "go.breu.io/quantm/internal/proto/ctrlplane/common/v1"
+	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
-func PopulateRepoEvent[H commonv1.RepoHook, P events.EventPayload](
+func PopulateRepoEvent[H eventsv1.RepoHook, P events.EventPayload](
 	ctx context.Context, params *githubdefs.RepoEventPayload,
 ) (*githubdefs.RepoEvent[H, P], error) {
 	var event *events.Event[H, P]

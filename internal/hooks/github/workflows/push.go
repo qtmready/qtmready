@@ -9,7 +9,6 @@ import (
 
 	githubacts "go.breu.io/quantm/internal/hooks/github/activities"
 	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
-	commonv1 "go.breu.io/quantm/internal/proto/ctrlplane/common/v1"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
@@ -23,7 +22,7 @@ func Push(ctx workflow.Context, payload *githubdefs.Push) error {
 	acts := &githubacts.Push{}
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	var eventory *githubdefs.RepoEvent[commonv1.RepoHook, eventsv1.Push]
+	var eventory *githubdefs.RepoEvent[eventsv1.RepoHook, eventsv1.Push]
 	if err := workflow.
 		ExecuteActivity(ctx, acts.ConvertToPushEvent, payload).
 		Get(ctx, &eventory); err != nil {
