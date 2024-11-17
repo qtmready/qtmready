@@ -7,8 +7,8 @@ import (
 // -- payloads --
 
 type (
-	// EventPayload represents all available event payloads.
-	EventPayload interface {
+	// Payload represents all available event payloads.
+	Payload interface {
 		eventsv1.GitRef |
 			eventsv1.Push |
 			eventsv1.DetectRepoChange | eventsv1.RepoChange

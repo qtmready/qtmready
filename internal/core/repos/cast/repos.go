@@ -10,12 +10,12 @@ import (
 
 func RepoToProto(repo *entities.Repo) *corev1.Repo {
 	return &corev1.Repo{
-		Id:            repo.ID.String(),
-		CreatedAt:     timestamppb.New(repo.CreatedAt),
-		UpdatedAt:     timestamppb.New(repo.UpdatedAt),
-		OrgId:         repo.OrgID.String(),
-		Name:          repo.Name,
-		Hook:          repo.Hook,
+		Id:        repo.ID.String(),
+		CreatedAt: timestamppb.New(repo.CreatedAt),
+		UpdatedAt: timestamppb.New(repo.UpdatedAt),
+		OrgId:     repo.OrgID.String(),
+		Name:      repo.Name,
+		// Hook:          repo.Hook,
 		HookId:        repo.HookID.String(),
 		DefaultBranch: repo.DefaultBranch,
 		IsMonorepo:    repo.IsMonorepo,

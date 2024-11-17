@@ -9,7 +9,7 @@ import (
 type (
 	// QuantmEvent is the flat structure of an event for time series databases. It does not
 	// contain payload data, only metadata.
-	QuantmEvent[H EventHook] struct {
+	QuantmEvent[H Hook] struct {
 		Version  EventVersion `json:"version"`   // Version is the version of the event.
 		ID       uuid.UUID    `json:"id"`        // ID is the ID of the event.
 		ParentID uuid.UUID    `json:"parent_id"` // ParentID is the ID of the parent event.
