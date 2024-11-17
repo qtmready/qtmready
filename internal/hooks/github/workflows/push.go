@@ -32,7 +32,7 @@ func Push(ctx workflow.Context, payload *githubdefs.Push) error {
 	slog.Info("github/push: dispatching event ...")
 
 	// TODO - need to confirm the signature
-	return workflow.ExecuteActivity(
-		ctx, acts.SignalCoreRepo, eventory.Repo, githubdefs.SignalWebhookPush, eventory.Event).
+	return workflow.
+		ExecuteActivity(ctx, acts.SignalCoreRepo, eventory.Repo, githubdefs.SignalWebhookPush, eventory.Event).
 		Get(ctx, nil)
 }
