@@ -32,7 +32,7 @@ RETURNING id, created_at, updated_at, org_id, name, hook, hook_id, default_branc
 type CreateRepoParams struct {
 	OrgID  uuid.UUID `json:"org_id"`
 	Name   string    `json:"name"`
-	Hook   string    `json:"hook"`
+	Hook   int32     `json:"hook"`
 	HookID uuid.UUID `json:"hook_id"`
 	Url    string    `json:"url"`
 }
@@ -161,7 +161,7 @@ type GetRepoRow struct {
 	ID            uuid.UUID       `json:"id"`
 	OrgID         uuid.UUID       `json:"org_id"`
 	Name          string          `json:"name"`
-	Hook          string          `json:"hook"`
+	Hook          int32           `json:"hook"`
 	HookID        uuid.UUID       `json:"hook_id"`
 	DefaultBranch string          `json:"default_branch"`
 	IsMonorepo    bool            `json:"is_monorepo"`
@@ -228,7 +228,7 @@ WHERE hook = $1 AND hook_id = $2
 `
 
 type GetReposByHookAndHookIDParams struct {
-	Hook   string    `json:"hook"`
+	Hook   int32     `json:"hook"`
 	HookID uuid.UUID `json:"hook_id"`
 }
 
@@ -323,7 +323,7 @@ type UpdateRepoParams struct {
 	ID            uuid.UUID       `json:"id"`
 	OrgID         uuid.UUID       `json:"org_id"`
 	Name          string          `json:"name"`
-	Hook          string          `json:"hook"`
+	Hook          int32           `json:"hook"`
 	HookID        uuid.UUID       `json:"hook_id"`
 	DefaultBranch string          `json:"default_branch"`
 	IsMonorepo    bool            `json:"is_monorepo"`

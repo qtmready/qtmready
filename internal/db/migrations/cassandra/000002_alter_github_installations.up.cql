@@ -1,1 +1,0 @@
-alter table github_installations add installation_login_id bigint;

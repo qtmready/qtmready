@@ -138,7 +138,7 @@ type Repo struct {
 	UpdatedAt     time.Time       `json:"updated_at"`
 	OrgID         uuid.UUID       `json:"org_id"`
 	Name          string          `json:"name"`
-	Hook          string          `json:"hook"`
+	Hook          int32           `json:"hook"`
 	HookID        uuid.UUID       `json:"hook_id"`
 	DefaultBranch string          `json:"default_branch"`
 	IsMonorepo    bool            `json:"is_monorepo"`

@@ -42,7 +42,7 @@ func PopulateRepoEvent[H eventsv1.RepoHook, P events.Payload](
 	}
 
 	// convert the messaging and org byte into entity
-	repo, err := githubcast.ConvertGetRepoRowToCoreRepo(row)
+	repo, err := githubcast.RowToFullRepo(row)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func PopulateRepoEvent[H eventsv1.RepoHook, P events.Payload](
 		Version: events.EventVersionDefault,
 		Context: events.Context[H]{
 			ParentID:  id,
-			Hook:      H(eventsv1.RepoHook_REPO_HOOK_GITHUB), // FIXME: the should come from core repo, (ysf)
+			Hook:      H(repo.Hook), // FIXME: why do we need to force cast here? (ysf)
 			Scope:     params.Scope,
 			Action:    params.Action,
 			Source:    repo.Url,
@@ -115,7 +115,7 @@ func AddRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 	// create core repo
 	reqst := entities.CreateRepoParams{
 		OrgID:  payload.OrgID,
-		Hook:   "github",
+		Hook:   int32(eventsv1.RepoHook_REPO_HOOK_GITHUB),
 		HookID: created.ID,
 		Name:   payload.Repo.Name,
 		Url:    fmt.Sprintf("https://github.com/%s", payload.Repo.FullName),
@@ -175,7 +175,7 @@ func SuspendRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 
 // SignalCoreRepo signals the core repository control workflow with the given signal and payload.
 func SignalCoreRepo(
-	ctx context.Context, repo *reposdefs.CoreRepo, signal queues.Signal, payload any,
+	ctx context.Context, repo *reposdefs.FullRepo, signal queues.Signal, payload any,
 ) error {
 	_, err := durable.OnCore().SignalWithStartWorkflow(
 		ctx,
