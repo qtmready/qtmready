@@ -39,7 +39,7 @@ func (p *Push) ConvertToPushEvent(
 }
 
 func (p *Push) SignalCoreRepo(
-	ctx context.Context, repo *reposdefs.CoreRepo, signal queues.Signal, payload any,
+	ctx context.Context, repo *reposdefs.FullRepo, signal queues.Signal, payload any,
 ) error {
 	return SignalCoreRepo(ctx, repo, signal, payload)
 }
