@@ -52,7 +52,6 @@ func PopulateRepoEvent[H eventsv1.RepoHook, P events.Payload](
 		ID:      id,
 		Version: events.EventVersionDefault,
 		Context: events.Context[H]{
-			ParentID:  id,
 			Hook:      H(repo.Hook), // FIXME: why do we need to force cast here? (ysf)
 			Scope:     params.Scope,
 			Action:    params.Action,
