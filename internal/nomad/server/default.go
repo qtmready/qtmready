@@ -7,6 +7,7 @@ import (
 	authnmd "go.breu.io/quantm/internal/auth/nomad"
 	reposnmd "go.breu.io/quantm/internal/core/repos/nomad"
 	githubnmd "go.breu.io/quantm/internal/hooks/github/nomad"
+	slacknmd "go.breu.io/quantm/internal/hooks/slack/nomad"
 	"go.breu.io/quantm/internal/observe/logs"
 )
 
@@ -39,6 +40,9 @@ func DefaultServer(opts ...Option) *Server {
 
 	// -- hooks/github --
 	srv.add(githubnmd.NewGithubServiceHandler(options...))
+
+	// -- hooks/slack --
+	srv.add(slacknmd.NewSlackServiceHandler(options...))
 
 	return srv
 }

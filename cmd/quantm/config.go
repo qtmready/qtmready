@@ -9,7 +9,7 @@ import (
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/durable"
 	githubcfg "go.breu.io/quantm/internal/hooks/github/config"
-	pkg_slack "go.breu.io/quantm/internal/hooks/slack/config"
+	slackcfg "go.breu.io/quantm/internal/hooks/slack/config"
 	"go.breu.io/quantm/internal/nomad"
 	"go.breu.io/quantm/internal/pulse"
 )
@@ -21,7 +21,7 @@ type (
 		Pulse   *pulse.Config     `koanf:"PULSE"`   // Configuration for the pulse.
 		Nomad   *nomad.Config     `koanf:"NOMAD"`   // Configuration for Nomad.
 		Github  *githubcfg.Config `koanf:"GITHUB"`  // Configuration for the github.
-		Slack   *pkg_slack.Config `koanf:"SLACK"`   // Configuration for the slack.
+		Slack   *slackcfg.Config  `koanf:"SLACK"`   // Configuration for the slack.
 
 		Secret  string `koanf:"SECRET"`  // Secret key for JWE.
 		Debug   bool   `koanf:"DEBUG"`   // Flag to enable debug mode.
@@ -35,7 +35,7 @@ func (c *Config) Load() {
 	c.Nomad = &nomad.DefaultConfig
 	c.Pulse = &pulse.DefaultConfig
 	c.Github = &githubcfg.Config{}
-	c.Slack = &pkg_slack.Config{}
+	c.Slack = &slackcfg.Config{}
 
 	k := koanf.New("__")
 
