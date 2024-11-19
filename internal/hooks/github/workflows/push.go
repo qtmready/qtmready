@@ -33,6 +33,6 @@ func Push(ctx workflow.Context, payload *githubdefs.Push) error {
 
 	// TODO - need to confirm the signature
 	return workflow.
-		ExecuteActivity(ctx, acts.SignalCoreRepo, eventory.Repo, githubdefs.SignalWebhookPush, eventory.Event).
+		ExecuteActivity(ctx, acts.SignalCoreRepo, eventory.Meta, githubdefs.SignalWebhookPush, eventory.Event).
 		Get(ctx, nil)
 }

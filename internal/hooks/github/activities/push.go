@@ -24,6 +24,7 @@ func (p *Push) ConvertToPushEvent(
 	params := &githubdefs.RepoEventPayload{
 		InstallationID: payload.InstallationID(),
 		RepoID:         payload.RepoID(),
+		Email:          payload.PusherEmail(),
 		Action:         events.EventActionCreated,
 		Scope:          events.EventScopePush,
 	}

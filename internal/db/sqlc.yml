@@ -7,17 +7,7 @@ sql:
       # https://docs.sqlc.dev/en/stable/howto/ddl.html
       - "./migrations/postgres"
     queries:
-      - "./queries/orgs.sql"
-      - "./queries/oauth_accounts.sql"
-      - "./queries/users.sql"
-      - "./queries/user_roles.sql"
-      - "./queries/teams.sql"
-      - "./queries/team_users.sql"
-      - "./queries/repos.sql"
-      - "./queries/github_installations.sql"
-      - "./queries/github_users.sql"
-      - "./queries/github_repos.sql"
-      - "./queries/messaging.sql"
+      - "./queries"
     gen:
       go:
         package: "entities"

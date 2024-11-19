@@ -41,10 +41,23 @@ func PopulateRepoEvent[H eventsv1.RepoHook, P events.Payload](
 		return nil, err
 	}
 
-	// convert the messaging and org byte into entity
-	repo, err := githubcast.RowToFullRepo(row)
+	user := &entities.User{}
+
+	if params.Email == "" {
+		// get user
+		u, _ := db.Queries().GetUserByEmail(ctx, params.Email)
+		user = &u
+	}
+
+	// set the full repo -> user, repo, messaging, org
+	meta, err := githubcast.RowToFullRepo(row, user)
 	if err != nil {
 		return nil, err
+	}
+
+	uid := uuid.Nil
+	if meta.User != nil {
+		uid = meta.User.ID
 	}
 
 	id := events.MustUUID()
@@ -52,22 +65,23 @@ func PopulateRepoEvent[H eventsv1.RepoHook, P events.Payload](
 		ID:      id,
 		Version: events.EventVersionDefault,
 		Context: events.Context[H]{
-			Hook:      H(repo.Hook), // FIXME: why do we need to force cast here? (ysf)
+			ParentID:  id,
+			Hook:      H(meta.Repo.Hook), // FIXME: why do we need to force cast here? (ysf)
 			Scope:     params.Scope,
 			Action:    params.Action,
-			Source:    repo.Url,
+			Source:    meta.Repo.Url,
 			Timestamp: time.Now(),
 		},
 		Subject: events.Subject{
-			ID:     repo.ID,
-			Name:   repo.Name,
+			ID:     meta.Repo.ID,
+			Name:   meta.Repo.Name,
 			OrgID:  install.OrgID,
-			TeamID: uuid.Nil, // TODO - need to set after github oauth flow is done? why? (ysf)
-			UserID: uuid.Nil, // TODO - need to set after github oauth flow is done? why? we discussed this and it comes from email (ysf)
+			TeamID: uuid.Nil, // TODO - will set this later
+			UserID: uid,
 		},
 	}
 
-	return &githubdefs.RepoEvent[H, P]{Event: event, Repo: repo}, nil
+	return &githubdefs.RepoEvent[H, P]{Event: event, Meta: meta}, nil
 }
 
 // AddRepo adds a new GitHub repository to the database.
@@ -174,15 +188,15 @@ func SuspendRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 
 // SignalCoreRepo signals the core repository control workflow with the given signal and payload.
 func SignalCoreRepo(
-	ctx context.Context, repo *reposdefs.FullRepo, signal queues.Signal, payload any,
+	ctx context.Context, meta *reposdefs.FullRepo, signal queues.Signal, payload any,
 ) error {
 	_, err := durable.OnCore().SignalWithStartWorkflow(
 		ctx,
-		reposdefs.RepoWorkflowOptions("", repo.Name, repo.ID),
+		reposdefs.RepoWorkflowOptions(meta.Org.Name, meta.Repo.Name, meta.Repo.ID),
 		signal,
 		payload,
 		reposwfs.Repo,
-		repo,
+		meta,
 	)
 
 	return err
