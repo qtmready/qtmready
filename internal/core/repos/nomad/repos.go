@@ -2,7 +2,6 @@ package reposnmd
 
 import (
 	"context"
-	"log/slog"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -25,9 +24,7 @@ type (
 func (s *RepoService) ListRepos(
 	ctx context.Context, req *connect.Request[emptypb.Empty],
 ) (*connect.Response[corev1.ListReposResponse], error) {
-	user_id, org_id := auth.GetAuthContext(ctx)
-
-	slog.Info("auth context", "user_id", user_id, "org_id", org_id)
+	_, org_id := auth.GetAuthContext(ctx)
 
 	ents, err := db.Queries().ListRepos(ctx, org_id)
 	if err != nil {
