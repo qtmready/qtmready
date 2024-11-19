@@ -10,7 +10,8 @@ WHERE id = $1;
 
 -- name: UpdateRepo :one
 UPDATE repos
-SET org_id = $2,
+SET 
+    org_id = $2,
     name = $3,
     hook = $4,
     hook_id = $5,
@@ -52,31 +53,10 @@ SET is_active = true
 WHERE hook_id = $1;
 
 -- name: GetRepo :one
-SELECT 
-  r.id,
-  r.org_id,
-  r.name,
-  r.hook,
-  r.hook_id,
-  r.default_branch,
-  r.is_monorepo,
-  r.threshold,
-  r.stale_duration,
-  r.url,
-  r.is_active,
-  json_build_object(
-    'id', m.id,
-    'hook', m.hook,
-    'kind', m.kind,
-    'link_to', m.link_to,
-    'data', m.data
-  ) AS messaging,
-  json_build_object(
-    'id', o.id,
-    'name', o.name,
-    'domain', o.domain,
-    'slug', o.slug
-  ) AS org
+SELECT
+  sqlc.embed(r),
+  sqlc.embed(m),
+  sqlc.embed(o)
 FROM 
   github_repos gr
 JOIN 

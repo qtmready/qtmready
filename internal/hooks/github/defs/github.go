@@ -195,3 +195,7 @@ func (p *Push) RepoName() string {
 func (p *Push) SenderID() int64 {
 	return p.Sender.ID
 }
+
+func (p *Push) PusherEmail() string {
+	return p.Pusher.Email
+}

@@ -115,31 +115,10 @@ func (q *Queries) GetOrgReposByOrgID(ctx context.Context, orgID uuid.UUID) ([]Re
 }
 
 const getRepo = `-- name: GetRepo :one
-SELECT 
-  r.id,
-  r.org_id,
-  r.name,
-  r.hook,
-  r.hook_id,
-  r.default_branch,
-  r.is_monorepo,
-  r.threshold,
-  r.stale_duration,
-  r.url,
-  r.is_active,
-  json_build_object(
-    'id', m.id,
-    'hook', m.hook,
-    'kind', m.kind,
-    'link_to', m.link_to,
-    'data', m.data
-  ) AS messaging,
-  json_build_object(
-    'id', o.id,
-    'name', o.name,
-    'domain', o.domain,
-    'slug', o.slug
-  ) AS org
+SELECT
+  r.id, r.created_at, r.updated_at, r.org_id, r.name, r.hook, r.hook_id, r.default_branch, r.is_monorepo, r.threshold, r.stale_duration, r.url, r.is_active,
+  m.id, m.created_at, m.updated_at, m.hook, m.kind, m.link_to, m.data,
+  o.id, o.created_at, o.updated_at, o.name, o.domain, o.slug, o.hooks
 FROM 
   github_repos gr
 JOIN 
@@ -158,38 +137,42 @@ type GetRepoParams struct {
 }
 
 type GetRepoRow struct {
-	ID            uuid.UUID       `json:"id"`
-	OrgID         uuid.UUID       `json:"org_id"`
-	Name          string          `json:"name"`
-	Hook          int32           `json:"hook"`
-	HookID        uuid.UUID       `json:"hook_id"`
-	DefaultBranch string          `json:"default_branch"`
-	IsMonorepo    bool            `json:"is_monorepo"`
-	Threshold     int32           `json:"threshold"`
-	StaleDuration pgtype.Interval `json:"stale_duration"`
-	Url           string          `json:"url"`
-	IsActive      bool            `json:"is_active"`
-	Messaging     []byte          `json:"messaging"`
-	Org           []byte          `json:"org"`
+	Repo      Repo      `json:"repo"`
+	Messaging Messaging `json:"messaging"`
+	Org       Org       `json:"org"`
 }
 
 func (q *Queries) GetRepo(ctx context.Context, arg GetRepoParams) (GetRepoRow, error) {
 	row := q.db.QueryRow(ctx, getRepo, arg.InstallationID, arg.GithubID)
 	var i GetRepoRow
 	err := row.Scan(
-		&i.ID,
-		&i.OrgID,
-		&i.Name,
-		&i.Hook,
-		&i.HookID,
-		&i.DefaultBranch,
-		&i.IsMonorepo,
-		&i.Threshold,
-		&i.StaleDuration,
-		&i.Url,
-		&i.IsActive,
-		&i.Messaging,
-		&i.Org,
+		&i.Repo.ID,
+		&i.Repo.CreatedAt,
+		&i.Repo.UpdatedAt,
+		&i.Repo.OrgID,
+		&i.Repo.Name,
+		&i.Repo.Hook,
+		&i.Repo.HookID,
+		&i.Repo.DefaultBranch,
+		&i.Repo.IsMonorepo,
+		&i.Repo.Threshold,
+		&i.Repo.StaleDuration,
+		&i.Repo.Url,
+		&i.Repo.IsActive,
+		&i.Messaging.ID,
+		&i.Messaging.CreatedAt,
+		&i.Messaging.UpdatedAt,
+		&i.Messaging.Hook,
+		&i.Messaging.Kind,
+		&i.Messaging.LinkTo,
+		&i.Messaging.Data,
+		&i.Org.ID,
+		&i.Org.CreatedAt,
+		&i.Org.UpdatedAt,
+		&i.Org.Name,
+		&i.Org.Domain,
+		&i.Org.Slug,
+		&i.Org.Hooks,
 	)
 	return i, err
 }
@@ -307,7 +290,8 @@ func (q *Queries) SuspendedRepoByHookID(ctx context.Context, hookID uuid.UUID) e
 
 const updateRepo = `-- name: UpdateRepo :one
 UPDATE repos
-SET org_id = $2,
+SET 
+    org_id = $2,
     name = $3,
     hook = $4,
     hook_id = $5,
