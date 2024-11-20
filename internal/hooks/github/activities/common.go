@@ -192,7 +192,7 @@ func SignalCoreRepo(
 ) error {
 	_, err := durable.OnCore().SignalWithStartWorkflow(
 		ctx,
-		reposdefs.RepoWorkflowOptions(meta.Org.Name, meta.Repo.Name, meta.Repo.ID),
+		reposdefs.RepoWorkflowOptions(meta.Repo.OrgID, meta.Repo.ID, meta.Repo.Name),
 		signal,
 		payload,
 		reposwfs.Repo,

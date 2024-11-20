@@ -40,6 +40,7 @@ type (
 	// Workflow IDs are constructed through helper functions specific to each workflow, rather than directly using this struct.
 	WorkflowOptions struct {
 		Hook      *string           `json:"hook,omitempty"`
+		OrgID     *string           `json:"org_id,omitempty"`
 		Subject   *string           `json:"subject,omitempty"`
 		SubjectID *string           `json:"subject_id,omitempty"`
 		Scope     *string           `json:"scope,omitempty"`
@@ -75,8 +76,13 @@ func (o *WorkflowOptions) ParentWorkflowID() string {
 // IDSuffix returns the sanitized suffix of the workflow ID.
 func (o *WorkflowOptions) IDSuffix() string {
 	parts := []string{}
+
 	if o.Hook != nil {
 		parts = append(parts, *o.Hook)
+	}
+
+	if o.OrgID != nil {
+		parts = append(parts, "org", *o.OrgID)
 	}
 
 	// Subject
@@ -147,6 +153,12 @@ func (o *WorkflowOptions) IgnoredErrors() []string {
 func WithHook(hook string) WorkflowOptionBuilder {
 	return func(o *WorkflowOptions) {
 		o.Hook = &hook
+	}
+}
+
+func WithOrg(orgID string) WorkflowOptionBuilder {
+	return func(o *WorkflowOptions) {
+		o.OrgID = &orgID
 	}
 }
 
