@@ -188,7 +188,7 @@ func SuspendRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 
 // SignalCoreRepo signals the core repository control workflow with the given signal and payload.
 func SignalCoreRepo(
-	ctx context.Context, meta *reposdefs.FullRepo, signal queues.Signal, payload any,
+	ctx context.Context, meta *reposdefs.HypdratedRepo, signal queues.Signal, payload any,
 ) error {
 	_, err := durable.OnCore().SignalWithStartWorkflow(
 		ctx,

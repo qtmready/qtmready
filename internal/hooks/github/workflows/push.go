@@ -4,18 +4,11 @@ import (
 	"log/slog"
 
 	"go.breu.io/durex/dispatch"
-	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"
 
 	githubacts "go.breu.io/quantm/internal/hooks/github/activities"
 	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
-)
-
-type (
-	PushWorkflowState struct {
-		log log.Logger
-	}
 )
 
 func Push(ctx workflow.Context, payload *githubdefs.Push) error {

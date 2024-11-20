@@ -12,8 +12,8 @@ const (
 )
 
 type (
-	// FullRepo is a full representation of a repository.
-	FullRepo struct {
+	// HypdratedRepo is a full representation of a repository.
+	HypdratedRepo struct {
 		Repo      *entities.Repo      `json:"repo,omitempty"`
 		Messaging *entities.Messaging `json:"messaging,omitempty"`
 		Org       *entities.Org       `json:"org,omitempty"`
