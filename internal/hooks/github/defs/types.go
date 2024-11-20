@@ -55,6 +55,6 @@ func (t Timestamp) Time() time.Time {
 type (
 	RepoEvent[H events.Hook, P events.Payload] struct {
 		Event *events.Event[H, P]
-		Meta  *reposdefs.FullRepo
+		Meta  *reposdefs.HypdratedRepo
 	}
 )
