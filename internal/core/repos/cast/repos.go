@@ -9,6 +9,7 @@ import (
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
+// HookToProto converts an int32 representation of a RepoHook to a RepoHook proto.
 func HookToProto(hook int32) eventsv1.RepoHook {
 	v, ok := eventsv1.RepoHook_name[hook]
 	if !ok {
@@ -18,6 +19,7 @@ func HookToProto(hook int32) eventsv1.RepoHook {
 	return eventsv1.RepoHook(eventsv1.RepoHook_value[v])
 }
 
+// RepoToProto converts a Repo entity to a Repo proto.
 func RepoToProto(repo *entities.Repo) *corev1.Repo {
 	return &corev1.Repo{
 		Id:            repo.ID.String(),
@@ -36,6 +38,7 @@ func RepoToProto(repo *entities.Repo) *corev1.Repo {
 	}
 }
 
+// ReposToProto converts a slice of Repo entities to a slice of Repo protos.
 func ReposToProto(repos []entities.Repo) []*corev1.Repo {
 	protos := make([]*corev1.Repo, 0)
 	for _, repo := range repos {

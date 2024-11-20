@@ -22,17 +22,17 @@ func Push(ctx workflow.Context, payload *githubdefs.Push) error {
 	acts := &githubacts.Push{}
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	var eventory *githubdefs.RepoEvent[eventsv1.RepoHook, eventsv1.Push]
+	var meta *githubdefs.RepoEvent[eventsv1.RepoHook, eventsv1.Push]
 	if err := workflow.
 		ExecuteActivity(ctx, acts.ConvertToPushEvent, payload).
-		Get(ctx, &eventory); err != nil {
+		Get(ctx, &meta); err != nil {
 		return err
 	}
 
-	slog.Info("github/push: dispatching event ...")
+	slog.Info("github/push: dispatching event ...", "repo", meta.Meta.Repo.Name, "", meta.Event)
 
 	// TODO - need to confirm the signature
 	return workflow.
-		ExecuteActivity(ctx, acts.SignalCoreRepo, eventory.Meta, githubdefs.SignalWebhookPush, eventory.Event).
+		ExecuteActivity(ctx, acts.SignalCoreRepo, meta.Meta.Repo, githubdefs.SignalWebhookPush, meta.Event).
 		Get(ctx, nil)
 }
