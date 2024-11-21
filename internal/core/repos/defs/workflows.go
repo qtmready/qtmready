@@ -17,6 +17,6 @@ type (
 		Repo      *entities.Repo      `json:"repo,omitempty"`
 		Messaging *entities.Messaging `json:"messaging,omitempty"`
 		Org       *entities.Org       `json:"org,omitempty"`
-		User      *entities.User      `json:"user,omitempty"`
+		User      *entities.User      `json:"user,omitempty"` // the user will change at every event. We don't need this.
 	}
 )
