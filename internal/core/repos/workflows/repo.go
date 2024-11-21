@@ -4,13 +4,18 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	reposdefs "go.breu.io/quantm/internal/core/repos/defs"
+	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/durable"
+	"go.breu.io/quantm/internal/events"
+	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
 type (
 	// RepoState defines the state for Repo Workflows. It embeds BaseState to inherit its functionality.
 	RepoState struct {
 		*BaseState `json:"base"` // Base workflow state.
+
+		Triggers BranchTriggers `json:"triggers"` // Branch triggers.
 	}
 )
 
@@ -23,19 +28,19 @@ type (
 //
 // FIXME: start the function with the state instead of HydratedRepo.If we start from a state, It will be easier to
 // restart the workflow as new.
-func Repo(ctx workflow.Context, hydrated_repo *reposdefs.HypdratedRepo) error {
+func Repo(ctx workflow.Context, state *RepoState) error {
+	state.init(ctx)
+
 	selector := workflow.NewSelector(ctx)
 
-	state := NewRepoState(ctx, hydrated_repo)
-
-	push := workflow.GetSignalChannel(ctx, reposdefs.RepoIOSignalPush.String())
+	push := workflow.GetSignalChannel(ctx, reposdefs.SignalPush.String())
 	selector.AddReceive(push, state.on_push(ctx))
 
-	for !state.restart(ctx) {
+	for !state.refresh_urged(ctx) {
 		selector.Select(ctx)
 	}
 
-	return workflow.NewContinueAsNewError(ctx, Repo, hydrated_repo) //
+	return workflow.NewContinueAsNewError(ctx, Repo, state)
 }
 
 // - signal handlers -
@@ -43,19 +48,24 @@ func Repo(ctx workflow.Context, hydrated_repo *reposdefs.HypdratedRepo) error {
 // on_push is a signal handler for the push signal.
 func (state *RepoState) on_push(ctx workflow.Context) durable.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		state.rx(ctx, rx, nil)
+		event := &events.Event[eventsv1.RepoHook, eventsv1.Push]{}
+		state.rx(ctx, rx, event)
+
+		state.Triggers.add("branch", event.ID) // TODO: add the right branch.
 	}
 }
 
 // - state managers -
 
-func (state *RepoState) restart(ctx workflow.Context) bool {
+func (state *RepoState) refresh_urged(ctx workflow.Context) bool {
 	return workflow.GetInfo(ctx).GetContinueAsNewSuggested()
 }
 
 // NewRepoState creates a new RepoState instance. It initializes BaseState using the provided context and
 // hydrated repository data.
-func NewRepoState(ctx workflow.Context, hydrated *reposdefs.HypdratedRepo) *RepoState {
-	base := NewBaseState(ctx, hydrated) // Initialize BaseState.
-	return &RepoState{base}             // Return new RepoState instance.
+func NewRepoState(repo *entities.Repo, msg *entities.Messaging) *RepoState {
+	base := &BaseState{Repo: repo, Messaging: msg}
+	triggers := make(BranchTriggers)
+
+	return &RepoState{base, triggers} // Return new RepoState instance.
 }

@@ -50,7 +50,7 @@ func PopulateRepoEvent[H eventsv1.RepoHook, P events.Payload](
 	}
 
 	// set the full repo -> user, repo, messaging, org
-	meta, err := githubcast.RowToFullRepo(row, user)
+	meta, err := githubcast.RowToHydratedRepo(row, user)
 	if err != nil {
 		return nil, err
 	}
@@ -188,15 +188,16 @@ func SuspendRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 
 // SignalCoreRepo signals the core repository control workflow with the given signal and payload.
 func SignalCoreRepo(
-	ctx context.Context, meta *reposdefs.HypdratedRepo, signal queues.Signal, payload any,
+	ctx context.Context, hydrated *reposdefs.HypdratedRepo, signal queues.Signal, payload any,
 ) error {
+	state := reposwfs.NewRepoState(hydrated.Repo, hydrated.Messaging)
 	_, err := durable.OnCore().SignalWithStartWorkflow(
 		ctx,
-		reposdefs.RepoWorkflowOptions(meta.Repo.OrgID, meta.Repo.ID, meta.Repo.Name),
+		reposdefs.RepoWorkflowOptions(hydrated.Repo.OrgID, hydrated.Repo.ID, hydrated.Repo.Name),
 		signal,
 		payload,
 		reposwfs.Repo,
-		meta,
+		state,
 	)
 
 	return err
