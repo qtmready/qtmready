@@ -5,16 +5,21 @@ import (
 	"go.breu.io/quantm/internal/db/entities"
 )
 
+// RowToHydratedRepo converts a database row and user entity into a hydrated repository object.
+//
+// It takes a GetRepoRow from the database and a pointer to a User entity.  If the user pointer is not nil,
+// the hydrated repository will include the user information.  The function returns a pointer to a
+// HypdratedRepo struct and an error.  The error will be nil if the conversion is successful.
 func RowToHydratedRepo(row entities.GetRepoRow, user *entities.User) (*reposdefs.HypdratedRepo, error) {
-	meta := &reposdefs.HypdratedRepo{}
+	hydrated := &reposdefs.HypdratedRepo{}
 
 	if user != nil {
-		meta.User = user
+		hydrated.User = user
 	}
 
-	meta.Repo = &row.Repo
-	meta.Messaging = &row.Messaging
-	meta.Org = &row.Org
+	hydrated.Repo = &row.Repo
+	hydrated.Messaging = &row.Messaging
+	hydrated.Org = &row.Org
 
-	return meta, nil
+	return hydrated, nil
 }
