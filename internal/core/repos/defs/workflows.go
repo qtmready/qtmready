@@ -8,15 +8,20 @@ import (
 
 // signals.
 const (
-	RepoIOSignalPush queues.Signal = "push" // signals a push event.
+	SignalPush queues.Signal = "push" // signals a push event.
+)
+
+const (
+	QueryRepoForBranchParent queues.Query = "parent"
 )
 
 type (
 	// HypdratedRepo is a full representation of a repository.
+	// NOTE: I think we should keep this github package. it will make our lives easier. easpecially after state.
 	HypdratedRepo struct {
 		Repo      *entities.Repo      `json:"repo,omitempty"`
 		Messaging *entities.Messaging `json:"messaging,omitempty"`
 		Org       *entities.Org       `json:"org,omitempty"`
-		User      *entities.User      `json:"user,omitempty"` // the user will change at every event. We don't need this.
+		User      *entities.User      `json:"user,omitempty"`
 	}
 )

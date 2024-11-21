@@ -6,7 +6,6 @@ import (
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"
 
-	reposdefs "go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/db/entities"
 )
 
@@ -32,10 +31,6 @@ func (state *BaseState) rx(ctx workflow.Context, ch workflow.ReceiveChannel, tar
 // dispatch wraps activity execution with logging.
 func (state *BaseState) dispatch(ctx workflow.Context, action string) {}
 
-// NewBaseState creates a new BaseState instance. It retrieves a workflow logger
-// from the provided context and initializes the BaseState with repository and
-// messaging data.
-func NewBaseState(ctx workflow.Context, hydrated *reposdefs.HypdratedRepo) *BaseState {
-	logger := workflow.GetLogger(ctx)
-	return &BaseState{Repo: hydrated.Repo, Messaging: hydrated.Messaging, log: logger}
+func (state *BaseState) init(ctx workflow.Context) {
+	state.log = workflow.GetLogger(ctx)
 }

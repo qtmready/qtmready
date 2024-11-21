@@ -5,7 +5,7 @@ import (
 	"go.breu.io/quantm/internal/db/entities"
 )
 
-func RowToFullRepo(row entities.GetRepoRow, user *entities.User) (*reposdefs.HypdratedRepo, error) {
+func RowToHydratedRepo(row entities.GetRepoRow, user *entities.User) (*reposdefs.HypdratedRepo, error) {
 	meta := &reposdefs.HypdratedRepo{}
 
 	if user != nil {
