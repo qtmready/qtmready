@@ -1,9 +1,9 @@
-package reposwfs
+package workflows
 
 import (
 	"go.temporal.io/sdk/workflow"
 
-	reposdefs "go.breu.io/quantm/internal/core/repos/defs"
+	"go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/durable"
 	"go.breu.io/quantm/internal/events"
@@ -33,7 +33,7 @@ func Repo(ctx workflow.Context, state *RepoState) error {
 
 	selector := workflow.NewSelector(ctx)
 
-	push := workflow.GetSignalChannel(ctx, reposdefs.SignalPush.String())
+	push := workflow.GetSignalChannel(ctx, defs.SignalPush.String())
 	selector.AddReceive(push, state.on_push(ctx))
 
 	for !state.refresh_urged(ctx) {

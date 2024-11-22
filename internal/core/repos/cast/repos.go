@@ -1,4 +1,4 @@
-package reposcast
+package cast
 
 import (
 	"google.golang.org/protobuf/types/known/timestamppb"

@@ -10,8 +10,8 @@ import (
 	"github.com/jackc/pgx/v5"
 	"go.breu.io/durex/queues"
 
-	reposdefs "go.breu.io/quantm/internal/core/repos/defs"
-	reposwfs "go.breu.io/quantm/internal/core/repos/workflows"
+	"go.breu.io/quantm/internal/core/repos"
+	"go.breu.io/quantm/internal/core/repos/workflows"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/durable"
@@ -188,15 +188,15 @@ func SuspendRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 
 // SignalCoreRepo signals the core repository control workflow with the given signal and payload.
 func SignalCoreRepo(
-	ctx context.Context, hydrated *reposdefs.HypdratedRepo, signal queues.Signal, payload any,
+	ctx context.Context, hydrated *repos.HypdratedRepo, signal queues.Signal, payload any,
 ) error {
-	state := reposwfs.NewRepoState(hydrated.Repo, hydrated.Messaging)
+	state := workflows.NewRepoState(hydrated.Repo, hydrated.Messaging)
 	_, err := durable.OnCore().SignalWithStartWorkflow(
 		ctx,
-		reposdefs.RepoWorkflowOptions(hydrated.Repo.OrgID, hydrated.Repo.ID, hydrated.Repo.Name),
+		repos.RepoWorkflowOptions(hydrated.Repo.OrgID, hydrated.Repo.ID, hydrated.Repo.Name),
 		signal,
 		payload,
-		reposwfs.Repo,
+		repos.RepoWorkflow,
 		state,
 	)
 
