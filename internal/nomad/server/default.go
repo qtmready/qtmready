@@ -4,7 +4,6 @@ import (
 	"connectrpc.com/connect"
 
 	"go.breu.io/quantm/internal/auth"
-	authnmd "go.breu.io/quantm/internal/auth/nomad"
 	reposnmd "go.breu.io/quantm/internal/core/repos/nomad"
 	githubnmd "go.breu.io/quantm/internal/hooks/github/nomad"
 	slacknmd "go.breu.io/quantm/internal/hooks/slack/nomad"
@@ -28,12 +27,15 @@ func DefaultServer(opts ...Option) *Server {
 		connect.WithInterceptors(interceptors...),
 	}
 
+	// - insecure handlers -
 	// -- auth --
-	srv.add(authnmd.NewAccountSericeServiceHandler(options...))
-	srv.add(authnmd.NewOrgServiceServiceHandler(options...))
-	srv.add(authnmd.NewUserSericeServiceHandler(options...))
+	srv.add(auth.NomadAccountServiceHandler(options...))
+	srv.add(auth.NomadOrgServiceHandler(options...))
+	srv.add(auth.NomadUserServiceHandler(options...))
 
-	options = append(options, connect.WithInterceptors(auth.NomadAuthenticator()))
+	// - secure handlers -
+
+	options = append(options, connect.WithInterceptors(auth.NomadInterceptor()))
 
 	// -- core/repos --
 	srv.add(reposnmd.NewRepoServiceHandler(options...))

@@ -24,7 +24,7 @@ type (
 func (s *RepoService) ListRepos(
 	ctx context.Context, req *connect.Request[emptypb.Empty],
 ) (*connect.Response[corev1.ListReposResponse], error) {
-	_, org_id := auth.GetAuthContext(ctx)
+	_, org_id := auth.NomadAuthContext(ctx)
 
 	ents, err := db.Queries().ListRepos(ctx, org_id)
 	if err != nil {

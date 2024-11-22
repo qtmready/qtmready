@@ -98,6 +98,7 @@ func configure_qcore() {
 
 	if q != nil {
 		q.RegisterWorkflow(repos.RepoWorkflow)
+		q.RegisterActivity(repos.NewActivities())
 	}
 }
 
