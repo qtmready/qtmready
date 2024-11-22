@@ -1,6 +1,7 @@
 package repos
 
 import (
+	"go.breu.io/quantm/internal/core/repos/activities"
 	"go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/core/repos/workflows"
 )
@@ -13,3 +14,7 @@ var (
 	RepoWorkflow        = workflows.Repo
 	RepoWorkflowOptions = defs.RepoWorkflowOptions
 )
+
+func NewActivities() *activities.Activity {
+	return &activities.Activity{}
+}

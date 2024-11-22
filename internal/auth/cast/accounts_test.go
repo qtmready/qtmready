@@ -9,7 +9,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	authcast "go.breu.io/quantm/internal/auth/cast"
+	"go.breu.io/quantm/internal/auth/cast"
 	"go.breu.io/quantm/internal/db/entities"
 	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"
 )
@@ -24,12 +24,12 @@ func TestAccountToProto(t *testing.T) {
 		UpdatedAt:         now,
 		ExpiresAt:         now.Add(time.Hour * 24),
 		UserID:            uuid.New(),
-		Provider:          authcast.AuthProviderGoogle,
+		Provider:          cast.AuthProviderGoogle,
 		ProviderAccountID: "1234567890",
 		Type:              "user",
 	}
 
-	pb := authcast.AccountToProto(account)
+	pb := cast.AccountToProto(account)
 
 	assert.Equal(t, account.ID.String(), pb.GetId())
 	assert.True(t, proto.Equal(pb.GetCreatedAt(), timestamppb.New(account.CreatedAt)))
@@ -56,14 +56,14 @@ func TestProtoToAccount(t *testing.T) {
 		Kind:              "user",
 	}
 
-	acc := authcast.ProtoToAccount(pb)
+	acc := cast.ProtoToAccount(pb)
 
 	assert.Equal(t, uuid.MustParse(pb.GetId()), acc.ID)
 	assert.Equal(t, pb.GetCreatedAt().AsTime(), acc.CreatedAt)
 	assert.Equal(t, pb.GetUpdatedAt().AsTime(), acc.UpdatedAt)
 	assert.Equal(t, pb.GetExpiresAt().AsTime(), acc.ExpiresAt)
 	assert.Equal(t, uuid.MustParse(pb.GetUserId()), acc.UserID)
-	assert.Equal(t, authcast.AuthProviderGoogle, acc.Provider)
+	assert.Equal(t, cast.AuthProviderGoogle, acc.Provider)
 	assert.Equal(t, pb.GetProviderAccountId(), acc.ProviderAccountID)
 	assert.Equal(t, "user", acc.Type)
 }
@@ -74,7 +74,7 @@ func TestProtoToGetAccountsByUserIDParams(t *testing.T) {
 	id := uuid.New()
 	req := &authv1.GetAccountsByUserIDRequest{UserId: id.String()}
 
-	parsedID := authcast.ProtoToGetAccountsByUserIDParams(req)
+	parsedID := cast.ProtoToGetAccountsByUserIDParams(req)
 
 	assert.Equal(t, id, parsedID)
 }
@@ -91,10 +91,10 @@ func TestProtoToCreateAccountParams(t *testing.T) {
 		Kind:              "user",
 	}
 
-	params := authcast.ProtoToCreateAccountParams(req)
+	params := cast.ProtoToCreateAccountParams(req)
 
 	assert.Equal(t, uuid.MustParse(req.GetUserId()), params.UserID)
-	assert.Equal(t, authcast.AuthProviderGoogle, params.Provider)
+	assert.Equal(t, cast.AuthProviderGoogle, params.Provider)
 	assert.Equal(t, req.GetProviderAccountId(), params.ProviderAccountID)
 	assert.Equal(t, req.GetExpiresAt().AsTime(), params.ExpiresAt)
 	assert.Equal(t, "user", params.Type)
@@ -106,7 +106,7 @@ func TestProtoToGetAccountByIDParams(t *testing.T) {
 	id := uuid.New()
 	req := &authv1.GetAccountByIDRequest{Id: id.String()}
 
-	parsedID := authcast.ProtoToGetAccountByIDParams(req)
+	parsedID := cast.ProtoToGetAccountByIDParams(req)
 
 	assert.Equal(t, id, parsedID)
 }
@@ -119,8 +119,8 @@ func TestProtoToGetAccountByProviderAccountIDParams(t *testing.T) {
 		ProviderAccountId: "1234567890",
 	}
 
-	params := authcast.ProtoToGetAccountByProviderAccountIDParams(req)
+	params := cast.ProtoToGetAccountByProviderAccountIDParams(req)
 
-	assert.Equal(t, authcast.AuthProviderGoogle, params.Provider)
+	assert.Equal(t, cast.AuthProviderGoogle, params.Provider)
 	assert.Equal(t, req.GetProviderAccountId(), params.ProviderAccountID)
 }

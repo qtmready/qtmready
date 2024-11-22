@@ -1,4 +1,4 @@
-package auth
+package nomad
 
 import (
 	"context"
@@ -6,9 +6,11 @@ import (
 	"strings"
 
 	"connectrpc.com/connect"
+
+	"go.breu.io/quantm/internal/auth/config"
 )
 
-func NomadAuthenticator() connect.UnaryInterceptorFunc {
+func AuthInterceptor() connect.UnaryInterceptorFunc {
 	intercept := func(next connect.UnaryFunc) connect.UnaryFunc {
 		return connect.UnaryFunc(func(ctx context.Context, req connect.AnyRequest) (connect.AnyResponse, error) {
 			header := req.Header().Get("Authorization")
@@ -16,7 +18,7 @@ func NomadAuthenticator() connect.UnaryInterceptorFunc {
 			if strings.HasPrefix(header, "Bearer ") {
 				token := strings.TrimPrefix(header, "Bearer ")
 
-				cliams, err := DecodeJWE(Secret(), token)
+				cliams, err := config.DecodeJWE(config.Secret(), token)
 				if err != nil {
 					return nil, connect.NewError(connect.CodeUnauthenticated, err)
 				}
