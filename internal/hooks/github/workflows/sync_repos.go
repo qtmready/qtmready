@@ -24,13 +24,13 @@ func SyncRepos(ctx workflow.Context, payload *defs.WebhookInstallRepos) error {
 	}
 
 	for _, repo := range payload.RepositoriesAdded {
-		payload := &defs.SyncRepo{InstallationID: install.ID, Repo: repo, OrgID: install.OrgID}
+		payload := &defs.SyncRepoPayload{InstallationID: install.ID, Repo: repo, OrgID: install.OrgID}
 
 		selector.AddFuture(workflow.ExecuteActivity(ctx, acts.RepoAdded, payload), func(f workflow.Future) {})
 	}
 
 	for _, repo := range payload.RepositoriesRemoved {
-		payload := &defs.SyncRepo{InstallationID: install.ID, Repo: repo}
+		payload := &defs.SyncRepoPayload{InstallationID: install.ID, Repo: repo}
 
 		selector.AddFuture(workflow.ExecuteActivity(ctx, acts.RepoRemoved, payload), func(f workflow.Future) {})
 	}

@@ -4,9 +4,6 @@ import (
 	"encoding/json"
 	"strings"
 	"time"
-
-	"go.breu.io/quantm/internal/core/repos"
-	"go.breu.io/quantm/internal/events"
 )
 
 type (
@@ -51,10 +48,3 @@ func (t Timestamp) MarshalJSON() ([]byte, error) {
 func (t Timestamp) Time() time.Time {
 	return time.Time(t)
 }
-
-type (
-	RepoEvent[H events.Hook, P events.Payload] struct {
-		Event *events.Event[H, P]
-		Meta  *repos.HypdratedRepo
-	}
-)

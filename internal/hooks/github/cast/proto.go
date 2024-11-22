@@ -9,13 +9,13 @@ import (
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
-func PushToProto(payload *defs.Push) *eventsv1.Push {
-	return &eventsv1.Push{
+func PushToProto(payload defs.Push) eventsv1.Push {
+	return eventsv1.Push{
 		Ref:        payload.Ref,
 		Before:     payload.Before,
 		After:      payload.After,
 		Repository: payload.Repository.Name,
-		SenderId:   payload.SenderID(),
+		SenderId:   payload.Sender.ID,
 		Timestamp:  timestamppb.New(time.Now()),
 		Commits:    CommitsToProto(payload.Commits),
 	}
