@@ -1,4 +1,4 @@
-package reposwfs
+package workflows
 
 import (
 	"go.temporal.io/sdk/workflow"

@@ -11,6 +11,7 @@ import (
 	"go.breu.io/graceful"
 
 	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/core/repos"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/migrations"
 	"go.breu.io/quantm/internal/durable"
@@ -98,7 +99,7 @@ func configure_qcore() {
 	q.CreateWorker()
 
 	if q != nil {
-		slog.Warn("queues/core: no workflows or activities registered")
+		q.RegisterWorkflow(repos.RepoWorkflow)
 	}
 }
 

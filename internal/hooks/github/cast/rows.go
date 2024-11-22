@@ -1,7 +1,7 @@
 package githubcast
 
 import (
-	reposdefs "go.breu.io/quantm/internal/core/repos/defs"
+	"go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/db/entities"
 )
 
@@ -10,8 +10,8 @@ import (
 // It takes a GetRepoRow from the database and a pointer to a User entity.  If the user pointer is not nil,
 // the hydrated repository will include the user information.  The function returns a pointer to a
 // HypdratedRepo struct and an error.  The error will be nil if the conversion is successful.
-func RowToHydratedRepo(row entities.GetRepoRow, user *entities.User) (*reposdefs.HypdratedRepo, error) {
-	hydrated := &reposdefs.HypdratedRepo{}
+func RowToHydratedRepo(row entities.GetRepoRow, user *entities.User) (*defs.HypdratedRepo, error) {
+	hydrated := &defs.HypdratedRepo{}
 
 	if user != nil {
 		hydrated.User = user

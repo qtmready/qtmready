@@ -1,4 +1,4 @@
-package reposwfs
+package workflows
 
 import (
 	"github.com/google/uuid"
