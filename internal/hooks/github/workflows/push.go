@@ -1,31 +1,61 @@
 package workflows
 
 import (
-	"log/slog"
-
 	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/events"
 	"go.breu.io/quantm/internal/hooks/github/activities"
+	"go.breu.io/quantm/internal/hooks/github/cast"
 	"go.breu.io/quantm/internal/hooks/github/defs"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
-func Push(ctx workflow.Context, payload *defs.Push) error {
+func Push(ctx workflow.Context, push defs.Push) error {
 	acts := &activities.Push{}
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	var meta *defs.RepoEvent[eventsv1.RepoHook, eventsv1.Push]
-	if err := workflow.
-		ExecuteActivity(ctx, acts.ConvertToPushEvent, payload).
-		Get(ctx, &meta); err != nil {
-		return err
+	proto := cast.PushToProto(push)
+	meta := &defs.HydratedRepoEvent{}
+
+	{
+		payload := &defs.HydrateRepoEventPayload{RepoID: push.Repository.ID, InstallationID: push.Installation.ID}
+		if err := workflow.ExecuteActivity(ctx, acts.HydratePushEvent, payload).Get(ctx, meta); err != nil {
+			return err
+		}
 	}
 
-	slog.Info("github/push: dispatching event ...", "repo", meta.Meta.Repo.Name, "", meta.Event)
+	action := events.EventActionCreated
 
-	// TODO - need to confirm the signature
-	return workflow.
-		ExecuteActivity(ctx, acts.SignalCoreRepo, meta.Meta.Repo, defs.SignalWebhookPush, meta.Event).
-		Get(ctx, nil)
+	if push.Deleted {
+		action = events.EventActionDeleted
+	}
+
+	if push.Forced {
+		action = events.EventActionForced
+	}
+
+	event := events.
+		New[eventsv1.RepoHook, eventsv1.Push]().
+		SettHook(eventsv1.RepoHook_REPO_HOOK_GITHUB).
+		SetParent(meta.ParentID).
+		SetScope(events.ScopePush).
+		SetAction(action).
+		SetSource(meta.Repo.Url).
+		SetOrg(meta.Repo.OrgID).
+		SetPayload(&proto)
+
+	if meta.Team != nil {
+		event.SetTeam(meta.Team.ID)
+	}
+
+	if meta.User != nil {
+		event.SetUser(meta.User.ID)
+	}
+
+	// TODO: persist the event right after creation.
+
+	hevent := &defs.HydratedQuantmEvent[eventsv1.Push]{Event: event, Meta: meta}
+
+	return workflow.ExecuteActivity(ctx, acts.SignalGithubPushEventToRepo, hevent).Get(ctx, nil)
 }

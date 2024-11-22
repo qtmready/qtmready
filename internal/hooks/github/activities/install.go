@@ -46,6 +46,6 @@ func (a *Install) GetOrCreateInstallation(
 	return nil, err
 }
 
-func (a *Install) AddRepoToInstall(ctx context.Context, payload *defs.SyncRepo) error {
+func (a *Install) AddRepoToInstall(ctx context.Context, payload *defs.SyncRepoPayload) error {
 	return AddRepo(ctx, payload)
 }

@@ -4,89 +4,43 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"go.breu.io/durex/queues"
 
-	"go.breu.io/quantm/internal/core/repos"
-	"go.breu.io/quantm/internal/core/repos/workflows"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
-	"go.breu.io/quantm/internal/durable"
 	"go.breu.io/quantm/internal/events"
 	"go.breu.io/quantm/internal/hooks/github/cast"
 	"go.breu.io/quantm/internal/hooks/github/defs"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
-func PopulateRepoEvent[H eventsv1.RepoHook, P events.Payload](
-	ctx context.Context, params *defs.RepoEventPayload,
-) (*defs.RepoEvent[H, P], error) {
-	var event *events.Event[H, P]
-
-	install, err := db.Queries().GetGithubInstallationByInstallationID(ctx, params.InstallationID)
+func HydrateRepoEvent(ctx context.Context, payload *defs.HydrateRepoEventPayload) (*defs.HydratedRepoEvent, error) {
+	install, err := db.Queries().GetGithubInstallationByInstallationID(ctx, payload.InstallationID)
 	if err != nil {
 		return nil, err
 	}
 
-	// get the core repo from hook_repo (join)
-	// TODO - may change the query and get the user and team info
-	row, err := db.Queries().GetRepo(ctx, entities.GetRepoParams{
-		InstallationID: install.ID,
-		GithubID:       params.RepoID,
-	})
+	row, err := db.Queries().GetRepo(ctx, entities.GetRepoParams{InstallationID: install.ID, GithubID: payload.RepoID})
 	if err != nil {
 		return nil, err
 	}
 
-	user := &entities.User{}
+	hydrated := cast.RowToHydratedRepoEvent(row)
 
-	if params.Email == "" {
-		// get user
-		u, _ := db.Queries().GetUserByEmail(ctx, params.Email)
-		user = &u
+	// TODO: handle if no rows are fetched.
+	if payload.Email != "" {
+		u, _ := db.Queries().GetUserByEmail(ctx, payload.Email)
+		hydrated.User = &u
 	}
 
-	// set the full repo -> user, repo, messaging, org
-	meta, err := cast.RowToHydratedRepo(row, user)
-	if err != nil {
-		return nil, err
-	}
+	// TODO: Query for Parent ID.
 
-	uid := uuid.Nil
-	if meta.User != nil {
-		uid = meta.User.ID
-	}
-
-	id := events.MustUUID()
-	event = &events.Event[H, P]{
-		ID:      id,
-		Version: events.EventVersionDefault,
-		Context: events.Context[H]{
-			ParentID:  id,
-			Hook:      H(meta.Repo.Hook), // FIXME: why do we need to force cast here? (ysf)
-			Scope:     params.Scope,
-			Action:    params.Action,
-			Source:    meta.Repo.Url,
-			Timestamp: time.Now(),
-		},
-		Subject: events.Subject{
-			ID:     meta.Repo.ID,
-			Name:   meta.Repo.Name,
-			OrgID:  install.OrgID,
-			TeamID: uuid.Nil, // TODO - will set this later
-			UserID: uid,
-		},
-	}
-
-	return &defs.RepoEvent[H, P]{Event: event, Meta: meta}, nil
+	return hydrated, nil
 }
 
-// AddRepo adds a new GitHub repository to the database.
-// If the repository already exists, it will be activated.
-func AddRepo(ctx context.Context, payload *defs.SyncRepo) error {
+// AddRepo adds a new GitHub repository to the database. If the repository already exists, it will be activated.
+func AddRepo(ctx context.Context, payload *defs.SyncRepoPayload) error {
 	tx, qtx, err := db.Transaction(ctx)
 	if err != nil {
 		return err
@@ -148,11 +102,15 @@ func AddRepo(ctx context.Context, payload *defs.SyncRepo) error {
 
 // SuspendRepo suspends a GitHub repository from the database.
 // If the repository does not exist, it will be ignored.
-func SuspendRepo(ctx context.Context, payload *defs.SyncRepo) error {
-	repo, err := db.Queries().GetGithubRepoByInstallationIDAndGithubID(ctx, entities.GetGithubRepoByInstallationIDAndGithubIDParams{
-		InstallationID: payload.InstallationID,
-		GithubID:       payload.Repo.ID,
-	})
+func SuspendRepo(ctx context.Context, payload *defs.SyncRepoPayload) error {
+	repo, err := db.Queries().
+		GetGithubRepoByInstallationIDAndGithubID(
+			ctx,
+			entities.GetGithubRepoByInstallationIDAndGithubIDParams{
+				InstallationID: payload.InstallationID,
+				GithubID:       payload.Repo.ID,
+			},
+		)
 
 	if err == nil {
 		tx, qtx, err := db.Transaction(ctx)
@@ -186,19 +144,6 @@ func SuspendRepo(ctx context.Context, payload *defs.SyncRepo) error {
 	return err
 }
 
-// SignalCoreRepo signals the core repository control workflow with the given signal and payload.
-func SignalCoreRepo(
-	ctx context.Context, hydrated *repos.HypdratedRepo, signal queues.Signal, payload any,
-) error {
-	state := workflows.NewRepoState(hydrated.Repo, hydrated.Messaging)
-	_, err := durable.OnCore().SignalWithStartWorkflow(
-		ctx,
-		repos.RepoWorkflowOptions(hydrated.Repo.OrgID, hydrated.Repo.ID, hydrated.Repo.Name),
-		signal,
-		payload,
-		repos.RepoWorkflow,
-		state,
-	)
-
-	return err
+func SignalToRepo[P events.Payload](ctx context.Context, hydrated *defs.HydratedQuantmEvent[P]) error {
+	return nil
 }

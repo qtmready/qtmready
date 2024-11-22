@@ -15,11 +15,11 @@ type (
 	InstallRepos struct{}
 )
 
-func (a *InstallRepos) RepoAdded(ctx context.Context, payload *defs.SyncRepo) error {
+func (a *InstallRepos) RepoAdded(ctx context.Context, payload *defs.SyncRepoPayload) error {
 	return AddRepo(ctx, payload)
 }
 
-func (a *InstallRepos) RepoRemoved(ctx context.Context, payload *defs.SyncRepo) error {
+func (a *InstallRepos) RepoRemoved(ctx context.Context, payload *defs.SyncRepoPayload) error {
 	return SuspendRepo(ctx, payload)
 }
 

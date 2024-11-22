@@ -11,8 +11,9 @@ type (
 )
 
 var (
-	RepoWorkflow        = workflows.Repo
-	RepoWorkflowOptions = defs.RepoWorkflowOptions
+	RepoWorkflow         = workflows.Repo
+	NewRepoWorkflowState = workflows.NewRepoState
+	RepoWorkflowOptions  = defs.RepoWorkflowOptions
 )
 
 func NewActivities() *activities.Activity {

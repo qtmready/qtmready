@@ -16,10 +16,14 @@ type (
 	//     and organization
 	//     of events.
 	Subject struct {
-		ID     uuid.UUID `json:"id"`      // ID is the ID of the subject.
 		Name   string    `json:"name"`    // Name of the database table.
+		ID     uuid.UUID `json:"id"`      // ID is the ID of the subject.
 		OrgID  uuid.UUID `json:"org_id"`  // OrgID is the ID of the organization that the subject belongs to.
 		TeamID uuid.UUID `json:"team_id"` // Team ID of the subject's team in the organization. It can be null uuid.
 		UserID uuid.UUID `json:"user_id"` // UserID is the ID of the user that the subject belongs to. It can be null uuid.
 	}
+)
+
+const (
+	SubjectNameRepos = "repos"
 )
