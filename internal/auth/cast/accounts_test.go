@@ -1,4 +1,4 @@
-package authcast_test
+package cast_test
 
 import (
 	"testing"

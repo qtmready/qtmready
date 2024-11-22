@@ -1,4 +1,4 @@
-package githubcast
+package cast
 
 import (
 	"go.breu.io/quantm/internal/core/repos/defs"

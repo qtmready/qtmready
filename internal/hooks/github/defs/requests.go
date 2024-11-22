@@ -1,4 +1,4 @@
-package githubdefs
+package defs
 
 import (
 	"github.com/google/uuid"

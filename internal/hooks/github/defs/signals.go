@@ -1,4 +1,4 @@
-package githubdefs
+package defs
 
 import (
 	"go.breu.io/durex/queues"

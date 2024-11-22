@@ -1,4 +1,4 @@
-package slacknmd
+package nomad
 
 import (
 	"context"
@@ -14,8 +14,8 @@ import (
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/erratic"
 	pkg_slack "go.breu.io/quantm/internal/hooks/slack"
-	slackcfg "go.breu.io/quantm/internal/hooks/slack/config"
-	slackdefs "go.breu.io/quantm/internal/hooks/slack/defs"
+	"go.breu.io/quantm/internal/hooks/slack/config"
+	"go.breu.io/quantm/internal/hooks/slack/defs"
 	"go.breu.io/quantm/internal/hooks/slack/errors"
 	slackv1 "go.breu.io/quantm/internal/proto/hooks/slack/v1"
 	"go.breu.io/quantm/internal/proto/hooks/slack/v1/slackv1connect"
@@ -37,7 +37,7 @@ func (s *SlackService) SlackOauth(
 	}
 
 	response, err := slack.
-		GetOAuthV2Response(&c, slackcfg.ClientID(), slackcfg.ClientSecret(), reqst.Msg.GetCode(), slackcfg.ClientRedirectURL())
+		GetOAuthV2Response(&c, config.ClientID(), config.ClientSecret(), reqst.Msg.GetCode(), config.ClientRedirectURL())
 	if err != nil {
 		return nil, erratic.NewInternalServerError().AddHint("reason", err.Error()).ToConnectError()
 	}
@@ -62,7 +62,7 @@ func (s *SlackService) SlackOauth(
 func _user(
 	ctx context.Context, reqst *connect.Request[slackv1.SlackOauthRequest], response *slack.OAuthV2Response,
 ) error {
-	client, _ := slackcfg.GetSlackClient(response.AuthedUser.AccessToken)
+	client, _ := config.GetSlackClient(response.AuthedUser.AccessToken)
 
 	identity, err := client.GetUserIdentity()
 	if err != nil {
@@ -84,7 +84,7 @@ func _user(
 		return err
 	}
 
-	slack_user := &slackdefs.MessageProviderSlackUserInfo{
+	slack_user := &defs.MessageProviderSlackUserInfo{
 		BotToken:       base64.StdEncoding.EncodeToString(bot_token),
 		UserToken:      base64.StdEncoding.EncodeToString(user_token),
 		ProviderUserID: identity.User.ID,
@@ -131,7 +131,7 @@ func _bot(
 		return err
 	}
 
-	slack_bot := &slackdefs.MessageProviderSlackData{
+	slack_bot := &defs.MessageProviderSlackData{
 		ChannelID:     response.IncomingWebhook.ChannelID,
 		ChannelName:   response.IncomingWebhook.Channel,
 		WorkspaceName: response.Team.Name,

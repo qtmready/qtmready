@@ -1,4 +1,4 @@
-package authcast
+package cast
 
 import (
 	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"

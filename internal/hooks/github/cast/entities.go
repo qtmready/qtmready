@@ -1,15 +1,15 @@
-package githubcast
+package cast
 
 import (
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
+	"go.breu.io/quantm/internal/hooks/github/defs"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
-func PushToProto(payload *githubdefs.Push) *eventsv1.Push {
+func PushToProto(payload *defs.Push) *eventsv1.Push {
 	return &eventsv1.Push{
 		Ref:        payload.Ref,
 		Before:     payload.Before,
@@ -21,7 +21,7 @@ func PushToProto(payload *githubdefs.Push) *eventsv1.Push {
 	}
 }
 
-func CommitsToProto(commits []githubdefs.Commit) []*eventsv1.Commit {
+func CommitsToProto(commits []defs.Commit) []*eventsv1.Commit {
 	result := make([]*eventsv1.Commit, len(commits))
 	for i, commit := range commits {
 		result[i] = &eventsv1.Commit{

@@ -1,4 +1,4 @@
-package slackdefs
+package defs
 
 import (
 	"encoding/json"

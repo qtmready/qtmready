@@ -1,4 +1,4 @@
-package githubwfs
+package workflows
 
 import (
 	"go.breu.io/durex/dispatch"
