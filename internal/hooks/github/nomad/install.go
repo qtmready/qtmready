@@ -1,4 +1,4 @@
-package githubnmd
+package nomad
 
 import (
 	"context"
@@ -10,8 +10,8 @@ import (
 
 	"go.breu.io/quantm/internal/durable"
 	"go.breu.io/quantm/internal/erratic"
-	ghdefs "go.breu.io/quantm/internal/hooks/github/defs"
-	githubwfs "go.breu.io/quantm/internal/hooks/github/workflows"
+	"go.breu.io/quantm/internal/hooks/github/defs"
+	"go.breu.io/quantm/internal/hooks/github/workflows"
 	githubv1 "go.breu.io/quantm/internal/proto/hooks/github/v1"
 	"go.breu.io/quantm/internal/proto/hooks/github/v1/githubv1connect"
 )
@@ -29,14 +29,14 @@ func (s *GithubService) Install(
 		return connect.NewResponse(&emptypb.Empty{}), nil
 	}
 
-	opts := ghdefs.NewInstallWorkflowOptions(req.Msg.InstallationId, req.Msg.Action)
-	args := ghdefs.RequestInstall{
+	opts := defs.NewInstallWorkflowOptions(req.Msg.InstallationId, req.Msg.Action)
+	args := defs.RequestInstall{
 		InstallationID: req.Msg.InstallationId,
 		SetupAction:    req.Msg.Action,
 		OrgID:          uuid.MustParse(req.Msg.OrgId),
 	}
 
-	_, err := durable.OnHooks().SignalWithStartWorkflow(ctx, opts, ghdefs.SignalRequestInstall, args, githubwfs.Install)
+	_, err := durable.OnHooks().SignalWithStartWorkflow(ctx, opts, defs.SignalRequestInstall, args, workflows.Install)
 	if err != nil {
 		return nil, erratic.NewInternalServerError().AddHint("reason", "unable to schedule workflow").ToConnectError()
 	}

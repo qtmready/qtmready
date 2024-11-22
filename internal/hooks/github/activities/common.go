@@ -1,4 +1,4 @@
-package githubacts
+package activities
 
 import (
 	"context"
@@ -16,14 +16,14 @@ import (
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/durable"
 	"go.breu.io/quantm/internal/events"
-	githubcast "go.breu.io/quantm/internal/hooks/github/cast"
-	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
+	"go.breu.io/quantm/internal/hooks/github/cast"
+	"go.breu.io/quantm/internal/hooks/github/defs"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
 func PopulateRepoEvent[H eventsv1.RepoHook, P events.Payload](
-	ctx context.Context, params *githubdefs.RepoEventPayload,
-) (*githubdefs.RepoEvent[H, P], error) {
+	ctx context.Context, params *defs.RepoEventPayload,
+) (*defs.RepoEvent[H, P], error) {
 	var event *events.Event[H, P]
 
 	install, err := db.Queries().GetGithubInstallationByInstallationID(ctx, params.InstallationID)
@@ -50,7 +50,7 @@ func PopulateRepoEvent[H eventsv1.RepoHook, P events.Payload](
 	}
 
 	// set the full repo -> user, repo, messaging, org
-	meta, err := githubcast.RowToHydratedRepo(row, user)
+	meta, err := cast.RowToHydratedRepo(row, user)
 	if err != nil {
 		return nil, err
 	}
@@ -81,12 +81,12 @@ func PopulateRepoEvent[H eventsv1.RepoHook, P events.Payload](
 		},
 	}
 
-	return &githubdefs.RepoEvent[H, P]{Event: event, Meta: meta}, nil
+	return &defs.RepoEvent[H, P]{Event: event, Meta: meta}, nil
 }
 
 // AddRepo adds a new GitHub repository to the database.
 // If the repository already exists, it will be activated.
-func AddRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
+func AddRepo(ctx context.Context, payload *defs.SyncRepo) error {
 	tx, qtx, err := db.Transaction(ctx)
 	if err != nil {
 		return err
@@ -148,7 +148,7 @@ func AddRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
 
 // SuspendRepo suspends a GitHub repository from the database.
 // If the repository does not exist, it will be ignored.
-func SuspendRepo(ctx context.Context, payload *githubdefs.SyncRepo) error {
+func SuspendRepo(ctx context.Context, payload *defs.SyncRepo) error {
 	repo, err := db.Queries().GetGithubRepoByInstallationIDAndGithubID(ctx, entities.GetGithubRepoByInstallationIDAndGithubIDParams{
 		InstallationID: payload.InstallationID,
 		GithubID:       payload.Repo.ID,

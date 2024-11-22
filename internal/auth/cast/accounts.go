@@ -1,4 +1,4 @@
-package authcast
+package cast
 
 import (
 	"github.com/google/uuid"

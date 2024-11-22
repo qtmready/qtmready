@@ -1,4 +1,4 @@
-package authnmd
+package nomad
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
-	authcast "go.breu.io/quantm/internal/auth/cast"
+	"go.breu.io/quantm/internal/auth/cast"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/erratic"
@@ -34,9 +34,9 @@ var (
 func (s *UserService) CreateUser(
 	ctx context.Context, req *connect.Request[authv1.CreateUserRequest],
 ) (*connect.Response[authv1.AuthUser], error) { // Default public value for new users.
-	role := "member"                                    // Default role for new users.
-	params := authcast.ProtoToCreateUserParams(req.Msg) // Extract user creation parameters (excluding organization ID).
-	domain := req.Msg.GetDomain()                       // Extract the domain name to locate the organization.
+	role := "member"                                // Default role for new users.
+	params := cast.ProtoToCreateUserParams(req.Msg) // Extract user creation parameters (excluding organization ID).
+	domain := req.Msg.GetDomain()                   // Extract the domain name to locate the organization.
 
 	// Initiate a database transaction.
 	tx, qtx, err := db.Transaction(ctx)
@@ -55,7 +55,7 @@ func (s *UserService) CreateUser(
 			return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 		}
 
-		return connect.NewResponse(&authv1.AuthUser{User: authcast.UserToProto(&user)}), nil
+		return connect.NewResponse(&authv1.AuthUser{User: cast.UserToProto(&user)}), nil
 	}
 
 	// Retrieve the organization associated with the provided domain.
@@ -108,7 +108,7 @@ func (s *UserService) CreateUser(
 	}
 
 	// Convert the retrieved user details to a protobuf structure.
-	proto, err := authcast.AuthUserQueryResponseToProto(
+	proto, err := cast.AuthUserQueryResponseToProto(
 		details.User, details.Org, details.Roles, details.OauthAccounts, details.Teams,
 	)
 	if err != nil {
@@ -124,7 +124,7 @@ func (s *UserService) GetUserByProviderAccount(
 	ctx context.Context, request *connect.Request[authv1.GetUserByProviderAccountRequest],
 ) (*connect.Response[authv1.AuthUser], error) {
 	params := entities.GetUserByProviderAccountParams{
-		Provider:          authcast.ProtoToAuthProvider(request.Msg.GetProvider()),
+		Provider:          cast.ProtoToAuthProvider(request.Msg.GetProvider()),
 		ProviderAccountID: request.Msg.GetProviderAccountId(),
 	}
 
@@ -148,7 +148,7 @@ func (s *UserService) GetUserByProviderAccount(
 		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
-	proto, err := authcast.AuthUserQueryResponseToProto(
+	proto, err := cast.AuthUserQueryResponseToProto(
 		details.User, details.Org, details.Roles, details.OauthAccounts, details.Teams,
 	)
 	if err != nil {
@@ -171,7 +171,7 @@ func (s *UserService) GetUserByEmail(
 		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
-	proto, err := authcast.AuthUserQueryResponseToProto(
+	proto, err := cast.AuthUserQueryResponseToProto(
 		details.User, details.Org, details.Roles, details.OauthAccounts, details.Teams,
 	)
 	if err != nil {
@@ -194,7 +194,7 @@ func (s *UserService) GetUserByID(
 		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
-	proto, err := authcast.AuthUserQueryResponseToProto(
+	proto, err := cast.AuthUserQueryResponseToProto(
 		details.User, details.Org, details.Roles, details.OauthAccounts, details.Teams,
 	)
 	if err != nil {
@@ -208,14 +208,14 @@ func (s *UserService) GetUserByID(
 func (s *UserService) UpdateUser(
 	ctx context.Context, req *connect.Request[authv1.UpdateUserRequest],
 ) (*connect.Response[authv1.UpdateUserResponse], error) {
-	params := authcast.ProtoToUpdateUserParams(req.Msg)
+	params := cast.ProtoToUpdateUserParams(req.Msg)
 
 	user, err := db.Queries().UpdateUser(ctx, params)
 	if err != nil {
 		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
-	return connect.NewResponse(&authv1.UpdateUserResponse{User: authcast.UserToProto(&user)}), nil
+	return connect.NewResponse(&authv1.UpdateUserResponse{User: cast.UserToProto(&user)}), nil
 }
 
 // NewUserSericeServiceHandler creates a new UserServiceHandler instance and returns the service name and handler.

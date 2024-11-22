@@ -8,7 +8,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 
-	githubweb "go.breu.io/quantm/internal/hooks/github/web"
+	"go.breu.io/quantm/internal/hooks/github"
 )
 
 type (
@@ -39,7 +39,7 @@ func NewWebhookServer() *WebhookService {
 	webhook.HideBanner = true
 	webhook.HidePort = true
 
-	github := &githubweb.Webhook{}
+	github := &github.Webhook{}
 
 	webhook.POST("/webhooks/github", github.Handler)
 

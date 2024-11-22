@@ -15,9 +15,7 @@ import (
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/migrations"
 	"go.breu.io/quantm/internal/durable"
-	githubacts "go.breu.io/quantm/internal/hooks/github/activities"
-	githubcfg "go.breu.io/quantm/internal/hooks/github/config"
-	githubwfs "go.breu.io/quantm/internal/hooks/github/workflows"
+	"go.breu.io/quantm/internal/hooks/github"
 	"go.breu.io/quantm/internal/nomad"
 	"go.breu.io/quantm/internal/pulse"
 )
@@ -43,7 +41,7 @@ func main() {
 	ctx := context.Background()
 	quit := make(chan os.Signal, 1)
 
-	githubcfg.Configure(githubcfg.WithConfig(cfg.Github))
+	github.Configure(github.WithConfig(cfg.Github))
 
 	if err := durable.Configure(durable.WithConfig(cfg.Durable)); err != nil {
 		slog.Error("unable to configure durable layer", "error", err.Error())
@@ -61,7 +59,7 @@ func main() {
 	app.Add(DB, db.Connection(db.WithConfig(cfg.DB)))
 	app.Add(Pulse, pulse.Instance(pulse.WithConfig(cfg.Pulse)))
 	app.Add(Durable, durable.Instance())
-	app.Add(Github, githubcfg.Instance())
+	app.Add(Github, github.Instance())
 	app.Add(CoreQ, durable.OnCore(), DB, Durable, Pulse, Github)
 	app.Add(HooksQ, durable.OnHooks(), DB, Durable, Pulse, Github)
 	app.Add(Nomad, nmd, DB, Durable, Pulse, Github)
@@ -109,13 +107,13 @@ func configure_qhooks() {
 	q.CreateWorker()
 
 	if q != nil {
-		q.RegisterWorkflow(githubwfs.Install)
-		q.RegisterActivity(&githubacts.Install{})
+		q.RegisterWorkflow(github.Install)
+		q.RegisterActivity(&github.InstallActivity{})
 
-		q.RegisterWorkflow(githubwfs.SyncRepos)
-		q.RegisterActivity(&githubacts.InstallRepos{})
+		q.RegisterWorkflow(github.SyncRepos)
+		q.RegisterActivity(&github.InstallReposActivity{})
 
-		q.RegisterWorkflow(githubwfs.Push)
-		q.RegisterActivity(&githubacts.Push{})
+		q.RegisterWorkflow(github.Push)
+		q.RegisterActivity(&github.PushActivity{})
 	}
 }

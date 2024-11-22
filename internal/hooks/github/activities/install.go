@@ -1,4 +1,4 @@
-package githubacts
+package activities
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
-	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
+	"go.breu.io/quantm/internal/hooks/github/defs"
 )
 
 type (
@@ -46,6 +46,6 @@ func (a *Install) GetOrCreateInstallation(
 	return nil, err
 }
 
-func (a *Install) AddRepoToInstall(ctx context.Context, payload *githubdefs.SyncRepo) error {
+func (a *Install) AddRepoToInstall(ctx context.Context, payload *defs.SyncRepo) error {
 	return AddRepo(ctx, payload)
 }

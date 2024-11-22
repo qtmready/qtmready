@@ -1,4 +1,4 @@
-package githubcfg
+package config
 
 import (
 	"context"

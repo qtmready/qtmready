@@ -1,11 +1,11 @@
-package githubdefs
+package defs
 
 import (
 	"encoding/json"
 	"strings"
 	"time"
 
-	rd "go.breu.io/quantm/internal/core/repos/defs"
+	"go.breu.io/quantm/internal/core/repos"
 	"go.breu.io/quantm/internal/events"
 )
 
@@ -55,6 +55,6 @@ func (t Timestamp) Time() time.Time {
 type (
 	RepoEvent[H events.Hook, P events.Payload] struct {
 		Event *events.Event[H, P]
-		Meta  *rd.HypdratedRepo
+		Meta  *repos.HypdratedRepo
 	}
 )

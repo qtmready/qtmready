@@ -1,4 +1,4 @@
-package slackcfg
+package config
 
 import (
 	"log/slog"
