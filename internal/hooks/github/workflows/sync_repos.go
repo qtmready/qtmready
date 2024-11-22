@@ -5,13 +5,13 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/db/entities"
-	githubacts "go.breu.io/quantm/internal/hooks/github/activities"
-	githubdefs "go.breu.io/quantm/internal/hooks/github/defs"
+	"go.breu.io/quantm/internal/hooks/github/activities"
+	"go.breu.io/quantm/internal/hooks/github/defs"
 )
 
-func SyncRepos(ctx workflow.Context, payload *githubdefs.WebhookInstallRepos) error {
+func SyncRepos(ctx workflow.Context, payload *defs.WebhookInstallRepos) error {
 	selector := workflow.NewSelector(ctx)
-	acts := &githubacts.InstallRepos{}
+	acts := &activities.InstallRepos{}
 	total := make([]string, len(payload.RepositoriesAdded)+len(payload.RepositoriesRemoved))
 	install := &entities.GithubInstallation{}
 
@@ -24,13 +24,13 @@ func SyncRepos(ctx workflow.Context, payload *githubdefs.WebhookInstallRepos) er
 	}
 
 	for _, repo := range payload.RepositoriesAdded {
-		payload := &githubdefs.SyncRepo{InstallationID: install.ID, Repo: repo, OrgID: install.OrgID}
+		payload := &defs.SyncRepo{InstallationID: install.ID, Repo: repo, OrgID: install.OrgID}
 
 		selector.AddFuture(workflow.ExecuteActivity(ctx, acts.RepoAdded, payload), func(f workflow.Future) {})
 	}
 
 	for _, repo := range payload.RepositoriesRemoved {
-		payload := &githubdefs.SyncRepo{InstallationID: install.ID, Repo: repo}
+		payload := &defs.SyncRepo{InstallationID: install.ID, Repo: repo}
 
 		selector.AddFuture(workflow.ExecuteActivity(ctx, acts.RepoRemoved, payload), func(f workflow.Future) {})
 	}
