@@ -8,6 +8,8 @@ import (
 
 type (
 	// Event represents an event.
+	//
+	// It must be created using the New function preferably in a workflow. An event must be persisted immediately post-creation.
 	Event[H Hook, P Payload] struct {
 		Version   EventVersion `json:"version"`   // Version is the version of the event.
 		ID        uuid.UUID    `json:"id"`        // ID is the ID of the event.
@@ -82,6 +84,24 @@ func (e *Event[H, P]) SetPayload(payload *P) *Event[H, P] {
 	e.Payload = payload
 
 	return e
+}
+
+func (e *Event[H, P]) Flatten() *Flat[H] {
+	return &Flat[H]{
+		Version:     e.Version,
+		ID:          e.ID,
+		Timestamp:   e.Timestamp,
+		ParentID:    e.Context.ParentID,
+		Hook:        e.Context.Hook,
+		Scope:       e.Context.Scope,
+		Action:      e.Context.Action,
+		Source:      e.Context.Source,
+		SubjectID:   e.Subject.ID,
+		SubjectName: e.Subject.Name,
+		OrgID:       e.Subject.OrgID,
+		TeamID:      e.Subject.TeamID,
+		UserID:      e.Subject.UserID,
+	}
 }
 
 func New[H Hook, P Payload]() *Event[H, P] {

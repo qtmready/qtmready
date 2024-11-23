@@ -97,6 +97,9 @@ func configure_qcore() {
 	q.CreateWorker()
 
 	if q != nil {
+		q.RegisterActivity(pulse.PersistRepoEvent)
+		q.RegisterActivity(pulse.PersistMessagingEvent)
+
 		q.RegisterWorkflow(repos.RepoWorkflow)
 		q.RegisterActivity(repos.NewActivities())
 	}
@@ -108,6 +111,9 @@ func configure_qhooks() {
 	q.CreateWorker()
 
 	if q != nil {
+		q.RegisterActivity(pulse.PersistRepoEvent)
+		q.RegisterActivity(pulse.PersistMessagingEvent)
+
 		q.RegisterWorkflow(github.Install)
 		q.RegisterActivity(&github.InstallActivity{})
 

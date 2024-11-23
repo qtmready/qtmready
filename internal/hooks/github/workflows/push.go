@@ -4,11 +4,13 @@ import (
 	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/core/repos"
 	"go.breu.io/quantm/internal/events"
 	"go.breu.io/quantm/internal/hooks/github/activities"
 	"go.breu.io/quantm/internal/hooks/github/cast"
 	"go.breu.io/quantm/internal/hooks/github/defs"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
+	"go.breu.io/quantm/internal/pulse"
 )
 
 func Push(ctx workflow.Context, push *defs.Push) error {
@@ -23,6 +25,7 @@ func Push(ctx workflow.Context, push *defs.Push) error {
 			RepoID:         push.Repository.ID,
 			InstallationID: push.Installation.ID,
 			Email:          push.Pusher.Email,
+			Branch:         repos.BranchNameFromRef(push.Ref),
 		}
 		if err := workflow.ExecuteActivity(ctx, acts.HydratePushEvent, payload).Get(ctx, meta); err != nil {
 			return err
@@ -47,6 +50,8 @@ func Push(ctx workflow.Context, push *defs.Push) error {
 		SetAction(action).
 		SetSource(meta.Repo.Url).
 		SetOrg(meta.Repo.OrgID).
+		SetSubjectName(events.SubjectNameRepos).
+		SetSubjectID(meta.Repo.ID).
 		SetPayload(&proto)
 
 	if meta.Team != nil {
@@ -57,7 +62,9 @@ func Push(ctx workflow.Context, push *defs.Push) error {
 		event.SetUser(meta.User.ID)
 	}
 
-	// TODO: persist the event right after creation.
+	if err := pulse.Persist(ctx, event); err != nil {
+		return err
+	}
 
 	hevent := &defs.HydratedQuantmEvent[eventsv1.Push]{Event: event, Meta: meta}
 
