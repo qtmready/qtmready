@@ -116,18 +116,18 @@ func (q *Queries) GetOrgReposByOrgID(ctx context.Context, orgID uuid.UUID) ([]Re
 
 const getRepo = `-- name: GetRepo :one
 SELECT
-  r.id, r.created_at, r.updated_at, r.org_id, r.name, r.hook, r.hook_id, r.default_branch, r.is_monorepo, r.threshold, r.stale_duration, r.url, r.is_active,
-  m.id, m.created_at, m.updated_at, m.hook, m.kind, m.link_to, m.data,
-  o.id, o.created_at, o.updated_at, o.name, o.domain, o.slug, o.hooks
-FROM 
+  repo.id, repo.created_at, repo.updated_at, repo.org_id, repo.name, repo.hook, repo.hook_id, repo.default_branch, repo.is_monorepo, repo.threshold, repo.stale_duration, repo.url, repo.is_active,
+  msg.id, msg.created_at, msg.updated_at, msg.hook, msg.kind, msg.link_to, msg.data,
+  org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug, org.hooks
+FROM
   github_repos gr
-JOIN 
-  repos r ON gr.id = r.hook_id
-LEFT JOIN 
-  messaging m ON m.link_to = r.id
-JOIN 
-  orgs o ON r.org_id = o.id
-WHERE 
+JOIN
+  repos repo ON gr.id = repo.hook_id
+LEFT JOIN
+  messaging msg ON msg.link_to = repo.id
+JOIN
+  orgs org ON repo.org_id = org.id
+WHERE
   gr.installation_id = $1 AND gr.github_id = $2
 `
 
@@ -290,7 +290,7 @@ func (q *Queries) SuspendedRepoByHookID(ctx context.Context, hookID uuid.UUID) e
 
 const updateRepo = `-- name: UpdateRepo :one
 UPDATE repos
-SET 
+SET
     org_id = $2,
     name = $3,
     hook = $4,

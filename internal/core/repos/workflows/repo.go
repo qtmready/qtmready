@@ -1,6 +1,9 @@
 package workflows
 
 import (
+	"errors"
+
+	"github.com/google/uuid"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/repos/defs"
@@ -25,16 +28,22 @@ type (
 // registers a signal handler for the reposdefs.RepoIOSignalPush signal.  Currently, the signal handler is a stub.
 // Temporal workflow context is passed as input, along with hydrated repository data.  The function returns an error
 // if one occurs during workflow execution; otherwise it returns nil.
-//
-// FIXME: start the function with the state instead of HydratedRepo.If we start from a state, It will be easier to
-// restart the workflow as new.
 func Repo(ctx workflow.Context, state *RepoState) error {
 	state.init(ctx)
 
 	selector := workflow.NewSelector(ctx)
 
+	// - query handlers -
+	if err := workflow.SetQueryHandler(ctx, defs.QueryRepoForEventParent.String(), state.q__branch_trigger); err != nil {
+		return err
+	}
+
+	// - signal handlers -
+
 	push := workflow.GetSignalChannel(ctx, defs.SignalPush.String())
 	selector.AddReceive(push, state.on_push(ctx))
+
+	// - event loop -
 
 	for !state.refresh_urged(ctx) {
 		selector.Select(ctx)
@@ -55,8 +64,21 @@ func (state *RepoState) on_push(ctx workflow.Context) durable.ChannelHandler {
 	}
 }
 
+// - query handlers -
+
+// q__branch_trigger queries the parent branch for the specified branch.
+func (state *RepoState) q__branch_trigger(branch string) (uuid.UUID, error) {
+	id, ok := state.Triggers.get(branch)
+	if ok {
+		return id, nil
+	}
+
+	return uuid.Nil, errors.New("branch not found")
+}
+
 // - state managers -
 
+// refresh_urged checks if the workflow should be continued as new.
 func (state *RepoState) refresh_urged(ctx workflow.Context) bool {
 	return workflow.GetInfo(ctx).GetContinueAsNewSuggested()
 }

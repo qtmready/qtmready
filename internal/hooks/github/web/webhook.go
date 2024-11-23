@@ -196,6 +196,7 @@ func (h *Webhook) install_repos(ctx echo.Context, _ WebhookEvent, id string) err
 func (h *Webhook) push(ctx echo.Context, event WebhookEvent, id string) error {
 	payload := &defs.Push{}
 	if err := ctx.Bind(payload); err != nil {
+		slog.Error("failed to bind payload", "error", err.Error())
 		return erratic.NewBadRequestError("reason", "invalid payload")
 	}
 
@@ -208,8 +209,9 @@ func (h *Webhook) push(ctx echo.Context, event WebhookEvent, id string) error {
 
 	_, err := durable.
 		OnHooks().
-		SignalWithStartWorkflow(ctx.Request().Context(), opts, defs.SignalWebhookPush, "", workflows.Push, payload)
+		ExecuteWorkflow(ctx.Request().Context(), opts, workflows.Push, payload)
 	if err != nil {
+		slog.Error("failed to signal workflow", "error", err.Error())
 		return erratic.NewInternalServerError("reason", "failed to signal workflow", "error", err.Error())
 	}
 

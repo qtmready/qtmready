@@ -11,7 +11,7 @@ import (
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
-func Push(ctx workflow.Context, push defs.Push) error {
+func Push(ctx workflow.Context, push *defs.Push) error {
 	acts := &activities.Push{}
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
@@ -19,7 +19,11 @@ func Push(ctx workflow.Context, push defs.Push) error {
 	meta := &defs.HydratedRepoEvent{}
 
 	{
-		payload := &defs.HydrateRepoEventPayload{RepoID: push.Repository.ID, InstallationID: push.Installation.ID}
+		payload := &defs.HydrateRepoEventPayload{
+			RepoID:         push.Repository.ID,
+			InstallationID: push.Installation.ID,
+			Email:          push.Pusher.Email,
+		}
 		if err := workflow.ExecuteActivity(ctx, acts.HydratePushEvent, payload).Get(ctx, meta); err != nil {
 			return err
 		}

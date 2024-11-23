@@ -12,7 +12,7 @@ const (
 )
 
 const (
-	QueryRepoForBranchParent queues.Query = "parent"
+	QueryRepoForEventParent queues.Query = "event_parent"
 )
 
 type (

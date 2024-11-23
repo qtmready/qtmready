@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 
@@ -23,6 +24,7 @@ func HydrateRepoEvent(ctx context.Context, payload *defs.HydrateRepoEventPayload
 
 	row, err := db.Queries().GetRepo(ctx, entities.GetRepoParams{InstallationID: install.ID, GithubID: payload.RepoID})
 	if err != nil {
+		slog.Error("unable to get hydrated repo", "error", err.Error())
 		return nil, err
 	}
 
