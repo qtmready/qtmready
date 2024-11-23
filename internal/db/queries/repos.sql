@@ -10,7 +10,7 @@ WHERE id = $1;
 
 -- name: UpdateRepo :one
 UPDATE repos
-SET 
+SET
     org_id = $2,
     name = $3,
     hook = $4,
@@ -54,16 +54,16 @@ WHERE hook_id = $1;
 
 -- name: GetRepo :one
 SELECT
-  sqlc.embed(r),
-  sqlc.embed(m),
-  sqlc.embed(o)
-FROM 
+  sqlc.embed(repo),
+  sqlc.embed(msg),
+  sqlc.embed(org)
+FROM
   github_repos gr
-JOIN 
-  repos r ON gr.id = r.hook_id
-LEFT JOIN 
-  messaging m ON m.link_to = r.id
-JOIN 
-  orgs o ON r.org_id = o.id
-WHERE 
+JOIN
+  repos repo ON gr.id = repo.hook_id
+LEFT JOIN
+  messaging msg ON msg.link_to = repo.id
+JOIN
+  orgs org ON repo.org_id = org.id
+WHERE
   gr.installation_id = $1 AND gr.github_id = $2;
