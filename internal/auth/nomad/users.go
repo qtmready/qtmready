@@ -15,6 +15,7 @@ import (
 	"go.breu.io/quantm/internal/erratic"
 	authv1 "go.breu.io/quantm/internal/proto/ctrlplane/auth/v1"
 	"go.breu.io/quantm/internal/proto/ctrlplane/auth/v1/authv1connect"
+	"go.breu.io/quantm/internal/pulse"
 )
 
 type (
@@ -70,6 +71,12 @@ func (s *UserService) CreateUser(
 
 		// Create the organization in the database.
 		org, err = qtx.CreateOrg(ctx, entities.CreateOrgParams{Name: domain, Lower: domain, Slug: slug})
+		if err != nil {
+			return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
+		}
+
+		// Create Tables in Clickhouse
+		err = pulse.CreateEventsTable(ctx, slug)
 		if err != nil {
 			return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 		}

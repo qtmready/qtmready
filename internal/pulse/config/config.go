@@ -3,6 +3,8 @@ package config
 import (
 	"context"
 	"sync"
+
+	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
 )
 
 type (
@@ -72,6 +74,10 @@ func (c *Config) Stop(ctx context.Context) error {
 	}
 
 	return c.Clickhouse.Stop(ctx)
+}
+
+func (c *Config) Connection() driver.Conn {
+	return c.Clickhouse.Connection()
 }
 
 // WithClickhouse returns an Option that sets the Clickhouse client

@@ -89,6 +89,7 @@ func (e *Event[H, P]) Flatten() *Flat[H] {
 		Version:     e.Version,
 		ID:          e.ID,
 		Timestamp:   e.Timestamp,
+		ParentID:    e.Context.ParentID,
 		Hook:        e.Context.Hook,
 		Scope:       e.Context.Scope,
 		Action:      e.Context.Action,

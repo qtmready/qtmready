@@ -74,6 +74,11 @@ func (c *Clickhouse) GetAddress() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }
 
+// Connection returns the established ClickHouse database connection.
+func (c *Clickhouse) Connection() driver.Conn {
+	return c.conn
+}
+
 // Start initiates a connection to the ClickHouse database.  Uses a sync.Once to ensure the connection is established only
 // once, even with concurrent calls.  The provided context allows for cancellation or timeout during connection establishment.
 // Returns an error from the connect function.
