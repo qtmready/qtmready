@@ -23,7 +23,8 @@ type (
 	HydrateRepoEventPayload struct {
 		RepoID         int64  `json:"repo_id"`
 		InstallationID int64  `json:"installation_id"`
-		Email          string `json:"email"` // get user by email
+		Email          string `json:"email"`
+		Branch         string `json:"branch"`
 	}
 
 	// HydratedRepoEventMessaging contains the possible messaging channels for a HydratedRepoEvent.
@@ -51,6 +52,6 @@ type (
 	}
 )
 
-func (h *HydratedRepoEvent) CreateRepoWorkflowOptions() workflows.Options {
+func (h *HydratedRepoEvent) RepoWorkflowOptions() workflows.Options {
 	return repos.RepoWorkflowOptions(h.Repo)
 }

@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 
+	"go.breu.io/quantm/internal/core/repos"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
+	"go.breu.io/quantm/internal/durable"
 	"go.breu.io/quantm/internal/events"
 	"go.breu.io/quantm/internal/hooks/github/cast"
 	"go.breu.io/quantm/internal/hooks/github/defs"
@@ -24,25 +25,26 @@ func HydrateRepoEvent(ctx context.Context, payload *defs.HydrateRepoEventPayload
 
 	row, err := db.Queries().GetRepo(ctx, entities.GetRepoParams{InstallationID: install.ID, GithubID: payload.RepoID})
 	if err != nil {
-		slog.Error("unable to get hydrated repo", "error", err.Error())
 		return nil, err
 	}
 
 	hydrated := cast.RowToHydratedRepoEvent(row)
 
-	// TODO: handle if no rows are fetched.
 	if payload.Email != "" {
-		user, err := db.Queries().GetUserByEmail(ctx, payload.Email)
-		if err != nil {
-			if errors.Is(err, pgx.ErrNoRows) {
-				return nil, err
-			}
-		}
-
+		user, _ := db.Queries().GetUserByEmail(ctx, payload.Email)
 		hydrated.User = &user
 	}
 
-	// TODO: Query for Parent ID.
+	// Non-default branches require retrieval of the parent event ID for proper event construction.
+	// FIXME: A brief delay may be necessary to accommodate asynchronous branch workflow creation.
+	if hydrated.Repo.DefaultBranch != payload.Branch {
+		parent, err := durable.
+			OnCore().
+			QueryWorkflow(ctx, hydrated.RepoWorkflowOptions(), repos.QueryRepoForEventParent, payload.Branch)
+		if err == nil {
+			_ = parent.Get(hydrated.ParentID)
+		}
+	}
 
 	return hydrated, nil
 }
