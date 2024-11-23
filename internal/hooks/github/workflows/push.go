@@ -65,7 +65,6 @@ func Push(ctx workflow.Context, push *defs.Push) error {
 	if err := pulse.Persist(ctx, event); err != nil {
 		return err
 	}
-	// TODO: persist the event right after creation.
 
 	hevent := &defs.HydratedQuantmEvent[eventsv1.Push]{Event: event, Meta: meta}
 

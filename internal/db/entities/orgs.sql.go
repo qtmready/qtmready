@@ -59,6 +59,19 @@ func (q *Queries) GetOrgByDomain(ctx context.Context, lower string) (Org, error)
 	return i, err
 }
 
+const getOrgSlugByID = `-- name: GetOrgSlugByID :one
+SELECT slug
+FROM orgs
+WHERE id = $1
+`
+
+func (q *Queries) GetOrgSlugByID(ctx context.Context, id uuid.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getOrgSlugByID, id)
+	var slug string
+	err := row.Scan(&slug)
+	return slug, err
+}
+
 const setOrgHooks = `-- name: SetOrgHooks :exec
 UPDATE orgs
 SET hooks = $2

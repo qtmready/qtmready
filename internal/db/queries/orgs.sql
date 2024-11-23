@@ -8,6 +8,11 @@ SELECT *
 FROM orgs
 WHERE LOWER(domain) = LOWER($1);
 
+-- name: GetOrgSlugByID :one
+SELECT slug
+FROM orgs
+WHERE id = $1;
+
 -- name: SetOrgHooks :exec
 UPDATE orgs
 SET hooks = $2
