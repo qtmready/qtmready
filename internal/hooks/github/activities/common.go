@@ -30,8 +30,14 @@ func HydrateRepoEvent(ctx context.Context, payload *defs.HydrateRepoEventPayload
 
 	// TODO: handle if no rows are fetched.
 	if payload.Email != "" {
-		u, _ := db.Queries().GetUserByEmail(ctx, payload.Email)
-		hydrated.User = &u
+		user, err := db.Queries().GetUserByEmail(ctx, payload.Email)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return nil, err
+			}
+		}
+
+		hydrated.User = &user
 	}
 
 	// TODO: Query for Parent ID.
