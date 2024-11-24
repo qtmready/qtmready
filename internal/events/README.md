@@ -120,7 +120,7 @@ QuantmEvents is primarily designed for integrations, so it introduces the concep
   "timestamp": "2022-01-01T00:00:00Z",
   "context": {
     "parent_id": "00112233-4455-6677-8899-aabbccddeeff",
-    "hook": 1,
+    "hook": 1001,
     "scope": "pull_request",
     "action": "opened",
     "source": "https://github.com/quantmhq/quantm"

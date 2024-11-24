@@ -3,6 +3,7 @@ package pulse
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/workflow"
@@ -14,12 +15,26 @@ import (
 
 const (
 	statement__events__persist = `
-INSERT INTO events_%s VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+INSERT INTO %s (
+	version,
+	id,
+	parent_id,
+	hook,
+	scope,
+	action,
+	source,
+	subject_id,
+	subject_name,
+	user_id,
+	team_id,
+	org_id,
+	timestamp
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 `
 )
 
-// Persist persists an event to the database. It dispatches to the correct activity based
-// on the event's hook.
+// Persist persists an event to clickhouse, routing it to the appropriate activity handler based on the
+// event's associated hook.  It's a workflow-scoped function, mandating execution immediately post-event creation.
 func Persist[H events.Hook, P events.Payload](ctx workflow.Context, event *events.Event[H, P]) error {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 	flat := event.Flatten()
@@ -36,6 +51,7 @@ func Persist[H events.Hook, P events.Payload](ctx workflow.Context, event *event
 	return future.Get(ctx, nil)
 }
 
+// PersistRepoEvent persists a repo event to the database.
 func PersistRepoEvent(ctx context.Context, event events.Flat[eventsv1.RepoHook]) error {
 	slug, err := db.Queries().GetOrgSlugByID(ctx, event.OrgID)
 	if err != nil {
@@ -45,13 +61,15 @@ func PersistRepoEvent(ctx context.Context, event events.Flat[eventsv1.RepoHook])
 	table := table_name("events", slug)
 	stmt := fmt.Sprintf(statement__events__persist, table)
 
+	slog.Info("sql", "stat", stmt, "event", event)
+
 	return Instance().Connection().Exec(
 		ctx,
 		stmt,
 		event.Version,
 		event.ID,
 		event.ParentID,
-		event.Hook,
+		event.Hook.Number(),
 		event.Scope,
 		event.Action,
 		event.Source,
@@ -64,6 +82,7 @@ func PersistRepoEvent(ctx context.Context, event events.Flat[eventsv1.RepoHook])
 	)
 }
 
+// PersistMessagingEvent persists a messaging event to the database.
 func PersistMessagingEvent(ctx context.Context, event events.Flat[eventsv1.MessagingHook]) error {
 	slug, err := db.Queries().GetOrgSlugByID(ctx, event.OrgID)
 	if err != nil {
@@ -79,7 +98,7 @@ func PersistMessagingEvent(ctx context.Context, event events.Flat[eventsv1.Messa
 		event.Version,
 		event.ID,
 		event.ParentID,
-		event.Hook,
+		event.Hook.Number(),
 		event.Scope,
 		event.Action,
 		event.Source,

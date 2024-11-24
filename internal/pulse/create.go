@@ -10,7 +10,7 @@ import (
 const (
 	statement__events__create = `
 CREATE TABLE IF NOT EXISTS %s (
-  version EventVersion,
+  version String,
   id UUID,
   parent_id UUID,
   hook Int32,
