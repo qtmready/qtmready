@@ -38,6 +38,8 @@ var (
 	// RepoWorkflow is the main workflow function for managing repository events.
 	RepoWorkflow = workflows.Repo
 
+	BranchWorkflow = workflows.Branch
+
 	// NewRepoWorkflowState creates a new state object for the repository workflow.
 	NewRepoWorkflowState = states.NewRepo
 

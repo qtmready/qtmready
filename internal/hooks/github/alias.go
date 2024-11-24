@@ -12,6 +12,8 @@ type (
 	InstallReposActivity = activities.InstallRepos
 	PushActivity         = activities.Push
 
+	KernelImpl = activities.Kernel
+
 	Config  = config.Config
 	Webhook = web.Webhook
 )

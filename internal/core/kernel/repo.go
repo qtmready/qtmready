@@ -15,6 +15,6 @@ type (
 		// This method must not be called from the workflow.
 		TokenizedCloneUrl(ctx context.Context, repo *entities.Repo) string
 
-		DetectChanges(ctx context.Context, event *events.Event[eventsv1.RepoHook, eventsv1.Push])
+		DetectChanges(ctx context.Context, event *events.Event[eventsv1.RepoHook, eventsv1.Push]) error
 	}
 )

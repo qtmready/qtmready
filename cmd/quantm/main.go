@@ -11,11 +11,13 @@ import (
 	"go.breu.io/graceful"
 
 	"go.breu.io/quantm/internal/auth"
+	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/migrations"
 	"go.breu.io/quantm/internal/durable"
 	"go.breu.io/quantm/internal/hooks/github"
 	"go.breu.io/quantm/internal/nomad"
+	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 	"go.breu.io/quantm/internal/pulse"
 )
 
@@ -23,6 +25,7 @@ const (
 	DB      = "db"
 	Durable = "durable"
 	Pulse   = "pulse"
+	Kernel  = "kernel"
 	Github  = "github"
 	Nomad   = "nomad"
 	CoreQ   = "core_q"
@@ -70,6 +73,7 @@ func main() {
 	app.Add(HooksQ, durable.OnHooks(), DB, Durable, Pulse, Github)
 	app.Add(Nomad, nmd, DB, Durable, Pulse, Github)
 	app.Add(Webhook, NewWebhookServer(), DB, Durable, Github)
+	app.Add(Kernel, kernel.New(kernel.WithRepoHook(eventsv1.RepoHook_REPO_HOOK_GITHUB, &github.KernelImpl{})), Github)
 
 	// - if the migrate flag is set, run migrations and exit
 
