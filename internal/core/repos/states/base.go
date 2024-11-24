@@ -3,6 +3,7 @@ package states
 import (
 	"fmt"
 
+	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/log"
 	"go.temporal.io/sdk/workflow"
 
@@ -20,6 +21,8 @@ type (
 	}
 )
 
+// - private
+
 // rx wraps workflow.ReceiveChannel.Receive, adding logging.  It receives a message
 // from the specified Temporal channel. The target parameter must be a pointer to the
 // data structure expected to be received.
@@ -29,7 +32,22 @@ func (s *Base) rx(ctx workflow.Context, ch workflow.ReceiveChannel, target any) 
 }
 
 // dispatch wraps activity execution with logging.
-func (s *Base) dispatch(ctx workflow.Context, action string) {}
+func (s *Base) dispatch(ctx workflow.Context, action string, activity, payload, result any, keyvals ...any) error {
+	s.logger.Info(fmt.Sprintf("dispatch(%s): init ...", action), keyvals...)
+
+	ctx = dispatch.WithDefaultActivityContext(ctx)
+
+	if err := workflow.ExecuteActivity(ctx, activity, payload).Get(ctx, result); err != nil {
+		s.logger.Error(fmt.Sprintf("dispatch(%s): error", action), keyvals...)
+		return err
+	}
+
+	s.logger.Info(fmt.Sprintf("dispatch(%s): success", action), keyvals...)
+
+	return nil
+}
+
+// - public
 
 // Init initializes the base state with the provided context.
 func (s *Base) Init(ctx workflow.Context) {

@@ -7,15 +7,6 @@ import (
 	"go.breu.io/quantm/internal/core/repos/states"
 )
 
-type (
-	// RepoState defines the state for Repo Workflows. It embeds BaseState to inherit its functionality.
-	RepoState struct {
-		*BaseState `json:"base"` // Base workflow state.
-
-		Triggers BranchTriggers `json:"triggers"` // Branch triggers.
-	}
-)
-
 // Repo manages the event loop for a repository. It acts as a central router, orchestrating repository workflows.
 //
 // Repo uses Temporal's workflow selector to concurrently handle signals. The function initializes a RepoState and

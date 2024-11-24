@@ -4,8 +4,11 @@ import (
 	"errors"
 
 	"github.com/google/uuid"
+	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/core/repos/activities"
+	"go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/core/repos/fns"
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/durable"
@@ -19,8 +22,21 @@ type (
 		*Base `json:"base"` // Base workflow state.
 
 		Triggers BranchTriggers `json:"triggers"` // Branch triggers.
+
+		do *activities.Repo
 	}
 )
+
+// - local -
+
+func (state *Repo) signal_branch(ctx workflow.Context, branch string, event any) error {
+	ctx = dispatch.WithDefaultActivityContext(ctx)
+
+	next := NewBranch(state.Repo, state.Messaging, branch)
+	payload := &activities.SignalBranchPayload{Signal: defs.SignalPush, Repo: state.Repo, Branch: branch}
+
+	return workflow.ExecuteActivity(ctx, state.do.SignalBranch, payload, event, next).Get(ctx, nil)
+}
 
 // - signal handlers -
 
@@ -33,6 +49,10 @@ func (state *Repo) OnPush(ctx workflow.Context) durable.ChannelHandler {
 		branch := fns.BranchNameFromRef(event.Payload.Ref)
 
 		state.Triggers.add(branch, event.ID)
+
+		if err := state.signal_branch(ctx, branch, event); err != nil {
+			state.logger.Warn("unable to signal branch", "repo", state.Repo.ID, "branch", branch, "error", err.Error())
+		}
 	}
 }
 
@@ -55,11 +75,15 @@ func (state *Repo) RestartRecommended(ctx workflow.Context) bool {
 	return workflow.GetInfo(ctx).GetContinueAsNewSuggested()
 }
 
+func (state *Repo) Init(ctx workflow.Context) {
+	state.Base.Init(ctx)
+}
+
 // NewRepo creates a new RepoState instance. It initializes BaseState using the provided context and
 // hydrated repository data.
 func NewRepo(repo *entities.Repo, msg *entities.Messaging) *Repo {
 	base := &Base{Repo: repo, Messaging: msg}
 	triggers := make(BranchTriggers)
 
-	return &Repo{base, triggers} // Return new RepoState instance.
+	return &Repo{base, triggers, &activities.Repo{}} // Return new RepoState instance.
 }
