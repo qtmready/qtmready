@@ -17,6 +17,9 @@ import (
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
+// HydrateRepoEvent enriches a repository event using database data. It fetches GitHub installation and repository
+// details, optionally adding user information if an email is provided. For non-default branches, it retrieves the
+// parent event ID from the core workflow, accounting for potential asynchronous delays.
 func HydrateRepoEvent(ctx context.Context, payload *defs.HydrateRepoEventPayload) (*defs.HydratedRepoEvent, error) {
 	install, err := db.Queries().GetGithubInstallationByInstallationID(ctx, payload.InstallationID)
 	if err != nil {
@@ -35,8 +38,6 @@ func HydrateRepoEvent(ctx context.Context, payload *defs.HydrateRepoEventPayload
 		hydrated.User = &user
 	}
 
-	// Non-default branches require retrieval of the parent event ID for proper event construction.
-	// FIXME: A brief delay may be necessary to accommodate asynchronous branch workflow creation.
 	if hydrated.Repo.DefaultBranch != payload.Branch {
 		parent, err := durable.
 			OnCore().
@@ -49,7 +50,9 @@ func HydrateRepoEvent(ctx context.Context, payload *defs.HydrateRepoEventPayload
 	return hydrated, nil
 }
 
-// AddRepo adds a new GitHub repository to the database. If the repository already exists, it will be activated.
+// AddRepo adds a GitHub repository or activates an existing one using a database transaction.  It retrieves the
+// repository; if found, it activates it. Otherwise, it creates database entries for both the GitHub and core
+// repositories.
 func AddRepo(ctx context.Context, payload *defs.SyncRepoPayload) error {
 	tx, qtx, err := db.Transaction(ctx)
 	if err != nil {
@@ -64,12 +67,7 @@ func AddRepo(ctx context.Context, payload *defs.SyncRepoPayload) error {
 	})
 
 	if err == nil {
-		err = qtx.ActivateGithubRepo(ctx, repo.ID)
-		if err != nil {
-			return err
-		}
-
-		return nil
+		return qtx.ActivateGithubRepo(ctx, repo.ID)
 	}
 
 	if !errors.Is(err, pgx.ErrNoRows) {
@@ -89,7 +87,6 @@ func AddRepo(ctx context.Context, payload *defs.SyncRepoPayload) error {
 		return err
 	}
 
-	// create core repo
 	reqst := entities.CreateRepoParams{
 		OrgID:  payload.OrgID,
 		Hook:   int32(eventsv1.RepoHook_REPO_HOOK_GITHUB),
@@ -103,15 +100,11 @@ func AddRepo(ctx context.Context, payload *defs.SyncRepoPayload) error {
 		return err
 	}
 
-	if err = tx.Commit(ctx); err != nil {
-		return err
-	}
-
-	return nil
+	return tx.Commit(ctx)
 }
 
-// SuspendRepo suspends a GitHub repository from the database.
-// If the repository does not exist, it will be ignored.
+// SuspendRepo suspends a GitHub repository, handling cases where it doesn't exist.  It retrieves the repository and, if
+// found, suspends both its GitHub and core repository entries using a database transaction.
 func SuspendRepo(ctx context.Context, payload *defs.SyncRepoPayload) error {
 	repo, err := db.Queries().
 		GetGithubRepoByInstallationIDAndGithubID(
@@ -122,49 +115,42 @@ func SuspendRepo(ctx context.Context, payload *defs.SyncRepoPayload) error {
 			},
 		)
 
-	if err == nil {
-		tx, qtx, err := db.Transaction(ctx)
-		if err != nil {
-			return err
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil
 		}
 
-		defer func() { _ = tx.Rollback(ctx) }()
-
-		err = qtx.SuspendedGithubRepo(ctx, repo.ID)
-		if err != nil {
-			return err
-		}
-
-		err = qtx.SuspendedRepoByHookID(ctx, repo.ID)
-		if err != nil {
-			return err
-		}
-
-		if err = tx.Commit(ctx); err != nil {
-			return err
-		}
-
-		return nil
+		return err
 	}
 
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
+	tx, qtx, err := db.Transaction(ctx)
+	if err != nil {
+		return err
 	}
 
-	return err
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if err := qtx.SuspendedGithubRepo(ctx, repo.ID); err != nil {
+		return err
+	}
+
+	if err := qtx.SuspendedRepoByHookID(ctx, repo.ID); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
 }
 
+// SignalRepo signals a GitHub repository event to the core workflow.  Error handling is included.
 func SignalRepo[P events.Payload](ctx context.Context, hydrated *defs.HydratedQuantmEvent[P]) error {
-	_, err := durable.
-		OnCore().
-		SignalWithStartWorkflow(
-			ctx,
-			hydrated.Meta.RepoWorkflowOptions(),
-			repos.SignalPush,
-			hydrated.Event,
-			repos.RepoWorkflow,
-			repos.NewRepoWorkflowState(hydrated.Meta.Repo, hydrated.Meta.Messaging.Repo),
-		)
+	_, err := durable.OnCore().SignalWithStartWorkflow(
+		ctx,
+		hydrated.Meta.RepoWorkflowOptions(),
+		repos.SignalPush,
+		hydrated.Event,
+		repos.RepoWorkflow,
+		repos.NewRepoWorkflowState(hydrated.Meta.Repo, hydrated.Meta.Messaging.Repo),
+	)
 
 	return err
 }

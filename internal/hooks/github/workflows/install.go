@@ -12,27 +12,27 @@ import (
 )
 
 type (
+	// StatusInstall represents the status of the installation workflow.
 	StatusInstall struct {
-		webhook bool
-		request bool
+		webhook bool // indicates whether the webhook signal has been received
+		request bool // indicates whether the request signal has been received
 	}
 
+	// InstallWorkflowState represents the state of the GitHub installation workflow.
 	InstallWorkflowState struct {
-		do      *activities.Install
-		status  StatusInstall
-		entity  *entities.GithubInstallation
-		request *defs.RequestInstall
-		webhook *defs.WebhookInstall
+		do      *activities.Install          // Install activities
+		status  StatusInstall                // Status of the installation workflow
+		entity  *entities.GithubInstallation // GitHub installation entity
+		request *defs.RequestInstall         // Request installation data
+		webhook *defs.WebhookInstall         // Webhook installation data
 
-		log log.Logger
+		log log.Logger // Workflow logger
 	}
 )
 
-// Install handles the installation, and associate org with installation id based on incoming signals
-// (webhook, complete installation request).
-// Critically, it synchronizes the GitHub installation with the internal system.
-//
-// NOTE: This workflow must not be executed directly, rather always use SignalWithStartWorkflow.
+// Install handles GitHub installation synchronization.  Install uses signals to coordinate installation.
+// It synchronizes GitHub installations with the internal system.  Install should not be invoked directly.  Use
+// SignalWithStartWorkflow instead.
 func Install(ctx workflow.Context) error {
 	state := NewInstallWorkflowState(ctx)
 	selector := workflow.NewSelector(ctx)
@@ -40,8 +40,8 @@ func Install(ctx workflow.Context) error {
 	rqst := workflow.GetSignalChannel(ctx, defs.SignalRequestInstall.String())
 	selector.AddReceive(rqst, state.on_request(ctx))
 
-	wb := workflow.GetSignalChannel(ctx, defs.SignalWebhookInstall.String())
-	selector.AddReceive(wb, state.on_webhook(ctx))
+	webhook := workflow.GetSignalChannel(ctx, defs.SignalWebhookInstall.String())
+	selector.AddReceive(webhook, state.on_webhook(ctx))
 
 	for !state.done() {
 		selector.Select(ctx)
@@ -65,6 +65,7 @@ func Install(ctx workflow.Context) error {
 	return nil
 }
 
+// on_request is a channel handler for the request signal. Request handler is used to set the OrgID.
 func (s *InstallWorkflowState) on_request(ctx workflow.Context) durable.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		rx.Receive(ctx, s.request)
@@ -74,6 +75,8 @@ func (s *InstallWorkflowState) on_request(ctx workflow.Context) durable.ChannelH
 	}
 }
 
+// on_webhook is a channel handler for the webhook signal. The webhook contains the installation information,
+// e.g. installation id, account, and the repos that are part of the installation.
 func (s *InstallWorkflowState) on_webhook(ctx workflow.Context) durable.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		rx.Receive(ctx, s.webhook)
@@ -92,6 +95,7 @@ func (s *InstallWorkflowState) on_webhook(ctx workflow.Context) durable.ChannelH
 	}
 }
 
+// done returns true if the installation is complete.
 func (s *InstallWorkflowState) done() bool {
 	return s.status.request && s.status.webhook
 }
