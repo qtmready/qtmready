@@ -3,7 +3,6 @@ package pulse
 import (
 	"context"
 	"fmt"
-	"log/slog"
 
 	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/workflow"
@@ -60,8 +59,6 @@ func PersistRepoEvent(ctx context.Context, event events.Flat[eventsv1.RepoHook])
 
 	table := table_name("events", slug)
 	stmt := fmt.Sprintf(statement__events__persist, table)
-
-	slog.Info("sql", "stat", stmt, "event", event)
 
 	return Instance().Connection().Exec(
 		ctx,

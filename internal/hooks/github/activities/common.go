@@ -154,6 +154,17 @@ func SuspendRepo(ctx context.Context, payload *defs.SyncRepoPayload) error {
 	return err
 }
 
-func SignalToRepo[P events.Payload](ctx context.Context, hydrated *defs.HydratedQuantmEvent[P]) error {
-	return nil
+func SignalRepo[P events.Payload](ctx context.Context, hydrated *defs.HydratedQuantmEvent[P]) error {
+	_, err := durable.
+		OnCore().
+		SignalWithStartWorkflow(
+			ctx,
+			hydrated.Meta.RepoWorkflowOptions(),
+			repos.SignalPush,
+			hydrated.Event,
+			repos.RepoWorkflow,
+			repos.NewRepoWorkflowState(hydrated.Meta.Repo, hydrated.Meta.Messaging.Repo),
+		)
+
+	return err
 }
