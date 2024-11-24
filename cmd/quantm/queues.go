@@ -17,7 +17,7 @@ func q_core() {
 		q.RegisterActivity(pulse.PersistMessagingEvent)
 
 		q.RegisterWorkflow(repos.RepoWorkflow)
-		q.RegisterActivity(repos.NewActivities())
+		q.RegisterActivity(repos.NewRepoActivities())
 	}
 }
 
