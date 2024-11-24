@@ -16,7 +16,7 @@ type (
 		Repo      *entities.Repo      `json:"repo"`      // Repository entity.
 		Messaging *entities.Messaging `json:"messaging"` // Messaging entity.
 
-		log log.Logger // Workflow logger.
+		logger log.Logger // Workflow logger.
 	}
 )
 
@@ -24,7 +24,7 @@ type (
 // from the specified Temporal channel. The target parameter must be a pointer to the
 // data structure expected to be received.
 func (state *BaseState) rx(ctx workflow.Context, ch workflow.ReceiveChannel, target any) {
-	state.log.Info(fmt.Sprintf("rx: %s", ch.Name()))
+	state.logger.Info(fmt.Sprintf("rx: %s", ch.Name()))
 	ch.Receive(ctx, target)
 }
 
@@ -32,5 +32,5 @@ func (state *BaseState) rx(ctx workflow.Context, ch workflow.ReceiveChannel, tar
 func (state *BaseState) dispatch(ctx workflow.Context, action string) {}
 
 func (state *BaseState) init(ctx workflow.Context) {
-	state.log = workflow.GetLogger(ctx)
+	state.logger = workflow.GetLogger(ctx)
 }

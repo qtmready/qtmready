@@ -17,11 +17,11 @@ type (
 )
 
 var (
+	Configure  = config.Configure
+	WithConfig = config.WithConfig
+	Instance   = config.Instance
+
 	Install   = workflows.Install
 	Push      = workflows.Push
 	SyncRepos = workflows.SyncRepos
-	Configure = config.Configure
-
-	WithConfig = config.WithConfig
-	Instance   = config.Instance
 )

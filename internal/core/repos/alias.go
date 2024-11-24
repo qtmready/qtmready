@@ -45,6 +45,10 @@ var (
 )
 
 const (
+	SignalPush = defs.SignalPush
+)
+
+const (
 	// QueryRepoForEventParent is a query used to find the parent event of a given branch.
 	QueryRepoForEventParent = defs.QueryRepoForEventParent
 )

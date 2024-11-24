@@ -16,6 +16,6 @@ func (p *Push) HydratePushEvent(ctx context.Context, params *defs.HydrateRepoEve
 	return HydrateRepoEvent(ctx, params)
 }
 
-func (p *Push) SignalGithubPushEventToRepo(ctx context.Context, hydrated *defs.HydratedQuantmEvent[eventsv1.Push]) error {
-	return SignalToRepo(ctx, hydrated)
+func (p *Push) SignalRepoWithGithubPush(ctx context.Context, hydrated *defs.HydratedQuantmEvent[eventsv1.Push]) error {
+	return SignalRepo(ctx, hydrated)
 }
