@@ -98,7 +98,7 @@ type (
 		Forced       bool         `json:"forced"`
 		BaseRef      *string      `json:"base_ref"`
 		Compare      string       `json:"compare"`
-		Commits      []Commit     `json:"commits"`
+		Commits      Commits      `json:"commits"`
 		HeadCommit   Commit       `json:"head_commit"`
 		Repository   Repository   `json:"repository"`
 		Pusher       Pusher       `json:"pusher"`
