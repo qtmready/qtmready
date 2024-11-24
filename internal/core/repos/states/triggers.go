@@ -1,4 +1,4 @@
-package workflows
+package states
 
 import (
 	"github.com/google/uuid"

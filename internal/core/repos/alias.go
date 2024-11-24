@@ -4,6 +4,7 @@ import (
 	"go.breu.io/quantm/internal/core/repos/activities"
 	"go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/core/repos/fns"
+	"go.breu.io/quantm/internal/core/repos/states"
 	"go.breu.io/quantm/internal/core/repos/workflows"
 )
 
@@ -37,11 +38,17 @@ var (
 	// RepoWorkflow is the main workflow function for managing repository events.
 	RepoWorkflow = workflows.Repo
 
+	BranchWorkflow = workflows.Branch
+
 	// NewRepoWorkflowState creates a new state object for the repository workflow.
-	NewRepoWorkflowState = workflows.NewRepoState
+	NewRepoWorkflowState = states.NewRepo
 
 	// RepoWorkflowOptions provides options for configuring the repository workflow.
 	RepoWorkflowOptions = defs.RepoWorkflowOptions
+)
+
+const (
+	SignalPush = defs.SignalPush
 )
 
 const (
@@ -49,7 +56,11 @@ const (
 	QueryRepoForEventParent = defs.QueryRepoForEventParent
 )
 
-// NewActivities creates a new instance of the Activity struct, which handles repository-related actions.
-func NewActivities() *activities.Activity {
-	return &activities.Activity{}
+// NewRepoActivities creates a new instance of the Activity struct, which handles repository-related actions.
+func NewRepoActivities() *activities.Repo {
+	return &activities.Repo{}
+}
+
+func NewBranchActivities() *activities.Branch {
+	return &activities.Branch{}
 }

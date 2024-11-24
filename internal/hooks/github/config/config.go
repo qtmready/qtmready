@@ -5,12 +5,12 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
+	"log/slog"
 	"net/http"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	gh "github.com/google/go-github/v62/github"
 
-	"go.breu.io/quantm/internal/db"
 	pkgerrors "go.breu.io/quantm/internal/hooks/github/errors"
 )
 
@@ -29,7 +29,11 @@ type (
 )
 
 // Start is a no-op function that satisfies the graceful Service interface.
-func (cfg *Config) Start(ctx context.Context) error { return nil }
+func (cfg *Config) Start(ctx context.Context) error {
+	slog.Info("hooks/github: configured", "app_id", cfg.AppID)
+
+	return nil
+}
 
 // Stop is a no-op function that satisfies the graceful Service interface.
 func (cfg *Config) Stop(ctx context.Context) error { return nil }
@@ -64,8 +68,8 @@ func (cfg *Config) VerifyWebhookSignature(payload []byte, signature string) erro
 //
 // Creates a new client for the specified installation ID using the GitHub Installation API and uses the private key
 // from the configuration to authenticate.
-func (cfg *Config) GetClientForInstallationID(installationID db.Int64) (*gh.Client, error) {
-	transport, err := ghinstallation.New(http.DefaultTransport, cfg.AppID, installationID.Int64(), []byte(cfg.PrivateKey))
+func (cfg *Config) GetClientForInstallationID(installationID int64) (*gh.Client, error) {
+	transport, err := ghinstallation.New(http.DefaultTransport, cfg.AppID, installationID, []byte(cfg.PrivateKey))
 	if err != nil {
 		return nil, err
 	}

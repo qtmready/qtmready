@@ -13,8 +13,8 @@ type (
 		// TokenizedCloneUrl returns the tokenized clone URL for the repository with the given ID.
 		//
 		// This method must not be called from the workflow.
-		TokenizedCloneUrl(ctx context.Context, repo *entities.Repo) string
+		TokenizedCloneUrl(ctx context.Context, repo *entities.Repo) (string, error)
 
-		DetectChanges(ctx context.Context, event *events.Event[eventsv1.RepoHook, eventsv1.Push])
+		DetectChanges(ctx context.Context, event *events.Event[eventsv1.RepoHook, eventsv1.Push]) error
 	}
 )
