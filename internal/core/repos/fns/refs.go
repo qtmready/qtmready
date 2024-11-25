@@ -1,6 +1,7 @@
 package fns
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -14,6 +15,10 @@ func BranchNameFromRef(ref string) string {
 // For example, if the input is "my-branch", the output will be "refs/heads/my-branch".
 func BranchNameToRef(branch string) string {
 	return "refs/heads/" + branch
+}
+
+func BranchNameToRemoteRef(remote, branch string) string {
+	return fmt.Sprintf("refs/remotes/%s/%s", remote, branch)
 }
 
 // CreateQuantmRef takes a branch name and returns the full Git reference string for a quantum branch.
