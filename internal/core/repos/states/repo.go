@@ -23,7 +23,7 @@ type (
 
 		Triggers BranchTriggers `json:"triggers"` // Branch triggers.
 
-		do *activities.Repo
+		acts *activities.Repo
 	}
 )
 
@@ -35,7 +35,7 @@ func (state *Repo) signal_branch(ctx workflow.Context, branch string, event any)
 	next := NewBranch(state.Repo, state.Messaging, branch)
 	payload := &activities.SignalBranchPayload{Signal: defs.SignalPush, Repo: state.Repo, Branch: branch}
 
-	return workflow.ExecuteActivity(ctx, state.do.SignalBranch, payload, event, next).Get(ctx, nil)
+	return workflow.ExecuteActivity(ctx, state.acts.SignalBranch, payload, event, next).Get(ctx, nil)
 }
 
 // - signal handlers -
@@ -69,11 +69,6 @@ func (state *Repo) QueryBranchTrigger(branch string) (uuid.UUID, error) {
 }
 
 // - state managers -
-
-// RestartRecommended checks if the workflow should be continued as new.
-func (state *Repo) RestartRecommended(ctx workflow.Context) bool {
-	return workflow.GetInfo(ctx).GetContinueAsNewSuggested()
-}
 
 func (state *Repo) Init(ctx workflow.Context) {
 	state.Base.Init(ctx)

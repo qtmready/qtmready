@@ -20,6 +20,7 @@ func q_core() {
 		q.RegisterActivity(repos.NewRepoActivities())
 
 		q.RegisterWorkflow(repos.BranchWorkflow)
+		q.RegisterActivity(repos.NewBranchActivities())
 	}
 }
 

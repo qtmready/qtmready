@@ -11,7 +11,6 @@ import (
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	gh "github.com/google/go-github/v62/github"
 
-	"go.breu.io/quantm/internal/db"
 	pkgerrors "go.breu.io/quantm/internal/hooks/github/errors"
 )
 
@@ -69,8 +68,8 @@ func (cfg *Config) VerifyWebhookSignature(payload []byte, signature string) erro
 //
 // Creates a new client for the specified installation ID using the GitHub Installation API and uses the private key
 // from the configuration to authenticate.
-func (cfg *Config) GetClientForInstallationID(installationID db.Int64) (*gh.Client, error) {
-	transport, err := ghinstallation.New(http.DefaultTransport, cfg.AppID, installationID.Int64(), []byte(cfg.PrivateKey))
+func (cfg *Config) GetClientForInstallationID(installationID int64) (*gh.Client, error) {
+	transport, err := ghinstallation.New(http.DefaultTransport, cfg.AppID, installationID, []byte(cfg.PrivateKey))
 	if err != nil {
 		return nil, err
 	}

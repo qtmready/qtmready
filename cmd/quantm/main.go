@@ -69,7 +69,7 @@ func main() {
 	app.Add(DB, db.Connection(db.WithConfig(cfg.DB)))
 	app.Add(Pulse, pulse.Instance(pulse.WithConfig(cfg.Pulse)))
 	app.Add(Durable, durable.Instance())
-	app.Add(Github, github.Instance())
+	app.Add(Github, github.Get())
 	app.Add(CoreQ, durable.OnCore(), DB, Durable, Pulse, Github)
 	app.Add(HooksQ, durable.OnHooks(), DB, Durable, Pulse, Github)
 	app.Add(Nomad, nmd, DB, Durable, Pulse, Github)

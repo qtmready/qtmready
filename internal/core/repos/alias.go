@@ -60,3 +60,7 @@ const (
 func NewRepoActivities() *activities.Repo {
 	return &activities.Repo{}
 }
+
+func NewBranchActivities() *activities.Branch {
+	return &activities.Branch{}
+}

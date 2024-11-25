@@ -2,33 +2,38 @@ package activities
 
 import (
 	"context"
-	"errors"
+	"log/slog"
 
-	"github.com/jackc/pgx/v5"
 	git "github.com/jeffwelling/git2go/v37"
 
 	"go.breu.io/quantm/internal/core/kernel"
-	"go.breu.io/quantm/internal/db"
-	"go.breu.io/quantm/internal/events"
+	"go.breu.io/quantm/internal/db/entities"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
 type (
+	ClonePayload struct {
+		Repo   *entities.Repo    `json:"repo"`
+		Hook   eventsv1.RepoHook `json:"hook"`
+		Branch string            `json:"branch"`
+		Path   string            `json:"path"`
+	}
+
 	Branch struct{}
 )
 
-func (a *Branch) CloneRepo(ctx context.Context, event events.Event[eventsv1.RepoHook, eventsv1.Push]) error {
-	repo, err := db.Queries().GetRepoByID(ctx, event.Subject.ID)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil
-		}
+func (a *Branch) Diff(ctx context.Context) error {
+	_ = &git.Diff{}
+	return nil
+}
 
+func (a *Branch) Clone(ctx context.Context, payload *ClonePayload) error {
+	url, err := kernel.Get().RepoHook(payload.Hook).TokenizedCloneUrl(ctx, payload.Repo)
+	if err != nil {
 		return err
 	}
 
-	url := kernel.Get().RepoHook(event.Context.Hook).TokenizedCloneUrl(ctx, &repo)
-	_, err = git.Clone(url, "", nil)
+	slog.Info("cloning ...", "url", url)
 
-	return err
+	return nil
 }
