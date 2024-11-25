@@ -31,7 +31,8 @@ type (
 	Branch struct{}
 )
 
-// Clone clones the repository at the specified branch using a temporary path.
+// Clone clones the repository at the specified branch using a temporary path.  It retrieves a tokenized clone URL,
+// clones the repository using `git2go`, fetches the specified branch, and returns the working directory path.
 func (a *Branch) Clone(ctx context.Context, payload *ClonePayload) (string, error) {
 	url, err := kernel.Get().RepoHook(payload.Hook).TokenizedCloneUrl(ctx, payload.Repo)
 	if err != nil {
@@ -57,22 +58,14 @@ func (a *Branch) Clone(ctx context.Context, payload *ClonePayload) (string, erro
 
 	defer cloned.Free()
 
-	remote, err := cloned.Remotes.Lookup("origin")
-	if err != nil {
-		slog.Error("failed to set remote", "remote", "origin", "error", err.Error())
-		return "", err
-	}
-
-	if err := remote.Fetch([]string{fns.BranchNameToRef(payload.Repo.DefaultBranch)}, &git.FetchOptions{}, ""); err != nil {
-		slog.Error("unable to fetch from remote", "error", err.Error())
-		return "", err
-	}
-
 	slog.Info("cloned successfully", "repo", payload.Repo.Url, "cloned", cloned.Workdir())
 
 	return cloned.Workdir(), nil
 }
 
+// Diff retrieves the diff between two commits.  Given a repository path, base branch, and SHA, it opens the repo,
+// fetches the base branch, resolves commits by SHA, and computes the diff between their trees using `git2go`. The
+// resulting diff is currently returned unprocessed.
 func (a *Branch) Diff(ctx context.Context, payload *DiffPayload) (string, error) {
 	repo, err := git.OpenRepository(payload.Path)
 	if err != nil {
@@ -82,9 +75,6 @@ func (a *Branch) Diff(ctx context.Context, payload *DiffPayload) (string, error)
 
 	defer repo.Free()
 
-	ls, _ := repo.Remotes.List()
-	slog.Info("all remotes", "list", ls)
-
 	remote, err := repo.Remotes.Lookup("origin")
 	if err != nil {
 		slog.Error("failed to set remote", "remote", "origin", "error", err.Error())
@@ -93,6 +83,19 @@ func (a *Branch) Diff(ctx context.Context, payload *DiffPayload) (string, error)
 
 	if err := remote.Fetch([]string{fns.BranchNameToRef(payload.Base)}, &git.FetchOptions{}, ""); err != nil {
 		slog.Error("unable to fetch from remote", "error", err.Error())
+		return "", err
+	}
+
+	remoteref, err := repo.References.Lookup(fns.BranchNameToRemoteRef("origin", payload.Base))
+	if err != nil {
+		slog.Error("unable to lookup remote ref", "error", err.Error())
+	}
+
+	defer remoteref.Free()
+
+	_, err = repo.References.Create(fns.BranchNameToRef(payload.Base), remoteref.Target(), true, "")
+	if err != nil {
+		slog.Error("unable to create ref", "error", err.Error())
 		return "", err
 	}
 
@@ -137,6 +140,7 @@ func (a *Branch) Diff(ctx context.Context, payload *DiffPayload) (string, error)
 	if err != nil {
 		return "", err
 	}
+
 	defer head.Free()
 
 	diffopts, _ := git.DefaultDiffOptions()
