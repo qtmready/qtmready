@@ -13,6 +13,7 @@ require (
 	github.com/google/go-github/v62 v62.0.0
 	github.com/gosimple/slug v1.14.0
 	github.com/jackc/pgx/v5 v5.7.1
+	github.com/jeffwelling/git2go/v37 v37.0.4
 	github.com/knadh/koanf/providers/env v1.0.0
 	github.com/knadh/koanf/providers/structs v0.1.0
 	github.com/knadh/koanf/v2 v2.1.2
