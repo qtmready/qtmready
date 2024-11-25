@@ -26,30 +26,35 @@ type (
 // rx wraps workflow.ReceiveChannel.Receive, adding logging.  It receives a message
 // from the specified Temporal channel. The target parameter must be a pointer to the
 // data structure expected to be received.
-func (s *Base) rx(ctx workflow.Context, ch workflow.ReceiveChannel, target any) {
-	s.logger.Info(fmt.Sprintf("rx: %s", ch.Name()))
+func (state *Base) rx(ctx workflow.Context, ch workflow.ReceiveChannel, target any) {
+	state.logger.Info(fmt.Sprintf("rx: %s", ch.Name()))
 	ch.Receive(ctx, target)
 }
 
-// dispatch wraps activity execution with logging.
-func (s *Base) dispatch(ctx workflow.Context, action string, activity, payload, result any, keyvals ...any) error {
-	s.logger.Info(fmt.Sprintf("dispatch(%s): init ...", action), keyvals...)
+// run is meant for events that needs to be processed.
+func (state *Base) run(ctx workflow.Context, action string, activity, event, result any, keyvals ...any) error {
+	state.logger.Info(fmt.Sprintf("dispatch(%s): init ...", action), keyvals...)
 
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	if err := workflow.ExecuteActivity(ctx, activity, payload).Get(ctx, result); err != nil {
-		s.logger.Error(fmt.Sprintf("dispatch(%s): error", action), keyvals...)
+	if err := workflow.ExecuteActivity(ctx, activity, event).Get(ctx, result); err != nil {
+		state.logger.Error(fmt.Sprintf("dispatch(%s): error", action), keyvals...)
 		return err
 	}
 
-	s.logger.Info(fmt.Sprintf("dispatch(%s): success", action), keyvals...)
+	state.logger.Info(fmt.Sprintf("dispatch(%s): success", action), keyvals...)
 
 	return nil
 }
 
 // - public
 
+// RestartRecommended checks if the workflow should be continued as new.
+func (state *Base) RestartRecommended(ctx workflow.Context) bool {
+	return workflow.GetInfo(ctx).GetContinueAsNewSuggested()
+}
+
 // Init initializes the base state with the provided context.
-func (s *Base) Init(ctx workflow.Context) {
-	s.logger = workflow.GetLogger(ctx)
+func (state *Base) Init(ctx workflow.Context) {
+	state.logger = workflow.GetLogger(ctx)
 }

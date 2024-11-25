@@ -21,7 +21,7 @@ type (
 var (
 	Configure  = config.Configure
 	WithConfig = config.WithConfig
-	Instance   = config.Instance
+	Get        = config.Instance
 
 	Install   = workflows.Install
 	Push      = workflows.Push
