@@ -111,6 +111,8 @@ func (a *Branch) Diff(ctx context.Context, payload *DiffPayload) (string, error)
 	return "", nil
 }
 
+// refresh_remote fetches the latest changes from the remote "origin" for the given branch.
+// It looks up the remote, fetches the branch, and updates the local branch reference.
 func (a *Branch) refresh_remote(_ context.Context, repo *git.Repository, branch string) error {
 	remote, err := repo.Remotes.Lookup("origin")
 	if err != nil {
@@ -126,6 +128,7 @@ func (a *Branch) refresh_remote(_ context.Context, repo *git.Repository, branch 
 	ref, err := repo.References.Lookup(fns.BranchNameToRemoteRef("origin", branch))
 	if err != nil {
 		slog.Error("unable to lookup remote ref", "error", err.Error())
+		return err
 	}
 
 	defer ref.Free()
@@ -139,6 +142,8 @@ func (a *Branch) refresh_remote(_ context.Context, repo *git.Repository, branch 
 	return nil
 }
 
+// tree_from_branch retrieves the tree object associated with the given branch.
+// It looks up the branch reference, retrieves the corresponding commit, and returns the commit's tree.
 func (a *Branch) tree_from_branch(_ context.Context, repo *git.Repository, branch string) (*git.Tree, error) {
 	ref, err := repo.References.Lookup(fns.BranchNameToRef(branch))
 	if err != nil {
@@ -165,6 +170,8 @@ func (a *Branch) tree_from_branch(_ context.Context, repo *git.Repository, branc
 	return tree, nil
 }
 
+// tree_from_sha retrieves the tree object associated with the given SHA.
+// It looks up the commit by SHA and returns the commit's tree.
 func (a *Branch) tree_from_sha(_ context.Context, repo *git.Repository, sha string) (*git.Tree, error) {
 	oid, err := git.NewOid(sha)
 	if err != nil {
