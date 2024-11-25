@@ -48,6 +48,7 @@ func main() {
 	// - configure services
 
 	github.Configure(github.WithConfig(cfg.Github))
+	kernel.Configure(kernel.WithRepoHook(eventsv1.RepoHook_REPO_HOOK_GITHUB, &github.KernelImpl{}))
 
 	if err := durable.Configure(durable.WithConfig(cfg.Durable)); err != nil {
 		slog.Error("unable to configure durable layer", "error", err.Error())
@@ -73,7 +74,7 @@ func main() {
 	app.Add(HooksQ, durable.OnHooks(), DB, Durable, Pulse, Github)
 	app.Add(Nomad, nmd, DB, Durable, Pulse, Github)
 	app.Add(Webhook, NewWebhookServer(), DB, Durable, Github)
-	app.Add(Kernel, kernel.New(kernel.WithRepoHook(eventsv1.RepoHook_REPO_HOOK_GITHUB, &github.KernelImpl{})), Github)
+	app.Add(Kernel, kernel.Get(), Github)
 
 	// - if the migrate flag is set, run migrations and exit
 
