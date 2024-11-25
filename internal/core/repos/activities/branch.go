@@ -42,7 +42,7 @@ func (a *Branch) Clone(ctx context.Context, payload *ClonePayload) (string, erro
 
 	slog.Info("cloning ...", "url", url)
 
-	copts := &git.CloneOptions{
+	opts := &git.CloneOptions{
 		CheckoutOptions: git.CheckoutOptions{
 			Strategy:    git.CheckoutSafe,
 			NotifyFlags: git.CheckoutNotifyAll,
@@ -50,7 +50,7 @@ func (a *Branch) Clone(ctx context.Context, payload *ClonePayload) (string, erro
 		CheckoutBranch: payload.Branch,
 	}
 
-	cloned, err := git.Clone(url, fmt.Sprintf("/tmp/%s", payload.Path), copts)
+	cloned, err := git.Clone(url, fmt.Sprintf("/tmp/%s", payload.Path), opts)
 	if err != nil {
 		slog.Error("Failed to clone repository", "error", err, "url", url, "path", fmt.Sprintf("/tmp/%s", payload.Path))
 		return "", err
@@ -75,69 +75,21 @@ func (a *Branch) Diff(ctx context.Context, payload *DiffPayload) (string, error)
 
 	defer repo.Free()
 
-	remote, err := repo.Remotes.Lookup("origin")
-	if err != nil {
-		slog.Error("failed to set remote", "remote", "origin", "error", err.Error())
+	if err := a.refresh_remote(ctx, repo, payload.Base); err != nil {
 		return "", err
 	}
 
-	if err := remote.Fetch([]string{fns.BranchNameToRef(payload.Base)}, &git.FetchOptions{}, ""); err != nil {
-		slog.Error("unable to fetch from remote", "error", err.Error())
+	base, err := a.tree_from_branch(ctx, repo, payload.Base)
+	if err != nil {
+		slog.Error("unable to process base", "base", base)
 		return "", err
 	}
 
-	remoteref, err := repo.References.Lookup(fns.BranchNameToRemoteRef("origin", payload.Base))
+	defer base.Free()
+
+	head, err := a.tree_from_sha(ctx, repo, payload.SHA)
 	if err != nil {
-		slog.Error("unable to lookup remote ref", "error", err.Error())
-	}
-
-	defer remoteref.Free()
-
-	_, err = repo.References.Create(fns.BranchNameToRef(payload.Base), remoteref.Target(), true, "")
-	if err != nil {
-		slog.Error("unable to create ref", "error", err.Error())
-		return "", err
-	}
-
-	baseref, err := repo.References.Lookup(fns.BranchNameToRef(payload.Base))
-	if err != nil {
-		slog.Error("Failed to lookup base ref", "error", err, "branch", payload.Base)
-		return "", err
-	}
-
-	defer baseref.Free()
-
-	basecommit, err := repo.LookupCommit(baseref.Target())
-	if err != nil {
-		slog.Error("Failed to lookup base commit", "error", err, "target", baseref.Target())
-		return "", err
-	}
-
-	defer basecommit.Free()
-
-	basetree, err := basecommit.Tree()
-	if err != nil {
-		return "", err
-	}
-
-	defer basetree.Free()
-
-	sha, err := git.NewOid(payload.SHA)
-	if err != nil {
-		slog.Error("Invalid SHA", "error", err, "sha", payload.SHA)
-		return "", err
-	}
-
-	headcommit, err := repo.LookupCommit(sha)
-	if err != nil {
-		slog.Error("Failed to lookup head commit", "error", err, "sha", sha)
-		return "", err
-	}
-
-	defer headcommit.Free()
-
-	head, err := headcommit.Tree()
-	if err != nil {
+		slog.Error("unable to process head", "head", head)
 		return "", err
 	}
 
@@ -145,7 +97,7 @@ func (a *Branch) Diff(ctx context.Context, payload *DiffPayload) (string, error)
 
 	diffopts, _ := git.DefaultDiffOptions()
 
-	diff, err := repo.DiffTreeToTree(basetree, head, &diffopts)
+	diff, err := repo.DiffTreeToTree(base, head, &diffopts)
 	if err != nil {
 		slog.Error("Failed to create diff", "error", err)
 		return "", err
@@ -157,4 +109,82 @@ func (a *Branch) Diff(ctx context.Context, payload *DiffPayload) (string, error)
 	//Example:  You might want to convert it to a unified diff string.
 
 	return "", nil
+}
+
+func (a *Branch) refresh_remote(_ context.Context, repo *git.Repository, branch string) error {
+	remote, err := repo.Remotes.Lookup("origin")
+	if err != nil {
+		slog.Error("failed to set remote", "remote", "origin", "error", err.Error())
+		return err
+	}
+
+	if err := remote.Fetch([]string{fns.BranchNameToRef(branch)}, &git.FetchOptions{}, ""); err != nil {
+		slog.Error("unable to fetch from remote", "error", err.Error())
+		return err
+	}
+
+	ref, err := repo.References.Lookup(fns.BranchNameToRemoteRef("origin", branch))
+	if err != nil {
+		slog.Error("unable to lookup remote ref", "error", err.Error())
+	}
+
+	defer ref.Free()
+
+	_, err = repo.References.Create(fns.BranchNameToRef(branch), ref.Target(), true, "")
+	if err != nil {
+		slog.Error("unable to create ref", "error", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+func (a *Branch) tree_from_branch(_ context.Context, repo *git.Repository, branch string) (*git.Tree, error) {
+	ref, err := repo.References.Lookup(fns.BranchNameToRef(branch))
+	if err != nil {
+		slog.Error("Failed to lookup ref", "error", err, "branch", branch)
+		return nil, err
+	}
+
+	defer ref.Free()
+
+	commit, err := repo.LookupCommit(ref.Target())
+	if err != nil {
+		slog.Error("Failed to lookup commit", "error", err, "target", ref.Target())
+		return nil, err
+	}
+
+	defer commit.Free()
+
+	tree, err := commit.Tree()
+	if err != nil {
+		slog.Error("Failed to lookup tree", "error", err)
+		return nil, err
+	}
+
+	return tree, nil
+}
+
+func (a *Branch) tree_from_sha(_ context.Context, repo *git.Repository, sha string) (*git.Tree, error) {
+	oid, err := git.NewOid(sha)
+	if err != nil {
+		slog.Error("Invalid SHA", "error", err, "sha", sha)
+		return nil, err
+	}
+
+	commit, err := repo.LookupCommit(oid)
+	if err != nil {
+		slog.Error("Failed to lookup commit", "error", err, "oid", oid)
+		return nil, err
+	}
+
+	defer commit.Free()
+
+	tree, err := commit.Tree()
+	if err != nil {
+		slog.Error("Failed to lookup tree", "error", err)
+		return nil, err
+	}
+
+	return tree, nil
 }
