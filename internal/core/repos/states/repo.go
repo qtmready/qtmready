@@ -19,8 +19,7 @@ import (
 type (
 	// Repo defines the state for Repo Workflows. It embeds BaseState to inherit its functionality.
 	Repo struct {
-		*Base `json:"base"` // Base workflow state.
-
+		*Base    `json:"base"`  // Base workflow state.
 		Triggers BranchTriggers `json:"triggers"` // Branch triggers.
 
 		acts *activities.Repo

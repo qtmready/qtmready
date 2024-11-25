@@ -27,12 +27,12 @@ func (state *Branch) OnPush(ctx workflow.Context) durable.ChannelHandler {
 	return func(ch workflow.ReceiveChannel, more bool) {
 		event := &events.Event[eventsv1.RepoHook, eventsv1.Push]{}
 		state.rx(ctx, ch, event)
-		state.calculate_complexity(ctx, event)
+		_ = state.clone(ctx, event)
 	}
 }
 
-// calculate_complexity calculates the complexity of the change against trunk.
-func (state *Branch) calculate_complexity(ctx workflow.Context, event *events.Event[eventsv1.RepoHook, eventsv1.Push]) {
+// clone calculates the complexity of the change against trunk.
+func (state *Branch) clone(ctx workflow.Context, event *events.Event[eventsv1.RepoHook, eventsv1.Push]) string {
 	state.LatestCommit = fns.GetLatestCommit(event.Payload)
 
 	path := ""
@@ -41,9 +41,26 @@ func (state *Branch) calculate_complexity(ctx workflow.Context, event *events.Ev
 		return uuid.New().String()
 	}).Get(&path)
 
-	payload := &activities.ClonePayload{Repo: state.Repo, Branch: state.Branch, Hook: event.Context.Hook, Path: path}
+	{
+		payload := &activities.ClonePayload{
+			Repo:   state.Repo,
+			Branch: state.Branch,
+			Hook:   event.Context.Hook,
+			Path:   path,
+			SHA:    event.Payload.After,
+		}
 
-	_ = state.run(ctx, "clone", state.acts.Clone, payload, nil)
+		if err := state.run(ctx, "clone", state.acts.Clone, payload, &path); err != nil {
+			state.logger.Error("clone: unable to clone", "error", err.Error())
+		}
+	}
+
+	{
+		payload := &activities.DiffPayload{Path: path, Base: state.Repo.DefaultBranch, SHA: event.Payload.After}
+		_ = state.run(ctx, "diff", state.acts.Diff, payload, nil)
+	}
+
+	return path
 }
 
 // Init initializes the branch state with the provided context.
