@@ -16,6 +16,7 @@ import (
 	"go.breu.io/quantm/internal/db/migrations"
 	"go.breu.io/quantm/internal/durable"
 	"go.breu.io/quantm/internal/hooks/github"
+	"go.breu.io/quantm/internal/hooks/slack"
 	"go.breu.io/quantm/internal/nomad"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 	"go.breu.io/quantm/internal/pulse"
@@ -48,6 +49,7 @@ func main() {
 	// - configure services
 
 	github.Configure(github.WithConfig(cfg.Github))
+	slack.Configure(slack.WithConfig(cfg.Slack))
 	kernel.Configure(kernel.WithRepoHook(eventsv1.RepoHook_REPO_HOOK_GITHUB, &github.KernelImpl{}))
 
 	if err := durable.Configure(durable.WithConfig(cfg.Durable)); err != nil {
