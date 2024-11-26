@@ -10,6 +10,7 @@ import (
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/core/repos/fns"
+	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
 type (
@@ -53,7 +54,7 @@ func (a *Branch) Clone(ctx context.Context, payload *defs.ClonePayload) (string,
 // Diff retrieves the diff between two commits.  Given a repository path, base branch, and SHA, it opens the repo,
 // fetches the base branch, resolves commits by SHA, and computes the diff between their trees using `git2go`. The
 // resulting diff is currently returned unprocessed.
-func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*defs.DiffResult, error) {
+func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1.Diff, error) {
 	logger := activity.GetLogger(ctx)
 
 	repo, err := git.OpenRepository(payload.Path)
@@ -98,6 +99,7 @@ func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*defs.Dif
 }
 
 // refresh_remote fetches the latest changes from the remote "origin" for the given branch.
+//
 // It looks up the remote, fetches the branch, and updates the local branch reference.
 func (a *Branch) refresh_remote(ctx context.Context, repo *git.Repository, branch string) error {
 	logger := activity.GetLogger(ctx)
@@ -189,12 +191,12 @@ func (a *Branch) tree_from_sha(ctx context.Context, repo *git.Repository, sha st
 }
 
 // diff_to_result converts a git.Diff into a DiffResult.
-// It iterates through the deltas in the diff, categorizing files based on their status
-// (added, deleted, modified, etc.). It also calculates the total number of lines added
-// and removed using the diff statistics.
-func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*defs.DiffResult, error) {
+//
+// It iterates through the deltas in the diff, categorizing files based on their status (added, deleted etc.).
+// It also calculates the total number of lines added and removed using the diff statistics.
+func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*eventsv1.Diff, error) {
 	logger := activity.GetLogger(ctx)
-	result := &defs.DiffResult{}
+	result := &eventsv1.Diff{}
 
 	deltas, err := diff.NumDeltas()
 	if err != nil {
@@ -205,7 +207,8 @@ func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*defs.Diff
 	for idx := 0; idx < deltas; idx++ {
 		delta, _ := diff.Delta(idx)
 
-		switch delta.Status {
+		switch delta.Status { // nolint:exhaustive
+		default:
 		case git.DeltaAdded:
 			result.Files.Added = append(result.Files.Added, delta.NewFile.Path)
 		case git.DeltaDeleted:
@@ -214,19 +217,6 @@ func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*defs.Diff
 			result.Files.Modified = append(result.Files.Modified, delta.NewFile.Path)
 		case git.DeltaRenamed:
 			result.Files.Renamed = append(result.Files.Renamed, delta.NewFile.Path)
-		case git.DeltaCopied:
-			result.Files.Copied = append(result.Files.Copied, delta.NewFile.Path)
-		case git.DeltaTypeChange:
-			result.Files.TypeChange = append(result.Files.TypeChange, delta.NewFile.Path)
-		case git.DeltaUnreadable:
-			result.Files.Unreadable = append(result.Files.Unreadable, delta.NewFile.Path)
-		case git.DeltaIgnored:
-			result.Files.Ignored = append(result.Files.Ignored, delta.NewFile.Path)
-		case git.DeltaUntracked:
-			result.Files.Untracked = append(result.Files.Untracked, delta.NewFile.Path)
-		case git.DeltaConflicted:
-			result.Files.Conflicted = append(result.Files.Conflicted, delta.NewFile.Path)
-		case git.DeltaUnmodified:
 		}
 	}
 
@@ -237,8 +227,8 @@ func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*defs.Diff
 
 	defer func() { _ = stats.Free() }()
 
-	result.Lines.Added = stats.Insertions()
-	result.Lines.Removed = stats.Deletions()
+	result.Lines.Added = int32(stats.Insertions())
+	result.Lines.Removed = int32(stats.Deletions())
 
 	return result, nil
 }
