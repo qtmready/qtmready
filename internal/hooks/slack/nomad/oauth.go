@@ -32,6 +32,18 @@ func (s *SlackService) SlackOauth(
 ) (*connect.Response[emptypb.Empty], error) {
 	var c pkg_slack.HTTPClient
 
+	// check the already exist record against the link_to
+	// if exist return the error already exit
+	link_to, err := uuid.Parse(reqst.Msg.GetLinkTo())
+	if err != nil {
+		return nil, err
+	}
+
+	message, err := db.Queries().GetMessagesByLinkTo(ctx, link_to)
+	if err != nil || message.ID != uuid.Nil {
+		return nil, erratic.NewInternalServerError().AddHint("reason", errors.ErrCodeEmpty.Error()).ToConnectError()
+	}
+
 	if reqst.Msg.GetCode() == "" {
 		return nil, erratic.NewInternalServerError().AddHint("reason", errors.ErrCodeEmpty.Error()).ToConnectError()
 	}

@@ -7,3 +7,8 @@ import (
 type (
 	Config = config.Config
 )
+
+var (
+	WithConfig = config.WithConfig
+	Configure  = config.Instance
+)
