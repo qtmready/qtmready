@@ -36,29 +36,24 @@ func GetSlackClient(token string) (*slack.Client, error) {
 	return client, nil
 }
 
-// ClientID returns the Slack client ID.
 func ClientID() string {
-	return Instance().ClientID
+	return _c.ClientID
 }
 
-// ClientSecret returns the Slack client secret.
 func ClientSecret() string {
-	return Instance().ClientSecret
+	return _c.ClientSecret
 }
 
-// ClientRedirectURL returns the Slack redirect URL.
 func ClientRedirectURL() string {
-	return Instance().RedirectURL
+	return _c.RedirectURL
 }
 
-func WithConfig(options ...ConfigOption) *Config {
-	c := Instance()
-
-	for _, option := range options {
-		option(c)
+func WithConfig(cfg *Config) ConfigOption {
+	return func(config *Config) {
+		config.ClientID = cfg.ClientID
+		config.ClientSecret = cfg.ClientSecret
+		config.RedirectURL = cfg.RedirectURL
 	}
-
-	return c
 }
 
 func Instance(opts ...ConfigOption) *Config {

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"go.breu.io/durex/queues"
+
 	"go.breu.io/quantm/internal/core/repos"
 	"go.breu.io/quantm/internal/durable"
 	"go.breu.io/quantm/internal/hooks/github"
@@ -10,7 +12,7 @@ import (
 func q_core() {
 	q := durable.OnCore()
 
-	q.CreateWorker()
+	q.CreateWorker(queues.WithWorkerOptionEnableSessionWorker(true))
 
 	if q != nil {
 		q.RegisterActivity(pulse.PersistRepoEvent)

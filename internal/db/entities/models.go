@@ -105,7 +105,7 @@ type Messaging struct {
 	ID        uuid.UUID `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-	Hook      string    `json:"hook"`
+	Hook      int32     `json:"hook"`
 	Kind      string    `json:"kind"`
 	LinkTo    uuid.UUID `json:"link_to"`
 	Data      []byte    `json:"data"`

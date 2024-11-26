@@ -7,12 +7,9 @@ import (
 	"go.breu.io/quantm/internal/core/repos/states"
 )
 
-// Repo manages the event loop for a repository. It acts as a central router, orchestrating repository workflows.
-//
-// Repo uses Temporal's workflow selector to concurrently handle signals. The function initializes a RepoState and
-// registers a signal handler for the reposdefs.RepoIOSignalPush signal.  Currently, the signal handler is a stub.
-// Temporal workflow context is passed as input, along with hydrated repository data.  The function returns an error
-// if one occurs during workflow execution; otherwise it returns nil.
+// Repo orchestrates repository workflows, routing incoming events. It initializes RepoState, registers query/signal
+// handlers, and enters an event loop for workflow event processing. Workflow persistence spans the repo lifecycle,
+// leveraging Temporal's continue-as-new feature to mitigate history size limitations.
 func Repo(ctx workflow.Context, state *states.Repo) error {
 	state.Init(ctx)
 

@@ -8,65 +8,23 @@ import (
 	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/quantm/internal/core/kernel"
+	"go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/core/repos/fns"
-	"go.breu.io/quantm/internal/db/entities"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
 type (
-	ClonePayload struct {
-		Repo   *entities.Repo    `json:"repo"`
-		Hook   eventsv1.RepoHook `json:"hook"`
-		Branch string            `json:"branch"`
-		Path   string            `json:"path"`
-		SHA    string            `json:"sha"`
-	}
-
-	DiffPayload struct {
-		Path string `json:"path"`
-		Base string `json:"base"`
-		SHA  string `json:"sha"`
-	}
-
-	DiffFiles struct {
-		Added      []string `json:"added"`
-		Deleted    []string `json:"deleted"`
-		Modified   []string `json:"modified"`
-		Renamed    []string `json:"renamed"`
-		Copied     []string `json:"copied"`
-		TypeChange []string `json:"typechange"`
-		Unreadable []string `json:"unreadable"`
-		Ignored    []string `json:"ignored"`
-		Untracked  []string `json:"untracked"`
-		Conflicted []string `json:"conflicted"`
-	}
-
-	DiffLines struct {
-		Added   int `json:"added"`
-		Removed int `json:"removed"`
-	}
-
-	DiffResult struct {
-		Files DiffFiles `json:"files"`
-		Lines DiffLines `json:"lines"`
-	}
-
 	Branch struct{}
 )
 
-// Sum returns the sum of added and removed lines.
-func (d *DiffLines) Sum() int {
-	return d.Added + d.Removed
-}
-
 // Clone clones the repository at the specified branch using a temporary path.  It retrieves a tokenized clone URL,
-// clones the repository using `git2go`, fetches the specified branch, and returns the working directory path.
-func (a *Branch) Clone(ctx context.Context, payload *ClonePayload) (string, error) {
+// clones the repository using git2go, fetches the specified branch, and returns the working directory path.
+func (a *Branch) Clone(ctx context.Context, payload *defs.ClonePayload) (string, error) {
 	logger := activity.GetLogger(ctx)
 
 	url, err := kernel.Get().RepoHook(payload.Hook).TokenizedCloneUrl(ctx, payload.Repo)
 	if err != nil {
-		logger.Error("Failed to get tokenized clone URL", "error", err) // Log the error
+		logger.Error("Failed to get tokenized clone URL", "error", err)
 		return "", err
 	}
 
@@ -96,7 +54,7 @@ func (a *Branch) Clone(ctx context.Context, payload *ClonePayload) (string, erro
 // Diff retrieves the diff between two commits.  Given a repository path, base branch, and SHA, it opens the repo,
 // fetches the base branch, resolves commits by SHA, and computes the diff between their trees using `git2go`. The
 // resulting diff is currently returned unprocessed.
-func (a *Branch) Diff(ctx context.Context, payload *DiffPayload) (*DiffResult, error) {
+func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1.Diff, error) {
 	logger := activity.GetLogger(ctx)
 
 	repo, err := git.OpenRepository(payload.Path)
@@ -141,6 +99,7 @@ func (a *Branch) Diff(ctx context.Context, payload *DiffPayload) (*DiffResult, e
 }
 
 // refresh_remote fetches the latest changes from the remote "origin" for the given branch.
+//
 // It looks up the remote, fetches the branch, and updates the local branch reference.
 func (a *Branch) refresh_remote(ctx context.Context, repo *git.Repository, branch string) error {
 	logger := activity.GetLogger(ctx)
@@ -232,12 +191,12 @@ func (a *Branch) tree_from_sha(ctx context.Context, repo *git.Repository, sha st
 }
 
 // diff_to_result converts a git.Diff into a DiffResult.
-// It iterates through the deltas in the diff, categorizing files based on their status
-// (added, deleted, modified, etc.). It also calculates the total number of lines added
-// and removed using the diff statistics.
-func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*DiffResult, error) {
+//
+// It iterates through the deltas in the diff, categorizing files based on their status (added, deleted etc.).
+// It also calculates the total number of lines added and removed using the diff statistics.
+func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*eventsv1.Diff, error) {
 	logger := activity.GetLogger(ctx)
-	result := &DiffResult{}
+	result := &eventsv1.Diff{}
 
 	deltas, err := diff.NumDeltas()
 	if err != nil {
@@ -248,7 +207,8 @@ func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*DiffResul
 	for idx := 0; idx < deltas; idx++ {
 		delta, _ := diff.Delta(idx)
 
-		switch delta.Status {
+		switch delta.Status { // nolint:exhaustive
+		default:
 		case git.DeltaAdded:
 			result.Files.Added = append(result.Files.Added, delta.NewFile.Path)
 		case git.DeltaDeleted:
@@ -257,19 +217,6 @@ func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*DiffResul
 			result.Files.Modified = append(result.Files.Modified, delta.NewFile.Path)
 		case git.DeltaRenamed:
 			result.Files.Renamed = append(result.Files.Renamed, delta.NewFile.Path)
-		case git.DeltaCopied:
-			result.Files.Copied = append(result.Files.Copied, delta.NewFile.Path)
-		case git.DeltaTypeChange:
-			result.Files.TypeChange = append(result.Files.TypeChange, delta.NewFile.Path)
-		case git.DeltaUnreadable:
-			result.Files.Unreadable = append(result.Files.Unreadable, delta.NewFile.Path)
-		case git.DeltaIgnored:
-			result.Files.Ignored = append(result.Files.Ignored, delta.NewFile.Path)
-		case git.DeltaUntracked:
-			result.Files.Untracked = append(result.Files.Untracked, delta.NewFile.Path)
-		case git.DeltaConflicted:
-			result.Files.Conflicted = append(result.Files.Conflicted, delta.NewFile.Path)
-		case git.DeltaUnmodified:
 		}
 	}
 
@@ -280,8 +227,8 @@ func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*DiffResul
 
 	defer func() { _ = stats.Free() }()
 
-	result.Lines.Added = stats.Insertions()
-	result.Lines.Removed = stats.Deletions()
+	result.Lines.Added = int32(stats.Insertions())  // nolint:gosec
+	result.Lines.Removed = int32(stats.Deletions()) // nolint:gosec
 
 	return result, nil
 }
