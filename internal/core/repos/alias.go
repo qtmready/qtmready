@@ -8,17 +8,8 @@ import (
 	"go.breu.io/quantm/internal/core/repos/workflows"
 )
 
-// HypdratedRepo represents a fully hydrated repository, including its associated messaging, organization, and user data.
-type (
-	HypdratedRepo = defs.HypdratedRepo
-)
-
 var (
 	// BranchNameFromRef extracts the branch name from a full Git reference string.
-	//
-	// Example:
-	//
-	//  BranchNameToRef("refs/head/name") // "name"
 	BranchNameFromRef = fns.BranchNameFromRef
 
 	// BranchNameToRef constructs a full Git reference string from a branch name (e.g., "my-branch" becomes "refs/heads/my-branch").

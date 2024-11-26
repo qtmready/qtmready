@@ -12,11 +12,21 @@ func Branch(ctx workflow.Context, state *states.Branch) error {
 
 	selector := workflow.NewSelector(ctx)
 
+	// - signal handlers -
+
 	push := workflow.GetSignalChannel(ctx, defs.SignalPush.String())
 	selector.AddReceive(push, state.OnPush(ctx))
 
-	for !state.RestartRecommended(ctx) {
+	// - event loop -
+
+	for !state.ExitLoop(ctx) {
 		selector.Select(ctx)
+	}
+
+	// - exit or continue -
+
+	if state.RestartRecommended(ctx) {
+		return workflow.NewContinueAsNewError(ctx, Branch, state)
 	}
 
 	return nil

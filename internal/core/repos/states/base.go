@@ -31,7 +31,8 @@ func (state *Base) rx(ctx workflow.Context, ch workflow.ReceiveChannel, target a
 	ch.Receive(ctx, target)
 }
 
-// run is meant for events that needs to be processed.
+// run wraps workflow.ExecuteActivity with logging with the default activity context. If you need to
+// provide a custom context, use run_ex.
 func (state *Base) run(ctx workflow.Context, action string, activity, event, result any, keyvals ...any) error {
 	state.logger.Info(fmt.Sprintf("dispatch(%s): init ...", action), keyvals...)
 
