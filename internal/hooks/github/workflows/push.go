@@ -13,6 +13,10 @@ import (
 	"go.breu.io/quantm/internal/pulse"
 )
 
+// The Push workflow processes GitHub webhook push events, converting the defs.Push payload into a QuantmEvent.
+// This involves hydrating the event with repository, installation, user, and team metadata, determining the
+// event action (create, delete, or force push), constructing and persisting a QuantmEvent encompassing the
+// hydrated details and original payload, and finally signaling the repository.
 func Push(ctx workflow.Context, push *defs.Push) error {
 	acts := &activities.Push{}
 	ctx = dispatch.WithDefaultActivityContext(ctx)

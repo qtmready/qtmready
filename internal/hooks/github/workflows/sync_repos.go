@@ -9,6 +9,16 @@ import (
 	"go.breu.io/quantm/internal/hooks/github/defs"
 )
 
+// // SyncRepos synchronizes repositories for a given installation.
+//
+// This workflow handles the addition and removal of repositories
+// from a GitHub installation. It retrieves the installation details,
+// then iterates through the added and removed repositories, executing
+// activities to handle the synchronization process for each repository.
+//
+// The workflow uses a selector to manage concurrent execution of
+// activities for added and removed repositories. It waits for all
+// activities to complete before returning.
 func SyncRepos(ctx workflow.Context, payload *defs.WebhookInstallRepos) error {
 	selector := workflow.NewSelector(ctx)
 	acts := &activities.InstallRepos{}
