@@ -31,9 +31,9 @@ func (s *RepoService) ListRepos(
 		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
-	repos := reposcast.ReposToProto(ents)
+	repm := reposcast.RepoHasMesgingToProto(ents)
 
-	return connect.NewResponse(&corev1.ListReposResponse{Repos: repos}), nil
+	return connect.NewResponse(&corev1.ListReposResponse{RepoHasMesgings: repm}), nil
 }
 
 func NewRepoServiceHandler(opts ...connect.HandlerOption) (string, http.Handler) {
