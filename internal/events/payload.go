@@ -11,6 +11,7 @@ type (
 	Payload interface {
 		eventsv1.GitRef |
 			eventsv1.Push |
-			eventsv1.Diff
+			eventsv1.Diff |
+			eventsv1.PullRequest
 	}
 )
