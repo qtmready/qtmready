@@ -18,7 +18,7 @@ RETURNING id, created_at, updated_at, hook, kind, link_to, data
 `
 
 type CreateMessagingParams struct {
-	Hook   string    `json:"hook"`
+	Hook   int32     `json:"hook"`
 	Kind   string    `json:"kind"`
 	LinkTo uuid.UUID `json:"link_to"`
 	Data   []byte    `json:"data"`
