@@ -17,7 +17,7 @@ import (
 )
 
 func _user(
-	ctx context.Context, reqst *connect.Request[slackv1.SlackOauthRequest], response *slack.OAuthV2Response,
+	ctx context.Context, reqst *connect.Request[slackv1.OauthRequest], response *slack.OAuthV2Response,
 ) error {
 	client, _ := config.GetSlackClient(response.AuthedUser.AccessToken)
 
@@ -61,7 +61,7 @@ func _user(
 
 	// save messaging
 	m := entities.CreateMessagingParams{
-		Hook:   int32(eventsv1.MessagingHook_MESSAGING_HOOK_SLACK),
+		Hook:   int32(eventsv1.ChatHook_CHAT_HOOK_SLACK),
 		Kind:   defs.KindUser,
 		LinkTo: link_to,
 		Data:   data,
@@ -76,7 +76,7 @@ func _user(
 }
 
 func _bot(
-	ctx context.Context, reqst *connect.Request[slackv1.SlackOauthRequest], response *slack.OAuthV2Response,
+	ctx context.Context, reqst *connect.Request[slackv1.OauthRequest], response *slack.OAuthV2Response,
 ) error {
 	// Generate a key for AES-256.
 	key := fns.Generate(response.Team.ID)
@@ -108,7 +108,7 @@ func _bot(
 
 	// save messaging
 	m := entities.CreateMessagingParams{
-		Hook:   int32(eventsv1.MessagingHook_MESSAGING_HOOK_SLACK),
+		Hook:   int32(eventsv1.ChatHook_CHAT_HOOK_SLACK),
 		Kind:   defs.KindBot,
 		LinkTo: link_to,
 		Data:   data,
