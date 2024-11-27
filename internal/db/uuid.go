@@ -16,3 +16,13 @@ func MustUUID() gocql.UUID {
 	id, _ := NewUUID()
 	return id
 }
+
+// ParseUUID converts a string into a uuid.UUID and returns an error if invalid.
+func ParseUUID(input string) (uuid.UUID, error) {
+	parsed, err := uuid.Parse(input)
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	return parsed, nil
+}
