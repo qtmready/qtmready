@@ -24,7 +24,7 @@ func (a *Branch) Clone(ctx context.Context, payload *defs.ClonePayload) (string,
 
 	url, err := kernel.Get().RepoHook(payload.Hook).TokenizedCloneUrl(ctx, payload.Repo)
 	if err != nil {
-		logger.Error("Failed to get tokenized clone URL", "error", err) // Log the error
+		logger.Error("Failed to get tokenized clone URL", "error", err)
 		return "", err
 	}
 
@@ -227,8 +227,8 @@ func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*eventsv1.
 
 	defer func() { _ = stats.Free() }()
 
-	result.Lines.Added = int32(stats.Insertions())
-	result.Lines.Removed = int32(stats.Deletions())
+	result.Lines.Added = int32(stats.Insertions())  // nolint:gosec
+	result.Lines.Removed = int32(stats.Deletions()) // nolint:gosec
 
 	return result, nil
 }

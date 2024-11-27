@@ -9,7 +9,10 @@ import (
 
 // signals.
 const (
-	SignalPush queues.Signal = "push" // signals a push event.
+	SignalPush   queues.Signal = "push"   // signals a push event.
+	SignalBranch queues.Signal = "branch" // signals a branch event.
+	SignalTag    queues.Signal = "tag"    // signals a tag event.
+	SignalPR     queues.Signal = "pr"     // signals a pull request event.
 )
 
 const (
@@ -53,6 +56,19 @@ type (
 		Files DiffFiles `json:"files"`
 		Lines DiffLines `json:"lines"`
 	}
+
+	SignalBranchPayload struct {
+		Signal queues.Signal  `json:"signal"`
+		Repo   *entities.Repo `json:"repo"`
+		Branch string         `json:"branch"`
+	}
+
+	SignalTrunkPayload struct {
+		Signal queues.Signal  `json:"signal"`
+		Repo   *entities.Repo `json:"repo"`
+	}
+
+	SignalQueuePayload struct{}
 )
 
 // Sum returns the sum of added and removed lines.

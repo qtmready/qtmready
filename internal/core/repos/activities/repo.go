@@ -3,24 +3,11 @@ package activities
 import (
 	"context"
 
-	"go.breu.io/durex/queues"
-
 	"go.breu.io/quantm/internal/core/repos/defs"
-	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/durable"
 )
 
 type (
-	SignalBranchPayload struct {
-		Signal queues.Signal  `json:"signal"`
-		Repo   *entities.Repo `json:"repo"`
-		Branch string         `json:"branch"`
-	}
-
-	SignalTrunkPayload struct{}
-
-	SignalQueuePayload struct{}
-
 	Repo struct{}
 )
 
@@ -29,7 +16,7 @@ const (
 	WorkflowTrunk  = "Trunk"  // WorkflowTrunk is string representation of workflows.Trunk
 )
 
-func (a *Repo) SignalBranch(ctx context.Context, payload *SignalBranchPayload, event, state any) error {
+func (a *Repo) ForwardToBranch(ctx context.Context, payload *defs.SignalBranchPayload, event, state any) error {
 	_, err := durable.OnCore().SignalWithStartWorkflow(
 		ctx,
 		defs.BranchWorkflowOptions(payload.Repo, payload.Branch),
@@ -42,10 +29,10 @@ func (a *Repo) SignalBranch(ctx context.Context, payload *SignalBranchPayload, e
 	return err
 }
 
-func (a *Repo) SignalTrunk(ctx context.Context, payload *SignalTrunkPayload, event, state any) error {
+func (a *Repo) ForwardToTrunk(ctx context.Context, payload *defs.SignalTrunkPayload, event, state any) error {
 	return nil
 }
 
-func (a *Repo) SignalQueue(ctx context.Context, payload *SignalQueuePayload, event, state any) error {
+func (a *Repo) ForwardToQueue(ctx context.Context, payload *defs.SignalQueuePayload, event, state any) error {
 	return nil
 }

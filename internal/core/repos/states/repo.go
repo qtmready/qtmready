@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"go.breu.io/durex/dispatch"
+	"go.breu.io/durex/queues"
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/repos/activities"
@@ -28,13 +29,24 @@ type (
 
 // - local -
 
-func (state *Repo) signal_branch(ctx workflow.Context, branch string, event any) error {
+// forward_to_branch routes the signal to the appropriate branch.
+func (state *Repo) forward_to_branch(ctx workflow.Context, signal queues.Signal, branch string, event any) error {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	next := NewBranch(state.Repo, state.Messaging, branch)
-	payload := &activities.SignalBranchPayload{Signal: defs.SignalPush, Repo: state.Repo, Branch: branch}
+	payload := &defs.SignalBranchPayload{Signal: signal, Repo: state.Repo, Branch: branch}
 
-	return workflow.ExecuteActivity(ctx, state.acts.SignalBranch, payload, event, next).Get(ctx, nil)
+	return workflow.ExecuteActivity(ctx, state.acts.ForwardToBranch, payload, event, next).Get(ctx, nil)
+}
+
+// forward_to_trunk routes the signal to the trunk.
+func (state *Repo) forward_to_trunk(ctx workflow.Context, signal queues.Signal, event any) error {
+	ctx = dispatch.WithDefaultActivityContext(ctx)
+
+	next := NewTrunk(state.Repo, state.Messaging)
+	payload := &defs.SignalTrunkPayload{Signal: signal, Repo: state.Repo}
+
+	return workflow.ExecuteActivity(ctx, state.acts.ForwardToTrunk, payload, event, next).Get(ctx, nil)
 }
 
 // - signal handlers -
@@ -49,8 +61,14 @@ func (state *Repo) OnPush(ctx workflow.Context) durable.ChannelHandler {
 
 		state.Triggers.add(branch, event.ID)
 
-		if err := state.signal_branch(ctx, branch, event); err != nil {
-			state.logger.Warn("unable to signal branch", "repo", state.Repo.ID, "branch", branch, "error", err.Error())
+		if branch == state.Repo.DefaultBranch {
+			if err := state.forward_to_trunk(ctx, defs.SignalPush, event); err != nil {
+				state.logger.Warn("push: unable to signal trunk", "repo", state.Repo.ID, "error", err.Error())
+			}
+		}
+
+		if err := state.forward_to_branch(ctx, defs.SignalPush, branch, event); err != nil {
+			state.logger.Warn("push: unable to signal branch", "repo", state.Repo.ID, "branch", branch, "error", err.Error())
 		}
 	}
 }

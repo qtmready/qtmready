@@ -11,27 +11,64 @@ import (
 	"go.breu.io/quantm/internal/core/repos/fns"
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/durable"
+	"go.breu.io/quantm/internal/durable/periodic"
 	"go.breu.io/quantm/internal/events"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
 type (
+	BranchIntervals struct {
+		pr    periodic.Interval // used to send a notifcation if a pr is not opened within a certain time.
+		stale periodic.Interval // used to send a notification if a branch is stale.
+	}
+
 	Branch struct {
-		*Base        `json:"base"`    // Base workflow state.
+		*Base `json:"base"` // Base workflow state.
+
 		Branch       string           `json:"branch"`
 		LatestCommit *eventsv1.Commit `json:"latest_commit"`
 
-		acts *activities.Branch
-		done bool
+		intervals BranchIntervals
+		acts      *activities.Branch
+		done      bool
 	}
 )
 
-// OnPush clones the repo at the given SHA, calculates the diff, and sends a notification to desired messaging service
-// if the complexity of the push is above a certain threshold.
+// PullRequestMonitor is a goroutine that monitors the branch for pull requests. If a pull request is not opened
+// within a certain time, a notification is to the hook associated with the branch.
+//
+// TODO: implement the logic for sending a notification if a pr is not opened within a certain time.
+func (state *Branch) PullRequestMonitor(ctx workflow.Context) {
+	workflow.Go(ctx, func(ctx_ workflow.Context) {
+		for {
+			state.intervals.pr.Tick(ctx_)
+			_ = state.notify_user(ctx)
+		}
+	})
+}
+
+// StaleMonitor is a goroutine that monitors the branch for staleness. If the branch is stale, a notification is
+// sent to the hook associated with the branch.
+//
+// TODO: implement the logic for sending a notification if the branch is stale.
+func (state *Branch) StaleMonitor(ctx workflow.Context) {
+	workflow.Go(ctx, func(ctx_ workflow.Context) {
+		for {
+			state.intervals.stale.Tick(ctx_)
+			_ = state.notify_user(ctx)
+		}
+	})
+}
+
+// OnPush resets the stale timer and processes the push event. The repo is cloned, the diff calculated, and
+// notifications sent if change complexity warrants. Author notification is prioritized, falling back to
+// the repo's messaging hook.
 func (state *Branch) OnPush(ctx workflow.Context) durable.ChannelHandler {
 	return func(ch workflow.ReceiveChannel, more bool) {
 		event := &events.Event[eventsv1.RepoHook, eventsv1.Push]{}
 		state.rx(ctx, ch, event)
+
+		state.intervals.stale.Reset(ctx)
 
 		opts := &workflow.SessionOptions{ExecutionTimeout: time.Minute * 30, CreationTimeout: time.Second * 30}
 
@@ -48,6 +85,7 @@ func (state *Branch) OnPush(ctx workflow.Context) durable.ChannelHandler {
 	}
 }
 
+// ExitLoop returns true if the branch should exit the event loop.
 func (state *Branch) ExitLoop(ctx workflow.Context) bool {
 	return state.done || workflow.GetInfo(ctx).GetContinueAsNewSuggested()
 }
@@ -55,6 +93,11 @@ func (state *Branch) ExitLoop(ctx workflow.Context) bool {
 // Init initializes the branch state.
 func (state *Branch) Init(ctx workflow.Context) {
 	state.Base.Init(ctx)
+
+	pr := periodic.New(ctx, time.Minute*60*24)
+	stale := periodic.New(ctx, time.Minute*60*24)
+
+	state.intervals = BranchIntervals{pr: pr, stale: stale}
 }
 
 // clone clones the repository at the given SHA using a Temporal activity.  A UUID is generated for the clone path via SideEffect
@@ -89,6 +132,9 @@ func (state *Branch) diff(ctx workflow.Context, path, base, sha string) *defs.Di
 
 	return result
 }
+
+func (state *Branch) notify_user(ctx workflow.Context) error { return nil }
+func (state *Branch) noify_repo(ctx workflow.Context) error  { return nil }
 
 // NewBranch constructs a new Branch state.
 func NewBranch(repo *entities.Repo, msg *entities.Messaging, branch string) *Branch {

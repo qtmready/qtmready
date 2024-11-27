@@ -12,6 +12,11 @@ func Branch(ctx workflow.Context, state *states.Branch) error {
 
 	selector := workflow.NewSelector(ctx)
 
+	// - activity monitors -
+
+	state.PullRequestMonitor(ctx)
+	state.StaleMonitor(ctx)
+
 	// - signal handlers -
 
 	push := workflow.GetSignalChannel(ctx, defs.SignalPush.String())
