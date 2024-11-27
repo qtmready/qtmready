@@ -1,4 +1,4 @@
-package slack
+package fns
 
 import (
 	"log/slog"
@@ -6,7 +6,7 @@ import (
 	"github.com/slack-go/slack"
 )
 
-func notify(client *slack.Client, channelID string, attachment slack.Attachment) error {
+func Notify(client *slack.Client, channelID string, attachment slack.Attachment) error {
 	// Send message
 	_, _, err := client.PostMessage(
 		channelID,
