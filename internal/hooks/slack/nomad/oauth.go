@@ -24,8 +24,8 @@ type (
 	}
 )
 
-func (s *SlackService) SlackOauth(
-	ctx context.Context, reqst *connect.Request[slackv1.SlackOauthRequest],
+func (s *SlackService) Oauth(
+	ctx context.Context, reqst *connect.Request[slackv1.OauthRequest],
 ) (*connect.Response[emptypb.Empty], error) {
 	var c fns.HTTPClient
 

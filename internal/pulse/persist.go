@@ -43,7 +43,7 @@ func Persist[H events.Hook, P events.Payload](ctx workflow.Context, event *event
 	switch any(flat.Hook).(type) {
 	case eventsv1.RepoHook:
 		future = workflow.ExecuteActivity(ctx, PersistRepoEvent, flat)
-	case eventsv1.MessagingHook:
+	case eventsv1.ChatHook:
 		future = workflow.ExecuteActivity(ctx, PersistMessagingEvent, flat)
 	}
 
@@ -80,7 +80,7 @@ func PersistRepoEvent(ctx context.Context, event events.Flat[eventsv1.RepoHook])
 }
 
 // PersistMessagingEvent persists a messaging event to the database.
-func PersistMessagingEvent(ctx context.Context, event events.Flat[eventsv1.MessagingHook]) error {
+func PersistMessagingEvent(ctx context.Context, event events.Flat[eventsv1.ChatHook]) error {
 	slug, err := db.Queries().GetOrgSlugByID(ctx, event.OrgID)
 	if err != nil {
 		return nil
