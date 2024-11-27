@@ -54,7 +54,7 @@ func RepoExtendedRowToProto(repo *entities.ListReposRow) *corev1.RepoExtended {
 		StaleDuration: db.IntervalToProto(repo.StaleDuration),
 		Url:           repo.Url,
 		IsActive:      repo.IsActive,
-		HasMesging:    repo.HasMesging,
+		ChatEnabled:   repo.HasMesging,
 	}
 }
 
