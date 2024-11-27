@@ -17,6 +17,7 @@ import (
 	"go.breu.io/quantm/internal/hooks/slack/config"
 	"go.breu.io/quantm/internal/hooks/slack/defs"
 	"go.breu.io/quantm/internal/hooks/slack/errors"
+	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 	slackv1 "go.breu.io/quantm/internal/proto/hooks/slack/v1"
 	"go.breu.io/quantm/internal/proto/hooks/slack/v1/slackv1connect"
 )
@@ -40,8 +41,8 @@ func (s *SlackService) SlackOauth(
 	}
 
 	message, err := db.Queries().GetMessagesByLinkTo(ctx, link_to)
-	if err != nil || message.ID != uuid.Nil {
-		return nil, erratic.NewInternalServerError().AddHint("reason", errors.ErrCodeEmpty.Error()).ToConnectError()
+	if message.ID != uuid.Nil {
+		return nil, erratic.NewInternalServerError().AddHint("reason", errors.ErrRecordExist.Error()).ToConnectError()
 	}
 
 	if reqst.Msg.GetCode() == "" {
@@ -117,8 +118,8 @@ func _user(
 
 	// save messaging
 	m := entities.CreateMessagingParams{
-		Hook:   "slack", // TODO - from enum
-		Kind:   "user",  // TODO - need discussion.
+		Hook:   int32(eventsv1.MessagingHook_MESSAGING_HOOK_SLACK),
+		Kind:   "user",
 		LinkTo: link_to,
 		Data:   data,
 	}
@@ -165,8 +166,8 @@ func _bot(
 
 	// save messaging
 	m := entities.CreateMessagingParams{
-		Hook:   "slack", // TODO - from enum
-		Kind:   "bot",   // TODO - need discussion.
+		Hook:   int32(eventsv1.MessagingHook_MESSAGING_HOOK_SLACK),
+		Kind:   "bot",
 		LinkTo: link_to,
 		Data:   data,
 	}

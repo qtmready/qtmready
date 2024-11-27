@@ -26,7 +26,7 @@ create table messaging (
   id uuid primary key default uuid_generate_v7(),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  hook varchar(255) not null,
+  hook integer not null,
   kind varchar(255) not null,
   link_to uuid not null,
   data jsonb not null default '{}'
