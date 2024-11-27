@@ -27,10 +27,22 @@ DELETE FROM repos
 WHERE id = $1;
 
 -- name: ListRepos :many
-SELECT *
-FROM repos
-WHERE org_id = $1
-ORDER BY updated_at DESC;
+SELECT
+  repo.*, 
+  CASE 
+    WHEN msg.id IS NOT NULL THEN TRUE
+    ELSE FALSE
+  END AS has_mesging
+FROM
+  repos AS repo
+LEFT JOIN 
+    messaging AS msg
+ON 
+    repo.id = msg.link_to
+WHERE 
+    repo.org_id = $1
+ORDER BY 
+    repo.updated_at DESC;
 
 -- name: GetOrgReposByOrgID :many
 SELECT *

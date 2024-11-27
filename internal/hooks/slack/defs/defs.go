@@ -4,6 +4,12 @@ import (
 	"encoding/json"
 )
 
+// Kind constants.
+const (
+	KindBot  = "bot"
+	KindUser = "user"
+)
+
 type (
 	MessageProviderSlackData struct {
 		BotToken      string `json:"bot_token"`

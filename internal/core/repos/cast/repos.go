@@ -38,11 +38,31 @@ func RepoToProto(repo *entities.Repo) *corev1.Repo {
 	}
 }
 
+// RepoToProto converts a Repo entity to a Repo proto.
+func RepoExtendedRowToProto(repo *entities.ListReposRow) *corev1.RepoExtended {
+	return &corev1.RepoExtended{
+		Id:            repo.ID.String(),
+		CreatedAt:     timestamppb.New(repo.CreatedAt),
+		UpdatedAt:     timestamppb.New(repo.UpdatedAt),
+		OrgId:         repo.OrgID.String(),
+		Name:          repo.Name,
+		Hook:          HookToProto(repo.Hook),
+		HookId:        repo.HookID.String(),
+		DefaultBranch: repo.DefaultBranch,
+		IsMonorepo:    repo.IsMonorepo,
+		Threshold:     repo.Threshold,
+		StaleDuration: db.IntervalToProto(repo.StaleDuration),
+		Url:           repo.Url,
+		IsActive:      repo.IsActive,
+		ChatEnabled:   repo.HasMesging,
+	}
+}
+
 // ReposToProto converts a slice of Repo entities to a slice of Repo protos.
-func ReposToProto(repos []entities.Repo) []*corev1.Repo {
-	protos := make([]*corev1.Repo, 0)
+func RepoExtendedListToProto(repos []entities.ListReposRow) []*corev1.RepoExtended {
+	protos := make([]*corev1.RepoExtended, 0)
 	for _, repo := range repos {
-		protos = append(protos, RepoToProto(&repo))
+		protos = append(protos, RepoExtendedRowToProto(&repo))
 	}
 
 	return protos

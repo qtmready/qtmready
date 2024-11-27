@@ -1,4 +1,4 @@
-package slack
+package fns
 
 import (
 	"crypto/aes"

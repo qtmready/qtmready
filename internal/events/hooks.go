@@ -7,6 +7,6 @@ import (
 type (
 	// Hook represents a hook for events. It can be either a RepoHook or a MessageHook.
 	Hook interface {
-		eventsv1.RepoHook | eventsv1.MessagingHook
+		eventsv1.RepoHook | eventsv1.ChatHook
 	}
 )
