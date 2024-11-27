@@ -38,8 +38,8 @@ type (
 		// RegisterRepoHook registers the given Repo implementation for the specified RepoHook.
 		RegisterRepoHook(enum eventsv1.RepoHook, hook Repo)
 
-		// RegisterMessagingHook registers the given Messaging implementation for the specified MessagingHook.
-		RegisterMessagingHook(enum eventsv1.MessagingHook, hook Messaging)
+		// RegisterChatHook registers the given Messaging implementation for the specified ChatHook.
+		RegisterChatHook(enum eventsv1.ChatHook, hook Messaging)
 
 		// RepoHook returns the Repo implementation registered for the specified RepoHook.
 		//
@@ -48,12 +48,12 @@ type (
 		// By panicking, we ensure that the application fails fast during development if a required implementation is missing.
 		RepoHook(enum eventsv1.RepoHook) Repo
 
-		// MessagingHook returns the Messaging implementation registered for the specified MessagingHook.
+		// ChatHook returns the chat platform implementation registered for the specified ChatHook.
 		//
 		// It panics if no implementation is registered for the given hook.
 		// It is the caller's responsibility to ensure that an implementation is registered before calling this method.
 		// By panicking, we ensure that the application fails fast during development if a required implementation is missing.
-		MessagingHook(enum eventsv1.MessagingHook) Messaging
+		ChatHook(enum eventsv1.ChatHook) Messaging
 
 		// Start is a noop method that conforms to graceful.Service interface.
 		Start(ctx context.Context) error
@@ -66,7 +66,7 @@ type (
 
 	kernel struct {
 		hooks_repo      map[eventsv1.RepoHook]Repo
-		hooks_messaging map[eventsv1.MessagingHook]Messaging
+		hooks_messaging map[eventsv1.ChatHook]Messaging
 	}
 )
 
@@ -98,9 +98,9 @@ func (k *kernel) RepoHook(enum eventsv1.RepoHook) Repo {
 	return k.hooks_repo[enum]
 }
 
-func (k *kernel) RegisterMessagingHook(hook eventsv1.MessagingHook, messaging Messaging) {
+func (k *kernel) RegisterChatHook(hook eventsv1.ChatHook, messaging Messaging) {
 	if k.hooks_messaging == nil {
-		k.hooks_messaging = make(map[eventsv1.MessagingHook]Messaging)
+		k.hooks_messaging = make(map[eventsv1.ChatHook]Messaging)
 	}
 
 	slog.Info("kernel: registering messaging hook", "hook", hook.String())
@@ -108,7 +108,7 @@ func (k *kernel) RegisterMessagingHook(hook eventsv1.MessagingHook, messaging Me
 	k.hooks_messaging[hook] = messaging
 }
 
-func (k *kernel) MessagingHook(enum eventsv1.MessagingHook) Messaging {
+func (k *kernel) ChatHook(enum eventsv1.ChatHook) Messaging {
 	return k.hooks_messaging[enum]
 }
 
@@ -126,16 +126,16 @@ func WithRepoHook(hook eventsv1.RepoHook, repo Repo) Option {
 	}
 }
 
-func WithMessagingHook(hook eventsv1.MessagingHook, messaging Messaging) Option {
+func WithChatHook(hook eventsv1.ChatHook, messaging Messaging) Option {
 	return func(k Kernel) {
-		k.RegisterMessagingHook(hook, messaging)
+		k.RegisterChatHook(hook, messaging)
 	}
 }
 
 func New(opts ...Option) Kernel {
 	k := &kernel{
 		hooks_repo:      make(map[eventsv1.RepoHook]Repo),
-		hooks_messaging: make(map[eventsv1.MessagingHook]Messaging),
+		hooks_messaging: make(map[eventsv1.ChatHook]Messaging),
 	}
 
 	for _, opt := range opts {

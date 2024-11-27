@@ -34,19 +34,19 @@ const (
 // reflection-formatted method names, remove the leading slash and convert the remaining slash to a
 // period.
 const (
-	// SlackServiceSlackOauthProcedure is the fully-qualified name of the SlackService's SlackOauth RPC.
-	SlackServiceSlackOauthProcedure = "/hooks.slack.v1.SlackService/SlackOauth"
+	// SlackServiceOauthProcedure is the fully-qualified name of the SlackService's Oauth RPC.
+	SlackServiceOauthProcedure = "/hooks.slack.v1.SlackService/Oauth"
 )
 
 // These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
 var (
-	slackServiceServiceDescriptor          = v1.File_hooks_slack_v1_slack_proto.Services().ByName("SlackService")
-	slackServiceSlackOauthMethodDescriptor = slackServiceServiceDescriptor.Methods().ByName("SlackOauth")
+	slackServiceServiceDescriptor     = v1.File_hooks_slack_v1_slack_proto.Services().ByName("SlackService")
+	slackServiceOauthMethodDescriptor = slackServiceServiceDescriptor.Methods().ByName("Oauth")
 )
 
 // SlackServiceClient is a client for the hooks.slack.v1.SlackService service.
 type SlackServiceClient interface {
-	SlackOauth(context.Context, *connect.Request[v1.SlackOauthRequest]) (*connect.Response[emptypb.Empty], error)
+	Oauth(context.Context, *connect.Request[v1.OauthRequest]) (*connect.Response[emptypb.Empty], error)
 }
 
 // NewSlackServiceClient constructs a client for the hooks.slack.v1.SlackService service. By
@@ -59,10 +59,10 @@ type SlackServiceClient interface {
 func NewSlackServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SlackServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
 	return &slackServiceClient{
-		slackOauth: connect.NewClient[v1.SlackOauthRequest, emptypb.Empty](
+		oauth: connect.NewClient[v1.OauthRequest, emptypb.Empty](
 			httpClient,
-			baseURL+SlackServiceSlackOauthProcedure,
-			connect.WithSchema(slackServiceSlackOauthMethodDescriptor),
+			baseURL+SlackServiceOauthProcedure,
+			connect.WithSchema(slackServiceOauthMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -70,17 +70,17 @@ func NewSlackServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 
 // slackServiceClient implements SlackServiceClient.
 type slackServiceClient struct {
-	slackOauth *connect.Client[v1.SlackOauthRequest, emptypb.Empty]
+	oauth *connect.Client[v1.OauthRequest, emptypb.Empty]
 }
 
-// SlackOauth calls hooks.slack.v1.SlackService.SlackOauth.
-func (c *slackServiceClient) SlackOauth(ctx context.Context, req *connect.Request[v1.SlackOauthRequest]) (*connect.Response[emptypb.Empty], error) {
-	return c.slackOauth.CallUnary(ctx, req)
+// Oauth calls hooks.slack.v1.SlackService.Oauth.
+func (c *slackServiceClient) Oauth(ctx context.Context, req *connect.Request[v1.OauthRequest]) (*connect.Response[emptypb.Empty], error) {
+	return c.oauth.CallUnary(ctx, req)
 }
 
 // SlackServiceHandler is an implementation of the hooks.slack.v1.SlackService service.
 type SlackServiceHandler interface {
-	SlackOauth(context.Context, *connect.Request[v1.SlackOauthRequest]) (*connect.Response[emptypb.Empty], error)
+	Oauth(context.Context, *connect.Request[v1.OauthRequest]) (*connect.Response[emptypb.Empty], error)
 }
 
 // NewSlackServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -89,16 +89,16 @@ type SlackServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewSlackServiceHandler(svc SlackServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	slackServiceSlackOauthHandler := connect.NewUnaryHandler(
-		SlackServiceSlackOauthProcedure,
-		svc.SlackOauth,
-		connect.WithSchema(slackServiceSlackOauthMethodDescriptor),
+	slackServiceOauthHandler := connect.NewUnaryHandler(
+		SlackServiceOauthProcedure,
+		svc.Oauth,
+		connect.WithSchema(slackServiceOauthMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/hooks.slack.v1.SlackService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case SlackServiceSlackOauthProcedure:
-			slackServiceSlackOauthHandler.ServeHTTP(w, r)
+		case SlackServiceOauthProcedure:
+			slackServiceOauthHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -108,6 +108,6 @@ func NewSlackServiceHandler(svc SlackServiceHandler, opts ...connect.HandlerOpti
 // UnimplementedSlackServiceHandler returns CodeUnimplemented from all methods.
 type UnimplementedSlackServiceHandler struct{}
 
-func (UnimplementedSlackServiceHandler) SlackOauth(context.Context, *connect.Request[v1.SlackOauthRequest]) (*connect.Response[emptypb.Empty], error) {
-	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hooks.slack.v1.SlackService.SlackOauth is not implemented"))
+func (UnimplementedSlackServiceHandler) Oauth(context.Context, *connect.Request[v1.OauthRequest]) (*connect.Response[emptypb.Empty], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("hooks.slack.v1.SlackService.Oauth is not implemented"))
 }

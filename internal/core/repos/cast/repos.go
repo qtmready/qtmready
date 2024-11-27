@@ -39,8 +39,8 @@ func RepoToProto(repo *entities.Repo) *corev1.Repo {
 }
 
 // RepoToProto converts a Repo entity to a Repo proto.
-func RepoMesgingToProto(repo *entities.ListReposRow) *corev1.RepoHasMesging {
-	return &corev1.RepoHasMesging{
+func RepoExtendedRowToProto(repo *entities.ListReposRow) *corev1.RepoExtended {
+	return &corev1.RepoExtended{
 		Id:            repo.ID.String(),
 		CreatedAt:     timestamppb.New(repo.CreatedAt),
 		UpdatedAt:     timestamppb.New(repo.UpdatedAt),
@@ -59,10 +59,10 @@ func RepoMesgingToProto(repo *entities.ListReposRow) *corev1.RepoHasMesging {
 }
 
 // ReposToProto converts a slice of Repo entities to a slice of Repo protos.
-func RepoHasMesgingToProto(repos []entities.ListReposRow) []*corev1.RepoHasMesging {
-	protos := make([]*corev1.RepoHasMesging, 0)
+func RepoExtendedListToProto(repos []entities.ListReposRow) []*corev1.RepoExtended {
+	protos := make([]*corev1.RepoExtended, 0)
 	for _, repo := range repos {
-		protos = append(protos, RepoMesgingToProto(&repo))
+		protos = append(protos, RepoExtendedRowToProto(&repo))
 	}
 
 	return protos

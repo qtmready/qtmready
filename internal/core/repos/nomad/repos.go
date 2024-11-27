@@ -26,14 +26,14 @@ func (s *RepoService) ListRepos(
 ) (*connect.Response[corev1.ListReposResponse], error) {
 	_, org_id := auth.NomadAuthContext(ctx)
 
-	ents, err := db.Queries().ListRepos(ctx, org_id)
+	rows, err := db.Queries().ListRepos(ctx, org_id)
 	if err != nil {
 		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
 	}
 
-	repm := reposcast.RepoHasMesgingToProto(ents)
+	protos := reposcast.RepoExtendedListToProto(rows)
 
-	return connect.NewResponse(&corev1.ListReposResponse{RepoHasMesgings: repm}), nil
+	return connect.NewResponse(&corev1.ListReposResponse{Repos: protos}), nil
 }
 
 func NewRepoServiceHandler(opts ...connect.HandlerOption) (string, http.Handler) {
