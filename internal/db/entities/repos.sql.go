@@ -7,6 +7,7 @@ package entities
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -237,21 +238,50 @@ func (q *Queries) GetReposByHookAndHookID(ctx context.Context, arg GetReposByHoo
 }
 
 const listRepos = `-- name: ListRepos :many
-SELECT id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration, url, is_active
-FROM repos
-WHERE org_id = $1
-ORDER BY updated_at DESC
+SELECT
+  repo.id, repo.created_at, repo.updated_at, repo.org_id, repo.name, repo.hook, repo.hook_id, repo.default_branch, repo.is_monorepo, repo.threshold, repo.stale_duration, repo.url, repo.is_active, 
+  CASE 
+    WHEN msg.id IS NOT NULL THEN TRUE
+    ELSE FALSE
+  END AS has_mesging
+FROM
+  repos AS repo
+LEFT JOIN 
+    messaging AS msg
+ON 
+    repo.id = msg.link_to
+WHERE 
+    repo.org_id = $1
+ORDER BY 
+    repo.updated_at DESC
 `
 
-func (q *Queries) ListRepos(ctx context.Context, orgID uuid.UUID) ([]Repo, error) {
+type ListReposRow struct {
+	ID            uuid.UUID       `json:"id"`
+	CreatedAt     time.Time       `json:"created_at"`
+	UpdatedAt     time.Time       `json:"updated_at"`
+	OrgID         uuid.UUID       `json:"org_id"`
+	Name          string          `json:"name"`
+	Hook          int32           `json:"hook"`
+	HookID        uuid.UUID       `json:"hook_id"`
+	DefaultBranch string          `json:"default_branch"`
+	IsMonorepo    bool            `json:"is_monorepo"`
+	Threshold     int32           `json:"threshold"`
+	StaleDuration pgtype.Interval `json:"stale_duration"`
+	Url           string          `json:"url"`
+	IsActive      bool            `json:"is_active"`
+	HasMesging    bool            `json:"has_mesging"`
+}
+
+func (q *Queries) ListRepos(ctx context.Context, orgID uuid.UUID) ([]ListReposRow, error) {
 	rows, err := q.db.Query(ctx, listRepos, orgID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []Repo
+	var items []ListReposRow
 	for rows.Next() {
-		var i Repo
+		var i ListReposRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedAt,
@@ -266,6 +296,7 @@ func (q *Queries) ListRepos(ctx context.Context, orgID uuid.UUID) ([]Repo, error
 			&i.StaleDuration,
 			&i.Url,
 			&i.IsActive,
+			&i.HasMesging,
 		); err != nil {
 			return nil, err
 		}
