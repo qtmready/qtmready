@@ -12,11 +12,13 @@ import (
 func q_core() {
 	q := durable.OnCore()
 
-	q.CreateWorker(queues.WithWorkerOptionEnableSessionWorker(true))
+	q.CreateWorker(
+		queues.WithWorkerOptionEnableSessionWorker(true),
+	)
 
 	if q != nil {
 		q.RegisterActivity(pulse.PersistRepoEvent)
-		q.RegisterActivity(pulse.PersistMessagingEvent)
+		q.RegisterActivity(pulse.PersistChatEvent)
 
 		q.RegisterWorkflow(repos.RepoWorkflow)
 		q.RegisterActivity(repos.NewRepoActivities())
@@ -33,7 +35,7 @@ func q_hooks() {
 
 	if q != nil {
 		q.RegisterActivity(pulse.PersistRepoEvent)
-		q.RegisterActivity(pulse.PersistMessagingEvent)
+		q.RegisterActivity(pulse.PersistChatEvent)
 
 		q.RegisterWorkflow(github.Install)
 		q.RegisterActivity(&github.InstallActivity{})

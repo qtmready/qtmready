@@ -44,15 +44,15 @@ func Persist[H events.Hook, P events.Payload](ctx workflow.Context, event *event
 	case eventsv1.RepoHook:
 		future = workflow.ExecuteActivity(ctx, PersistRepoEvent, flat)
 	case eventsv1.ChatHook:
-		future = workflow.ExecuteActivity(ctx, PersistMessagingEvent, flat)
+		future = workflow.ExecuteActivity(ctx, PersistChatEvent, flat)
 	}
 
 	return future.Get(ctx, nil)
 }
 
 // PersistRepoEvent persists a repo event to the database.
-func PersistRepoEvent(ctx context.Context, event events.Flat[eventsv1.RepoHook]) error {
-	slug, err := db.Queries().GetOrgSlugByID(ctx, event.OrgID)
+func PersistRepoEvent(ctx context.Context, flat events.Flat[eventsv1.RepoHook]) error {
+	slug, err := db.Queries().GetOrgSlugByID(ctx, flat.OrgID)
 	if err != nil {
 		return nil
 	}
@@ -60,28 +60,30 @@ func PersistRepoEvent(ctx context.Context, event events.Flat[eventsv1.RepoHook])
 	table := table_name("events", slug)
 	stmt := fmt.Sprintf(statement__events__persist, table)
 
-	return Instance().Connection().Exec(
-		ctx,
-		stmt,
-		event.Version,
-		event.ID,
-		event.ParentID,
-		event.Hook.Number(),
-		event.Scope,
-		event.Action,
-		event.Source,
-		event.SubjectID,
-		event.SubjectName,
-		event.UserID,
-		event.TeamID,
-		event.OrgID,
-		event.Timestamp,
-	)
+	return Instance().
+		Connection().
+		Exec(
+			ctx,
+			stmt,
+			flat.Version,
+			flat.ID,
+			flat.ParentID,
+			flat.Hook.Number(),
+			flat.Scope,
+			flat.Action,
+			flat.Source,
+			flat.SubjectID,
+			flat.SubjectName,
+			flat.UserID,
+			flat.TeamID,
+			flat.OrgID,
+			flat.Timestamp,
+		)
 }
 
-// PersistMessagingEvent persists a messaging event to the database.
-func PersistMessagingEvent(ctx context.Context, event events.Flat[eventsv1.ChatHook]) error {
-	slug, err := db.Queries().GetOrgSlugByID(ctx, event.OrgID)
+// PersistChatEvent persists a messaging event to the database.
+func PersistChatEvent(ctx context.Context, flat events.Flat[eventsv1.ChatHook]) error {
+	slug, err := db.Queries().GetOrgSlugByID(ctx, flat.OrgID)
 	if err != nil {
 		return nil
 	}
@@ -89,21 +91,23 @@ func PersistMessagingEvent(ctx context.Context, event events.Flat[eventsv1.ChatH
 	table := table_name("events", slug)
 	stmt := fmt.Sprintf(statement__events__persist, table)
 
-	return Instance().Connection().Exec(
-		ctx,
-		stmt,
-		event.Version,
-		event.ID,
-		event.ParentID,
-		event.Hook.Number(),
-		event.Scope,
-		event.Action,
-		event.Source,
-		event.SubjectID,
-		event.SubjectName,
-		event.UserID,
-		event.TeamID,
-		event.OrgID,
-		event.Timestamp,
-	)
+	return Instance().
+		Connection().
+		Exec(
+			ctx,
+			stmt,
+			flat.Version,
+			flat.ID,
+			flat.ParentID,
+			flat.Hook.Number(),
+			flat.Scope,
+			flat.Action,
+			flat.Source,
+			flat.SubjectID,
+			flat.SubjectName,
+			flat.UserID,
+			flat.TeamID,
+			flat.OrgID,
+			flat.Timestamp,
+		)
 }
