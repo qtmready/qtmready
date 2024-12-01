@@ -13,6 +13,7 @@ const (
 	SignalBranch queues.Signal = "branch" // signals a branch event.
 	SignalTag    queues.Signal = "tag"    // signals a tag event.
 	SignalPR     queues.Signal = "pr"     // signals a pull request event.
+	SignalRebase queues.Signal = "rebase" // signals a rebase event.
 )
 
 const (
@@ -25,7 +26,7 @@ type (
 		Hook   eventsv1.RepoHook `json:"hook"`
 		Branch string            `json:"branch"`
 		Path   string            `json:"path"`
-		SHA    string            `json:"sha"`
+		At     string            `json:"at"`
 	}
 
 	DiffPayload struct {

@@ -9,12 +9,14 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/repos/activities"
+	"go.breu.io/quantm/internal/core/repos/cast"
 	"go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/core/repos/fns"
 	"go.breu.io/quantm/internal/db/entities"
 	"go.breu.io/quantm/internal/durable"
 	"go.breu.io/quantm/internal/events"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
+	"go.breu.io/quantm/internal/pulse"
 )
 
 type (
@@ -51,23 +53,41 @@ func (state *Repo) forward_to_trunk(ctx workflow.Context, signal queues.Signal, 
 
 // - signal handlers -
 
-// OnPush is a signal handler for the push signal.
+// OnPush handles the push event on the repository. If the branch is the default branch, the event is forwarded to all
+// branches with a rebase instruction. Otherwise, the event is forwarded to the branch.
+//
+// TODO: Define a new event type for rebase events.
 func (state *Repo) OnPush(ctx workflow.Context) durable.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
-		event := &events.Event[eventsv1.RepoHook, eventsv1.Push]{}
-		state.rx(ctx, rx, event)
+		push := &events.Event[eventsv1.RepoHook, eventsv1.Push]{}
+		state.rx(ctx, rx, push)
 
-		branch := fns.BranchNameFromRef(event.Payload.Ref)
+		branch := fns.BranchNameFromRef(push.Payload.Ref)
 
-		state.Triggers.add(branch, event.ID)
+		state.Triggers.add(branch, push.ID)
 
 		if branch == state.Repo.DefaultBranch {
-			if err := state.forward_to_trunk(ctx, defs.SignalPush, event); err != nil {
-				state.logger.Warn("push: unable to signal trunk", "repo", state.Repo.ID, "error", err.Error())
+			for branch := range state.Triggers {
+				workflow.Go(ctx, func(ctx workflow.Context) {
+					rebase := cast.PushEventToRebaseEvent(push, state.Repo.ID, state.Repo.DefaultBranch)
+
+					if err := pulse.Persist(ctx, rebase); err != nil {
+						state.logger.Warn(
+							"push: unable to persist rebase event",
+							"repo", state.Repo.ID, "branch", branch, "error", err.Error(),
+						)
+					}
+
+					if err := state.forward_to_branch(ctx, defs.SignalRebase, branch, rebase); err != nil {
+						state.logger.Warn("push: unable to signal branch", "repo", state.Repo.ID, "branch", branch, "error", err.Error())
+					}
+				})
 			}
+
+			return
 		}
 
-		if err := state.forward_to_branch(ctx, defs.SignalPush, branch, event); err != nil {
+		if err := state.forward_to_branch(ctx, defs.SignalPush, branch, push); err != nil {
 			state.logger.Warn("push: unable to signal branch", "repo", state.Repo.ID, "branch", branch, "error", err.Error())
 		}
 	}
