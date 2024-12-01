@@ -66,9 +66,6 @@ func (q *Sequencer[K, E]) Pop(ctx workflow.Context) *E {
 
 // Peek returns the item at the front of the queue without removing it.
 func (q *Sequencer[K, E]) Peek(ctx workflow.Context) *E {
-	_ = q.mutex.Lock(ctx)
-	defer q.mutex.Unlock()
-
 	if q.Head == nil {
 		return nil
 	}
@@ -100,9 +97,6 @@ func (q *Sequencer[K, E]) Position(ctx workflow.Context, key K) int {
 
 // Length returns the number of items in the queue.
 func (q *Sequencer[K, E]) Length(ctx workflow.Context) int {
-	_ = q.mutex.Lock(ctx)
-	defer q.mutex.Unlock()
-
 	length := 0
 	for current := q.Head; current != nil; current = current.Next {
 		length++
