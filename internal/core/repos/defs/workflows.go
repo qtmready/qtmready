@@ -13,6 +13,7 @@ const (
 	SignalBranch queues.Signal = "branch" // signals a branch event.
 	SignalTag    queues.Signal = "tag"    // signals a tag event.
 	SignalPR     queues.Signal = "pr"     // signals a pull request event.
+	SignalRebase queues.Signal = "rebase" // signals a rebase event.
 )
 
 const (

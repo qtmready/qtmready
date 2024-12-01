@@ -1,10 +1,12 @@
 package cast
 
 import (
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/entities"
+	"go.breu.io/quantm/internal/events"
 	corev1 "go.breu.io/quantm/internal/proto/ctrlplane/core/v1"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
@@ -66,4 +68,21 @@ func RepoExtendedListToProto(repos []entities.ListReposRow) []*corev1.RepoExtend
 	}
 
 	return protos
+}
+
+// PushEventToRebaseEvent converts a Push event to a Rebase event.
+func PushEventToRebaseEvent(
+	push *events.Event[eventsv1.RepoHook, eventsv1.Push], parent uuid.UUID, base string,
+) *events.Event[eventsv1.RepoHook, eventsv1.Rebase] {
+	payload := &eventsv1.Rebase{
+		Base:       base,
+		Head:       push.Payload.After,
+		Repository: push.Payload.Repository,
+	}
+
+	return events.New[eventsv1.RepoHook, eventsv1.Rebase]().
+		SetParent(parent).SettHook(push.Context.Hook).SetSource(push.Context.Source).
+		SetScope(events.ScopeBranch).SetAction(events.EventActionRequested).
+		SetSubjectID(push.Subject.ID).SetSubjectName(push.Subject.Name).
+		SetTeam(push.Subject.TeamID).SetOrg(push.Subject.OrgID).SetPayload(payload)
 }

@@ -30,7 +30,16 @@ func (a *Repo) ForwardToBranch(ctx context.Context, payload *defs.SignalBranchPa
 }
 
 func (a *Repo) ForwardToTrunk(ctx context.Context, payload *defs.SignalTrunkPayload, event, state any) error {
-	return nil
+	_, err := durable.OnCore().SignalWithStartWorkflow(
+		ctx,
+		defs.TrunkWorkflowOptions(payload.Repo),
+		payload.Signal,
+		event,
+		WorkflowTrunk,
+		state,
+	)
+
+	return err
 }
 
 func (a *Repo) ForwardToQueue(ctx context.Context, payload *defs.SignalQueuePayload, event, state any) error {
