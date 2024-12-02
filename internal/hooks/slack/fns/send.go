@@ -6,7 +6,7 @@ import (
 	"github.com/slack-go/slack"
 )
 
-func Notify(client *slack.Client, channelID string, attachment slack.Attachment) error {
+func SendMessage(client *slack.Client, channelID string, attachment slack.Attachment) error {
 	// Send message
 	_, _, err := client.PostMessage(
 		channelID,
