@@ -26,7 +26,7 @@ type (
 		Hook   eventsv1.RepoHook `json:"hook"`
 		Branch string            `json:"branch"`
 		Path   string            `json:"path"`
-		SHA    string            `json:"sha"`
+		At     string            `json:"at"`
 	}
 
 	DiffPayload struct {

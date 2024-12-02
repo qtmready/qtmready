@@ -72,7 +72,8 @@ func (state *Repo) OnPush(ctx workflow.Context) durable.ChannelHandler {
 					rebase := cast.PushEventToRebaseEvent(push, state.Repo.ID, state.Repo.DefaultBranch)
 
 					if err := pulse.Persist(ctx, rebase); err != nil {
-						state.logger.Warn("push: unable to persist rebase event",
+						state.logger.Warn(
+							"push: unable to persist rebase event",
 							"repo", state.Repo.ID, "branch", branch, "error", err.Error(),
 						)
 					}
