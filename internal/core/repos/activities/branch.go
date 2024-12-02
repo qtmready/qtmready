@@ -111,6 +111,119 @@ func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1
 	return a.diff_to_result(ctx, diff)
 }
 
+func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs.RebaseResult, error) {
+	logger := activity.GetLogger(ctx)
+
+	repo, err := git.OpenRepository(payload.Path)
+	if err != nil {
+		logger.Error("Failed to open repository", "error", err, "path", payload.Path)
+		return nil, err
+	}
+
+	defer repo.Free()
+
+	// Fetch latest changes from origin
+	if err := a.refresh_remote(ctx, repo, payload.Rebase.Base); err != nil {
+		return nil, err
+	}
+
+	// Lookup the base branch
+	ref, err := repo.References.Lookup(fns.BranchNameToRef(payload.Rebase.Base))
+	if err != nil {
+		logger.Error("Failed to lookup base ref", "error", err, "branch", payload.Rebase.Base)
+		return nil, err
+	}
+
+	defer ref.Free()
+
+	base, err := repo.LookupAnnotatedCommit(ref.Target())
+	if err != nil {
+		logger.Error("Failed to lookup base commit", "error", err, "target", ref.Target())
+		return nil, err
+	}
+
+	defer base.Free()
+
+	// Lookup the id commit
+	id, err := git.NewOid(payload.Rebase.Head)
+	if err != nil {
+		logger.Error("Invalid head SHA", "error", err, "sha", payload.Rebase.Head)
+		return nil, err
+	}
+
+	head, err := repo.LookupAnnotatedCommit(id)
+	if err != nil {
+		logger.Error("Failed to lookup head commit", "error", err, "id", id)
+		return nil, err
+	}
+
+	defer head.Free()
+
+	opts, err := git.DefaultRebaseOptions()
+	if err != nil {
+		logger.Error("Failed to get default rebase options")
+		return nil, err
+	}
+
+	rebase, err := repo.InitRebase(head, nil, base, &opts)
+	if err != nil {
+		logger.Error("Failed to initialize rebase", "error", err)
+		return nil, nil
+	}
+
+	defer rebase.Free()
+
+	for {
+		op, err := rebase.Next()
+		if err != nil {
+			if git.IsErrorCode(err, git.ErrorCodeIterOver) {
+				break
+			}
+
+			logger.Error("Failed to get next rebase operation", "error", err)
+
+			return nil, err
+		}
+
+		if op.Type == git.RebaseOperationPick {
+			commit, err := repo.LookupCommit(op.Id)
+			if err != nil {
+				logger.Error("Failed to lookup commit", "error", err, "id", op.Id)
+				return nil, err
+			}
+
+			defer commit.Free()
+
+			idx, err := rebase.InmemoryIndex()
+			if err != nil {
+				logger.Error("Failed to get in-memory index", "error", err)
+				return nil, err
+			}
+
+			defer idx.Free()
+
+			if idx.HasConflicts() {
+				return &defs.RebaseResult{
+					Head:    payload.Rebase.Head,
+					Success: false,
+				}, nil
+			}
+
+			if err := rebase.Commit(
+				commit.Id(), commit.Author(), commit.Committer(), commit.Message(),
+			); err != nil {
+				return &defs.RebaseResult{Success: false}, nil
+			}
+		}
+	}
+
+	if err := rebase.Finish(); err != nil {
+		return &defs.RebaseResult{Success: false}, nil
+	}
+
+	return nil, nil
+}
+
 // refresh_remote fetches the latest changes from the remote "origin" for the given branch.
 //
 // It looks up the remote, fetches the branch, and updates the local branch reference.

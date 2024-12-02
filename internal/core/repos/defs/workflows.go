@@ -26,7 +26,7 @@ type (
 		Hook   eventsv1.RepoHook `json:"hook"`
 		Branch string            `json:"branch"`
 		Path   string            `json:"path"`
-		At     string            `json:"at"`
+		SHA    string            `json:"at"`
 	}
 
 	DiffPayload struct {
@@ -56,6 +56,16 @@ type (
 	DiffResult struct {
 		Files DiffFiles `json:"files"`
 		Lines DiffLines `json:"lines"`
+	}
+
+	RebasePayload struct {
+		Rebase *eventsv1.Rebase `json:"rebase"`
+		Path   string           `json:"path"`
+	}
+
+	RebaseResult struct {
+		Head    string `json:"head"`
+		Success bool   `json:"success"`
 	}
 
 	SignalBranchPayload struct {

@@ -82,16 +82,16 @@ func (state *Branch) OnPush(ctx workflow.Context) durable.ChannelHandler {
 
 		state.LatestCommit = fns.GetLatestCommit(event.Payload)
 
-		clone := &defs.ClonePayload{Repo: state.Repo, Hook: event.Context.Hook, Branch: state.Branch, At: event.Payload.After}
+		clone := &defs.ClonePayload{Repo: state.Repo, Hook: event.Context.Hook, Branch: state.Branch, SHA: event.Payload.After}
 		path := state.clone(session, clone)
 		_ = state.diff(session, path, state.Repo.DefaultBranch, event.Payload.After)
 		state.remove_dir(ctx, path)
 	}
 }
 
+// OnRebase handles the rebase event for the branch. It creates a session, clones the repository at given branch,
+// attempts to rebase the branch with given sha, and removes the cloned repository.
 func (state *Branch) OnRebase(ctx workflow.Context) durable.ChannelHandler {
-	// OnRebase handles the rebase event for the branch. It creates a session, clones the repository at given branch,
-	// attempts to rebase the branch with given sha, and removes the cloned repository.
 	return func(ch workflow.ReceiveChannel, more bool) {
 		event := &events.Event[eventsv1.RepoHook, eventsv1.Rebase]{}
 		state.rx(ctx, ch, event)
@@ -106,7 +106,7 @@ func (state *Branch) OnRebase(ctx workflow.Context) durable.ChannelHandler {
 
 		defer workflow.CompleteSession(session)
 
-		clone := &defs.ClonePayload{Repo: state.Repo, Hook: event.Context.Hook, Branch: state.Branch, At: event.Payload.Head}
+		clone := &defs.ClonePayload{Repo: state.Repo, Hook: event.Context.Hook, Branch: state.Branch, SHA: event.Payload.Head}
 		path := state.clone(session, clone)
 		state.remove_dir(ctx, path)
 	}
