@@ -36,14 +36,14 @@ func Push(ctx workflow.Context, push *defs.Push) error {
 		}
 	}
 
-	action := events.EventActionCreated
+	action := events.ActionCreated
 
 	if push.Deleted {
-		action = events.EventActionDeleted
+		action = events.ActionDeleted
 	}
 
 	if push.Forced {
-		action = events.EventActionForced
+		action = events.ActionForced
 	}
 
 	event := events.

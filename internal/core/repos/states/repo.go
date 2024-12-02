@@ -9,7 +9,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/repos/activities"
-	"go.breu.io/quantm/internal/core/repos/cast"
 	"go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/core/repos/fns"
 	"go.breu.io/quantm/internal/db/entities"
@@ -69,7 +68,10 @@ func (state *Repo) OnPush(ctx workflow.Context) durable.ChannelHandler {
 		if branch == state.Repo.DefaultBranch {
 			for branch := range state.Triggers {
 				workflow.Go(ctx, func(ctx workflow.Context) {
-					rebase := cast.PushEventToRebaseEvent(push, state.Repo.ID, state.Repo.DefaultBranch)
+					rebase := events.Next[
+						eventsv1.RepoHook, eventsv1.Push, eventsv1.Rebase,
+					](push, events.ScopeRebase, events.ActionRequested).
+						SetPayload(&eventsv1.Rebase{Base: branch, Head: push.Payload.After, Repository: push.Payload.Repository})
 
 					if err := pulse.Persist(ctx, rebase); err != nil {
 						state.logger.Warn(

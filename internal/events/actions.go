@@ -1,25 +1,25 @@
 package events
 
 type (
-	// EventAction is the action of the event.
-	EventAction string
+	// Action is the action of the event.
+	Action string
 )
 
 const (
-	EventActionCreated   EventAction = "created"   // EventActionCreated is the action of a created event.
-	EventActionDeleted   EventAction = "deleted"   // EventActionDeleted is the action of a deleted event.
-	EventActionUpdated   EventAction = "updated"   // EventActionUpdated is the action of an updated event.
-	EventActionForced    EventAction = "forced"    // EventActionForced is the action of a forced event.
-	EventActionReopened  EventAction = "reopened"  // EventActionReopened is the action of a reopened event.
-	EventActionClosed    EventAction = "closed"    // EventActionClosed is the action of a closed event.
-	EventActionMerged    EventAction = "merged"    // EventActionMerged is the action of a merged event.
-	EventActionStarted   EventAction = "started"   // EventActionStarted is the action of a started event.
-	EventActionCompleted EventAction = "completed" // EventActionCompleted is the action of a completed event.
-	EventActionDismissed EventAction = "dismissed" // EventActionDismissed is the action of a dismissed event.
-	EventActionAbandoned EventAction = "abandoned" // EventActionAbandoned is the action of an abandoned event.
-	EventActionAdded     EventAction = "added"     // EventActionAdded is the action of an added event.
-	EventActionRequested EventAction = "requested" // EventActionRequested is the action of a requested event.
+	ActionCreated    Action = "created"   // EventActionCreated is the action of a created event.
+	ActionDeleted    Action = "deleted"   // EventActionDeleted is the action of a deleted event.
+	ActionUpdated    Action = "updated"   // EventActionUpdated is the action of an updated event.
+	ActionForced     Action = "forced"    // ActionForced is the action of a forced event.
+	ActionReopened   Action = "reopened"  // ActionReopened is the action of a reopened event.
+	ActionClosed     Action = "closed"    // ActionClosed is the action of a closed event.
+	ActionMerged     Action = "merged"    // ActionMerged is the action of a merged event.
+	ActionStarted    Action = "started"   // ActionStarted is the action of a started event.
+	ActionCompleted  Action = "completed" // ActionCompleted is the action of a completed event.
+	ActionDismissed  Action = "dismissed" // ActionDismissed is the action of a dismissed event.
+	ActionAbandoned  Action = "abandoned" // ActionAbandoned is the action of an abandoned event.
+	EventActionAdded Action = "added"     // EventActionAdded is the action of an added event.
+	ActionRequested  Action = "requested" // EventActionRequested is the action of a requested event.
 )
 
 // String returns the string representation of the EventAction.
-func (ea EventAction) String() string { return string(ea) }
+func (ea Action) String() string { return string(ea) }
