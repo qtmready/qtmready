@@ -241,19 +241,23 @@ const listRepos = `-- name: ListRepos :many
 SELECT
   repo.id, repo.created_at, repo.updated_at, repo.org_id, repo.name, repo.hook, repo.hook_id, repo.default_branch, repo.is_monorepo, repo.threshold, repo.stale_duration, repo.url, repo.is_active, 
   CASE 
-    WHEN msg.id IS NOT NULL THEN TRUE
+    WHEN msg.id IS NOT NULL AND msg.link_to IS NOT NULL THEN TRUE
     ELSE FALSE
-  END AS has_mesging
+  END AS has_msging,
+  CASE 
+    WHEN msg.id IS NOT NULL THEN msg.data->>'channel_name'
+    ELSE ''
+  END AS channel_name
 FROM
   repos AS repo
 LEFT JOIN 
-    messaging AS msg
+  messaging AS msg
 ON 
-    repo.id = msg.link_to
+  repo.id = msg.link_to
 WHERE 
-    repo.org_id = $1
+  repo.org_id = $1
 ORDER BY 
-    repo.updated_at DESC
+  repo.updated_at DESC
 `
 
 type ListReposRow struct {
@@ -270,7 +274,8 @@ type ListReposRow struct {
 	StaleDuration pgtype.Interval `json:"stale_duration"`
 	Url           string          `json:"url"`
 	IsActive      bool            `json:"is_active"`
-	HasMesging    bool            `json:"has_mesging"`
+	HasMsging     bool            `json:"has_msging"`
+	ChannelName   string          `json:"channel_name"`
 }
 
 func (q *Queries) ListRepos(ctx context.Context, orgID uuid.UUID) ([]ListReposRow, error) {
@@ -296,7 +301,8 @@ func (q *Queries) ListRepos(ctx context.Context, orgID uuid.UUID) ([]ListReposRo
 			&i.StaleDuration,
 			&i.Url,
 			&i.IsActive,
-			&i.HasMesging,
+			&i.HasMsging,
+			&i.ChannelName,
 		); err != nil {
 			return nil, err
 		}

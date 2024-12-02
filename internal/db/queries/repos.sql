@@ -30,19 +30,23 @@ WHERE id = $1;
 SELECT
   repo.*, 
   CASE 
-    WHEN msg.id IS NOT NULL THEN TRUE
+    WHEN msg.id IS NOT NULL AND msg.link_to IS NOT NULL THEN TRUE
     ELSE FALSE
-  END AS has_mesging
+  END AS has_msging,
+  CASE 
+    WHEN msg.id IS NOT NULL THEN msg.data->>'channel_name'
+    ELSE ''
+  END AS channel_name
 FROM
   repos AS repo
 LEFT JOIN 
-    messaging AS msg
+  messaging AS msg
 ON 
-    repo.id = msg.link_to
+  repo.id = msg.link_to
 WHERE 
-    repo.org_id = $1
+  repo.org_id = $1
 ORDER BY 
-    repo.updated_at DESC;
+  repo.updated_at DESC;
 
 -- name: GetOrgReposByOrgID :many
 SELECT *
