@@ -3,6 +3,7 @@ package activities
 import (
 	"context"
 	"fmt"
+	"os"
 
 	git "github.com/jeffwelling/git2go/v37"
 	"go.temporal.io/sdk/activity"
@@ -49,6 +50,18 @@ func (a *Branch) Clone(ctx context.Context, payload *defs.ClonePayload) (string,
 	logger.Info("cloned successfully", "repo", payload.Repo.Url, "cloned", cloned.Workdir())
 
 	return cloned.Workdir(), nil
+}
+
+func (a *Branch) RemoveDir(ctx context.Context, path string) error {
+	logger := activity.GetLogger(ctx)
+
+	logger.Info("removing directory", "path", path)
+
+	if err := os.RemoveAll(path); err != nil {
+		logger.Warn("Failed to remove directory", "error", err, "path", path)
+	}
+
+	return nil
 }
 
 // Diff retrieves the diff between two commits.  Given a repository path, base branch, and SHA, it opens the repo,

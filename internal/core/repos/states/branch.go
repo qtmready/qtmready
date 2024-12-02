@@ -80,8 +80,35 @@ func (state *Branch) OnPush(ctx workflow.Context) durable.ChannelHandler {
 
 		defer workflow.CompleteSession(session)
 
-		path := state.clone(session, event)
+		state.LatestCommit = fns.GetLatestCommit(event.Payload)
+
+		clone := &defs.ClonePayload{Repo: state.Repo, Hook: event.Context.Hook, Branch: state.Branch, At: event.Payload.After}
+		path := state.clone(session, clone)
 		_ = state.diff(session, path, state.Repo.DefaultBranch, event.Payload.After)
+		state.remove_dir(ctx, path)
+	}
+}
+
+func (state *Branch) OnRebase(ctx workflow.Context) durable.ChannelHandler {
+	// OnRebase handles the rebase event for the branch. It creates a session, clones the repository at given branch,
+	// attempts to rebase the branch with given sha, and removes the cloned repository.
+	return func(ch workflow.ReceiveChannel, more bool) {
+		event := &events.Event[eventsv1.RepoHook, eventsv1.Rebase]{}
+		state.rx(ctx, ch, event)
+
+		opts := &workflow.SessionOptions{ExecutionTimeout: time.Minute * 30, CreationTimeout: time.Second * 30}
+
+		session, err := workflow.CreateSession(ctx, opts)
+		if err != nil {
+			state.logger.Error("clone: unable to create session", "rebase", event.Payload.Head, "error", err.Error())
+			return
+		}
+
+		defer workflow.CompleteSession(session)
+
+		clone := &defs.ClonePayload{Repo: state.Repo, Hook: event.Context.Hook, Branch: state.Branch, At: event.Payload.Head}
+		path := state.clone(session, clone)
+		state.remove_dir(ctx, path)
 	}
 }
 
@@ -102,16 +129,7 @@ func (state *Branch) Init(ctx workflow.Context) {
 
 // clone clones the repository at the given SHA using a Temporal activity.  A UUID is generated for the clone path via SideEffect
 // to ensure idempotency. Returns the clone path.
-func (state *Branch) clone(ctx workflow.Context, event *events.Event[eventsv1.RepoHook, eventsv1.Push]) string {
-	state.LatestCommit = fns.GetLatestCommit(event.Payload)
-
-	payload := &defs.ClonePayload{
-		Repo:   state.Repo,
-		Branch: state.Branch,
-		Hook:   event.Context.Hook,
-		SHA:    event.Payload.After,
-	}
-
+func (state *Branch) clone(ctx workflow.Context, payload *defs.ClonePayload) string {
 	_ = workflow.SideEffect(ctx, func(ctx workflow.Context) any { return uuid.New().String() }).Get(&payload.Path)
 
 	if err := state.run(ctx, "clone", state.acts.Clone, payload, &payload.Path); err != nil {
@@ -119,6 +137,12 @@ func (state *Branch) clone(ctx workflow.Context, event *events.Event[eventsv1.Re
 	}
 
 	return payload.Path
+}
+
+func (state *Branch) remove_dir(ctx workflow.Context, path string) {
+	if err := state.run(ctx, "remove", state.acts.RemoveDir, path, nil); err != nil {
+		state.logger.Error("remove: unable to remove directory", "error", err.Error())
+	}
 }
 
 // diff calculates the diff between the given base and SHA using a Temporal activity.  Returns the diff result.
