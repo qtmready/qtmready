@@ -38,12 +38,13 @@ func HydrateRepoEvent(ctx context.Context, payload *defs.HydrateRepoEventPayload
 		hydrated.User = &user
 	}
 
-	if hydrated.Repo.DefaultBranch != payload.Branch {
+	if payload.Branch != "" || payload.Branch != hydrated.Repo.DefaultBranch || payload.ShouldFetchParent {
 		parent, err := durable.
 			OnCore().
 			QueryWorkflow(ctx, hydrated.RepoWorkflowOptions(), repos.QueryRepoForEventParent, payload.Branch)
+
 		if err == nil {
-			_ = parent.Get(hydrated.ParentID)
+			_ = parent.Get(&hydrated.ParentID)
 		}
 	}
 
@@ -146,10 +147,10 @@ func SignalRepo[P events.Payload](ctx context.Context, hydrated *defs.HydratedQu
 	_, err := durable.OnCore().SignalWithStartWorkflow(
 		ctx,
 		hydrated.Meta.RepoWorkflowOptions(),
-		repos.SignalPush,
+		hydrated.Signal,
 		hydrated.Event,
 		repos.RepoWorkflow,
-		repos.NewRepoWorkflowState(hydrated.Meta.Repo, hydrated.Meta.Messaging.Repo),
+		repos.NewRepoWorkflowState(hydrated.Meta.GetRepo(), hydrated.Meta.GetRepoChatLink()),
 	)
 
 	return err

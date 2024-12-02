@@ -8,8 +8,8 @@ import (
 // RowToHydratedRepoEvent converts a database row into a HydratedEvent.
 func RowToHydratedRepoEvent(row entities.GetRepoRow) *defs.HydratedRepoEvent {
 	return &defs.HydratedRepoEvent{
-		Repo:      &row.Repo,
-		Org:       &row.Org,
-		Messaging: &defs.HydratedRepoEventMessaging{Org: &row.Messaging},
+		Repo: &row.Repo,
+		Org:  &row.Org,
+		Chat: &defs.RepoChat{Org: &row.ChatLink},
 	}
 }

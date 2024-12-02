@@ -118,14 +118,14 @@ func (q *Queries) GetOrgReposByOrgID(ctx context.Context, orgID uuid.UUID) ([]Re
 const getRepo = `-- name: GetRepo :one
 SELECT
   repo.id, repo.created_at, repo.updated_at, repo.org_id, repo.name, repo.hook, repo.hook_id, repo.default_branch, repo.is_monorepo, repo.threshold, repo.stale_duration, repo.url, repo.is_active,
-  msg.id, msg.created_at, msg.updated_at, msg.hook, msg.kind, msg.link_to, msg.data,
+  chat_link.id, chat_link.created_at, chat_link.updated_at, chat_link.hook, chat_link.kind, chat_link.link_to, chat_link.data,
   org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug, org.hooks
 FROM
   github_repos gr
 JOIN
   repos repo ON gr.id = repo.hook_id
 LEFT JOIN
-  messaging msg ON msg.link_to = repo.id
+  chat_links chat_link ON chat_link.link_to = repo.id
 JOIN
   orgs org ON repo.org_id = org.id
 WHERE
@@ -138,9 +138,9 @@ type GetRepoParams struct {
 }
 
 type GetRepoRow struct {
-	Repo      Repo      `json:"repo"`
-	Messaging Messaging `json:"messaging"`
-	Org       Org       `json:"org"`
+	Repo     Repo     `json:"repo"`
+	ChatLink ChatLink `json:"chat_link"`
+	Org      Org      `json:"org"`
 }
 
 func (q *Queries) GetRepo(ctx context.Context, arg GetRepoParams) (GetRepoRow, error) {
@@ -160,13 +160,13 @@ func (q *Queries) GetRepo(ctx context.Context, arg GetRepoParams) (GetRepoRow, e
 		&i.Repo.StaleDuration,
 		&i.Repo.Url,
 		&i.Repo.IsActive,
-		&i.Messaging.ID,
-		&i.Messaging.CreatedAt,
-		&i.Messaging.UpdatedAt,
-		&i.Messaging.Hook,
-		&i.Messaging.Kind,
-		&i.Messaging.LinkTo,
-		&i.Messaging.Data,
+		&i.ChatLink.ID,
+		&i.ChatLink.CreatedAt,
+		&i.ChatLink.UpdatedAt,
+		&i.ChatLink.Hook,
+		&i.ChatLink.Kind,
+		&i.ChatLink.LinkTo,
+		&i.ChatLink.Data,
 		&i.Org.ID,
 		&i.Org.CreatedAt,
 		&i.Org.UpdatedAt,
@@ -239,21 +239,25 @@ func (q *Queries) GetReposByHookAndHookID(ctx context.Context, arg GetReposByHoo
 
 const listRepos = `-- name: ListRepos :many
 SELECT
-  repo.id, repo.created_at, repo.updated_at, repo.org_id, repo.name, repo.hook, repo.hook_id, repo.default_branch, repo.is_monorepo, repo.threshold, repo.stale_duration, repo.url, repo.is_active, 
-  CASE 
-    WHEN msg.id IS NOT NULL THEN TRUE
+  repo.id, repo.created_at, repo.updated_at, repo.org_id, repo.name, repo.hook, repo.hook_id, repo.default_branch, repo.is_monorepo, repo.threshold, repo.stale_duration, repo.url, repo.is_active,
+  CASE
+    WHEN chat_link.id IS NOT NULL AND chat_link.link_to IS NOT NULL THEN TRUE
     ELSE FALSE
-  END AS has_mesging
+  END AS has_chat,
+  CASE
+    WHEN chat_link.id IS NOT NULL THEN chat_link.data->>'channel_name'
+    ELSE ''
+  END AS channel_name
 FROM
   repos AS repo
-LEFT JOIN 
-    messaging AS msg
-ON 
-    repo.id = msg.link_to
-WHERE 
-    repo.org_id = $1
-ORDER BY 
-    repo.updated_at DESC
+LEFT JOIN
+  chat_links AS chat_link
+ON
+  repo.id = chat_link.link_to
+WHERE
+  repo.org_id = $1
+ORDER BY
+  repo.updated_at DESC
 `
 
 type ListReposRow struct {
@@ -270,7 +274,8 @@ type ListReposRow struct {
 	StaleDuration pgtype.Interval `json:"stale_duration"`
 	Url           string          `json:"url"`
 	IsActive      bool            `json:"is_active"`
-	HasMesging    bool            `json:"has_mesging"`
+	HasChat       bool            `json:"has_chat"`
+	ChannelName   string          `json:"channel_name"`
 }
 
 func (q *Queries) ListRepos(ctx context.Context, orgID uuid.UUID) ([]ListReposRow, error) {
@@ -296,7 +301,8 @@ func (q *Queries) ListRepos(ctx context.Context, orgID uuid.UUID) ([]ListReposRo
 			&i.StaleDuration,
 			&i.Url,
 			&i.IsActive,
-			&i.HasMesging,
+			&i.HasChat,
+			&i.ChannelName,
 		); err != nil {
 			return nil, err
 		}

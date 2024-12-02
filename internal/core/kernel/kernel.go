@@ -38,8 +38,8 @@ type (
 		// RegisterRepoHook registers the given Repo implementation for the specified RepoHook.
 		RegisterRepoHook(enum eventsv1.RepoHook, hook Repo)
 
-		// RegisterChatHook registers the given Messaging implementation for the specified ChatHook.
-		RegisterChatHook(enum eventsv1.ChatHook, hook Messaging)
+		// RegisterChatHook registers the given Chat implementation for the specified ChatHook.
+		RegisterChatHook(enum eventsv1.ChatHook, hook Chat)
 
 		// RepoHook returns the Repo implementation registered for the specified RepoHook.
 		//
@@ -53,7 +53,7 @@ type (
 		// It panics if no implementation is registered for the given hook.
 		// It is the caller's responsibility to ensure that an implementation is registered before calling this method.
 		// By panicking, we ensure that the application fails fast during development if a required implementation is missing.
-		ChatHook(enum eventsv1.ChatHook) Messaging
+		ChatHook(enum eventsv1.ChatHook) Chat
 
 		// Start is a noop method that conforms to graceful.Service interface.
 		Start(ctx context.Context) error
@@ -65,8 +65,8 @@ type (
 	Option func(k Kernel)
 
 	kernel struct {
-		hooks_repo      map[eventsv1.RepoHook]Repo
-		hooks_messaging map[eventsv1.ChatHook]Messaging
+		hooks_repo map[eventsv1.RepoHook]Repo
+		hooks_chat map[eventsv1.ChatHook]Chat
 	}
 )
 
@@ -77,7 +77,7 @@ func (k *kernel) Hooks() []string {
 		hooks = append(hooks, hook.String())
 	}
 
-	for hook := range k.hooks_messaging {
+	for hook := range k.hooks_chat {
 		hooks = append(hooks, hook.String())
 	}
 
@@ -98,18 +98,18 @@ func (k *kernel) RepoHook(enum eventsv1.RepoHook) Repo {
 	return k.hooks_repo[enum]
 }
 
-func (k *kernel) RegisterChatHook(hook eventsv1.ChatHook, messaging Messaging) {
-	if k.hooks_messaging == nil {
-		k.hooks_messaging = make(map[eventsv1.ChatHook]Messaging)
+func (k *kernel) RegisterChatHook(hook eventsv1.ChatHook, chat Chat) {
+	if k.hooks_chat == nil {
+		k.hooks_chat = make(map[eventsv1.ChatHook]Chat)
 	}
 
-	slog.Info("kernel: registering messaging hook", "hook", hook.String())
+	slog.Info("kernel: registering chat hook", "hook", hook.String())
 
-	k.hooks_messaging[hook] = messaging
+	k.hooks_chat[hook] = chat
 }
 
-func (k *kernel) ChatHook(enum eventsv1.ChatHook) Messaging {
-	return k.hooks_messaging[enum]
+func (k *kernel) ChatHook(enum eventsv1.ChatHook) Chat {
+	return k.hooks_chat[enum]
 }
 
 func (k *kernel) Start(ctx context.Context) error {
@@ -126,16 +126,16 @@ func WithRepoHook(hook eventsv1.RepoHook, repo Repo) Option {
 	}
 }
 
-func WithChatHook(hook eventsv1.ChatHook, messaging Messaging) Option {
+func WithChatHook(hook eventsv1.ChatHook, chat Chat) Option {
 	return func(k Kernel) {
-		k.RegisterChatHook(hook, messaging)
+		k.RegisterChatHook(hook, chat)
 	}
 }
 
 func New(opts ...Option) Kernel {
 	k := &kernel{
-		hooks_repo:      make(map[eventsv1.RepoHook]Repo),
-		hooks_messaging: make(map[eventsv1.ChatHook]Messaging),
+		hooks_repo: make(map[eventsv1.RepoHook]Repo),
+		hooks_chat: make(map[eventsv1.ChatHook]Chat),
 	}
 
 	for _, opt := range opts {

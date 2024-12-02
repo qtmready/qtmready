@@ -30,10 +30,14 @@ func (s *AccountService) GetAccountByProviderAccountID(
 	account, err := db.Queries().GetOAuthAccountByProviderAccountID(ctx, params)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, erratic.NewNotFoundError("entity", "accounts", "provider_id", req.Msg.GetProviderAccountId()).ToConnectError()
+			return nil, erratic.NewNotFoundError(erratic.AuthModule).
+				AddHint("account_id", params.ProviderAccountID).
+				AddHint("provider", params.Provider)
 		}
 
-		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
+		return nil, erratic.NewDatabaseError(erratic.AuthModule).
+			AddHint("account_id", params.ProviderAccountID).
+			AddHint("provider", params.Provider).Wrap(err)
 	}
 
 	proto := &authv1.GetAccountByProviderAccountIDResponse{Account: cast.AccountToProto(&account)}
@@ -45,11 +49,16 @@ func (s *AccountService) GetAccountsByUserID(
 	ctx context.Context,
 	req *connect.Request[authv1.GetAccountsByUserIDRequest],
 ) (*connect.Response[authv1.GetAccountsByUserIDResponse], error) {
-	id := uuid.MustParse(req.Msg.GetUserId())
+	id, err := uuid.Parse(req.Msg.GetUserId())
+	if err != nil {
+		return nil, erratic.NewBadRequestError(erratic.AuthModule).
+			AddHint("user_id", req.Msg.GetUserId()).Wrap(err)
+	}
 
 	accounts, err := db.Queries().GetOAuthAccountsByUserID(ctx, id)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().Wrap(err).ToProto().Err()
+		return nil, erratic.NewDatabaseError(erratic.AuthModule).
+			AddHint("user_id", req.Msg.GetUserId()).Wrap(err)
 	}
 
 	proto := make([]*authv1.Account, len(accounts))
@@ -68,7 +77,7 @@ func (s *AccountService) CreateAccount(
 
 	account, err := db.Queries().CreateOAuthAccount(ctx, params)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().Wrap(err).ToProto().Err()
+		return nil, erratic.NewDatabaseError(erratic.AuthModule).Wrap(err)
 	}
 
 	return connect.NewResponse(&authv1.CreateAccountResponse{Account: cast.AccountToProto(&account)}), nil
@@ -78,11 +87,20 @@ func (s *AccountService) GetAccountByID(
 	ctx context.Context,
 	req *connect.Request[authv1.GetAccountByIDRequest],
 ) (*connect.Response[authv1.GetAccountByIDResponse], error) {
-	id := uuid.MustParse(req.Msg.GetId())
+	id, err := uuid.Parse(req.Msg.GetId())
+	if err != nil {
+		return nil, erratic.NewBadRequestError(erratic.AuthModule).
+			AddHint("id", req.Msg.GetId()).Wrap(err)
+	}
 
 	account, err := db.Queries().GetOAuthAccountByID(ctx, id)
 	if err != nil {
-		return nil, erratic.NewNotFoundError("entity", "accounts", "id", req.Msg.GetId()).ToProto().Err()
+		if err == pgx.ErrNoRows {
+			return nil, erratic.NewNotFoundError(erratic.AuthModule, "account").
+				AddHint("id", req.Msg.GetId())
+		}
+		return nil, erratic.NewDatabaseError(erratic.AuthModule).
+			AddHint("id", req.Msg.GetId()).Wrap(err)
 	}
 
 	return connect.NewResponse(&authv1.GetAccountByIDResponse{Account: cast.AccountToProto(&account)}), nil

@@ -28,7 +28,7 @@ func (s *RepoService) ListRepos(
 
 	rows, err := db.Queries().ListRepos(ctx, org_id)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
+		return nil, erratic.NewDatabaseError(erratic.CoreModule).Wrap(err)
 	}
 
 	protos := reposcast.RepoExtendedListToProto(rows)

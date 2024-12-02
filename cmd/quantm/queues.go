@@ -37,13 +37,19 @@ func q_hooks() {
 		q.RegisterActivity(pulse.PersistRepoEvent)
 		q.RegisterActivity(pulse.PersistChatEvent)
 
-		q.RegisterWorkflow(github.Install)
+		q.RegisterWorkflow(github.InstallWorkflow)
 		q.RegisterActivity(&github.InstallActivity{})
 
-		q.RegisterWorkflow(github.SyncRepos)
+		q.RegisterWorkflow(github.SyncReposWorkflow)
 		q.RegisterActivity(&github.InstallReposActivity{})
 
-		q.RegisterWorkflow(github.Push)
+		q.RegisterWorkflow(github.PushWorkflow)
 		q.RegisterActivity(&github.PushActivity{})
+
+		q.RegisterWorkflow(github.RefWorkflow)
+		q.RegisterActivity(&github.RefActivity{})
+
+		q.RegisterWorkflow(github.PullRequestWorkflow)
+		q.RegisterActivity(&github.PullRequestActivity{})
 	}
 }

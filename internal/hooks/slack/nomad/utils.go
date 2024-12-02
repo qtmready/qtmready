@@ -14,6 +14,7 @@ import (
 	"go.breu.io/quantm/internal/hooks/slack/fns"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 	slackv1 "go.breu.io/quantm/internal/proto/hooks/slack/v1"
+	"go.breu.io/quantm/internal/utils"
 )
 
 func _user(
@@ -54,20 +55,20 @@ func _user(
 	}
 
 	// Convert the string to uuid.UUID
-	link_to, err := db.ParseUUID(reqst.Msg.GetLinkTo())
+	link_to, err := utils.ParseUUID(reqst.Msg.GetLinkTo())
 	if err != nil {
 		return err
 	}
 
 	// save messaging
-	m := entities.CreateMessagingParams{
+	m := entities.CreateChatLinkParams{
 		Hook:   int32(eventsv1.ChatHook_CHAT_HOOK_SLACK),
 		Kind:   defs.KindUser,
 		LinkTo: link_to,
 		Data:   data,
 	}
 
-	_, err = db.Queries().CreateMessaging(ctx, m)
+	_, err = db.Queries().CreateChatLink(ctx, m)
 	if err != nil {
 		return err
 	}
@@ -101,20 +102,20 @@ func _bot(
 	}
 
 	// Convert the string to uuid.UUID
-	link_to, err := db.ParseUUID(reqst.Msg.GetLinkTo())
+	link_to, err := utils.ParseUUID(reqst.Msg.GetLinkTo())
 	if err != nil {
 		return err
 	}
 
 	// save messaging
-	m := entities.CreateMessagingParams{
+	m := entities.CreateChatLinkParams{
 		Hook:   int32(eventsv1.ChatHook_CHAT_HOOK_SLACK),
 		Kind:   defs.KindBot,
 		LinkTo: link_to,
 		Data:   data,
 	}
 
-	_, err = db.Queries().CreateMessaging(ctx, m)
+	_, err = db.Queries().CreateChatLink(ctx, m)
 	if err != nil {
 		return err
 	}

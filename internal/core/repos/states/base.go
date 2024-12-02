@@ -14,8 +14,8 @@ type (
 	// Base represents the base state for repository workflows.  It encapsulates
 	// core data and provides logging utilities.
 	Base struct {
-		Repo      *entities.Repo      `json:"repo"`      // Repository entity.
-		Messaging *entities.Messaging `json:"messaging"` // Messaging entity.
+		Repo     *entities.Repo     `json:"repo"`      // Repository entity.
+		ChatLink *entities.ChatLink `json:"chat_link"` // Messaging entity.
 
 		logger log.Logger // Workflow logger.
 	}

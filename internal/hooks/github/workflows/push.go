@@ -1,6 +1,7 @@
 package workflows
 
 import (
+	"github.com/google/uuid"
 	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/workflow"
 
@@ -22,55 +23,58 @@ func Push(ctx workflow.Context, push *defs.Push) error {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	proto := cast.PushToProto(push)
-	meta := &defs.HydratedRepoEvent{}
+	hre := &defs.HydratedRepoEvent{} // hre -> hydrated repo event
 
 	{
 		payload := &defs.HydrateRepoEventPayload{
-			RepoID:         push.Repository.ID,
-			InstallationID: push.Installation.ID,
-			Email:          push.Pusher.Email,
-			Branch:         repos.BranchNameFromRef(push.Ref),
+			RepoID:         push.GetRepositoryID(),
+			InstallationID: push.GetInstallationID(),
+			Email:          push.GetPusherEmail(),
+			Branch:         repos.BranchNameFromRef(push.GetRef()),
 		}
-		if err := workflow.ExecuteActivity(ctx, acts.HydratePushEvent, payload).Get(ctx, meta); err != nil {
+		if err := workflow.ExecuteActivity(ctx, acts.HydrateGithubPushEvent, payload).Get(ctx, hre); err != nil {
 			return err
 		}
 	}
 
-	action := events.EventActionCreated
+	action := events.ActionCreated
 
 	if push.Deleted {
-		action = events.EventActionDeleted
+		action = events.ActionDeleted
 	}
 
 	if push.Forced {
-		action = events.EventActionForced
+		action = events.ActionForced
 	}
 
 	event := events.
 		New[eventsv1.RepoHook, eventsv1.Push]().
-		SettHook(eventsv1.RepoHook_REPO_HOOK_GITHUB).
-		SetParent(meta.ParentID).
+		SetHook(eventsv1.RepoHook_REPO_HOOK_GITHUB).
 		SetScope(events.ScopePush).
 		SetAction(action).
-		SetSource(meta.Repo.Url).
-		SetOrg(meta.Repo.OrgID).
+		SetSource(hre.GetRepoUrl()).
+		SetOrg(hre.GetOrgID()).
 		SetSubjectName(events.SubjectNameRepos).
-		SetSubjectID(meta.Repo.ID).
+		SetSubjectID(hre.GetRepoID()).
 		SetPayload(&proto)
 
-	if meta.Team != nil {
-		event.SetTeam(meta.Team.ID)
+	if hre.GetParentID() != uuid.Nil {
+		event.SetParents(hre.GetParentID())
 	}
 
-	if meta.User != nil {
-		event.SetUser(meta.User.ID)
+	if hre.GetTeam() != nil {
+		event.SetTeam(hre.GetTeamID())
+	}
+
+	if hre.GetUser() != nil {
+		event.SetUser(hre.GetUserID())
 	}
 
 	if err := pulse.Persist(ctx, event); err != nil {
 		return err
 	}
 
-	hevent := &defs.HydratedQuantmEvent[eventsv1.Push]{Event: event, Meta: meta}
+	hevent := &defs.HydratedQuantmEvent[eventsv1.Push]{Event: event, Meta: hre, Signal: repos.SignalPush}
 
 	return workflow.ExecuteActivity(ctx, acts.SignalRepoWithGithubPush, hevent).Get(ctx, nil)
 }

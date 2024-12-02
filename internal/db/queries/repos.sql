@@ -28,21 +28,25 @@ WHERE id = $1;
 
 -- name: ListRepos :many
 SELECT
-  repo.*, 
-  CASE 
-    WHEN msg.id IS NOT NULL THEN TRUE
+  repo.*,
+  CASE
+    WHEN chat_link.id IS NOT NULL AND chat_link.link_to IS NOT NULL THEN TRUE
     ELSE FALSE
-  END AS has_mesging
+  END AS has_chat,
+  CASE
+    WHEN chat_link.id IS NOT NULL THEN chat_link.data->>'channel_name'
+    ELSE ''
+  END AS channel_name
 FROM
   repos AS repo
-LEFT JOIN 
-    messaging AS msg
-ON 
-    repo.id = msg.link_to
-WHERE 
-    repo.org_id = $1
-ORDER BY 
-    repo.updated_at DESC;
+LEFT JOIN
+  chat_links AS chat_link
+ON
+  repo.id = chat_link.link_to
+WHERE
+  repo.org_id = $1
+ORDER BY
+  repo.updated_at DESC;
 
 -- name: GetOrgReposByOrgID :many
 SELECT *
@@ -67,14 +71,14 @@ WHERE hook_id = $1;
 -- name: GetRepo :one
 SELECT
   sqlc.embed(repo),
-  sqlc.embed(msg),
+  sqlc.embed(chat_link),
   sqlc.embed(org)
 FROM
   github_repos gr
 JOIN
   repos repo ON gr.id = repo.hook_id
 LEFT JOIN
-  messaging msg ON msg.link_to = repo.id
+  chat_links chat_link ON chat_link.link_to = repo.id
 JOIN
   orgs org ON repo.org_id = org.id
 WHERE

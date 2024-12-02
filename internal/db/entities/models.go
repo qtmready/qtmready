@@ -55,6 +55,16 @@ func (ns NullTeamRole) Value() (driver.Value, error) {
 	return string(ns.TeamRole), nil
 }
 
+type ChatLink struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Hook      int32     `json:"hook"`
+	Kind      string    `json:"kind"`
+	LinkTo    uuid.UUID `json:"link_to"`
+	Data      []byte    `json:"data"`
+}
+
 type GithubInstallation struct {
 	ID                  uuid.UUID `json:"id"`
 	CreatedAt           time.Time `json:"created_at"`
@@ -99,16 +109,6 @@ type GithubUser struct {
 	GithubID    int64     `json:"github_id"`
 	GithubOrgID uuid.UUID `json:"github_org_id"`
 	Login       string    `json:"login"`
-}
-
-type Messaging struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Hook      int32     `json:"hook"`
-	Kind      string    `json:"kind"`
-	LinkTo    uuid.UUID `json:"link_to"`
-	Data      []byte    `json:"data"`
 }
 
 type OauthAccount struct {

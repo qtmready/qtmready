@@ -9,7 +9,6 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/repos/activities"
-	"go.breu.io/quantm/internal/core/repos/cast"
 	"go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/core/repos/fns"
 	"go.breu.io/quantm/internal/db/entities"
@@ -35,7 +34,7 @@ type (
 func (state *Repo) forward_to_branch(ctx workflow.Context, signal queues.Signal, branch string, event any) error {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	next := NewBranch(state.Repo, state.Messaging, branch)
+	next := NewBranch(state.Repo, state.ChatLink, branch)
 	payload := &defs.SignalBranchPayload{Signal: signal, Repo: state.Repo, Branch: branch}
 
 	return workflow.ExecuteActivity(ctx, state.acts.ForwardToBranch, payload, event, next).Get(ctx, nil)
@@ -45,7 +44,7 @@ func (state *Repo) forward_to_branch(ctx workflow.Context, signal queues.Signal,
 func (state *Repo) forward_to_trunk(ctx workflow.Context, signal queues.Signal, event any) error {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	next := NewTrunk(state.Repo, state.Messaging)
+	next := NewTrunk(state.Repo, state.ChatLink)
 	payload := &defs.SignalTrunkPayload{Signal: signal, Repo: state.Repo}
 
 	return workflow.ExecuteActivity(ctx, state.acts.ForwardToTrunk, payload, event, next).Get(ctx, nil)
@@ -69,7 +68,10 @@ func (state *Repo) OnPush(ctx workflow.Context) durable.ChannelHandler {
 		if branch == state.Repo.DefaultBranch {
 			for branch := range state.Triggers {
 				workflow.Go(ctx, func(ctx workflow.Context) {
-					rebase := cast.PushEventToRebaseEvent(push, state.Repo.ID, state.Repo.DefaultBranch)
+					rebase := events.Next[
+						eventsv1.RepoHook, eventsv1.Push, eventsv1.Rebase,
+					](push, events.ScopeRebase, events.ActionRequested).
+						SetPayload(&eventsv1.Rebase{Base: branch, Head: push.Payload.After, Repository: push.Payload.Repository})
 
 					if err := pulse.Persist(ctx, rebase); err != nil {
 						state.logger.Warn(
@@ -93,6 +95,37 @@ func (state *Repo) OnPush(ctx workflow.Context) durable.ChannelHandler {
 	}
 }
 
+func (state *Repo) OnRef(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		ref := &events.Event[eventsv1.RepoHook, eventsv1.GitRef]{}
+		state.rx(ctx, rx, ref)
+
+		if ref.Payload.Kind == "branch" {
+			branch := fns.BranchNameFromRef(ref.Payload.Ref)
+
+			if err := state.forward_to_branch(ctx, defs.SignalRef, branch, ref); err != nil {
+				state.logger.Warn("ref: unable to signal branch", "repo", state.Repo.ID, "branch", branch, "error", err.Error())
+			}
+
+			if ref.Context.Action == events.ActionCreated {
+				state.Triggers.add(branch, ref.ID)
+			}
+
+			if ref.Context.Action == events.ActionDeleted {
+				state.Triggers.remove(branch)
+			}
+		}
+	}
+}
+
+// OnPR handles the pull request event on the repository.
+func (state *Repo) OnPR(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		pr := &events.Event[eventsv1.RepoHook, eventsv1.PullRequest]{}
+		state.rx(ctx, rx, pr)
+	}
+}
+
 // - query handlers -
 
 // QueryBranchTrigger queries the parent branch for the specified branch.
@@ -113,8 +146,8 @@ func (state *Repo) Init(ctx workflow.Context) {
 
 // NewRepo creates a new RepoState instance. It initializes BaseState using the provided context and
 // hydrated repository data.
-func NewRepo(repo *entities.Repo, msg *entities.Messaging) *Repo {
-	base := &Base{Repo: repo, Messaging: msg}
+func NewRepo(repo *entities.Repo, msg *entities.ChatLink) *Repo {
+	base := &Base{Repo: repo, ChatLink: msg}
 	triggers := make(BranchTriggers)
 
 	return &Repo{base, triggers, &activities.Repo{}} // Return new RepoState instance.

@@ -56,7 +56,8 @@ func RepoExtendedRowToProto(repo *entities.ListReposRow) *corev1.RepoExtended {
 		StaleDuration: db.IntervalToProto(repo.StaleDuration),
 		Url:           repo.Url,
 		IsActive:      repo.IsActive,
-		ChatEnabled:   repo.HasMesging,
+		ChatEnabled:   repo.HasChat,
+		ChannelName:   repo.ChannelName,
 	}
 }
 
@@ -80,9 +81,7 @@ func PushEventToRebaseEvent(
 		Repository: push.Payload.Repository,
 	}
 
-	return events.New[eventsv1.RepoHook, eventsv1.Rebase]().
-		SetParent(parent).SettHook(push.Context.Hook).SetSource(push.Context.Source).
-		SetScope(events.ScopeBranch).SetAction(events.EventActionRequested).
-		SetSubjectID(push.Subject.ID).SetSubjectName(push.Subject.Name).
-		SetTeam(push.Subject.TeamID).SetOrg(push.Subject.OrgID).SetPayload(payload)
+	return events.
+		Next[eventsv1.RepoHook, eventsv1.Push, eventsv1.Rebase](push, events.ScopeRebase, events.ActionRequested).
+		SetPayload(payload)
 }

@@ -18,14 +18,14 @@ type (
 	}
 )
 
-// SetParent sets the parent ID of the event.
-func (e *Event[H, P]) SetParent(id uuid.UUID) *Event[H, P] {
-	e.Context.ParentID = id
+// SetParents sets the adds the given id to parents.
+func (e *Event[H, P]) SetParents(id ...uuid.UUID) *Event[H, P] {
+	e.Context.Parents = append(e.Context.Parents, id...)
 	return e
 }
 
-// SettHook sets the hook of the event.
-func (e *Event[H, P]) SettHook(hook H) *Event[H, P] {
+// SetHook sets the hook of the event.
+func (e *Event[H, P]) SetHook(hook H) *Event[H, P] {
 	e.Context.Hook = hook
 	return e
 }
@@ -37,7 +37,7 @@ func (e *Event[H, P]) SetScope(scope Scope) *Event[H, P] {
 }
 
 // SetAction sets the action of the event.
-func (e *Event[H, P]) SetAction(action EventAction) *Event[H, P] {
+func (e *Event[H, P]) SetAction(action Action) *Event[H, P] {
 	e.Context.Action = action
 	return e
 }
@@ -78,6 +78,16 @@ func (e *Event[H, P]) SetUser(id uuid.UUID) *Event[H, P] {
 	return e
 }
 
+func (e *Event[H, P]) SetContext(ctx Context[H]) *Event[H, P] {
+	e.Context = ctx
+	return e
+}
+
+func (e *Event[H, P]) SetSubject(subject Subject) *Event[H, P] {
+	e.Subject = subject
+	return e
+}
+
 // SetPayload sets the payload of the event.
 func (e *Event[H, P]) SetPayload(payload *P) *Event[H, P] {
 	e.Payload = payload
@@ -90,7 +100,7 @@ func (e *Event[H, P]) Flatten() *Flat[H] {
 		Version:     e.Version,
 		ID:          e.ID,
 		Timestamp:   e.Timestamp,
-		ParentID:    e.Context.ParentID,
+		Parents:     e.Context.Parents,
 		Hook:        e.Context.Hook,
 		Scope:       e.Context.Scope,
 		Action:      e.Context.Action,
@@ -103,12 +113,31 @@ func (e *Event[H, P]) Flatten() *Flat[H] {
 	}
 }
 
+// Next creates a new event based on the provided event, scope, and action.
+func Next[H Hook, F Payload, T Payload](event *Event[H, F], scope Scope, action Action) *Event[H, T] {
+	return NextWithHook[H, H, F, T](event, event.Context.Hook, scope, action)
+}
+
+// NextWithHook transforms the event from one hook type to another while keeping the payload.
+func NextWithHook[H1 Hook, H2 Hook, F Payload, T Payload](event *Event[H1, F], hook H2, scope Scope, action Action) *Event[H2, T] {
+	ctx := Context[H2]{
+		Parents: append(event.Context.Parents, event.ID),
+		Hook:    hook,
+		Scope:   scope,
+		Action:  action,
+		Source:  event.Context.Source,
+	}
+
+	return New[H2, T]().SetContext(ctx).SetSubject(event.Subject)
+}
+
+// New creates a new event with default values.
 func New[H Hook, P Payload]() *Event[H, P] {
 	event := &Event[H, P]{
 		Version:   EventVersionDefault,
 		ID:        MustUUID(),
 		Timestamp: time.Now(),
-		Context:   Context[H]{},
+		Context:   Context[H]{Parents: make([]uuid.UUID, 0)},
 		Subject:   Subject{},
 	}
 

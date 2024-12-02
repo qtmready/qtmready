@@ -7,6 +7,7 @@ import (
 	"go.temporal.io/sdk/workflow"
 
 	"go.breu.io/quantm/internal/core/repos/activities"
+	"go.breu.io/quantm/internal/core/repos/cast"
 	"go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/core/repos/fns"
 	"go.breu.io/quantm/internal/db/entities"
@@ -82,16 +83,19 @@ func (state *Branch) OnPush(ctx workflow.Context) durable.ChannelHandler {
 
 		state.LatestCommit = fns.GetLatestCommit(event.Payload)
 
-		clone := &defs.ClonePayload{Repo: state.Repo, Hook: event.Context.Hook, Branch: state.Branch, At: event.Payload.After}
+		clone := &defs.ClonePayload{Repo: state.Repo, Hook: event.Context.Hook, Branch: state.Branch, SHA: event.Payload.After}
 		path := state.clone(session, clone)
-		_ = state.diff(session, path, state.Repo.DefaultBranch, event.Payload.After)
+		diff := state.diff(session, path, state.Repo.DefaultBranch, event.Payload.After)
 		state.remove_dir(ctx, path)
+
+		// compare the diff
+		state.compare_diff(session, event, diff)
 	}
 }
 
+// OnRebase handles the rebase event for the branch. It creates a session, clones the repository at given branch,
+// attempts to rebase the branch with given sha, and removes the cloned repository.
 func (state *Branch) OnRebase(ctx workflow.Context) durable.ChannelHandler {
-	// OnRebase handles the rebase event for the branch. It creates a session, clones the repository at given branch,
-	// attempts to rebase the branch with given sha, and removes the cloned repository.
 	return func(ch workflow.ReceiveChannel, more bool) {
 		event := &events.Event[eventsv1.RepoHook, eventsv1.Rebase]{}
 		state.rx(ctx, ch, event)
@@ -106,7 +110,7 @@ func (state *Branch) OnRebase(ctx workflow.Context) durable.ChannelHandler {
 
 		defer workflow.CompleteSession(session)
 
-		clone := &defs.ClonePayload{Repo: state.Repo, Hook: event.Context.Hook, Branch: state.Branch, At: event.Payload.Head}
+		clone := &defs.ClonePayload{Repo: state.Repo, Hook: event.Context.Hook, Branch: state.Branch, SHA: event.Payload.Head}
 		path := state.clone(session, clone)
 		state.remove_dir(ctx, path)
 	}
@@ -146,9 +150,9 @@ func (state *Branch) remove_dir(ctx workflow.Context, path string) {
 }
 
 // diff calculates the diff between the given base and SHA using a Temporal activity.  Returns the diff result.
-func (state *Branch) diff(ctx workflow.Context, path, base, sha string) *defs.DiffResult {
+func (state *Branch) diff(ctx workflow.Context, path, base, sha string) *eventsv1.Diff {
 	payload := &defs.DiffPayload{Path: path, Base: base, SHA: sha}
-	result := &defs.DiffResult{}
+	result := &eventsv1.Diff{}
 
 	if err := state.run(ctx, "diff", state.acts.Diff, payload, result); err != nil {
 		state.logger.Error("diff: unable to calculate diff", "error", err.Error())
@@ -157,12 +161,29 @@ func (state *Branch) diff(ctx workflow.Context, path, base, sha string) *defs.Di
 	return result
 }
 
+// check the change diff and if it exceed from the threshold sends message to user other wise message to repo connected group.
+func (state *Branch) compare_diff(
+	ctx workflow.Context, push *events.Event[eventsv1.RepoHook, eventsv1.Push], diff *eventsv1.Diff,
+) {
+	dlt := diff.GetLines().GetAdded() + diff.GetLines().GetRemoved()
+
+	if dlt > state.Repo.Threshold {
+		// check the repo's connected chat or user's connected chat.
+		hook := int32(eventsv1.ChatHook_CHAT_HOOK_SLACK)
+		event := cast.PushEventToDiffEvent(push, hook, diff)
+
+		if err := state.run(ctx, "line_exceed", state.acts.ExceedLines, event, nil); err != nil {
+			state.logger.Error("lines_exceed: unable to to send", "error", err.Error())
+		}
+	}
+}
+
 func (state *Branch) notify_user(ctx workflow.Context) error { return nil }
-func (state *Branch) noify_repo(ctx workflow.Context) error  { return nil }
+func (state *Branch) notify_repo(ctx workflow.Context) error { return nil }
 
 // NewBranch constructs a new Branch state.
-func NewBranch(repo *entities.Repo, msg *entities.Messaging, branch string) *Branch {
-	base := &Base{Repo: repo, Messaging: msg}
+func NewBranch(repo *entities.Repo, msg *entities.ChatLink, branch string) *Branch {
+	base := &Base{Repo: repo, ChatLink: msg}
 
 	return &Branch{Base: base, Branch: branch, acts: &activities.Branch{}}
 }

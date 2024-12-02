@@ -10,7 +10,6 @@ import (
 type (
 	Config struct {
 		Clickhouse *Clickhouse `koanf:"CH"`
-		QuestDB    *QuestDB    `koanf:"QDB"`
 
 		once *sync.Once
 	}
@@ -21,7 +20,6 @@ type (
 var (
 	DefaultConfig = Config{
 		Clickhouse: &DefaultClickhouseConfig,
-		QuestDB:    &DefaultQuestDBConfig,
 
 		once: &sync.Once{},
 	}
@@ -47,17 +45,8 @@ func (c *Config) Start(ctx context.Context) error {
 			c.Clickhouse = &DefaultClickhouseConfig
 		}
 
-		if c.QuestDB == nil {
-			c.QuestDB = &DefaultQuestDBConfig
-		}
-
 		if cerr := c.Clickhouse.Start(ctx); cerr != nil {
 			err = cerr
-			return
-		}
-
-		if qerr := c.QuestDB.Start(ctx); qerr != nil {
-			err = qerr
 			return
 		}
 	})
@@ -102,7 +91,6 @@ func WithClickhouse(ch *Clickhouse) Option {
 func WithConfig(cfg *Config) Option {
 	return func(c *Config) {
 		c.Clickhouse = cfg.Clickhouse
-		c.QuestDB = cfg.QuestDB
 	}
 }
 

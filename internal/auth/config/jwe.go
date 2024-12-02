@@ -97,12 +97,12 @@ func DecodeJWE(secret, token string) (*Claims, error) {
 
 	claims := &Claims{}
 	if err := json.Unmarshal(enc, claims); err != nil {
-		return nil, err
+		return nil, erratic.NewBadRequestError(erratic.AuthModule).WithReason("invalid token")
 	}
 
 	// Validate expiration.
 	if time.Now().Unix() > int64(*claims.Expiry) {
-		return nil, erratic.NewUnauthorizedError("reason", "token expired")
+		return nil, erratic.NewAuthnError(erratic.AuthModule).WithReason("token expired")
 	}
 
 	return claims, nil

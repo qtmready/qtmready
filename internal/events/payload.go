@@ -13,6 +13,7 @@ type (
 			eventsv1.Push |
 			eventsv1.Rebase |
 			eventsv1.Diff |
-			eventsv1.PullRequest
+			eventsv1.PullRequest |
+			eventsv1.Merge
 	}
 )

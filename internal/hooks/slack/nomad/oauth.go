@@ -12,7 +12,6 @@ import (
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/erratic"
 	"go.breu.io/quantm/internal/hooks/slack/config"
-	"go.breu.io/quantm/internal/hooks/slack/errors"
 	"go.breu.io/quantm/internal/hooks/slack/fns"
 	slackv1 "go.breu.io/quantm/internal/proto/hooks/slack/v1"
 	"go.breu.io/quantm/internal/proto/hooks/slack/v1/slackv1connect"
@@ -29,40 +28,45 @@ func (s *SlackService) Oauth(
 ) (*connect.Response[emptypb.Empty], error) {
 	var c fns.HTTPClient
 
-	// check the already exist record against the link_to
-	// if exist return the error already exit
-	link_to, err := uuid.Parse(reqst.Msg.GetLinkTo())
+	linkTo, err := uuid.Parse(reqst.Msg.GetLinkTo())
 	if err != nil {
-		return nil, err
+		return nil, erratic.NewBadRequestError(erratic.HooksSlackModule).
+			WithReason("invalid link_to UUID").Wrap(err)
 	}
 
-	message, err := db.Queries().GetMessagesByLinkTo(ctx, link_to)
+	message, err := db.Queries().GetChatLink(ctx, linkTo)
+	if err != nil {
+		return nil, erratic.NewDatabaseError(erratic.HooksSlackModule).
+			WithReason("failed to query message by link_to").Wrap(err)
+	}
+
 	if message.ID != uuid.Nil {
-		return nil, erratic.NewInternalServerError().AddHint("reason", errors.ErrRecordExist.Error()).ToConnectError()
+		return nil, erratic.NewExistsError(erratic.HooksSlackModule).
+			WithReason("message with link_to already exists")
 	}
 
 	if reqst.Msg.GetCode() == "" {
-		return nil, erratic.NewInternalServerError().AddHint("reason", errors.ErrCodeEmpty.Error()).ToConnectError()
+		return nil, erratic.NewBadRequestError(erratic.HooksSlackModule).WithReason("missing OAuth code")
 	}
 
-	response, err := slack.
-		GetOAuthV2Response(&c, config.ClientID(), config.ClientSecret(), reqst.Msg.GetCode(), config.ClientRedirectURL())
+	response, err := slack.GetOAuthV2Response(&c, config.ClientID(), config.ClientSecret(), reqst.Msg.GetCode(), config.ClientRedirectURL())
 	if err != nil {
-		return nil, erratic.NewInternalServerError().AddHint("reason", err.Error()).ToConnectError()
+		return nil, erratic.NewNetworkError(erratic.HooksSlackModule).
+			WithReason("failed to get OAuth response from Slack").Wrap(err)
 	}
 
 	if response.AuthedUser.AccessToken != "" {
-		// linked message provider user (slack) to quantm user
 		if err := _user(ctx, reqst, response); err != nil {
-			return nil, erratic.NewInternalServerError().AddHint("reason", err.Error()).ToConnectError()
+			return nil, erratic.NewSystemError(erratic.HooksSlackModule).
+				WithReason("failed to process user OAuth").Wrap(err) // More specific reason if possible
 		}
 
 		return connect.NewResponse(&emptypb.Empty{}), nil
 	}
 
-	// connect slack bot user with channel info
 	if err := _bot(ctx, reqst, response); err != nil {
-		return nil, erratic.NewInternalServerError().AddHint("reason", err.Error()).ToConnectError()
+		return nil, erratic.NewSystemError(erratic.HooksSlackModule).
+			WithReason("failed to process bot OAuth").Wrap(err) // More specific reason if possible
 	}
 
 	return connect.NewResponse(&emptypb.Empty{}), nil

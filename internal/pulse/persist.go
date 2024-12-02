@@ -3,6 +3,7 @@ package pulse
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/workflow"
@@ -17,7 +18,7 @@ const (
 INSERT INTO %s (
 	version,
 	id,
-	parent_id,
+	parents,
 	hook,
 	scope,
 	action,
@@ -37,6 +38,8 @@ INSERT INTO %s (
 func Persist[H events.Hook, P events.Payload](ctx workflow.Context, event *events.Event[H, P]) error {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 	flat := event.Flatten()
+
+	slog.Info("pulse: persist", "event", event)
 
 	var future workflow.Future
 
@@ -67,7 +70,7 @@ func PersistRepoEvent(ctx context.Context, flat events.Flat[eventsv1.RepoHook]) 
 			stmt,
 			flat.Version,
 			flat.ID,
-			flat.ParentID,
+			flat.Parents,
 			flat.Hook.Number(),
 			flat.Scope,
 			flat.Action,
@@ -98,7 +101,7 @@ func PersistChatEvent(ctx context.Context, flat events.Flat[eventsv1.ChatHook]) 
 			stmt,
 			flat.Version,
 			flat.ID,
-			flat.ParentID,
+			flat.Parents,
 			flat.Hook.Number(),
 			flat.Scope,
 			flat.Action,
