@@ -119,8 +119,8 @@ func Next[H Hook, F Payload, T Payload](from *Event[H, F], scope Scope, action A
 		SetParent(from.Context.ParentID).SetScope(scope).SetAction(action)
 }
 
-// Translate transforms the event from one hook type to another while keeping the payload.
-func Translate[H1 Hook, H2 Hook, F Payload, T Payload](
+// NextHook transforms the event from one hook type to another while keeping the payload.
+func NextHook[H1 Hook, H2 Hook, F Payload, T Payload](
 	from *Event[H1, F], scope Scope, action Action, hook H2,
 ) *Event[H2, T] {
 	event := New[H2, T]().
