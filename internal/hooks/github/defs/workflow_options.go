@@ -46,14 +46,27 @@ func NewSyncReposWorkflows(install_id int64, action string, action_id string) *d
 
 // NewPushWorkflowOptions standardize the workflow options for Push Workflow.
 //
-//	io.ctrlplane.hooks.github.repo.${repo_name}.push.${installation_id}.${action}.${action_id}
-func NewPushWorkflowOptions(id int64, repo, action, event_id string) *durable.WorkflowOptions {
+//	io.ctrlplane.hooks.github.repo.${repo_name}.${install_id}.${action}.${action_id}
+func NewPushWorkflowOptions(repo_id int64, repo, event_id string) *durable.WorkflowOptions {
 	return durable.NewWorkflowOptions(
 		durable.WithHook("github"),
 		durable.WithSubject("repo"),
 		durable.WithSubjectID(repo),
-		durable.WithScope("push"),
-		durable.WithScopeID(utils.Int64ToString(id)),
+		durable.WithScopeID(utils.Int64ToString(repo_id)),
+		durable.WithAction("push"),
+		durable.WithActionID(event_id),
+	)
+}
+
+// NewCreateOrDeleteWorkflowOptions standardize the workflow options for CreateOrDelete Workflow.
+//
+//	io.ctrlplane.hooks.github.${install_id}.repo.${repo_name}.${action}.${event_id}
+func NewCreateOrDeleteWorkflowOptions(install_id int64, name, action, event_id string) *durable.WorkflowOptions {
+	return durable.NewWorkflowOptions(
+		durable.WithHook("github"),
+		durable.WithSubject("repo"),
+		durable.WithSubjectID(name),
+		durable.WithScopeID(utils.Int64ToString(install_id)),
 		durable.WithAction(action),
 		durable.WithActionID(event_id),
 	)
@@ -81,14 +94,14 @@ func NewPushWorkflowOptions(id int64, repo, action, event_id string) *durable.Wo
 // For a push event, the workflow ID would be constructed using the following parameters:
 //
 //   - repo_id: 683467348
-//   - ref: refs/heads/graceful-di
-//   - after: 0000000000000000000000000000000000000000
+//   - ref: refs/heads/di
+//   - after: deadbeef
 //   - action: deleted
 //   - event_id: abcdef123-4567-8901-2345-678901234567
 //
 // This would result in the following Workflow ID:
 //
-//	io.ctrlplane.hooks.github.repo.683467348.refs/heads/graceful-di.push.0000000000000000000000000000000000000000.deleted.abcdef123-4567-8901-2345-678901234567
+//	io.ctrlplane.hooks.github.repo.683467348.refs/heads/di.push.deadbeef.deleted.abcdef123-4567-8901-2345-678901234567
 //
 // # Pull Request Event: Pull Request Opened
 //

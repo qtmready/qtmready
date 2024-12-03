@@ -9,6 +9,13 @@ import (
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
+func RefToProto(payload *defs.WebhookRef) eventsv1.GitRef {
+	return eventsv1.GitRef{
+		Ref:  payload.Ref,
+		Kink: payload.RefType,
+	}
+}
+
 func PushToProto(payload *defs.Push) eventsv1.Push {
 	return eventsv1.Push{
 		Ref:        payload.Ref,

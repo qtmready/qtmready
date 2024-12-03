@@ -12,7 +12,7 @@ type (
 	Push struct{}
 )
 
-func (p *Push) HydratePushEvent(ctx context.Context, params *defs.HydrateRepoEventPayload) (*defs.HydratedRepoEvent, error) {
+func (p *Push) HydrateGithubPushEvent(ctx context.Context, params *defs.HydrateRepoEventPayload) (*defs.HydratedRepoEvent, error) {
 	return HydrateRepoEvent(ctx, params)
 }
 
