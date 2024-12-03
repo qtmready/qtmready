@@ -24,8 +24,8 @@ func (e *Event[H, P]) SetParent(id uuid.UUID) *Event[H, P] {
 	return e
 }
 
-// SettHook sets the hook of the event.
-func (e *Event[H, P]) SettHook(hook H) *Event[H, P] {
+// SetHook sets the hook of the event.
+func (e *Event[H, P]) SetHook(hook H) *Event[H, P] {
 	e.Context.Hook = hook
 	return e
 }
@@ -117,6 +117,27 @@ func (e *Event[H, P]) Flatten() *Flat[H] {
 func Next[H Hook, F Payload, T Payload](from *Event[H, F], scope Scope, action Action) *Event[H, T] {
 	return New[H, T]().SetSubject(from.Subject).SetContext(from.Context).
 		SetParent(from.Context.ParentID).SetScope(scope).SetAction(action)
+}
+
+// Translate transforms the event from one hook type to another while keeping the payload.
+func Translate[H1 Hook, H2 Hook, F Payload, T Payload](
+	from *Event[H1, F], scope Scope, action Action, hook H2,
+) *Event[H2, T] {
+	event := New[H2, T]().
+		SetSubject(from.Subject).
+		SetScope(scope).
+		SetAction(action).
+		SetHook(hook)
+
+	event.SetContext(Context[H2]{
+		ParentID: from.Context.ParentID,
+		Hook:     hook,
+		Scope:    scope,
+		Action:   action,
+		Source:   from.Context.Source,
+	})
+
+	return event
 }
 
 // New creates a new event with default values.

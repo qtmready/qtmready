@@ -12,4 +12,5 @@ const (
 	ScopeTag    Scope = "tag"    // ScopeTag scopes tag event.
 	ScopePush   Scope = "push"   // ScopePush scopes push event.
 	ScopeRebase Scope = "rebase" // ScopeRebase scopes rebase event.
+	ScopeDiff   Scope = "diff"   // ScopeRebase scopes diff event.
 )

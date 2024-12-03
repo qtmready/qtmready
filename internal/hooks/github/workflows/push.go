@@ -48,7 +48,7 @@ func Push(ctx workflow.Context, push *defs.Push) error {
 
 	event := events.
 		New[eventsv1.RepoHook, eventsv1.Push]().
-		SettHook(eventsv1.RepoHook_REPO_HOOK_GITHUB).
+		SetHook(eventsv1.RepoHook_REPO_HOOK_GITHUB).
 		SetParent(meta.ParentID).
 		SetScope(events.ScopePush).
 		SetAction(action).
