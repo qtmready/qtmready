@@ -26,4 +26,5 @@ type (
 
 const (
 	SubjectNameRepos = "repos"
+	SubjectNameChat  = "chat"
 )

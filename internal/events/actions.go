@@ -19,6 +19,7 @@ const (
 	ActionAbandoned  Action = "abandoned" // ActionAbandoned is the action of an abandoned event.
 	EventActionAdded Action = "added"     // EventActionAdded is the action of an added event.
 	ActionRequested  Action = "requested" // EventActionRequested is the action of a requested event.
+	ActionDiff       Action = "diff"      // ActionDiff is the action of a diff change pushed event.
 )
 
 // String returns the string representation of the EventAction.
