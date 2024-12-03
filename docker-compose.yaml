@@ -57,24 +57,6 @@ services:
       - ctrlplane
 
   ################################
-  # questdb.io
-  ################################
-
-  questdb:
-    container_name: questdb
-    image: questdb/questdb:8.1.4
-    environment:
-      QDB_PG_USER: ${PULSE__QDB__USER}
-      QDB_PG_PASSWORD: ${PULSE__QDB__PASS}
-    ports:
-      # - "6060:8812" # we don't want to pollute the 8xxx ports
-      - "6060:9000" # we don't want to pollute the 9xxx ports
-    volumes:
-      - questdb-data:/var/lib/questdb
-    networks:
-      - ctrlplane
-
-  ################################
   # clickhouse.io
   ################################
 

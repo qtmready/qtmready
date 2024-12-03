@@ -1,6 +1,7 @@
 package workflows
 
 import (
+	"github.com/google/uuid"
 	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/workflow"
 
@@ -49,7 +50,6 @@ func Push(ctx workflow.Context, push *defs.Push) error {
 	event := events.
 		New[eventsv1.RepoHook, eventsv1.Push]().
 		SetHook(eventsv1.RepoHook_REPO_HOOK_GITHUB).
-		SetParents(meta.ParentID).
 		SetScope(events.ScopePush).
 		SetAction(action).
 		SetSource(meta.Repo.Url).
@@ -57,6 +57,10 @@ func Push(ctx workflow.Context, push *defs.Push) error {
 		SetSubjectName(events.SubjectNameRepos).
 		SetSubjectID(meta.Repo.ID).
 		SetPayload(&proto)
+
+	if meta.ParentID != uuid.Nil {
+		event.SetParents(meta.ParentID)
+	}
 
 	if meta.Team != nil {
 		event.SetTeam(meta.Team.ID)
