@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -38,7 +39,9 @@ func HydrateRepoEvent(ctx context.Context, payload *defs.HydrateRepoEventPayload
 		hydrated.User = &user
 	}
 
-	if hydrated.Repo.DefaultBranch != payload.Branch {
+	time.Sleep(500 * time.Second)
+
+	if payload.Branch != "" || payload.Branch != hydrated.Repo.DefaultBranch || payload.ShouldFetchParent {
 		parent, err := durable.
 			OnCore().
 			QueryWorkflow(ctx, hydrated.RepoWorkflowOptions(), repos.QueryRepoForEventParent, payload.Branch)

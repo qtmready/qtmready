@@ -21,10 +21,11 @@ type (
 
 	// HydrateRepoEventPayload is the payload for the HydrateRepoEvent activity.
 	HydrateRepoEventPayload struct {
-		RepoID         int64  `json:"repo_id"`
-		InstallationID int64  `json:"installation_id"`
-		Email          string `json:"email"`
-		Branch         string `json:"branch"`
+		RepoID            int64  `json:"repo_id"`
+		InstallationID    int64  `json:"installation_id"`
+		Email             string `json:"email"`
+		Branch            string `json:"branch"`
+		ShouldFetchParent bool   `json:"should_fetch_parent"`
 	}
 
 	// HydratedRepoEventMessaging contains the possible messaging channels for a HydratedRepoEvent.

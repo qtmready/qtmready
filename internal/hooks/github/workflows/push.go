@@ -32,7 +32,7 @@ func Push(ctx workflow.Context, push *defs.Push) error {
 			Email:          push.Pusher.Email,
 			Branch:         repos.BranchNameFromRef(push.Ref),
 		}
-		if err := workflow.ExecuteActivity(ctx, acts.HydratePushEvent, payload).Get(ctx, meta); err != nil {
+		if err := workflow.ExecuteActivity(ctx, acts.HydrateGithubPushEvent, payload).Get(ctx, meta); err != nil {
 			return err
 		}
 	}
