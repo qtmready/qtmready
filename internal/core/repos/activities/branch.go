@@ -99,9 +99,9 @@ func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1
 
 	defer head.Free()
 
-	diffopts, _ := git.DefaultDiffOptions()
+	opts, _ := git.DefaultDiffOptions()
 
-	diff, err := repo.DiffTreeToTree(base, head, &diffopts)
+	diff, err := repo.DiffTreeToTree(base, head, &opts)
 	if err != nil {
 		logger.Error("Failed to create diff", "error", err)
 		return nil, err
@@ -128,33 +128,15 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 		return nil, err
 	}
 
-	// Lookup the base branch
-	ref, err := repo.References.Lookup(fns.BranchNameToRef(payload.Rebase.Base))
+	base, err := a.annotated_commit_from_ref(ctx, repo, payload.Rebase.Base)
 	if err != nil {
-		logger.Error("Failed to lookup base ref", "error", err, "branch", payload.Rebase.Base)
-		return nil, err
-	}
-
-	defer ref.Free()
-
-	base, err := repo.LookupAnnotatedCommit(ref.Target())
-	if err != nil {
-		logger.Error("Failed to lookup base commit", "error", err, "target", ref.Target())
 		return nil, err
 	}
 
 	defer base.Free()
 
-	// Lookup the id commit
-	id, err := git.NewOid(payload.Rebase.Head)
+	head, err := a.annotated_commit_from_oid(ctx, repo, payload.Rebase.Head)
 	if err != nil {
-		logger.Error("Invalid head SHA", "error", err, "sha", payload.Rebase.Head)
-		return nil, err
-	}
-
-	head, err := repo.LookupAnnotatedCommit(id)
-	if err != nil {
-		logger.Error("Failed to lookup head commit", "error", err, "id", id)
 		return nil, err
 	}
 
@@ -223,6 +205,44 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 	}
 
 	return nil, nil
+}
+
+func (a *Branch) annotated_commit_from_ref(ctx context.Context, repo *git.Repository, branch string) (*git.AnnotatedCommit, error) {
+	logger := activity.GetLogger(ctx)
+
+	ref, err := repo.References.Lookup(fns.BranchNameToRef(branch))
+	if err != nil {
+		logger.Error("Failed to lookup ref", "error", err, "branch", branch)
+		return nil, err
+	}
+
+	defer ref.Free()
+
+	commit, err := repo.LookupAnnotatedCommit(ref.Target())
+	if err != nil {
+		logger.Error("Failed to lookup base commit", "error", err, "target", ref.Target())
+		return nil, err
+	}
+
+	return commit, nil
+}
+
+func (a *Branch) annotated_commit_from_oid(ctx context.Context, repo *git.Repository, sha string) (*git.AnnotatedCommit, error) {
+	logger := activity.GetLogger(ctx)
+
+	id, err := git.NewOid(sha)
+	if err != nil {
+		logger.Error("Invalid head SHA", "error", err, "sha", sha)
+		return nil, err
+	}
+
+	commit, err := repo.LookupAnnotatedCommit(id)
+	if err != nil {
+		logger.Error("Failed to lookup head commit", "error", err, "id", id)
+		return nil, err
+	}
+
+	return commit, nil
 }
 
 // refresh_remote fetches the latest changes from the remote "origin" for the given branch.
@@ -323,7 +343,7 @@ func (a *Branch) tree_from_sha(ctx context.Context, repo *git.Repository, sha st
 // It also calculates the total number of lines added and removed using the diff statistics.
 func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*eventsv1.Diff, error) {
 	logger := activity.GetLogger(ctx)
-	result := &eventsv1.Diff{}
+	result := &eventsv1.Diff{Files: &eventsv1.DiffFiles{}, Lines: &eventsv1.DiffLines{}}
 
 	deltas, err := diff.NumDeltas()
 	if err != nil {
