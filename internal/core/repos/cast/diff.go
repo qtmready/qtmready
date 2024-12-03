@@ -11,7 +11,7 @@ func PushEventToDiffEvent(
 	push *events.Event[eventsv1.RepoHook, eventsv1.Push],
 	payload *eventsv1.Diff,
 ) *events.Event[eventsv1.ChatHook, eventsv1.Diff] {
-	return events.Translate[eventsv1.RepoHook, eventsv1.ChatHook, eventsv1.Push, eventsv1.Diff](
+	return events.NextHook[eventsv1.RepoHook, eventsv1.ChatHook, eventsv1.Push, eventsv1.Diff](
 		push,
 		events.ScopeDiff,
 		events.ActionDiff,
