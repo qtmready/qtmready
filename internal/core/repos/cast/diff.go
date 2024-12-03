@@ -6,15 +6,15 @@ import (
 )
 
 // PushEventToDiffEvent converts a Push event to a diff event.
-// TODO - refine or make a Next func which convet hook with payload.
+// TODO - the hook should be a parameter to this function.
 func PushEventToDiffEvent(
 	push *events.Event[eventsv1.RepoHook, eventsv1.Push],
 	payload *eventsv1.Diff,
 ) *events.Event[eventsv1.ChatHook, eventsv1.Diff] {
-	return events.NextHook[eventsv1.RepoHook, eventsv1.ChatHook, eventsv1.Push, eventsv1.Diff](
+	return events.NextWithHook[eventsv1.RepoHook, eventsv1.ChatHook, eventsv1.Push, eventsv1.Diff](
 		push,
+		eventsv1.ChatHook_CHAT_HOOK_SLACK,
 		events.ScopeDiff,
 		events.ActionDiff,
-		eventsv1.ChatHook_CHAT_HOOK_SLACK,
-	).SetSubjectName(events.SubjectNameChat).SetPayload(payload)
+	).SetPayload(payload)
 }
