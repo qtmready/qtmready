@@ -12,7 +12,7 @@ type (
 	Flat[H Hook] struct {
 		Version     EventVersion `json:"version"`      // Version is the version of the event.
 		ID          uuid.UUID    `json:"id"`           // ID is the ID of the event.
-		ParentID    uuid.UUID    `json:"parent_id"`    // ParentID is the ID of the parent event.
+		Parents     []uuid.UUID  `json:"parents"`      // ParentID is the ID of the parent event.
 		Hook        H            `json:"provider"`     // Provider is the provider of the event.
 		Scope       Scope        `json:"scope"`        // Scope is the scope of the event.
 		Action      Action       `json:"action"`       // Action is the action of the event.

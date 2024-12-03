@@ -12,7 +12,7 @@ const (
 CREATE TABLE IF NOT EXISTS %s (
   version String,
   id UUID,
-  parent_id UUID,
+  parents Array(UUID),
   hook Int32,
   scope String,
   action String,

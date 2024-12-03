@@ -18,9 +18,9 @@ type (
 	}
 )
 
-// SetParent sets the parent ID of the event.
-func (e *Event[H, P]) SetParent(id uuid.UUID) *Event[H, P] {
-	e.Context.ParentID = id
+// SetParents sets the adds the given id to parents.
+func (e *Event[H, P]) SetParents(id ...uuid.UUID) *Event[H, P] {
+	e.Context.Parents = append(e.Context.Parents, id...)
 	return e
 }
 
@@ -100,7 +100,7 @@ func (e *Event[H, P]) Flatten() *Flat[H] {
 		Version:     e.Version,
 		ID:          e.ID,
 		Timestamp:   e.Timestamp,
-		ParentID:    e.Context.ParentID,
+		Parents:     e.Context.Parents,
 		Hook:        e.Context.Hook,
 		Scope:       e.Context.Scope,
 		Action:      e.Context.Action,
@@ -114,30 +114,21 @@ func (e *Event[H, P]) Flatten() *Flat[H] {
 }
 
 // Next creates a new event based on the provided event, scope, and action.
-func Next[H Hook, F Payload, T Payload](from *Event[H, F], scope Scope, action Action) *Event[H, T] {
-	return New[H, T]().SetSubject(from.Subject).SetContext(from.Context).
-		SetParent(from.Context.ParentID).SetScope(scope).SetAction(action)
+func Next[H Hook, F Payload, T Payload](event *Event[H, F], scope Scope, action Action) *Event[H, T] {
+	return NextWithHook[H, H, F, T](event, event.Context.Hook, scope, action)
 }
 
-// NextHook transforms the event from one hook type to another while keeping the payload.
-func NextHook[H1 Hook, H2 Hook, F Payload, T Payload](
-	from *Event[H1, F], scope Scope, action Action, hook H2,
-) *Event[H2, T] {
-	event := New[H2, T]().
-		SetSubject(from.Subject).
-		SetScope(scope).
-		SetAction(action).
-		SetHook(hook)
+// NextWithHook transforms the event from one hook type to another while keeping the payload.
+func NextWithHook[H1 Hook, H2 Hook, F Payload, T Payload](event *Event[H1, F], hook H2, scope Scope, action Action) *Event[H2, T] {
+	ctx := Context[H2]{
+		Parents: append(event.Context.Parents, event.ID),
+		Hook:    hook,
+		Scope:   scope,
+		Action:  action,
+		Source:  event.Context.Source,
+	}
 
-	event.SetContext(Context[H2]{
-		ParentID: from.Context.ParentID,
-		Hook:     hook,
-		Scope:    scope,
-		Action:   action,
-		Source:   from.Context.Source,
-	})
-
-	return event
+	return New[H2, T]().SetContext(ctx).SetSubject(event.Subject)
 }
 
 // New creates a new event with default values.
