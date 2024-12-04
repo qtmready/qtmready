@@ -5,6 +5,7 @@ import (
 	"go.breu.io/durex/dispatch"
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/core/repos"
 	"go.breu.io/quantm/internal/events"
 	"go.breu.io/quantm/internal/hooks/github/activities"
 	"go.breu.io/quantm/internal/hooks/github/cast"
@@ -20,29 +21,32 @@ import (
 func Ref(ctx workflow.Context, payload *defs.WebhookRef, event defs.WebhookEvent) error {
 	acts := &activities.Ref{}
 	ctx = dispatch.WithDefaultActivityContext(ctx)
+	logger := workflow.GetLogger(ctx)
 
 	proto := cast.RefToProto(payload)
 	meta := &defs.HydratedRepoEvent{}
 
 	{
-		hydratePayload := &defs.HydrateRepoEventPayload{
+		payload := &defs.HydrateRepoEventPayload{
 			RepoID:            payload.Repository.ID,
 			InstallationID:    payload.Installation.ID,
 			ShouldFetchParent: false,
 		}
-		if err := workflow.ExecuteActivity(ctx, acts.HydrateGithubRefEvent, hydratePayload).Get(ctx, meta); err != nil {
+		if err := workflow.ExecuteActivity(ctx, acts.HydrateGithubRefEvent, payload).Get(ctx, meta); err != nil {
 			return err
 		}
 	}
 
+	signal := repos.SignalRef
 	scope := events.ScopeBranch
 
 	if payload.RefType != "branch" {
+		logger.Warn("ref: unhandled ref event", "type", payload.RefType)
 		return nil
 	}
 
 	action := events.ActionCreated
-	if !payload.IsCreated {
+	if event == defs.WebhookEventDelete {
 		action = events.ActionDeleted
 	}
 
@@ -73,7 +77,7 @@ func Ref(ctx workflow.Context, payload *defs.WebhookRef, event defs.WebhookEvent
 		return err
 	}
 
-	hevent := &defs.HydratedQuantmEvent[eventsv1.GitRef]{Event: evt, Meta: meta}
+	hevent := &defs.HydratedQuantmEvent[eventsv1.GitRef]{Event: evt, Meta: meta, Signal: signal}
 
 	return workflow.ExecuteActivity(ctx, acts.SignalRepoWithGithubRef, hevent).Get(ctx, nil)
 }

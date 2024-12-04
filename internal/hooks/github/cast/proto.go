@@ -12,7 +12,7 @@ import (
 func RefToProto(payload *defs.WebhookRef) eventsv1.GitRef {
 	return eventsv1.GitRef{
 		Ref:  payload.Ref,
-		Kink: payload.RefType,
+		Kind: payload.RefType,
 	}
 }
 

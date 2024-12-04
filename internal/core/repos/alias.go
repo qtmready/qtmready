@@ -40,6 +40,7 @@ var (
 
 const (
 	SignalPush = defs.SignalPush
+	SignalRef  = defs.SignalRef
 )
 
 const (

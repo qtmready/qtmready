@@ -2,6 +2,7 @@ package defs
 
 import (
 	"github.com/google/uuid"
+	"go.breu.io/durex/queues"
 	"go.breu.io/durex/workflows"
 
 	"go.breu.io/quantm/internal/core/repos"
@@ -48,8 +49,9 @@ type (
 
 	// HydratedQuantmEvent is the hydrated event data for a Quantm event.
 	HydratedQuantmEvent[P events.Payload] struct {
-		Event *events.Event[eventsv1.RepoHook, P] `json:"event"`
-		Meta  *HydratedRepoEvent                  `json:"meta"`
+		Event  *events.Event[eventsv1.RepoHook, P] `json:"event"`
+		Meta   *HydratedRepoEvent                  `json:"meta"`
+		Signal queues.Signal                       `json:"signal"`
 	}
 )
 

@@ -95,6 +95,29 @@ func (state *Repo) OnPush(ctx workflow.Context) durable.ChannelHandler {
 	}
 }
 
+func (state *Repo) OnRef(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		ref := &events.Event[eventsv1.RepoHook, eventsv1.GitRef]{}
+		state.rx(ctx, rx, ref)
+
+		if ref.Payload.Kind == "branch" {
+			branch := fns.BranchNameFromRef(ref.Payload.Ref)
+
+			if err := state.forward_to_branch(ctx, defs.SignalRef, branch, ref); err != nil {
+				state.logger.Warn("ref: unable to signal branch", "repo", state.Repo.ID, "branch", branch, "error", err.Error())
+			}
+
+			if ref.Context.Action == events.ActionCreated {
+				state.Triggers.add(branch, ref.ID)
+			}
+
+			if ref.Context.Action == events.ActionDeleted {
+				state.Triggers.remove(branch)
+			}
+		}
+	}
+}
+
 // - query handlers -
 
 // QueryBranchTrigger queries the parent branch for the specified branch.

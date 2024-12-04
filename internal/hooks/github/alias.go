@@ -11,6 +11,7 @@ type (
 	InstallActivity      = activities.Install
 	InstallReposActivity = activities.InstallRepos
 	PushActivity         = activities.Push
+	RefActivity          = activities.Ref
 
 	KernelImpl = activities.Kernel
 
@@ -23,7 +24,8 @@ var (
 	WithConfig = config.WithConfig
 	Get        = config.Instance
 
-	Install   = workflows.Install
-	Push      = workflows.Push
-	SyncRepos = workflows.SyncRepos
+	InstallWorkflow   = workflows.Install
+	RefWorkflow       = workflows.Ref
+	PushWorkflow      = workflows.Push
+	SyncReposWorkflow = workflows.SyncRepos
 )

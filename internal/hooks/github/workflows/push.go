@@ -74,7 +74,7 @@ func Push(ctx workflow.Context, push *defs.Push) error {
 		return err
 	}
 
-	hevent := &defs.HydratedQuantmEvent[eventsv1.Push]{Event: event, Meta: meta}
+	hevent := &defs.HydratedQuantmEvent[eventsv1.Push]{Event: event, Meta: meta, Signal: repos.SignalPush}
 
 	return workflow.ExecuteActivity(ctx, acts.SignalRepoWithGithubPush, hevent).Get(ctx, nil)
 }

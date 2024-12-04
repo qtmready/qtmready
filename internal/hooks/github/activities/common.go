@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -38,8 +37,6 @@ func HydrateRepoEvent(ctx context.Context, payload *defs.HydrateRepoEventPayload
 		user, _ := db.Queries().GetUserByEmail(ctx, payload.Email)
 		hydrated.User = &user
 	}
-
-	time.Sleep(500 * time.Second)
 
 	if payload.Branch != "" || payload.Branch != hydrated.Repo.DefaultBranch || payload.ShouldFetchParent {
 		parent, err := durable.
@@ -149,7 +146,7 @@ func SignalRepo[P events.Payload](ctx context.Context, hydrated *defs.HydratedQu
 	_, err := durable.OnCore().SignalWithStartWorkflow(
 		ctx,
 		hydrated.Meta.RepoWorkflowOptions(),
-		repos.SignalPush,
+		hydrated.Signal,
 		hydrated.Event,
 		repos.RepoWorkflow,
 		repos.NewRepoWorkflowState(hydrated.Meta.Repo, hydrated.Meta.Messaging.Repo),

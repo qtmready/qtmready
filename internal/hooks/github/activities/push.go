@@ -2,6 +2,7 @@ package activities
 
 import (
 	"context"
+	"time"
 
 	"go.breu.io/quantm/internal/hooks/github/defs"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
@@ -17,5 +18,7 @@ func (p *Push) HydrateGithubPushEvent(ctx context.Context, params *defs.HydrateR
 }
 
 func (p *Push) SignalRepoWithGithubPush(ctx context.Context, hydrated *defs.HydratedQuantmEvent[eventsv1.Push]) error {
+	time.Sleep(2 * time.Second) // FIXME: this is a quick hack.
+
 	return SignalRepo(ctx, hydrated)
 }
