@@ -10,7 +10,7 @@ import (
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
-func LineExceedFields(event *events.Event[eventsv1.RepoHook, eventsv1.Diff]) []slack.AttachmentField {
+func LineExceedFields(event *events.Event[eventsv1.ChatHook, eventsv1.Diff]) []slack.AttachmentField {
 	fields := []slack.AttachmentField{
 		{
 			Title: "*Repository*",
