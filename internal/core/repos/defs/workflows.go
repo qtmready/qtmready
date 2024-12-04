@@ -10,8 +10,7 @@ import (
 // signals.
 const (
 	SignalPush   queues.Signal = "push"   // signals a push event.
-	SignalBranch queues.Signal = "branch" // signals a branch event.
-	SignalTag    queues.Signal = "tag"    // signals a tag event.
+	SignalRef    queues.Signal = "ref"    // signals a branch event.
 	SignalPR     queues.Signal = "pr"     // signals a pull request event.
 	SignalRebase queues.Signal = "rebase" // signals a rebase event.
 )

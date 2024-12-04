@@ -13,8 +13,8 @@ func (b BranchTriggers) add(branch string, id uuid.UUID) {
 	b[branch] = id
 }
 
-// clear removes the association between a branch and its triggering event ID.
-func (b BranchTriggers) clear(branch string) {
+// remove removes the association between a branch and its triggering event ID.
+func (b BranchTriggers) remove(branch string) {
 	delete(b, branch)
 }
 
