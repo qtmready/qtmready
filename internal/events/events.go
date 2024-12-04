@@ -137,7 +137,7 @@ func New[H Hook, P Payload]() *Event[H, P] {
 		Version:   EventVersionDefault,
 		ID:        MustUUID(),
 		Timestamp: time.Now(),
-		Context:   Context[H]{},
+		Context:   Context[H]{Parents: make([]uuid.UUID, 0)},
 		Subject:   Subject{},
 	}
 

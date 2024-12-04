@@ -42,8 +42,9 @@ func HydrateRepoEvent(ctx context.Context, payload *defs.HydrateRepoEventPayload
 		parent, err := durable.
 			OnCore().
 			QueryWorkflow(ctx, hydrated.RepoWorkflowOptions(), repos.QueryRepoForEventParent, payload.Branch)
+
 		if err == nil {
-			_ = parent.Get(hydrated.ParentID)
+			_ = parent.Get(&hydrated.ParentID)
 		}
 	}
 
