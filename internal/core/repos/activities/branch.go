@@ -11,7 +11,6 @@ import (
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/core/repos/fns"
-	"go.breu.io/quantm/internal/events"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
@@ -378,9 +377,4 @@ func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*eventsv1.
 	result.Lines.Removed = int32(stats.Deletions()) // nolint:gosec
 
 	return result, nil
-}
-
-func (a *Branch) LinesExceed(ctx context.Context, diff *events.Event[eventsv1.ChatHook, eventsv1.Diff]) error {
-	// call the chat provider slack.
-	return nil
 }

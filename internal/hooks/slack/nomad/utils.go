@@ -14,6 +14,7 @@ import (
 	"go.breu.io/quantm/internal/hooks/slack/fns"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 	slackv1 "go.breu.io/quantm/internal/proto/hooks/slack/v1"
+	"go.breu.io/quantm/internal/utils"
 )
 
 func _user(
@@ -54,7 +55,7 @@ func _user(
 	}
 
 	// Convert the string to uuid.UUID
-	link_to, err := db.ParseUUID(reqst.Msg.GetLinkTo())
+	link_to, err := utils.ParseUUID(reqst.Msg.GetLinkTo())
 	if err != nil {
 		return err
 	}
@@ -101,7 +102,7 @@ func _bot(
 	}
 
 	// Convert the string to uuid.UUID
-	link_to, err := db.ParseUUID(reqst.Msg.GetLinkTo())
+	link_to, err := utils.ParseUUID(reqst.Msg.GetLinkTo())
 	if err != nil {
 		return err
 	}

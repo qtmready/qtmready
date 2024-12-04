@@ -5,7 +5,9 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"crypto/sha512"
+	"encoding/base64"
 	"io"
+	"log/slog"
 
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/hooks/slack/errors"
@@ -61,4 +63,26 @@ func Generate(workspaceID string) []byte {
 	h.Write([]byte(auth.Secret() + workspaceID)) // TODO - verify
 
 	return h.Sum(nil)[:32]
+}
+
+// Reveal decodes a base64-encoded encrypted token and decrypts it using a generated key.
+func Reveal(botToken, workspaceID string) (string, error) {
+	// Decode the base64-encoded encrypted token.
+	decoded, err := base64.StdEncoding.DecodeString(botToken)
+	if err != nil {
+		slog.Error("Failed to decode the token", slog.Any("e", err))
+		return "", err
+	}
+
+	// Generate the same key used for encryption.
+	key := Generate(workspaceID)
+
+	// Decrypt the token.
+	decrypted, err := Decrypt(decoded, key)
+	if err != nil {
+		slog.Error("Failed to decrypt the token", slog.Any("e", err))
+		return "", err
+	}
+
+	return string(decrypted), nil
 }

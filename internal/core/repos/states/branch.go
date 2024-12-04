@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"go.temporal.io/sdk/workflow"
 
+	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/core/repos/activities"
 	"go.breu.io/quantm/internal/core/repos/cast"
 	"go.breu.io/quantm/internal/core/repos/defs"
@@ -168,8 +169,11 @@ func (state *Branch) compare_diff(
 	dlt := diff.GetLines().GetAdded() + diff.GetLines().GetRemoved()
 
 	if dlt > state.Repo.Threshold {
-		event := cast.PushEventToDiffEvent(push, diff)
-		if err := state.run(ctx, "line_exceed", state.acts.LinesExceed, event, nil); err != nil {
+		// check the repo's connected chat or user's connected chat.
+		event := cast.PushEventToDiffEvent(push, state.Messaging.Hook, diff)
+
+		io := kernel.Get().ChatHook(eventsv1.ChatHook(state.Messaging.Hook))
+		if err := state.run(ctx, "line_exceed", io.NotifyLinesExceed, event, nil); err != nil {
 			state.logger.Error("lines_exceed: unable to to send", "error", err.Error())
 		}
 	}
