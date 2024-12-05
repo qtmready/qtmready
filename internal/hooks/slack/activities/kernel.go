@@ -64,6 +64,12 @@ func (k *Kernel) NotifyLinesExceed(
 	return fns.SendMessage(client, target, attachment)
 }
 
+func (k *Kernel) NotifyMergeConflict(
+	ctx context.Context, event *events.Event[eventsv1.ChatHook, eventsv1.Merge],
+) error {
+	return nil
+}
+
 func (k *Kernel) to_user(ctx context.Context, link_to uuid.UUID) (string, string, error) {
 	msg, err := db.Queries().GetMessagesByLinkTo(ctx, link_to)
 	if err != nil {
