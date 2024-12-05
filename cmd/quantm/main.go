@@ -50,7 +50,10 @@ func main() {
 
 	github.Configure(github.WithConfig(cfg.Github))
 	slack.Configure(slack.WithConfig(cfg.Slack))
-	kernel.Configure(kernel.WithRepoHook(eventsv1.RepoHook_REPO_HOOK_GITHUB, &github.KernelImpl{}))
+	kernel.Configure(
+		kernel.WithRepoHook(eventsv1.RepoHook_REPO_HOOK_GITHUB, &github.KernelImpl{}),
+		kernel.WithChatHook(eventsv1.ChatHook_CHAT_HOOK_SLACK, &slack.KernelImpl{}),
+	)
 
 	if err := durable.Configure(durable.WithConfig(cfg.Durable)); err != nil {
 		slog.Error("unable to configure durable layer", "error", err.Error())

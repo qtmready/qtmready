@@ -26,7 +26,7 @@ func LineExceedFields(event *events.Event[eventsv1.ChatHook, eventsv1.Diff]) []s
 			Short: true,
 		}, {
 			Title: "*Total Lines Count*",
-			Value: fmt.Sprintf("%d", 0),
+			Value: fmt.Sprintf("%d", event.Payload.GetLines().GetAdded()+event.Payload.GetLines().GetRemoved()),
 			Short: true,
 		}, {
 			Title: "*Lines Added*",
@@ -37,7 +37,15 @@ func LineExceedFields(event *events.Event[eventsv1.ChatHook, eventsv1.Diff]) []s
 			Value: fmt.Sprintf("%d", event.Payload.GetLines().GetRemoved()),
 			Short: true,
 		}, {
-			Title: "Affected Files",
+			Title: "Added Files",
+			Value: fmt.Sprintf("%s", FormatFilesList(event.Payload.GetFiles().GetAdded())),
+			Short: false,
+		}, {
+			Title: "Deleted Files",
+			Value: fmt.Sprintf("%s", FormatFilesList(event.Payload.GetFiles().GetDeleted())),
+			Short: false,
+		}, {
+			Title: "Modified Files",
 			Value: fmt.Sprintf("%s", FormatFilesList(event.Payload.GetFiles().GetModified())),
 			Short: false,
 		}, {

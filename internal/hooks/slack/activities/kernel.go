@@ -19,14 +19,14 @@ import (
 
 type (
 	// Activities groups all the activities for the slack provider.
-	Activities struct{}
+	Kernel struct{}
 )
 
 const (
 	footer = "Powered by quantm.io"
 )
 
-func (a *Activities) NotifyLinesExceed(
+func (k *Kernel) NotifyLinesExceed(
 	ctx context.Context, event *events.Event[eventsv1.ChatHook, eventsv1.Diff],
 ) error {
 	var err error
@@ -35,12 +35,12 @@ func (a *Activities) NotifyLinesExceed(
 	target := ""
 
 	if event.Subject.UserID != uuid.Nil {
-		token, target, err = a.to_user(ctx, event.Subject.UserID)
+		token, target, err = k.to_user(ctx, event.Subject.UserID)
 		if err != nil {
 			return err
 		}
 	} else {
-		token, target, err = a.to_repo(ctx, event.Subject.ID)
+		token, target, err = k.to_repo(ctx, event.Subject.ID)
 		if err != nil {
 			return err
 		}
@@ -64,7 +64,7 @@ func (a *Activities) NotifyLinesExceed(
 	return fns.SendMessage(client, target, attachment)
 }
 
-func (a *Activities) to_user(ctx context.Context, link_to uuid.UUID) (string, string, error) {
+func (k *Kernel) to_user(ctx context.Context, link_to uuid.UUID) (string, string, error) {
 	msg, err := db.Queries().GetMessagesByLinkTo(ctx, link_to)
 	if err != nil {
 		return "", "", err
@@ -83,7 +83,7 @@ func (a *Activities) to_user(ctx context.Context, link_to uuid.UUID) (string, st
 	return token, d.ProviderUserID, nil
 }
 
-func (a *Activities) to_repo(ctx context.Context, link_to uuid.UUID) (string, string, error) {
+func (k *Kernel) to_repo(ctx context.Context, link_to uuid.UUID) (string, string, error) {
 	msg, err := db.Queries().GetMessagesByLinkTo(ctx, link_to)
 	if err != nil {
 		return "", "", err
