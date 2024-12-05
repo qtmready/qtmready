@@ -12,6 +12,11 @@ type (
 		// NotifyLinesExceed sends a message indicating a line exceed message.
 		//
 		// This method must not be called from the workflow.
-		NotifyLinesExceed(ctx context.Context, event *events.Event[eventsv1.ChatHook, eventsv1.Diff]) error // TODO - need to handle branch
+		NotifyLinesExceed(ctx context.Context, event *events.Event[eventsv1.ChatHook, eventsv1.Diff]) error
+
+		// NotifyMergeConflict sends a message indicating a merge conflict.
+		//
+		// This method must not be called from the workflow.
+		NotifyMergeConflict(ctx context.Context, event *events.Event[eventsv1.ChatHook, eventsv1.Merge]) error
 	}
 )
