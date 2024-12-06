@@ -71,7 +71,7 @@ func (k *Kernel) NotifyMergeConflict(
 }
 
 func (k *Kernel) to_user(ctx context.Context, link_to uuid.UUID) (string, string, error) {
-	msg, err := db.Queries().GetMessagesByLinkTo(ctx, link_to)
+	msg, err := db.Queries().GetChatLink(ctx, link_to)
 	if err != nil {
 		return "", "", err
 	}
@@ -90,7 +90,7 @@ func (k *Kernel) to_user(ctx context.Context, link_to uuid.UUID) (string, string
 }
 
 func (k *Kernel) to_repo(ctx context.Context, link_to uuid.UUID) (string, string, error) {
-	msg, err := db.Queries().GetMessagesByLinkTo(ctx, link_to)
+	msg, err := db.Queries().GetChatLink(ctx, link_to)
 	if err != nil {
 		return "", "", err
 	}
