@@ -14,44 +14,39 @@ import (
 	"go.breu.io/quantm/internal/pulse"
 )
 
-// The Push workflow processes GitHub webhook push events, converting the defs.Push payload into a QuantmEvent.
-// This involves hydrating the event with repository, installation, user, and team metadata, determining the
-// event action (create, delete, or force push), constructing and persisting a QuantmEvent encompassing the
+// The Pr workflow processes GitHub webhook pull request events, converting the defs.Pr payload into a QuantmEvent.
+// This involves hydrating the event with repository, installation, user, and team metadata.
 // hydrated details and original payload, and finally signaling the repository.
-func Push(ctx workflow.Context, push *defs.Push) error {
-	acts := &activities.Push{}
+func Pr(ctx workflow.Context, pr *defs.PR) error {
+	acts := &activities.Pr{}
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	proto := cast.PushToProto(push)
+	proto := cast.PrToProto(pr)
 	hre := &defs.HydratedRepoEvent{} // hre -> hydrated repo event
+
+	email := ""
+	if pr.GetSenderEmail() != nil {
+		email = *pr.GetSenderEmail()
+	}
 
 	{
 		payload := &defs.HydrateRepoEventPayload{
-			RepoID:         push.GetRepositoryID(),
-			InstallationID: push.GetInstallationID(),
-			Email:          push.GetPusherEmail(),
-			Branch:         repos.BranchNameFromRef(push.GetRef()),
+			RepoID:         pr.GetRepositoryID(),
+			InstallationID: pr.GetInstallationID(),
+			Email:          email,
+			Branch:         repos.BranchNameFromRef(pr.GetHeadBranch()),
 		}
-		if err := workflow.ExecuteActivity(ctx, acts.HydrateGithubPushEvent, payload).Get(ctx, hre); err != nil {
+		if err := workflow.ExecuteActivity(ctx, acts.HydrateGithubPullRequestEvent, payload).Get(ctx, hre); err != nil {
 			return err
 		}
 	}
 
-	action := events.ActionCreated
-
-	if push.Deleted {
-		action = events.ActionDeleted
-	}
-
-	if push.Forced {
-		action = events.ActionForced
-	}
-
+	// handle actions
 	event := events.
-		New[eventsv1.RepoHook, eventsv1.Push]().
+		New[eventsv1.RepoHook, eventsv1.PullRequest]().
 		SetHook(eventsv1.RepoHook_REPO_HOOK_GITHUB).
-		SetScope(events.ScopePush).
-		SetAction(action).
+		SetScope(events.ScopePr).
+		SetAction(events.Action(pr.GetAction())).
 		SetSource(hre.GetRepoUrl()).
 		SetOrg(hre.GetOrgID()).
 		SetSubjectName(events.SubjectNameRepos).
@@ -74,7 +69,7 @@ func Push(ctx workflow.Context, push *defs.Push) error {
 		return err
 	}
 
-	hevent := &defs.HydratedQuantmEvent[eventsv1.Push]{Event: event, Meta: hre, Signal: repos.SignalPush}
+	hevent := &defs.HydratedQuantmEvent[eventsv1.PullRequest]{Event: event, Meta: hre, Signal: repos.SignalPR}
 
-	return workflow.ExecuteActivity(ctx, acts.SignalRepoWithGithubPush, hevent).Get(ctx, nil)
+	return workflow.ExecuteActivity(ctx, acts.SignalRepoWithGithubPR, hevent).Get(ctx, nil)
 }

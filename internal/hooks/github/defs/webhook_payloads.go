@@ -29,3 +29,11 @@ type (
 		IsCreated    bool           `json:"is_created"`
 	}
 )
+
+func (wr *WebhookRef) GetRef() string {
+	return wr.Ref
+}
+
+func (wr *WebhookRef) GetRefType() string {
+	return wr.RefType
+}
