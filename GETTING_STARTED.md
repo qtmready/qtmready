@@ -95,6 +95,8 @@ Below is the detailed description of each level:
 
 - `proto`: Contains generated code from protobuf definitions, acting as the shared data structure for communication within the application.
 - `db`: Provides the persistence layer, utilizing `sqlc` for standardized SQL queries and `go-migrate` for database migrations.
+- `durable`: Provides the helper function for durable execution of tasks.
+- `pulse`: Configuration and utilities for analytics.
 - `observe`: Standardizes observability, handling metrics, tracing, and logging across the application.
 
 #### Level 1 - Utilities and Core Abstractions

@@ -36,16 +36,20 @@ func (h *Webhook) Handler(ctx echo.Context) error {
 	// Get the signature from the request header. If the signature is missing, return an unauthorized error.
 	signature := ctx.Request().Header.Get("X-Hub-Signature-256")
 	if signature == "" {
-		return erratic.NewUnauthorizedError().AddHint("reason", "missing signature")
+		return erratic.NewFailedPreconditionError(erratic.HooksGithubModule).WithReason("missing X-Hub-Signature-256 header")
 	}
 
 	// Read the request body and then reset it for subsequent use.
-	body, _ := io.ReadAll(ctx.Request().Body)
+	body, err := io.ReadAll(ctx.Request().Body)
+	if err != nil {
+		return erratic.NewSystemError(erratic.HooksGithubModule).WithReason("failed to read request body").Wrap(err)
+	}
+
 	ctx.Request().Body = io.NopCloser(bytes.NewBuffer(body))
 
 	// Verify the signature. Return an unauthorized error if the signature is invalid.
 	if err := config.Instance().VerifyWebhookSignature(body, signature); err != nil {
-		return erratic.NewUnauthorizedError().AddHint("reason", "invalid signature")
+		return erratic.NewAuthzError(erratic.HooksGithubModule).WithReason("invalid webhook signature").Wrap(err)
 	}
 
 	// Get the event type from the request header.
@@ -63,7 +67,12 @@ func (h *Webhook) Handler(ctx echo.Context) error {
 	id := ctx.Request().Header.Get("X-GitHub-Delivery")
 
 	// Execute the event handler.
-	return fn(ctx, event, id)
+	err = fn(ctx, event, id)
+	if err != nil {
+		return err
+	}
+
+	return ctx.NoContent(http.StatusNoContent)
 }
 
 // on returns the event handler for the given event type.
@@ -87,7 +96,7 @@ func (h *Webhook) install(ctx echo.Context, event defs.WebhookEvent, id string) 
 	payload := &defs.WebhookInstall{}
 	if err := ctx.Bind(payload); err != nil {
 		slog.Info("failed to bind payload", "error", err.Error())
-		return erratic.NewBadRequestError("reason", "invalid payload")
+		return erratic.NewBadRequestError(erratic.HooksGithubModule).WithReason("invalid payload").Wrap(err)
 	}
 
 	action := githubv1.SetupAction_UNSPECIFIED
@@ -119,33 +128,33 @@ func (h *Webhook) install(ctx echo.Context, event defs.WebhookEvent, id string) 
 		OnHooks().
 		SignalWithStartWorkflow(ctx.Request().Context(), opts, defs.SignalWebhookInstall, payload, workflows.Install)
 	if err != nil {
-		return erratic.NewInternalServerError("reason", "failed to signal workflow", "error", err.Error())
+		return erratic.NewSystemError(erratic.HooksGithubModule).Wrap(err)
 	}
 
-	return ctx.NoContent(http.StatusNoContent)
+	return nil
 }
 
 func (h *Webhook) install_repos(ctx echo.Context, _ defs.WebhookEvent, id string) error {
 	payload := &defs.WebhookInstallRepos{}
 	if err := ctx.Bind(payload); err != nil {
-		return erratic.NewBadRequestError("reason", "invalid payload")
+		return erratic.NewBadRequestError(erratic.HooksGithubModule).WithReason("invalid payload").Wrap(err)
 	}
 
 	opts := defs.NewSyncReposWorkflows(payload.Installation.ID, payload.Action, id)
 
 	_, err := durable.OnHooks().ExecuteWorkflow(ctx.Request().Context(), opts, workflows.SyncRepos, payload)
 	if err != nil {
-		return erratic.NewInternalServerError("reason", "failed to signal workflow", "error", err.Error())
+		return erratic.NewSystemError(erratic.HooksGithubModule).Wrap(err)
 	}
 
-	return ctx.NoContent(http.StatusNoContent)
+	return nil
 }
 
 func (h *Webhook) ref(ctx echo.Context, event defs.WebhookEvent, id string) error {
 	payload := &defs.WebhookRef{}
 	if err := ctx.Bind(payload); err != nil {
 		slog.Error("failed to bind payload", "error", err.Error())
-		return erratic.NewBadRequestError("reason", "invalid payload")
+		return erratic.NewBadRequestError(erratic.HooksGithubModule).WithReason("invalid payload").Wrap(err)
 	}
 
 	opts := defs.NewRefWorkflowOptions(payload.Repository.ID, payload.Ref, payload.RefType, "", event.String(), id)
@@ -153,11 +162,11 @@ func (h *Webhook) ref(ctx echo.Context, event defs.WebhookEvent, id string) erro
 	if payload.RefType == "branch" {
 		_, err := durable.OnHooks().ExecuteWorkflow(ctx.Request().Context(), opts, workflows.Ref, payload, event)
 		if err != nil {
-			return erratic.NewInternalServerError("reason", "failed to signal workflow", "error", err.Error())
+			return erratic.NewSystemError(erratic.HooksGithubModule).Wrap(err)
 		}
 	}
 
-	return ctx.NoContent(http.StatusNoContent)
+	return nil
 }
 
 // push handles the push event.
@@ -165,11 +174,11 @@ func (h *Webhook) push(ctx echo.Context, _ defs.WebhookEvent, id string) error {
 	payload := &defs.Push{}
 	if err := ctx.Bind(payload); err != nil {
 		slog.Error("failed to bind payload", "error", err.Error())
-		return erratic.NewBadRequestError("reason", "invalid payload")
+		return erratic.NewBadRequestError(erratic.HooksGithubModule).WithReason("invalid payload").Wrap(err)
 	}
 
 	if payload.After == defs.NoCommit {
-		return ctx.NoContent(http.StatusNoContent)
+		return nil
 	}
 
 	action := "created"
@@ -189,10 +198,10 @@ func (h *Webhook) push(ctx echo.Context, _ defs.WebhookEvent, id string) error {
 		ExecuteWorkflow(ctx.Request().Context(), opts, workflows.Push, payload)
 	if err != nil {
 		slog.Error("failed to signal workflow", "error", err.Error())
-		return erratic.NewInternalServerError("reason", "failed to signal workflow", "error", err.Error())
+		return erratic.NewSystemError(erratic.HooksGithubModule).Wrap(err)
 	}
 
-	return ctx.NoContent(http.StatusNoContent)
+	return nil
 }
 
 // pr handles the pull request event.

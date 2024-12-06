@@ -3,7 +3,6 @@ package nomad
 import (
 	"context"
 	"encoding/json"
-	"log/slog"
 	"net/http"
 
 	"connectrpc.com/connect"
@@ -28,16 +27,13 @@ func (s *OrgService) SetOrgHooks(
 ) (*connect.Response[emptypb.Empty], error) {
 	hooks, err := json.Marshal(req.Msg.Hooks)
 	if err != nil {
-		slog.Info(err.Error(), "hooks", req.Msg.Hooks)
-
-		return nil, erratic.NewInternalServerError("error", err.Error()).ToConnectError()
+		return nil, erratic.NewBadRequestError(erratic.AuthModule).WithReason("unable to detect hook")
 	}
-
 	params := entities.SetOrgHooksParams{ID: uuid.MustParse(req.Msg.GetOrgId()), Hooks: hooks}
 
 	err = db.Queries().SetOrgHooks(ctx, params)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().Wrap(err).ToConnectError()
+		return nil, erratic.NewDatabaseError(erratic.AuthModule).WithReason("unable to set org hooks").Wrap(err)
 	}
 
 	return connect.NewResponse(&emptypb.Empty{}), nil

@@ -38,7 +38,7 @@ func (s *GithubService) Install(
 
 	_, err := durable.OnHooks().SignalWithStartWorkflow(ctx, opts, defs.SignalRequestInstall, args, workflows.Install)
 	if err != nil {
-		return nil, erratic.NewInternalServerError().AddHint("reason", "unable to schedule workflow").ToConnectError()
+		return nil, erratic.NewSystemError(erratic.HooksGithubModule).WithReason("unable to signal hook")
 	}
 
 	return connect.NewResponse(&emptypb.Empty{}), nil
