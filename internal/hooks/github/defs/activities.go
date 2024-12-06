@@ -58,3 +58,43 @@ type (
 func (h *HydratedRepoEvent) RepoWorkflowOptions() workflows.Options {
 	return repos.RepoWorkflowOptions(h.Repo)
 }
+
+func (hr *HydratedRepoEvent) GetRepoID() uuid.UUID {
+	return hr.Repo.ID
+}
+
+func (hr *HydratedRepoEvent) GetOrgID() uuid.UUID {
+	return hr.Repo.ID
+}
+
+func (hr *HydratedRepoEvent) GetRepoUrl() string {
+	return hr.Repo.Url
+}
+
+func (hr *HydratedRepoEvent) GetParentID() uuid.UUID {
+	return hr.ParentID
+}
+
+func (hr *HydratedRepoEvent) GetTeamID() uuid.UUID {
+	return hr.Team.ID
+}
+
+func (hr *HydratedRepoEvent) GetUserID() uuid.UUID {
+	return hr.User.ID
+}
+
+func (hr *HydratedRepoEvent) GetRepo() *entities.Repo {
+	return hr.Repo
+}
+
+func (hr *HydratedRepoEvent) GetTeam() *entities.Team {
+	return hr.Team
+}
+
+func (hr *HydratedRepoEvent) GetUser() *entities.User {
+	return hr.User
+}
+
+func (hr *HydratedRepoEvent) GetRepoMessaging() *entities.Messaging {
+	return hr.Messaging.Repo
+}

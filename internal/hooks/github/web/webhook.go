@@ -2,6 +2,7 @@ package web
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -196,5 +197,22 @@ func (h *Webhook) push(ctx echo.Context, _ defs.WebhookEvent, id string) error {
 
 // pr handles the pull request event.
 func (h *Webhook) pr(ctx echo.Context, event defs.WebhookEvent, id string) error {
-	return nil
+	payload := &defs.PR{}
+	if err := ctx.Bind(payload); err != nil {
+		slog.Error("failed to bind payload", "error", err.Error())
+		return erratic.NewBadRequestError("reason", "invalid payload")
+	}
+
+	opts := defs.NewRefWorkflowOptions(
+		payload.GetRepositoryID(), payload.GetHeadBranch(), "pr", fmt.Sprintf("%d", payload.GetNumber()), payload.GetAction(), id)
+
+	_, err := durable.
+		OnHooks().
+		ExecuteWorkflow(ctx.Request().Context(), opts, workflows.Pr, payload)
+	if err != nil {
+		slog.Error("failed to signal workflow", "error", err.Error())
+		return erratic.NewInternalServerError("reason", "failed to signal workflow", "error", err.Error())
+	}
+
+	return ctx.NoContent(http.StatusNoContent)
 }

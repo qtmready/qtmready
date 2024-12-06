@@ -48,5 +48,8 @@ func q_hooks() {
 
 		q.RegisterWorkflow(github.RefWorkflow)
 		q.RegisterActivity(&github.RefActivity{})
+
+		q.RegisterWorkflow(github.PrWorkflow)
+		q.RegisterActivity(&github.PrActivity{})
 	}
 }

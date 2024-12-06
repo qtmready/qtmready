@@ -12,6 +12,7 @@ type (
 	InstallReposActivity = activities.InstallRepos
 	PushActivity         = activities.Push
 	RefActivity          = activities.Ref
+	PrActivity           = activities.Pr
 
 	KernelImpl = activities.Kernel
 
@@ -27,5 +28,6 @@ var (
 	InstallWorkflow   = workflows.Install
 	RefWorkflow       = workflows.Ref
 	PushWorkflow      = workflows.Push
+	PrWorkflow        = workflows.Pr
 	SyncReposWorkflow = workflows.SyncRepos
 )

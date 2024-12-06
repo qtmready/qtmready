@@ -13,4 +13,5 @@ const (
 	ScopePush   Scope = "push"   // ScopePush scopes push event.
 	ScopeRebase Scope = "rebase" // ScopeRebase scopes rebase event.
 	ScopeDiff   Scope = "diff"   // ScopeRebase scopes diff event.
+	ScopePr     Scope = "pr"     // ScopeRebase scopes pull request event.
 )
