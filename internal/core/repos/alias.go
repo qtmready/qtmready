@@ -4,6 +4,7 @@ import (
 	"go.breu.io/quantm/internal/core/repos/activities"
 	"go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/core/repos/fns"
+	"go.breu.io/quantm/internal/core/repos/nomad"
 	"go.breu.io/quantm/internal/core/repos/states"
 	"go.breu.io/quantm/internal/core/repos/workflows"
 )
@@ -36,6 +37,10 @@ var (
 
 	// RepoWorkflowOptions provides options for configuring the repository workflow.
 	RepoWorkflowOptions = defs.RepoWorkflowOptions
+)
+
+var (
+	NomadHandler = nomad.NewRepoServiceHandler
 )
 
 const (

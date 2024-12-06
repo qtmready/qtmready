@@ -5,11 +5,11 @@ import (
 	"go.breu.io/quantm/internal/hooks/github/defs"
 )
 
-// RowToHydratedRepoEvent converts a database row into a HydratedEvent.
-func RowToHydratedRepoEvent(row entities.GetRepoRow) *defs.HydratedRepoEvent {
+// RepoForGithubToHydratedRepoEvent converts a database row into a HydratedEvent.
+func RepoForGithubToHydratedRepoEvent(row entities.GetRepoForGithubRow) *defs.HydratedRepoEvent {
 	return &defs.HydratedRepoEvent{
-		Repo: &row.Repo,
-		Org:  &row.Org,
-		Chat: &defs.RepoChat{Org: &row.ChatLink},
+		Repo:      &row.Repo,
+		Org:       &row.Org,
+		ChatLinks: &defs.ChatLinks{},
 	}
 }

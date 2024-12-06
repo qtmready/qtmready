@@ -4,10 +4,10 @@ import (
 	"connectrpc.com/connect"
 
 	"go.breu.io/quantm/internal/auth"
-	reposnmd "go.breu.io/quantm/internal/core/repos/nomad"
-	githubnmd "go.breu.io/quantm/internal/hooks/github/nomad"
-	slacknmd "go.breu.io/quantm/internal/hooks/slack/nomad"
-	"go.breu.io/quantm/internal/observe/logs"
+	"go.breu.io/quantm/internal/core/repos"
+	"go.breu.io/quantm/internal/hooks/github"
+	"go.breu.io/quantm/internal/hooks/slack"
+	"go.breu.io/quantm/internal/nomad/intercepts"
 )
 
 // DefaultServer creates a new Nomad server instance with the provided options.
@@ -19,7 +19,7 @@ func DefaultServer(opts ...Option) *Server {
 	// -- config/interceptors --
 
 	interceptors := []connect.Interceptor{
-		logs.NomadRequestLogger(),
+		intercepts.RequestLogger(),
 	}
 
 	// -- config/handlers --
@@ -38,13 +38,13 @@ func DefaultServer(opts ...Option) *Server {
 	options = append(options, connect.WithInterceptors(auth.NomadInterceptor()))
 
 	// -- core/repos --
-	srv.add(reposnmd.NewRepoServiceHandler(options...))
+	srv.add(repos.NomadHandler(options...))
 
 	// -- hooks/github --
-	srv.add(githubnmd.NewGithubServiceHandler(options...))
+	srv.add(github.NomadHandler(options...))
 
 	// -- hooks/slack --
-	srv.add(slacknmd.NewSlackServiceHandler(options...))
+	srv.add(slack.NomadHandler(options...))
 
 	return srv
 }
