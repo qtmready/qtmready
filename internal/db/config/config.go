@@ -14,7 +14,6 @@ import (
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
 
-	"go.breu.io/quantm/internal/db/status"
 	"go.breu.io/quantm/internal/erratic"
 )
 
@@ -100,7 +99,7 @@ func (c *Config) Start(ctx context.Context) error {
 	if c.Host == "" || c.Name == "" || c.User == "" {
 		slog.Error("db: invalid configuration.", "host", c.Host, "name", c.Name, "user", c.User)
 
-		return erratic.NewValidationError("reason", "database configuration is invalid", "host", c.Host, "name", c.Name, "user", c.User)
+		return erratic.NewConfigError(erratic.CommonModule, c.Host, "port", "name", c.Name, "user", c.User)
 	}
 
 	slog.Info("db: connecting ...", "host", c.Host, "port", c.Port, "name", c.Name, "user", c.User, "ssl", c.EnableSSL)
@@ -124,7 +123,7 @@ func (c *Config) Start(ctx context.Context) error {
 	)
 
 	if err != nil {
-		return status.NewConnectionError().Wrap(err)
+		return erratic.NewSystemError(erratic.CommonModule).Wrap(err)
 	}
 
 	slog.Info("db: connected.")

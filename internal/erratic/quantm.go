@@ -211,10 +211,10 @@ func (e *QuantmError) ToConnectError() *connect.Error {
 //
 // The function receives an error code, a human-readable message, and optional key-value pairs for additional
 // information.
-func New(code int, message string, fields ...string) *QuantmError {
+func New(module, code int, message string, fields ...string) *QuantmError {
 	return &QuantmError{
 		ID:      utils.Idempotent(),
-		Code:    code,
+		Code:    compose(module, code),
 		Message: message,
 		Hints:   NewHints(fields...),
 	}
