@@ -31,10 +31,10 @@ type (
 
 	// RepoChat contains the possible messaging channels for a HydratedRepoEvent.
 	RepoChat struct {
-		Org  *entities.Messaging `json:"org"`
-		Team *entities.Messaging `json:"team"`
-		User *entities.Messaging `json:"user"`
-		Repo *entities.Messaging `json:"repo"`
+		Org  *entities.ChatLink `json:"org"`
+		Team *entities.ChatLink `json:"team"`
+		User *entities.ChatLink `json:"user"`
+		Repo *entities.ChatLink `json:"repo"`
 	}
 
 	// HydratedRepoEvent contains the hydrated event data.
@@ -95,6 +95,6 @@ func (hr *HydratedRepoEvent) GetUser() *entities.User {
 	return hr.User
 }
 
-func (hr *HydratedRepoEvent) GetRepoChat() *entities.Messaging {
+func (hr *HydratedRepoEvent) GetRepoChatLink() *entities.ChatLink {
 	return hr.Chat.Repo
 }

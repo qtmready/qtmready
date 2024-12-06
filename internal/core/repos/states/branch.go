@@ -182,8 +182,8 @@ func (state *Branch) notify_user(ctx workflow.Context) error { return nil }
 func (state *Branch) notify_repo(ctx workflow.Context) error { return nil }
 
 // NewBranch constructs a new Branch state.
-func NewBranch(repo *entities.Repo, msg *entities.Messaging, branch string) *Branch {
-	base := &Base{Repo: repo, Chat: msg}
+func NewBranch(repo *entities.Repo, msg *entities.ChatLink, branch string) *Branch {
+	base := &Base{Repo: repo, ChatLink: msg}
 
 	return &Branch{Base: base, Branch: branch, acts: &activities.Branch{}}
 }

@@ -10,6 +10,6 @@ func RowToHydratedRepoEvent(row entities.GetRepoRow) *defs.HydratedRepoEvent {
 	return &defs.HydratedRepoEvent{
 		Repo: &row.Repo,
 		Org:  &row.Org,
-		Chat: &defs.RepoChat{Org: &row.Messaging},
+		Chat: &defs.RepoChat{Org: &row.ChatLink},
 	}
 }

@@ -34,7 +34,7 @@ type (
 func (state *Repo) forward_to_branch(ctx workflow.Context, signal queues.Signal, branch string, event any) error {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	next := NewBranch(state.Repo, state.Chat, branch)
+	next := NewBranch(state.Repo, state.ChatLink, branch)
 	payload := &defs.SignalBranchPayload{Signal: signal, Repo: state.Repo, Branch: branch}
 
 	return workflow.ExecuteActivity(ctx, state.acts.ForwardToBranch, payload, event, next).Get(ctx, nil)
@@ -44,7 +44,7 @@ func (state *Repo) forward_to_branch(ctx workflow.Context, signal queues.Signal,
 func (state *Repo) forward_to_trunk(ctx workflow.Context, signal queues.Signal, event any) error {
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	next := NewTrunk(state.Repo, state.Chat)
+	next := NewTrunk(state.Repo, state.ChatLink)
 	payload := &defs.SignalTrunkPayload{Signal: signal, Repo: state.Repo}
 
 	return workflow.ExecuteActivity(ctx, state.acts.ForwardToTrunk, payload, event, next).Get(ctx, nil)
@@ -146,8 +146,8 @@ func (state *Repo) Init(ctx workflow.Context) {
 
 // NewRepo creates a new RepoState instance. It initializes BaseState using the provided context and
 // hydrated repository data.
-func NewRepo(repo *entities.Repo, msg *entities.Messaging) *Repo {
-	base := &Base{Repo: repo, Chat: msg}
+func NewRepo(repo *entities.Repo, msg *entities.ChatLink) *Repo {
+	base := &Base{Repo: repo, ChatLink: msg}
 	triggers := make(BranchTriggers)
 
 	return &Repo{base, triggers, &activities.Repo{}} // Return new RepoState instance.

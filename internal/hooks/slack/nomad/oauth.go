@@ -34,7 +34,7 @@ func (s *SlackService) Oauth(
 			WithReason("invalid link_to UUID").Wrap(err)
 	}
 
-	message, err := db.Queries().GetMessagesByLinkTo(ctx, linkTo)
+	message, err := db.Queries().GetChatLink(ctx, linkTo)
 	if err != nil {
 		return nil, erratic.NewDatabaseError(erratic.HooksSlackModule).
 			WithReason("failed to query message by link_to").Wrap(err)

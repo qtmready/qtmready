@@ -61,14 +61,14 @@ func _user(
 	}
 
 	// save messaging
-	m := entities.CreateMessagingParams{
+	m := entities.CreateChatLinkParams{
 		Hook:   int32(eventsv1.ChatHook_CHAT_HOOK_SLACK),
 		Kind:   defs.KindUser,
 		LinkTo: link_to,
 		Data:   data,
 	}
 
-	_, err = db.Queries().CreateMessaging(ctx, m)
+	_, err = db.Queries().CreateChatLink(ctx, m)
 	if err != nil {
 		return err
 	}
@@ -108,14 +108,14 @@ func _bot(
 	}
 
 	// save messaging
-	m := entities.CreateMessagingParams{
+	m := entities.CreateChatLinkParams{
 		Hook:   int32(eventsv1.ChatHook_CHAT_HOOK_SLACK),
 		Kind:   defs.KindBot,
 		LinkTo: link_to,
 		Data:   data,
 	}
 
-	_, err = db.Queries().CreateMessaging(ctx, m)
+	_, err = db.Queries().CreateChatLink(ctx, m)
 	if err != nil {
 		return err
 	}
