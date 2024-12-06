@@ -150,7 +150,7 @@ func SignalRepo[P events.Payload](ctx context.Context, hydrated *defs.HydratedQu
 		hydrated.Signal,
 		hydrated.Event,
 		repos.RepoWorkflow,
-		repos.NewRepoWorkflowState(hydrated.Meta.GetRepo(), hydrated.Meta.GetRepoMessaging()),
+		repos.NewRepoWorkflowState(hydrated.Meta.GetRepo(), hydrated.Meta.GetRepoChat()),
 	)
 
 	return err

@@ -209,7 +209,7 @@ func (h *Webhook) pr(ctx echo.Context, event defs.WebhookEvent, id string) error
 	payload := &defs.PR{}
 	if err := ctx.Bind(payload); err != nil {
 		slog.Error("failed to bind payload", "error", err.Error())
-		return erratic.NewBadRequestError("reason", "invalid payload")
+		return erratic.NewBadRequestError(erratic.AuthModule).WithReason("invalid payload").Wrap(err)
 	}
 
 	opts := defs.NewRefWorkflowOptions(
@@ -217,10 +217,10 @@ func (h *Webhook) pr(ctx echo.Context, event defs.WebhookEvent, id string) error
 
 	_, err := durable.
 		OnHooks().
-		ExecuteWorkflow(ctx.Request().Context(), opts, workflows.Pr, payload)
+		ExecuteWorkflow(ctx.Request().Context(), opts, workflows.PullRequest, payload)
 	if err != nil {
 		slog.Error("failed to signal workflow", "error", err.Error())
-		return erratic.NewInternalServerError("reason", "failed to signal workflow", "error", err.Error())
+		return erratic.NewSystemError(erratic.HooksGithubModule).Wrap(err)
 	}
 
 	return ctx.NoContent(http.StatusNoContent)

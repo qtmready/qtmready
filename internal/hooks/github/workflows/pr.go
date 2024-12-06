@@ -14,15 +14,15 @@ import (
 	"go.breu.io/quantm/internal/pulse"
 )
 
-// The Pr workflow processes GitHub webhook pull request events, converting the defs.Pr payload into a QuantmEvent.
+// The PullRequest workflow processes GitHub webhook pull request events, converting the defs.PullRequest payload into a QuantmEvent.
 // This involves hydrating the event with repository, installation, user, and team metadata.
 // hydrated details and original payload, and finally signaling the repository.
-func Pr(ctx workflow.Context, pr *defs.PR) error {
-	acts := &activities.Pr{}
+func PullRequest(ctx workflow.Context, pr *defs.PR) error {
+	acts := &activities.PullRequest{}
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
 	proto := cast.PrToProto(pr)
-	hre := &defs.HydratedRepoEvent{} // hre -> hydrated repo event
+	hydrated := &defs.HydratedRepoEvent{} // hre -> hydrated repo event
 
 	email := ""
 	if pr.GetSenderEmail() != nil {
@@ -36,7 +36,7 @@ func Pr(ctx workflow.Context, pr *defs.PR) error {
 			Email:          email,
 			Branch:         repos.BranchNameFromRef(pr.GetHeadBranch()),
 		}
-		if err := workflow.ExecuteActivity(ctx, acts.HydrateGithubPullRequestEvent, payload).Get(ctx, hre); err != nil {
+		if err := workflow.ExecuteActivity(ctx, acts.HydrateGithubPREvent, payload).Get(ctx, hydrated); err != nil {
 			return err
 		}
 	}
@@ -47,29 +47,29 @@ func Pr(ctx workflow.Context, pr *defs.PR) error {
 		SetHook(eventsv1.RepoHook_REPO_HOOK_GITHUB).
 		SetScope(events.ScopePr).
 		SetAction(events.Action(pr.GetAction())).
-		SetSource(hre.GetRepoUrl()).
-		SetOrg(hre.GetOrgID()).
+		SetSource(hydrated.GetRepoUrl()).
+		SetOrg(hydrated.GetOrgID()).
 		SetSubjectName(events.SubjectNameRepos).
-		SetSubjectID(hre.GetRepoID()).
+		SetSubjectID(hydrated.GetRepoID()).
 		SetPayload(&proto)
 
-	if hre.GetParentID() != uuid.Nil {
-		event.SetParents(hre.GetParentID())
+	if hydrated.GetParentID() != uuid.Nil {
+		event.SetParents(hydrated.GetParentID())
 	}
 
-	if hre.GetTeam() != nil {
-		event.SetTeam(hre.GetTeamID())
+	if hydrated.GetTeam() != nil {
+		event.SetTeam(hydrated.GetTeamID())
 	}
 
-	if hre.GetUser() != nil {
-		event.SetUser(hre.GetUserID())
+	if hydrated.GetUser() != nil {
+		event.SetUser(hydrated.GetUserID())
 	}
 
 	if err := pulse.Persist(ctx, event); err != nil {
 		return err
 	}
 
-	hevent := &defs.HydratedQuantmEvent[eventsv1.PullRequest]{Event: event, Meta: hre, Signal: repos.SignalPR}
+	hevent := &defs.HydratedQuantmEvent[eventsv1.PullRequest]{Event: event, Meta: hydrated, Signal: repos.SignalPR}
 
 	return workflow.ExecuteActivity(ctx, acts.SignalRepoWithGithubPR, hevent).Get(ctx, nil)
 }
