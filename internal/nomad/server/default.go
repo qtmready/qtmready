@@ -7,7 +7,7 @@ import (
 	reposnmd "go.breu.io/quantm/internal/core/repos/nomad"
 	githubnmd "go.breu.io/quantm/internal/hooks/github/nomad"
 	slacknmd "go.breu.io/quantm/internal/hooks/slack/nomad"
-	"go.breu.io/quantm/internal/observe/logs"
+	"go.breu.io/quantm/internal/observe"
 )
 
 // DefaultServer creates a new Nomad server instance with the provided options.
@@ -19,7 +19,7 @@ func DefaultServer(opts ...Option) *Server {
 	// -- config/interceptors --
 
 	interceptors := []connect.Interceptor{
-		logs.NomadRequestLogger(),
+		observe.NomadRequestLogger(),
 	}
 
 	// -- config/handlers --
