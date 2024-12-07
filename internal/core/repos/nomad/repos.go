@@ -1,4 +1,4 @@
-package reposnmd
+package nomad
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	"go.breu.io/quantm/internal/auth"
-	reposcast "go.breu.io/quantm/internal/core/repos/cast"
+	"go.breu.io/quantm/internal/core/repos/cast"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/erratic"
 	corev1 "go.breu.io/quantm/internal/proto/ctrlplane/core/v1"
@@ -31,7 +31,7 @@ func (s *RepoService) ListRepos(
 		return nil, erratic.NewDatabaseError(erratic.CoreModule).Wrap(err)
 	}
 
-	protos := reposcast.RepoExtendedListToProto(rows)
+	protos := cast.RepoExtendedListToProto(rows)
 
 	return connect.NewResponse(&corev1.ListReposResponse{Repos: protos}), nil
 }

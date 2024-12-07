@@ -53,7 +53,7 @@ func RequestLogger() connect.UnaryInterceptorFunc {
 					fields = append(fields, "internal_error", qerr.Unwrap().Error())
 				}
 
-				slog.Error(procedure, fields...)
+				slog.Warn(procedure, fields...)
 
 				err = qerr.ToConnectError()
 			} else {
