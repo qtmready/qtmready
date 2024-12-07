@@ -29,8 +29,8 @@ type (
 		ShouldFetchParent bool   `json:"should_fetch_parent"`
 	}
 
-	// RepoChat contains the possible messaging channels for a HydratedRepoEvent.
-	RepoChat struct {
+	// ChatLinks contains the possible messaging channels for a HydratedRepoEvent.
+	ChatLinks struct {
 		Org  *entities.ChatLink `json:"org"`
 		Team *entities.ChatLink `json:"team"`
 		User *entities.ChatLink `json:"user"`
@@ -39,12 +39,12 @@ type (
 
 	// HydratedRepoEvent contains the hydrated event data.
 	HydratedRepoEvent struct {
-		ParentID uuid.UUID      `json:"parent_id"`
-		Repo     *entities.Repo `json:"repo"`
-		Org      *entities.Org  `json:"org"`
-		Team     *entities.Team `json:"team"`
-		User     *entities.User `json:"user"`
-		Chat     *RepoChat      `json:"chat"`
+		ParentID  uuid.UUID      `json:"parent_id"`
+		Repo      *entities.Repo `json:"repo"`
+		Org       *entities.Org  `json:"org"`
+		Team      *entities.Team `json:"team"`
+		User      *entities.User `json:"user"`
+		ChatLinks *ChatLinks     `json:"chat_links"`
 	}
 
 	// HydratedQuantmEvent is the hydrated event data for a Quantm event.
@@ -96,5 +96,5 @@ func (hr *HydratedRepoEvent) GetUser() *entities.User {
 }
 
 func (hr *HydratedRepoEvent) GetRepoChatLink() *entities.ChatLink {
-	return hr.Chat.Repo
+	return hr.ChatLinks.Repo
 }
