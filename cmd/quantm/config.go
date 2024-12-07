@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log/slog"
+
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
@@ -59,4 +61,6 @@ func (c *Config) Load() {
 		flag.BoolVarP(&c.Migrate, "migrate", "m", false, "run database migrations")
 		flag.Parse()
 	}
+
+	slog.Info("config", "config", c)
 }
