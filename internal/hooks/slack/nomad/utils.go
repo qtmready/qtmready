@@ -60,7 +60,7 @@ func _user(
 		return err
 	}
 
-	// save messaging
+	// save chat_links
 	m := entities.CreateChatLinkParams{
 		Hook:   int32(eventsv1.ChatHook_CHAT_HOOK_SLACK),
 		Kind:   defs.KindUser,
@@ -107,7 +107,7 @@ func _bot(
 		return err
 	}
 
-	// save messaging
+	// save chat_links
 	m := entities.CreateChatLinkParams{
 		Hook:   int32(eventsv1.ChatHook_CHAT_HOOK_SLACK),
 		Kind:   defs.KindBot,

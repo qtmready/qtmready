@@ -57,16 +57,6 @@ type (
 		Lines DiffLines `json:"lines"`
 	}
 
-	RebasePayload struct {
-		Rebase *eventsv1.Rebase `json:"rebase"`
-		Path   string           `json:"path"`
-	}
-
-	RebaseResult struct {
-		Head    string `json:"head"`
-		Success bool   `json:"success"`
-	}
-
 	SignalBranchPayload struct {
 		Signal queues.Signal  `json:"signal"`
 		Repo   *entities.Repo `json:"repo"`

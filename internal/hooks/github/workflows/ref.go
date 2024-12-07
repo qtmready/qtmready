@@ -55,22 +55,22 @@ func Ref(ctx workflow.Context, payload *defs.WebhookRef, event defs.WebhookEvent
 		SetHook(eventsv1.RepoHook_REPO_HOOK_GITHUB).
 		SetScope(scope).
 		SetAction(action).
-		SetSource(meta.Repo.Url).
-		SetOrg(meta.Repo.OrgID).
+		SetSource(meta.GetRepoUrl()).
+		SetOrg(meta.GetOrgID()).
 		SetSubjectName(events.SubjectNameRepos).
-		SetSubjectID(meta.Repo.ID).
+		SetSubjectID(meta.GetRepoID()).
 		SetPayload(&proto)
 
-	if meta.ParentID != uuid.Nil {
-		evt.SetParents(meta.ParentID)
+	if meta.GetParentID() != uuid.Nil {
+		evt.SetParents(meta.GetParentID())
 	}
 
-	if meta.Team != nil {
-		evt.SetTeam(meta.Team.ID)
+	if meta.GetTeam() != nil {
+		evt.SetTeam(meta.GetTeamID())
 	}
 
-	if meta.User != nil {
-		evt.SetUser(meta.User.ID)
+	if meta.GetUser() != nil {
+		evt.SetUser(meta.GetUserID())
 	}
 
 	if err := pulse.Persist(ctx, evt); err != nil {

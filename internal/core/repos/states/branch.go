@@ -15,6 +15,7 @@ import (
 	"go.breu.io/quantm/internal/durable/periodic"
 	"go.breu.io/quantm/internal/events"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
+	"go.breu.io/quantm/internal/pulse"
 )
 
 type (
@@ -63,7 +64,7 @@ func (state *Branch) StaleMonitor(ctx workflow.Context) {
 
 // OnPush resets the stale timer and processes the push event. The repo is cloned, the diff calculated, and
 // notifications sent if change complexity warrants. Author notification is prioritized, falling back to
-// the repo's messaging hook.
+// the repo's chat hook.
 func (state *Branch) OnPush(ctx workflow.Context) durable.ChannelHandler {
 	return func(ch workflow.ReceiveChannel, more bool) {
 		event := &events.Event[eventsv1.RepoHook, eventsv1.Push]{}
@@ -112,6 +113,12 @@ func (state *Branch) OnRebase(ctx workflow.Context) durable.ChannelHandler {
 
 		clone := &defs.ClonePayload{Repo: state.Repo, Hook: event.Context.Hook, Branch: state.Branch, SHA: event.Payload.Head}
 		path := state.clone(session, clone)
+
+		rebase := &defs.RebaseResult{}
+		_ = state.run(ctx, "rebase", state.acts.Rebase, &defs.RebasePayload{Rebase: event.Payload, Path: path}, rebase)
+
+		state.check_merge_conflict(session, event, rebase)
+
 		state.remove_dir(ctx, path)
 	}
 }
@@ -172,8 +179,47 @@ func (state *Branch) compare_diff(
 		hook := int32(eventsv1.ChatHook_CHAT_HOOK_SLACK)
 		event := cast.PushEventToDiffEvent(push, hook, diff)
 
+		// persist chat event
+		if err := pulse.Persist(ctx, event); err != nil {
+			state.logger.Warn(
+				"attempt_diff: unable to persist diff event",
+				"repo", state.Repo.ID, "branch", fns.BranchNameFromRef(push.Payload.Ref), "error", err.Error(),
+			)
+		}
+
 		if err := state.run(ctx, "line_exceed", state.acts.ExceedLines, event, nil); err != nil {
 			state.logger.Error("lines_exceed: unable to to send", "error", err.Error())
+		}
+	}
+}
+
+// check_merge_conflict check the merge conflict and send chat message otherwise nothing.
+func (state *Branch) check_merge_conflict(
+	ctx workflow.Context, rebase *events.Event[eventsv1.RepoHook, eventsv1.Rebase], res *defs.RebaseResult,
+) {
+	if len(res.Conflicts) > 0 {
+		// check the repo's connected chat or user's connected chat.
+		hook := int32(eventsv1.ChatHook_CHAT_HOOK_SLACK)
+
+		// TODO - head and base commits
+		payload := &eventsv1.Merge{
+			HeadBranch: rebase.Payload.Head,
+			BaseBranch: rebase.Payload.Base,
+			Files:      res.Conflicts,
+		}
+
+		event := cast.RebaseEventToMergeConflictEvent(rebase, hook, payload)
+
+		// persist chat event
+		if err := pulse.Persist(ctx, event); err != nil {
+			state.logger.Warn(
+				"attempt_merge: unable to persist merge event",
+				"repo", state.Repo.ID, "branch", payload.HeadBranch, "error", err.Error(),
+			)
+		}
+
+		if err := state.run(ctx, "merge_conflict", state.acts.MergeConflict, event, nil); err != nil {
+			state.logger.Error("merge_conflict: unable to to send", "error", err.Error())
 		}
 	}
 }
@@ -182,8 +228,8 @@ func (state *Branch) notify_user(ctx workflow.Context) error { return nil }
 func (state *Branch) notify_repo(ctx workflow.Context) error { return nil }
 
 // NewBranch constructs a new Branch state.
-func NewBranch(repo *entities.Repo, msg *entities.ChatLink, branch string) *Branch {
-	base := &Base{Repo: repo, ChatLink: msg}
+func NewBranch(repo *entities.Repo, chat *entities.ChatLink, branch string) *Branch {
+	base := &Base{Repo: repo, ChatLink: chat}
 
 	return &Branch{Base: base, Branch: branch, acts: &activities.Branch{}}
 }

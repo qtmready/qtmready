@@ -3,10 +3,10 @@ package activities
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 
 	git "github.com/jeffwelling/git2go/v37"
-	"go.temporal.io/sdk/activity"
 
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/core/repos/defs"
@@ -19,18 +19,13 @@ type (
 	Branch struct{}
 )
 
-// Clone clones the repository at the specified branch using a temporary path.  It retrieves a tokenized clone URL,
-// clones the repository using git2go, fetches the specified branch, and returns the working directory path.
+// Clone clones a repo to a temp path, fetching a specified branch.
 func (a *Branch) Clone(ctx context.Context, payload *defs.ClonePayload) (string, error) {
-	logger := activity.GetLogger(ctx)
-
 	url, err := kernel.Get().RepoHook(payload.Hook).TokenizedCloneUrl(ctx, payload.Repo)
 	if err != nil {
-		logger.Error("Failed to get tokenized clone URL", "error", err)
+		slog.Warn("clone: unable to get tokenized url ...", "error", err)
 		return "", err
 	}
-
-	logger.Info("cloning ...", "url", url)
 
 	opts := &git.CloneOptions{
 		CheckoutOptions: git.CheckoutOptions{
@@ -42,50 +37,45 @@ func (a *Branch) Clone(ctx context.Context, payload *defs.ClonePayload) (string,
 
 	cloned, err := git.Clone(url, fmt.Sprintf("/tmp/%s", payload.Path), opts)
 	if err != nil {
-		logger.Error("Failed to clone repository", "error", err, "url", url, "path", fmt.Sprintf("/tmp/%s", payload.Path))
+		slog.Warn("clone: failed ...", "error", err, "url", url, "path", fmt.Sprintf("/tmp/%s", payload.Path))
+
 		return "", err
 	}
 
 	defer cloned.Free()
 
-	logger.Info("cloned successfully", "repo", payload.Repo.Url, "cloned", cloned.Workdir())
-
 	return cloned.Workdir(), nil
 }
 
+// RemoveDir removes a directory and handles potential errors.
 func (a *Branch) RemoveDir(ctx context.Context, path string) error {
-	logger := activity.GetLogger(ctx)
-
-	logger.Info("removing directory", "path", path)
+	slog.Debug("removing directory", "path", path)
 
 	if err := os.RemoveAll(path); err != nil {
-		logger.Warn("Failed to remove directory", "error", err, "path", path)
+		slog.Warn("Failed to remove directory", "error", err, "path", path)
 	}
 
 	return nil
 }
 
-// Diff retrieves the diff between two commits.  Given a repository path, base branch, and SHA, it opens the repo,
-// fetches the base branch, resolves commits by SHA, and computes the diff between their trees using `git2go`. The
-// resulting diff is currently returned unprocessed.
+// Diff computes the diff between two commits using git2go.
 func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1.Diff, error) {
-	logger := activity.GetLogger(ctx)
-
 	repo, err := git.OpenRepository(payload.Path)
 	if err != nil {
-		logger.Error("Failed to open repository", "error", err, "path", payload.Path)
+		slog.Warn("diff: unable to open repository", "error", err, "path", payload.Path)
 		return nil, err
 	}
 
 	defer repo.Free()
 
 	if err := a.refresh_remote(ctx, repo, payload.Base); err != nil {
+		slog.Warn("diff: unable to refresh remote", "path", payload.Path, "error", err.Error())
 		return nil, err
 	}
 
 	base, err := a.tree_from_branch(ctx, repo, payload.Base)
 	if err != nil {
-		logger.Error("unable to process base", "base", base)
+		slog.Warn("diff: unable to process base", "base", base)
 		return nil, err
 	}
 
@@ -93,7 +83,7 @@ func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1
 
 	head, err := a.tree_from_sha(ctx, repo, payload.SHA)
 	if err != nil {
-		logger.Error("unable to process head", "head", head)
+		slog.Warn("diff: unable to process head", "head", payload.SHA)
 		return nil, err
 	}
 
@@ -103,7 +93,7 @@ func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1
 
 	diff, err := repo.DiffTreeToTree(base, head, &opts)
 	if err != nil {
-		logger.Error("Failed to create diff", "error", err)
+		slog.Warn("Failed to create diff", "error", err, "base", base, "head", head)
 		return nil, err
 	}
 
@@ -112,107 +102,234 @@ func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1
 	return a.diff_to_result(ctx, diff)
 }
 
+// Rebase performs a git rebase operation.  Handles conflicts and returns result.
 func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs.RebaseResult, error) {
-	logger := activity.GetLogger(ctx)
+	result := defs.NewRebaseResult()
 
 	repo, err := git.OpenRepository(payload.Path)
 	if err != nil {
-		logger.Error("Failed to open repository", "error", err, "path", payload.Path)
-		return nil, err
+		slog.Warn("rebase: failed to open repository", "error", err, "path", payload.Path)
+		return result, err
 	}
 
 	defer repo.Free()
 
-	// Fetch latest changes from origin
 	if err := a.refresh_remote(ctx, repo, payload.Rebase.Base); err != nil {
-		return nil, err
+		slog.Warn(
+			"rebase: unable to refresh remote",
+			"error", err.Error(),
+			"branch", payload.Rebase.Base, "sha", payload.Rebase.Head)
+
+		result.Status = defs.RebaseStatusFailure
+		result.Error = err.Error()
+
+		return result, nil
 	}
 
-	base, err := a.annotated_commit_from_ref(ctx, repo, payload.Rebase.Base)
+	branch, err := a.annotated_commit_from_ref(ctx, repo, payload.Rebase.Base)
 	if err != nil {
-		return nil, err
+		slog.Warn(
+			"rebase: failed to get annotated commit from ref",
+			"error", err.Error(),
+			"branch", payload.Rebase.Base, "sha", payload.Rebase.Head,
+		)
+
+		result.Status = defs.RebaseStatusFailure
+		result.Error = err.Error()
+
+		return result, nil
 	}
 
-	defer base.Free()
+	defer branch.Free()
 
-	head, err := a.annotated_commit_from_oid(ctx, repo, payload.Rebase.Head)
+	upstream, err := a.annotated_commit_from_oid(ctx, repo, payload.Rebase.Head)
 	if err != nil {
-		return nil, err
+		slog.Warn(
+			"rebase: failed to get annotated commit from sha",
+			"error", err.Error(),
+			"branch", payload.Rebase.Base, "sha", payload.Rebase.Head,
+		)
+
+		result.Status = defs.RebaseStatusFailure
+		result.Error = fmt.Sprintf("Failed to get annotated commit from OID: %v", err)
+
+		return result, nil
 	}
 
-	defer head.Free()
+	defer upstream.Free()
 
 	opts, err := git.DefaultRebaseOptions()
 	if err != nil {
-		logger.Error("Failed to get default rebase options")
-		return nil, err
+		slog.Warn(
+			"rebase: to get default rebase options",
+			"error", err.Error(),
+			"branch", payload.Rebase.Base, "sha", payload.Rebase.Head,
+		)
+
+		result.Status = defs.RebaseStatusFailure
+		result.Error = fmt.Sprintf("Failed to get default rebase options: %v", err)
+
+		return result, nil
 	}
 
-	rebase, err := repo.InitRebase(head, nil, base, &opts)
+	rebase, err := repo.InitRebase(branch, upstream, nil, &opts)
 	if err != nil {
-		logger.Error("Failed to initialize rebase", "error", err)
-		return nil, nil
+		slog.Warn(
+			"rebase: failed to initialize rebase",
+			"error", err.Error(),
+			"branch", payload.Rebase.Base, "sha", payload.Rebase.Head,
+		)
+
+		result.Status = defs.RebaseStatusFailure
+		result.Error = fmt.Sprintf("Failed to initialize rebase: %v", err)
+
+		return result, nil
 	}
 
+	defer a.rebase_abort(ctx, rebase)
 	defer rebase.Free()
 
+	result.TotalCommits = rebase.OperationCount()
+
+	if err := a.rebase_each(ctx, repo, rebase, result); err != nil {
+		slog.Warn(
+			"rebase: unable to rebase",
+			"error", err.Error(),
+			"branch", payload.Rebase.Base, "sha", payload.Rebase.Head,
+		)
+
+		result.Status = defs.RebaseStatusFailure
+		result.Error = err.Error()
+
+		return result, nil
+	}
+
+	if err := rebase.Finish(); err != nil {
+		slog.Warn(
+			"rebase: unable to finish",
+			"error", err.Error(),
+			"branch", payload.Rebase.Base, "sha", payload.Rebase.Head,
+		)
+
+		return result, nil
+	}
+
+	rebase = nil
+
+	return result, nil
+}
+
+func (a *Branch) rebase_each(ctx context.Context, repo *git.Repository, rebase *git.Rebase, result *defs.RebaseResult) error {
 	for {
 		op, err := rebase.Next()
+		if err != nil {
+			if git.IsErrorCode(err, git.ErrorCodeIterOver) {
+				result.SetStatusSuccess()
+
+				break
+			}
+
+			return err
+		}
+
+		commit, err := repo.LookupCommit(op.Id)
+		if err != nil {
+			result.AddOperation(op.Type, defs.RebaseStatusFailure, "", commit.Message(), err)
+			return err
+		}
+
+		defer commit.Free()
+
+		slog.Debug("processing commit", "id", commit.Id().String())
+
+		idx, err := repo.Index()
+		if err != nil {
+			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), commit.Message(), err)
+
+			return err
+		}
+
+		defer idx.Free()
+
+		if conflicts, err := a.get_conflicts(ctx, idx); err != nil {
+			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), commit.Message(), err)
+			return err
+		} else if len(conflicts) > 0 {
+			result.Conflicts = conflicts
+			result.SetStatusConflicts()
+			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), commit.Message(), nil)
+
+			continue
+		}
+
+		err = rebase.Commit(commit.Id(), commit.Author(), commit.Committer(), commit.Message())
+		if err != nil {
+			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), commit.Message(), err)
+
+			return err
+		}
+
+		slog.Debug("commit processed", "id", commit.Id().String())
+		result.Head = commit.Id().String()
+		result.AddOperation(op.Type, defs.RebaseStatusSuccess, commit.Id().String(), commit.Message(), nil)
+		result.SetStatusSuccess()
+	}
+
+	return nil
+}
+
+// rebase_abort aborts a git rebase operation if it's not nil.  Logs a warning if the abort fails.
+func (a *Branch) rebase_abort(_ context.Context, rebase *git.Rebase) {
+	if rebase != nil {
+		if err := rebase.Abort(); err != nil {
+			slog.Warn("rebase: unable to abort!", "error", err.Error())
+		}
+	}
+}
+
+// get_conflicts retrieves conflict information from a git index. Returns an empty slice if no conflicts are found.
+func (a *Branch) get_conflicts(_ context.Context, idx *git.Index) ([]string, error) {
+	conflicts := make([]string, 0)
+
+	if idx == nil {
+		return conflicts, nil
+	}
+
+	if !idx.HasConflicts() {
+		return conflicts, nil
+	}
+
+	iter, err := idx.ConflictIterator()
+	if err != nil {
+		slog.Warn("Failed to create conflict iterator", "error", err)
+		return conflicts, fmt.Errorf("failed to create conflict iterator: %w", err)
+	}
+
+	defer iter.Free()
+
+	for {
+		entry, err := iter.Next()
 		if err != nil {
 			if git.IsErrorCode(err, git.ErrorCodeIterOver) {
 				break
 			}
 
-			logger.Error("Failed to get next rebase operation", "error", err)
+			slog.Warn("Failed to get next conflict entry", "error", err)
 
-			return nil, err
+			return conflicts, fmt.Errorf("failed to get next conflict entry: %w", err)
 		}
 
-		if op.Type == git.RebaseOperationPick {
-			commit, err := repo.LookupCommit(op.Id)
-			if err != nil {
-				logger.Error("Failed to lookup commit", "error", err, "id", op.Id)
-				return nil, err
-			}
-
-			defer commit.Free()
-
-			idx, err := rebase.InmemoryIndex()
-			if err != nil {
-				logger.Error("Failed to get in-memory index", "error", err)
-				return nil, err
-			}
-
-			defer idx.Free()
-
-			if idx.HasConflicts() {
-				return &defs.RebaseResult{
-					Head:    payload.Rebase.Head,
-					Success: false,
-				}, nil
-			}
-
-			if err := rebase.Commit(
-				commit.Id(), commit.Author(), commit.Committer(), commit.Message(),
-			); err != nil {
-				return &defs.RebaseResult{Success: false}, nil
-			}
-		}
+		conflicts = append(conflicts, entry.Ancestor.Path)
 	}
 
-	if err := rebase.Finish(); err != nil {
-		return &defs.RebaseResult{Success: false}, nil
-	}
-
-	return nil, nil
+	return conflicts, nil
 }
 
-func (a *Branch) annotated_commit_from_ref(ctx context.Context, repo *git.Repository, branch string) (*git.AnnotatedCommit, error) {
-	logger := activity.GetLogger(ctx)
-
+// annotated_commit_from_ref retrieves an annotated commit from a ref.
+func (a *Branch) annotated_commit_from_ref(_ context.Context, repo *git.Repository, branch string) (*git.AnnotatedCommit, error) {
 	ref, err := repo.References.Lookup(fns.BranchNameToRef(branch))
 	if err != nil {
-		logger.Error("Failed to lookup ref", "error", err, "branch", branch)
+		slog.Warn("Failed to lookup ref", "error", err, "branch", branch)
 		return nil, err
 	}
 
@@ -220,51 +337,43 @@ func (a *Branch) annotated_commit_from_ref(ctx context.Context, repo *git.Reposi
 
 	commit, err := repo.LookupAnnotatedCommit(ref.Target())
 	if err != nil {
-		logger.Error("Failed to lookup base commit", "error", err, "target", ref.Target())
+		slog.Warn("Failed to lookup base commit", "error", err, "target", ref.Target())
 		return nil, err
 	}
 
 	return commit, nil
 }
 
-func (a *Branch) annotated_commit_from_oid(ctx context.Context, repo *git.Repository, sha string) (*git.AnnotatedCommit, error) {
-	logger := activity.GetLogger(ctx)
-
+// annotated_commit_from_oid retrieves an annotated commit from an OID.
+func (a *Branch) annotated_commit_from_oid(_ context.Context, repo *git.Repository, sha string) (*git.AnnotatedCommit, error) {
 	id, err := git.NewOid(sha)
 	if err != nil {
-		logger.Error("Invalid head SHA", "error", err, "sha", sha)
+		slog.Warn("Invalid head SHA", "error", err, "sha", sha)
 		return nil, err
 	}
 
 	commit, err := repo.LookupAnnotatedCommit(id)
 	if err != nil {
-		logger.Error("Failed to lookup head commit", "error", err, "id", id)
+		slog.Warn("Failed to lookup head commit", "error", err, "id", id)
 		return nil, err
 	}
 
 	return commit, nil
 }
 
-// refresh_remote fetches the latest changes from the remote "origin" for the given branch.
-//
-// It looks up the remote, fetches the branch, and updates the local branch reference.
-func (a *Branch) refresh_remote(ctx context.Context, repo *git.Repository, branch string) error {
-	logger := activity.GetLogger(ctx)
-
+// refresh_remote fetches a branch from the "origin" remote.
+func (a *Branch) refresh_remote(_ context.Context, repo *git.Repository, branch string) error {
 	remote, err := repo.Remotes.Lookup("origin")
 	if err != nil {
-		logger.Error("failed to set remote", "remote", "origin", "error", err.Error())
 		return err
 	}
 
 	if err := remote.Fetch([]string{fns.BranchNameToRef(branch)}, &git.FetchOptions{}, ""); err != nil {
-		logger.Error("unable to fetch from remote", "error", err.Error())
 		return err
 	}
 
 	ref, err := repo.References.Lookup(fns.BranchNameToRemoteRef("origin", branch))
 	if err != nil {
-		logger.Error("unable to lookup remote ref", "error", err.Error())
 		return err
 	}
 
@@ -272,21 +381,17 @@ func (a *Branch) refresh_remote(ctx context.Context, repo *git.Repository, branc
 
 	_, err = repo.References.Create(fns.BranchNameToRef(branch), ref.Target(), true, "")
 	if err != nil {
-		logger.Error("unable to create ref", "error", err.Error())
 		return err
 	}
 
 	return nil
 }
 
-// tree_from_branch retrieves the tree object associated with the given branch.
-// It looks up the branch reference, retrieves the corresponding commit, and returns the commit's tree.
-func (a *Branch) tree_from_branch(ctx context.Context, repo *git.Repository, branch string) (*git.Tree, error) {
-	logger := activity.GetLogger(ctx)
-
+// tree_from_branch gets the tree from a branch ref.
+func (a *Branch) tree_from_branch(_ context.Context, repo *git.Repository, branch string) (*git.Tree, error) {
 	ref, err := repo.References.Lookup(fns.BranchNameToRef(branch))
 	if err != nil {
-		logger.Error("Failed to lookup ref", "error", err, "branch", branch)
+		slog.Warn("Failed to lookup ref", "error", err, "branch", branch)
 		return nil, err
 	}
 
@@ -294,7 +399,7 @@ func (a *Branch) tree_from_branch(ctx context.Context, repo *git.Repository, bra
 
 	commit, err := repo.LookupCommit(ref.Target())
 	if err != nil {
-		logger.Error("Failed to lookup commit", "error", err, "target", ref.Target())
+		slog.Warn("Failed to lookup commit", "error", err, "target", ref.Target())
 		return nil, err
 	}
 
@@ -302,27 +407,24 @@ func (a *Branch) tree_from_branch(ctx context.Context, repo *git.Repository, bra
 
 	tree, err := commit.Tree()
 	if err != nil {
-		logger.Error("Failed to lookup tree", "error", err)
+		slog.Warn("Failed to lookup tree", "error", err)
 		return nil, err
 	}
 
 	return tree, nil
 }
 
-// tree_from_sha retrieves the tree object associated with the given SHA.
-// It looks up the commit by SHA and returns the commit's tree.
-func (a *Branch) tree_from_sha(ctx context.Context, repo *git.Repository, sha string) (*git.Tree, error) {
-	logger := activity.GetLogger(ctx)
-
+// tree_from_sha gets the tree from a commit SHA.
+func (a *Branch) tree_from_sha(_ context.Context, repo *git.Repository, sha string) (*git.Tree, error) {
 	oid, err := git.NewOid(sha)
 	if err != nil {
-		logger.Error("Invalid SHA", "error", err, "sha", sha)
+		slog.Warn("Invalid SHA", "error", err, "sha", sha)
 		return nil, err
 	}
 
 	commit, err := repo.LookupCommit(oid)
 	if err != nil {
-		logger.Error("Failed to lookup commit", "error", err, "oid", oid)
+		slog.Warn("Failed to lookup commit", "error", err, "oid", oid)
 		return nil, err
 	}
 
@@ -330,24 +432,20 @@ func (a *Branch) tree_from_sha(ctx context.Context, repo *git.Repository, sha st
 
 	tree, err := commit.Tree()
 	if err != nil {
-		logger.Error("Failed to lookup tree", "error", err)
+		slog.Warn("Failed to lookup tree", "error", err)
 		return nil, err
 	}
 
 	return tree, nil
 }
 
-// diff_to_result converts a git.Diff into a DiffResult.
-//
-// It iterates through the deltas in the diff, categorizing files based on their status (added, deleted etc.).
-// It also calculates the total number of lines added and removed using the diff statistics.
-func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*eventsv1.Diff, error) {
-	logger := activity.GetLogger(ctx)
+// diff_to_result converts a git.Diff to a DiffResult.
+func (a *Branch) diff_to_result(_ context.Context, diff *git.Diff) (*eventsv1.Diff, error) {
 	result := &eventsv1.Diff{Files: &eventsv1.DiffFiles{}, Lines: &eventsv1.DiffLines{}}
 
 	deltas, err := diff.NumDeltas()
 	if err != nil {
-		logger.Error("Failed to get number of deltas", "error", err)
+		slog.Warn("Failed to get number of deltas", "error", err)
 		return nil, err
 	}
 
@@ -380,12 +478,20 @@ func (a *Branch) diff_to_result(ctx context.Context, diff *git.Diff) (*eventsv1.
 	return result, nil
 }
 
+// ExceedLines notifies on chat if lines exceed a limit.
 func (a *Branch) ExceedLines(ctx context.Context, event *events.Event[eventsv1.ChatHook, eventsv1.Diff]) error {
-	logger := activity.GetLogger(ctx)
-	logger.Info("exceed lines: calling chat", "info")
-
 	if err := kernel.Get().ChatHook(event.Context.Hook).NotifyLinesExceed(ctx, event); err != nil {
-		logger.Error("unable to notify on chat", "error", err.Error())
+		slog.Warn("unable to notify on chat", "error", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+// MergeConflict notifies on chat if merge conflict message.
+func (a *Branch) MergeConflict(ctx context.Context, event *events.Event[eventsv1.ChatHook, eventsv1.Merge]) error {
+	if err := kernel.Get().ChatHook(event.Context.Hook).NotifyMergeConflict(ctx, event); err != nil {
+		slog.Warn("unable to notify on chat", "error", err.Error())
 		return err
 	}
 

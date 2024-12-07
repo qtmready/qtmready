@@ -44,7 +44,7 @@ func (p *Push) GetBefore() string {
 	return p.Before
 }
 
-func (p *Push) Getfter() string {
+func (p *Push) GetAfter() string {
 	return p.After
 }
 

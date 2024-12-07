@@ -9,10 +9,10 @@ import (
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
-func RefToProto(wr *defs.WebhookRef) eventsv1.GitRef {
+func RefToProto(ref *defs.WebhookRef) eventsv1.GitRef {
 	return eventsv1.GitRef{
-		Ref:  wr.GetRef(),
-		Kind: wr.GetRefType(),
+		Ref:  ref.GetRef(),
+		Kind: ref.GetRefType(),
 	}
 }
 
@@ -20,7 +20,7 @@ func PushToProto(push *defs.Push) eventsv1.Push {
 	return eventsv1.Push{
 		Ref:        push.GetRef(),
 		Before:     push.GetBefore(),
-		After:      push.GetBefore(),
+		After:      push.GetAfter(),
 		Repository: push.GetRepositoryName(),
 		SenderId:   push.GetSenderID(),
 		Timestamp:  timestamppb.New(time.Now()),

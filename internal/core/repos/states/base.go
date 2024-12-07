@@ -15,7 +15,7 @@ type (
 	// core data and provides logging utilities.
 	Base struct {
 		Repo     *entities.Repo     `json:"repo"`      // Repository entity.
-		ChatLink *entities.ChatLink `json:"chat_link"` // Messaging entity.
+		ChatLink *entities.ChatLink `json:"chat_link"` // ChatLink entity.
 
 		logger log.Logger // Workflow logger.
 	}
