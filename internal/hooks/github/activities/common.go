@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/jackc/pgx/v5"
 
@@ -26,12 +27,25 @@ func HydrateRepoEvent(ctx context.Context, payload *defs.HydrateRepoEventPayload
 		return nil, err
 	}
 
-	row, err := db.Queries().GetRepo(ctx, entities.GetRepoParams{InstallationID: install.ID, GithubID: payload.RepoID})
+	params := entities.GetRepoForGithubParams{InstallationID: install.ID, GithubID: payload.RepoID}
+
+	row, err := db.Queries().GetRepoForGithub(ctx, params)
 	if err != nil {
 		return nil, err
 	}
 
-	hydrated := cast.RowToHydratedRepoEvent(row)
+	hydrated := cast.RepoForGithubToHydratedRepoEvent(row)
+
+	chat_link, err := db.Queries().GetChatLink(ctx, row.Repo.ID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			slog.Warn("unable to get chat link, notification will not work.") // TODO: user should know.
+		} else {
+			return nil, err
+		}
+	}
+
+	hydrated.ChatLinks.Repo = &chat_link
 
 	if payload.Email != "" {
 		user, _ := db.Queries().GetUserByEmail(ctx, payload.Email)

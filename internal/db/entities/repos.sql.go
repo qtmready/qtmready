@@ -117,63 +117,30 @@ func (q *Queries) GetOrgReposByOrgID(ctx context.Context, orgID uuid.UUID) ([]Re
 
 const getRepo = `-- name: GetRepo :one
 SELECT
-  repo.id, repo.created_at, repo.updated_at, repo.org_id, repo.name, repo.hook, repo.hook_id, repo.default_branch, repo.is_monorepo, repo.threshold, repo.stale_duration, repo.url, repo.is_active,
-  chat_link.id, chat_link.created_at, chat_link.updated_at, chat_link.hook, chat_link.kind, chat_link.link_to, chat_link.data,
-  org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug, org.hooks
+  id, created_at, updated_at, org_id, name, hook, hook_id, default_branch, is_monorepo, threshold, stale_duration, url, is_active
 FROM
-  github_repos gr
-JOIN
-  repos repo ON gr.id = repo.hook_id
-LEFT JOIN
-  chat_links chat_link ON chat_link.link_to = repo.id
-JOIN
-  orgs org ON repo.org_id = org.id
+  repos
 WHERE
-  gr.installation_id = $1 AND gr.github_id = $2
+  id = $1
 `
 
-type GetRepoParams struct {
-	InstallationID uuid.UUID `json:"installation_id"`
-	GithubID       int64     `json:"github_id"`
-}
-
-type GetRepoRow struct {
-	Repo     Repo     `json:"repo"`
-	ChatLink ChatLink `json:"chat_link"`
-	Org      Org      `json:"org"`
-}
-
-func (q *Queries) GetRepo(ctx context.Context, arg GetRepoParams) (GetRepoRow, error) {
-	row := q.db.QueryRow(ctx, getRepo, arg.InstallationID, arg.GithubID)
-	var i GetRepoRow
+func (q *Queries) GetRepo(ctx context.Context, id uuid.UUID) (Repo, error) {
+	row := q.db.QueryRow(ctx, getRepo, id)
+	var i Repo
 	err := row.Scan(
-		&i.Repo.ID,
-		&i.Repo.CreatedAt,
-		&i.Repo.UpdatedAt,
-		&i.Repo.OrgID,
-		&i.Repo.Name,
-		&i.Repo.Hook,
-		&i.Repo.HookID,
-		&i.Repo.DefaultBranch,
-		&i.Repo.IsMonorepo,
-		&i.Repo.Threshold,
-		&i.Repo.StaleDuration,
-		&i.Repo.Url,
-		&i.Repo.IsActive,
-		&i.ChatLink.ID,
-		&i.ChatLink.CreatedAt,
-		&i.ChatLink.UpdatedAt,
-		&i.ChatLink.Hook,
-		&i.ChatLink.Kind,
-		&i.ChatLink.LinkTo,
-		&i.ChatLink.Data,
-		&i.Org.ID,
-		&i.Org.CreatedAt,
-		&i.Org.UpdatedAt,
-		&i.Org.Name,
-		&i.Org.Domain,
-		&i.Org.Slug,
-		&i.Org.Hooks,
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.OrgID,
+		&i.Name,
+		&i.Hook,
+		&i.HookID,
+		&i.DefaultBranch,
+		&i.IsMonorepo,
+		&i.Threshold,
+		&i.StaleDuration,
+		&i.Url,
+		&i.IsActive,
 	)
 	return i, err
 }
@@ -201,6 +168,58 @@ func (q *Queries) GetRepoByID(ctx context.Context, id uuid.UUID) (Repo, error) {
 		&i.StaleDuration,
 		&i.Url,
 		&i.IsActive,
+	)
+	return i, err
+}
+
+const getRepoForGithub = `-- name: GetRepoForGithub :one
+SELECT
+ repo.id, repo.created_at, repo.updated_at, repo.org_id, repo.name, repo.hook, repo.hook_id, repo.default_branch, repo.is_monorepo, repo.threshold, repo.stale_duration, repo.url, repo.is_active,
+ org.id, org.created_at, org.updated_at, org.name, org.domain, org.slug, org.hooks
+FROM
+  github_repos github_repo
+JOIN
+  repos repo on github_repo.id = repo.hook_id
+JOIN
+  orgs org ON repo.org_id = org.id
+WHERE
+  github_repo.installation_id = $1 AND github_repo.github_id = $2
+`
+
+type GetRepoForGithubParams struct {
+	InstallationID uuid.UUID `json:"installation_id"`
+	GithubID       int64     `json:"github_id"`
+}
+
+type GetRepoForGithubRow struct {
+	Repo Repo `json:"repo"`
+	Org  Org  `json:"org"`
+}
+
+func (q *Queries) GetRepoForGithub(ctx context.Context, arg GetRepoForGithubParams) (GetRepoForGithubRow, error) {
+	row := q.db.QueryRow(ctx, getRepoForGithub, arg.InstallationID, arg.GithubID)
+	var i GetRepoForGithubRow
+	err := row.Scan(
+		&i.Repo.ID,
+		&i.Repo.CreatedAt,
+		&i.Repo.UpdatedAt,
+		&i.Repo.OrgID,
+		&i.Repo.Name,
+		&i.Repo.Hook,
+		&i.Repo.HookID,
+		&i.Repo.DefaultBranch,
+		&i.Repo.IsMonorepo,
+		&i.Repo.Threshold,
+		&i.Repo.StaleDuration,
+		&i.Repo.Url,
+		&i.Repo.IsActive,
+		&i.Org.ID,
+		&i.Org.CreatedAt,
+		&i.Org.UpdatedAt,
+		&i.Org.Name,
+		&i.Org.Domain,
+		&i.Org.Slug,
+		&i.Org.Hooks,
 	)
 	return i, err
 }

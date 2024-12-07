@@ -70,16 +70,21 @@ WHERE hook_id = $1;
 
 -- name: GetRepo :one
 SELECT
-  sqlc.embed(repo),
-  sqlc.embed(chat_link),
-  sqlc.embed(org)
+  *
 FROM
-  github_repos gr
+  repos
+WHERE
+  id = $1;
+
+-- name: GetRepoForGithub :one
+SELECT
+ sqlc.embed(repo),
+ sqlc.embed(org)
+FROM
+  github_repos github_repo
 JOIN
-  repos repo ON gr.id = repo.hook_id
-LEFT JOIN
-  chat_links chat_link ON chat_link.link_to = repo.id
+  repos repo on github_repo.id = repo.hook_id
 JOIN
   orgs org ON repo.org_id = org.id
 WHERE
-  gr.installation_id = $1 AND gr.github_id = $2;
+  github_repo.installation_id = $1 AND github_repo.github_id = $2;
