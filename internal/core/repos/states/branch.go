@@ -112,6 +112,9 @@ func (state *Branch) OnRebase(ctx workflow.Context) durable.ChannelHandler {
 
 		clone := &defs.ClonePayload{Repo: state.Repo, Hook: event.Context.Hook, Branch: state.Branch, SHA: event.Payload.Head}
 		path := state.clone(session, clone)
+
+		_ = state.run(ctx, "rebase", state.acts.Rebase, &defs.RebasePayload{Rebase: event.Payload, Path: path}, nil)
+
 		state.remove_dir(ctx, path)
 	}
 }
