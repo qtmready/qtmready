@@ -28,28 +28,6 @@ type (
 	}
 )
 
-// - local -
-
-// forward_to_branch routes the signal to the appropriate branch.
-func (state *Repo) forward_to_branch(ctx workflow.Context, signal queues.Signal, branch string, event any) error {
-	ctx = dispatch.WithDefaultActivityContext(ctx)
-
-	next := NewBranch(state.Repo, state.ChatLink, branch)
-	payload := &defs.SignalBranchPayload{Signal: signal, Repo: state.Repo, Branch: branch}
-
-	return workflow.ExecuteActivity(ctx, state.acts.ForwardToBranch, payload, event, next).Get(ctx, nil)
-}
-
-// forward_to_trunk routes the signal to the trunk.
-func (state *Repo) forward_to_trunk(ctx workflow.Context, signal queues.Signal, event any) error {
-	ctx = dispatch.WithDefaultActivityContext(ctx)
-
-	next := NewTrunk(state.Repo, state.ChatLink)
-	payload := &defs.SignalTrunkPayload{Signal: signal, Repo: state.Repo}
-
-	return workflow.ExecuteActivity(ctx, state.acts.ForwardToTrunk, payload, event, next).Get(ctx, nil)
-}
-
 // - signal handlers -
 
 // OnPush handles the push event on the repository. If the branch is the default branch, the event is forwarded to all
@@ -63,31 +41,13 @@ func (state *Repo) OnPush(ctx workflow.Context) durable.ChannelHandler {
 
 		branch := fns.BranchNameFromRef(push.Payload.Ref)
 
-		state.Triggers.add(branch, push.ID)
-
 		if branch == state.Repo.DefaultBranch {
-			for branch := range state.Triggers {
-				workflow.Go(ctx, func(ctx workflow.Context) {
-					rebase := events.Next[
-						eventsv1.RepoHook, eventsv1.Push, eventsv1.Rebase,
-					](push, events.ScopeRebase, events.ActionRequested).
-						SetPayload(&eventsv1.Rebase{Base: branch, Head: push.Payload.After, Repository: push.Payload.Repository})
-
-					if err := pulse.Persist(ctx, rebase); err != nil {
-						state.logger.Warn(
-							"push: unable to persist rebase event",
-							"repo", state.Repo.ID, "branch", branch, "error", err.Error(),
-						)
-					}
-
-					if err := state.forward_to_branch(ctx, defs.SignalRebase, branch, rebase); err != nil {
-						state.logger.Warn("push: unable to signal branch", "repo", state.Repo.ID, "branch", branch, "error", err.Error())
-					}
-				})
-			}
+			state.attempt_rebase(ctx, push)
 
 			return
 		}
+
+		state.Triggers.add(branch, push.ID)
 
 		if err := state.forward_to_branch(ctx, defs.SignalPush, branch, push); err != nil {
 			state.logger.Warn("push: unable to signal branch", "repo", state.Repo.ID, "branch", branch, "error", err.Error())
@@ -136,6 +96,50 @@ func (state *Repo) QueryBranchTrigger(branch string) (uuid.UUID, error) {
 	}
 
 	return uuid.Nil, errors.New("branch not found")
+}
+
+// - local -
+
+// forward_to_branch routes the signal to the appropriate branch.
+func (state *Repo) forward_to_branch(ctx workflow.Context, signal queues.Signal, branch string, event any) error {
+	ctx = dispatch.WithDefaultActivityContext(ctx)
+
+	next := NewBranch(state.Repo, state.ChatLink, branch)
+	payload := &defs.SignalBranchPayload{Signal: signal, Repo: state.Repo, Branch: branch}
+
+	return workflow.ExecuteActivity(ctx, state.acts.ForwardToBranch, payload, event, next).Get(ctx, nil)
+}
+
+// forward_to_trunk routes the signal to the trunk.
+func (state *Repo) forward_to_trunk(ctx workflow.Context, signal queues.Signal, event any) error {
+	ctx = dispatch.WithDefaultActivityContext(ctx)
+
+	next := NewTrunk(state.Repo, state.ChatLink)
+	payload := &defs.SignalTrunkPayload{Signal: signal, Repo: state.Repo}
+
+	return workflow.ExecuteActivity(ctx, state.acts.ForwardToTrunk, payload, event, next).Get(ctx, nil)
+}
+
+// attempt_rebase rebases all branches with a trigger on the default branch.
+func (state *Repo) attempt_rebase(ctx workflow.Context, push *events.Event[eventsv1.RepoHook, eventsv1.Push]) {
+	for branch := range state.Triggers {
+		workflow.Go(ctx, func(ctx workflow.Context) {
+			rebase := events.
+				Next[eventsv1.RepoHook, eventsv1.Push, eventsv1.Rebase](push, events.ScopeRebase, events.ActionRequested).
+				SetPayload(&eventsv1.Rebase{Base: branch, Head: push.Payload.After, Repository: push.Payload.Repository})
+
+			if err := pulse.Persist(ctx, rebase); err != nil {
+				state.logger.Warn(
+					"attempt_rebase: unable to persist rebase event",
+					"repo", state.Repo.ID, "branch", branch, "error", err.Error(),
+				)
+			}
+
+			if err := state.forward_to_branch(ctx, defs.SignalRebase, branch, rebase); err != nil {
+				state.logger.Warn("atemmpt_rebase: unable to signal branch", "repo", state.Repo.ID, "branch", branch, "error", err.Error())
+			}
+		})
+	}
 }
 
 // - state managers -

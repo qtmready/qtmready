@@ -93,7 +93,7 @@ func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1
 
 	head, err := a.tree_from_sha(ctx, repo, payload.SHA)
 	if err != nil {
-		logger.Error("unable to process head", "head", head)
+		logger.Error("unable to process head", "head", head, "sha", payload.SHA)
 		return nil, err
 	}
 
