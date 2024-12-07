@@ -3,6 +3,7 @@ package github
 import (
 	"go.breu.io/quantm/internal/hooks/github/activities"
 	"go.breu.io/quantm/internal/hooks/github/config"
+	"go.breu.io/quantm/internal/hooks/github/nomad"
 	"go.breu.io/quantm/internal/hooks/github/web"
 	"go.breu.io/quantm/internal/hooks/github/workflows"
 )
@@ -30,4 +31,6 @@ var (
 	PushWorkflow        = workflows.Push
 	PullRequestWorkflow = workflows.PullRequest
 	SyncReposWorkflow   = workflows.SyncRepos
+
+	NomadHandler = nomad.NewGithubServiceHandler
 )
