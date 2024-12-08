@@ -63,10 +63,6 @@ func (r *RebaseResult) HasConflicts() bool {
 	return len(r.Conflicts) > 0
 }
 
-func (r *RebaseResult) AddConflict(conflict string) {
-	r.Conflicts = append(r.Conflicts, conflict)
-}
-
 func (r *RebaseResult) AddOperation(op git.RebaseOperationType, status RebaseStatus, head, message string, err error) {
 	if err != nil {
 		status = RebaseStatusFailure
@@ -91,4 +87,29 @@ func NewRebaseResult() *RebaseResult {
 		Conflicts:  []string{},
 		Operations: []RebaseOperation{},
 	}
+}
+
+func (r *RebaseResult) SetSuccess() {
+	r.Status = RebaseStatusSuccess
+}
+
+func (r *RebaseResult) SetFailure(err error) {
+	r.Status = RebaseStatusFailure
+	r.Error = err.Error()
+}
+
+func (r *RebaseResult) SetUpToDate() {
+	r.Status = RebaseStatusUpToDate
+}
+
+func (r *RebaseResult) SetStatusConflicts() {
+	r.Status = RebaseStatusConflicts
+}
+
+func (r *RebaseResult) SetAborted() {
+	r.Status = RebaseStatusAborted
+}
+
+func (r *RebaseResult) SetPartial() {
+	r.Status = RebaseStatusPartial
 }

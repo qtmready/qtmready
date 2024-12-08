@@ -106,7 +106,7 @@ func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1
 
 // Rebase performs a git rebase operation.  Handles conflicts and returns result.
 func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs.RebaseResult, error) {
-	result := defs.NewRebaseResult() // Use the NewRebaseResult function
+	result := defs.NewRebaseResult()
 
 	repo, err := git.OpenRepository(payload.Path)
 	if err != nil {
@@ -119,6 +119,7 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 	if err := a.refresh_remote(ctx, repo, payload.Rebase.Base); err != nil {
 		result.Status = defs.RebaseStatusFailure // Set Status on error
 		result.Error = fmt.Sprintf("Failed to refresh remote: %v", err)
+
 		return result, err
 	}
 
@@ -126,8 +127,8 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 	if err != nil {
 		result.Status = defs.RebaseStatusFailure // Set Status on error
 		result.Error = fmt.Sprintf("Failed to get annotated commit from ref: %v", err)
-		return result, err
 
+		return result, err
 	}
 
 	defer branch.Free()
@@ -145,6 +146,7 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 	opts, err := git.DefaultRebaseOptions()
 	if err != nil {
 		slog.Error("Failed to get default rebase options", "error", err)
+
 		result.Status = defs.RebaseStatusFailure
 		result.Error = fmt.Sprintf("Failed to get default rebase options: %v", err)
 
@@ -154,6 +156,7 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 	rebase, err := repo.InitRebase(branch, upstream, nil, &opts)
 	if err != nil {
 		slog.Error("Failed to initialize rebase", "error", err)
+
 		result.Status = defs.RebaseStatusFailure
 		result.Error = fmt.Sprintf("Failed to initialize rebase: %v", err)
 
@@ -166,6 +169,7 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 	merge_analysis, _, err := repo.MergeAnalysis([]*git.AnnotatedCommit{upstream})
 	if err != nil {
 		slog.Warn("rebase: failed to analyze merge", "error", err)
+
 		result.Status = defs.RebaseStatusFailure
 
 		return result, err
@@ -177,6 +181,21 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 		return result, nil
 	}
 
+	if err := a.rebase_run(ctx, repo, rebase, result); err != nil {
+		return result, err
+	}
+
+	if err := rebase.Finish(); err != nil {
+		result.Status = defs.RebaseStatusFailure
+		return result, err
+	}
+
+	result.Status = defs.RebaseStatusSuccess
+
+	return result, nil
+}
+
+func (a *Branch) rebase_run(ctx context.Context, repo *git.Repository, rebase *git.Rebase, result *defs.RebaseResult) error {
 	for {
 		op, err := rebase.Next()
 		if err != nil {
@@ -186,7 +205,7 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 
 			result.Status = defs.RebaseStatusFailure
 
-			return result, err
+			return err
 		}
 
 		commit, err := repo.LookupCommit(op.Id)
@@ -202,19 +221,27 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 		idx, err := repo.Index()
 		if err != nil {
 			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), commit.Message(), err)
+
 			continue
 		}
 
 		defer idx.Free()
 
-		if idx.HasConflicts() {
-			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), commit.Message(), fmt.Errorf("conflict detected"))
-			break
+		if conflicts, err := a.get_conflicts(ctx, idx); err != nil {
+			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), commit.Message(), err)
+			continue
+		} else if len(conflicts) > 0 {
+			result.Conflicts = conflicts
+			result.SetStatusConflicts()
+			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), commit.Message(), nil)
+
+			return nil
 		}
 
 		err = rebase.Commit(commit.Id(), commit.Author(), commit.Committer(), commit.Message())
 		if err != nil {
-			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), fmt.Sprintf("failed to commit: %w", err), err)
+			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), commit.Message(), err)
+
 			continue
 		}
 
@@ -223,14 +250,7 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 		result.AddOperation(op.Type, defs.RebaseStatusSuccess, commit.Id().String(), commit.Message(), nil)
 	}
 
-	if err := rebase.Finish(); err != nil {
-		result.Status = defs.RebaseStatusFailure
-		return result, err
-	}
-
-	result.Status = defs.RebaseStatusSuccess
-
-	return result, nil
+	return nil
 }
 
 // rebase_abort aborts a git rebase operation if it's not nil.  Logs a warning if the abort fails.
@@ -240,6 +260,44 @@ func (a *Branch) rebase_abort(_ context.Context, rebase *git.Rebase) {
 			slog.Warn("rebase: unable to abort!", "error", err.Error())
 		}
 	}
+}
+
+// get_conflicts retrieves conflict information from a git index. Returns an empty slice if no conflicts are found.
+func (a *Branch) get_conflicts(_ context.Context, idx *git.Index) ([]string, error) {
+	conflicts := make([]string, 0)
+
+	if idx == nil {
+		return conflicts, nil // No index, no conflicts.
+	}
+
+	if !idx.HasConflicts() {
+		return conflicts, nil // No conflicts present.
+	}
+
+	iter, err := idx.ConflictIterator()
+	if err != nil {
+		slog.Error("Failed to create conflict iterator", "error", err)
+		return conflicts, fmt.Errorf("failed to create conflict iterator: %w", err)
+	}
+
+	defer iter.Free()
+
+	for {
+		entry, err := iter.Next()
+		if err != nil {
+			if git.IsErrorCode(err, git.ErrorCodeIterOver) {
+				break // End of iterator
+			}
+
+			slog.Error("Failed to get next conflict entry", "error", err)
+
+			return conflicts, fmt.Errorf("failed to get next conflict entry: %w", err)
+		}
+
+		conflicts = append(conflicts, entry.Ancestor.Path)
+	}
+
+	return conflicts, nil
 }
 
 // annotated_commit_from_ref retrieves an annotated commit from a ref.
@@ -280,7 +338,6 @@ func (a *Branch) annotated_commit_from_oid(_ context.Context, repo *git.Reposito
 
 // refresh_remote fetches a branch from the "origin" remote.
 func (a *Branch) refresh_remote(_ context.Context, repo *git.Repository, branch string) error {
-
 	remote, err := repo.Remotes.Lookup("origin")
 	if err != nil {
 		slog.Error("failed to set remote", "remote", "origin", "error", err.Error())
