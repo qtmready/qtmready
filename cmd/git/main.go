@@ -91,10 +91,12 @@ func rebase(path, sha, name string) {
 	if err != nil {
 		log.Fatalf("Failed to create OID from commit hash: %v", err)
 	}
-	// commit, err := repo.LookupCommit(commitOid)
-	// if err != nil {
-	// 	log.Fatalf("Failed to lookup commit: %v", err)
-	// }
+
+	// Get the annotated commit for the commit to rebase onto
+	head, err := repo.LookupAnnotatedCommit(id)
+	if err != nil {
+		log.Fatalf("Failed to get annotated commit: %v", err)
+	}
 
 	// Lookup the branch to rebase
 	branch, err := repo.LookupBranch(name, git.BranchLocal)
@@ -102,20 +104,8 @@ func rebase(path, sha, name string) {
 		log.Fatalf("Failed to lookup branch: %v", err)
 	}
 
-	// Get the target commit of the branch
-	// branchTargetCommit, err := repo.LookupCommit(branch.Target())
-	// if err != nil {
-	// 	log.Fatalf("Failed to lookup branch target commit: %v", err)
-	// }
-
 	// Get the annotated commit for the branch
-	base, err := repo.AnnotatedCommitFromRef(branch.Reference)
-	if err != nil {
-		log.Fatalf("Failed to get annotated commit: %v", err)
-	}
-
-	// Get the annotated commit for the commit to rebase onto
-	head, err := repo.LookupAnnotatedCommit(id)
+	upstream, err := repo.AnnotatedCommitFromRef(branch.Reference)
 	if err != nil {
 		log.Fatalf("Failed to get annotated commit: %v", err)
 	}
@@ -126,10 +116,23 @@ func rebase(path, sha, name string) {
 		log.Fatalf("Failed to get default rebase options: %v", err)
 	}
 
-	rebase, err := repo.InitRebase(base, head, nil, &opts)
+	analysis, _, err := repo.MergeAnalysis([]*git.AnnotatedCommit{head})
+	if err != nil {
+		log.Fatalf("Failed to get merge analysis: %v", err)
+	}
+
+	if analysis == git.MergeAnalysisUpToDate {
+		return
+	}
+
+	slog.Info("analysis", "analysis", analysis)
+
+	rebase, err := repo.InitRebase(upstream, head, nil, &opts)
 	if err != nil {
 		log.Fatalf("Failed to initialize rebase: %v", err)
 	}
+
+	slog.Info("rebase operations", "count", rebase.OperationCount())
 
 	for {
 		operation, err := rebase.Next()
