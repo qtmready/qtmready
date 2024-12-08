@@ -19,8 +19,7 @@ type (
 	Branch struct{}
 )
 
-// Clone clones the repository at the specified branch using a temporary path.  It retrieves a tokenized clone URL,
-// clones the repository using git2go, fetches the specified branch, and returns the working directory path.
+// Clone clones a repo to a temp path, fetching a specified branch.
 func (a *Branch) Clone(ctx context.Context, payload *defs.ClonePayload) (string, error) {
 	url, err := kernel.Get().RepoHook(payload.Hook).TokenizedCloneUrl(ctx, payload.Repo)
 	if err != nil {
@@ -51,6 +50,7 @@ func (a *Branch) Clone(ctx context.Context, payload *defs.ClonePayload) (string,
 	return cloned.Workdir(), nil
 }
 
+// RemoveDir removes a directory and handles potential errors.
 func (a *Branch) RemoveDir(ctx context.Context, path string) error {
 	slog.Debug("removing directory", "path", path)
 
@@ -61,9 +61,7 @@ func (a *Branch) RemoveDir(ctx context.Context, path string) error {
 	return nil
 }
 
-// Diff retrieves the diff between two commits.  Given a repository path, base branch, and SHA, it opens the repo,
-// fetches the base branch, resolves commits by SHA, and computes the diff between their trees using `git2go`. The
-// resulting diff is currently returned unprocessed.
+// Diff computes the diff between two commits using git2go.
 func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1.Diff, error) {
 	repo, err := git.OpenRepository(payload.Path)
 	if err != nil {
@@ -106,8 +104,9 @@ func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1
 	return a.diff_to_result(ctx, diff)
 }
 
+// Rebase performs a git rebase operation.  Handles conflicts and returns result.
 func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs.RebaseResult, error) {
-	result := &defs.RebaseResult{Success: false}
+	result := defs.NewRebaseResult() // Use the NewRebaseResult function
 
 	repo, err := git.OpenRepository(payload.Path)
 	if err != nil {
@@ -118,43 +117,65 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 	defer repo.Free()
 
 	if err := a.refresh_remote(ctx, repo, payload.Rebase.Base); err != nil {
-		return result, nil
+		result.Status = defs.RebaseStatusFailure // Set Status on error
+		result.Error = fmt.Sprintf("Failed to refresh remote: %v", err)
+		return result, err
 	}
 
 	branch, err := a.annotated_commit_from_ref(ctx, repo, payload.Rebase.Base)
 	if err != nil {
-		return result, nil
+		result.Status = defs.RebaseStatusFailure // Set Status on error
+		result.Error = fmt.Sprintf("Failed to get annotated commit from ref: %v", err)
+		return result, err
+
 	}
 
 	defer branch.Free()
 
 	upstream, err := a.annotated_commit_from_oid(ctx, repo, payload.Rebase.Head)
 	if err != nil {
-		return result, nil
+		result.Status = defs.RebaseStatusFailure
+		result.Error = fmt.Sprintf("Failed to get annotated commit from OID: %v", err)
+
+		return result, err
 	}
 
 	defer upstream.Free()
 
 	opts, err := git.DefaultRebaseOptions()
 	if err != nil {
-		slog.Error("Failed to get default rebase options")
-		return result, nil
+		slog.Error("Failed to get default rebase options", "error", err)
+		result.Status = defs.RebaseStatusFailure
+		result.Error = fmt.Sprintf("Failed to get default rebase options: %v", err)
+
+		return result, err
 	}
 
 	rebase, err := repo.InitRebase(branch, upstream, nil, &opts)
 	if err != nil {
 		slog.Error("Failed to initialize rebase", "error", err)
+		result.Status = defs.RebaseStatusFailure
+		result.Error = fmt.Sprintf("Failed to initialize rebase: %v", err)
+
+		return result, err
+	}
+
+	defer a.rebase_abort(ctx, rebase)
+	defer rebase.Free()
+
+	merge_analysis, _, err := repo.MergeAnalysis([]*git.AnnotatedCommit{upstream})
+	if err != nil {
+		slog.Warn("rebase: failed to analyze merge", "error", err)
+		result.Status = defs.RebaseStatusFailure
+
+		return result, err
+	}
+
+	if merge_analysis == git.MergeAnalysisUpToDate {
+		result.Status = defs.RebaseStatusUpToDate
+
 		return result, nil
 	}
-
-	abort := func() {
-		if rebase != nil {
-			_ = rebase.Abort()
-		}
-	}
-
-	defer rebase.Free()
-	defer abort()
 
 	for {
 		op, err := rebase.Next()
@@ -163,51 +184,65 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 				break
 			}
 
-			result.Success = false
+			result.Status = defs.RebaseStatusFailure
 
 			return result, err
 		}
 
-		if op.Type == git.RebaseOperationPick {
-			commit, err := repo.LookupCommit(op.Id)
-			if err != nil {
-				return &defs.RebaseResult{Head: commit.Id().String(), Success: false}, nil
-			}
-
-			defer commit.Free()
-
-			slog.Debug("processing commit", "id", commit.Id().String())
-
-			idx, err := repo.Index()
-			if err != nil {
-				return &defs.RebaseResult{Head: commit.Id().String(), Success: false}, nil
-			}
-
-			defer idx.Free()
-
-			if idx.HasConflicts() {
-				return &defs.RebaseResult{Head: commit.Id().String(), Success: false}, nil
-			}
-
-			if err := rebase.Commit(commit.Id(), commit.Author(), commit.Committer(), commit.Message()); err != nil {
-				return &defs.RebaseResult{Head: commit.Id().String(), Success: false}, nil
-			}
-
-			slog.Debug("commit processed", "id", commit.Id().String())
-
-			result = &defs.RebaseResult{Head: commit.Id().String(), Success: true}
+		commit, err := repo.LookupCommit(op.Id)
+		if err != nil {
+			result.AddOperation(op.Type, defs.RebaseStatusFailure, "", commit.Message(), err)
+			continue
 		}
+
+		defer commit.Free()
+
+		slog.Debug("processing commit", "id", commit.Id().String())
+
+		idx, err := repo.Index()
+		if err != nil {
+			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), commit.Message(), err)
+			continue
+		}
+
+		defer idx.Free()
+
+		if idx.HasConflicts() {
+			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), commit.Message(), fmt.Errorf("conflict detected"))
+			break
+		}
+
+		err = rebase.Commit(commit.Id(), commit.Author(), commit.Committer(), commit.Message())
+		if err != nil {
+			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), fmt.Sprintf("failed to commit: %w", err), err)
+			continue
+		}
+
+		slog.Debug("commit processed", "id", commit.Id().String())
+		result.Head = commit.Id().String()
+		result.AddOperation(op.Type, defs.RebaseStatusSuccess, commit.Id().String(), commit.Message(), nil)
 	}
 
 	if err := rebase.Finish(); err != nil {
-		return result, nil
+		result.Status = defs.RebaseStatusFailure
+		return result, err
 	}
 
-	result.Success = true
+	result.Status = defs.RebaseStatusSuccess
 
 	return result, nil
 }
 
+// rebase_abort aborts a git rebase operation if it's not nil.  Logs a warning if the abort fails.
+func (a *Branch) rebase_abort(_ context.Context, rebase *git.Rebase) {
+	if rebase != nil {
+		if err := rebase.Abort(); err != nil {
+			slog.Warn("rebase: unable to abort!", "error", err.Error())
+		}
+	}
+}
+
+// annotated_commit_from_ref retrieves an annotated commit from a ref.
 func (a *Branch) annotated_commit_from_ref(_ context.Context, repo *git.Repository, branch string) (*git.AnnotatedCommit, error) {
 	ref, err := repo.References.Lookup(fns.BranchNameToRef(branch))
 	if err != nil {
@@ -226,6 +261,7 @@ func (a *Branch) annotated_commit_from_ref(_ context.Context, repo *git.Reposito
 	return commit, nil
 }
 
+// annotated_commit_from_oid retrieves an annotated commit from an OID.
 func (a *Branch) annotated_commit_from_oid(_ context.Context, repo *git.Repository, sha string) (*git.AnnotatedCommit, error) {
 	id, err := git.NewOid(sha)
 	if err != nil {
@@ -242,9 +278,7 @@ func (a *Branch) annotated_commit_from_oid(_ context.Context, repo *git.Reposito
 	return commit, nil
 }
 
-// refresh_remote fetches the latest changes from the remote "origin" for the given branch.
-//
-// It looks up the remote, fetches the branch, and updates the local branch reference.
+// refresh_remote fetches a branch from the "origin" remote.
 func (a *Branch) refresh_remote(_ context.Context, repo *git.Repository, branch string) error {
 
 	remote, err := repo.Remotes.Lookup("origin")
@@ -275,8 +309,7 @@ func (a *Branch) refresh_remote(_ context.Context, repo *git.Repository, branch 
 	return nil
 }
 
-// tree_from_branch retrieves the tree object associated with the given branch.
-// It looks up the branch reference, retrieves the corresponding commit, and returns the commit's tree.
+// tree_from_branch gets the tree from a branch ref.
 func (a *Branch) tree_from_branch(_ context.Context, repo *git.Repository, branch string) (*git.Tree, error) {
 	ref, err := repo.References.Lookup(fns.BranchNameToRef(branch))
 	if err != nil {
@@ -303,8 +336,7 @@ func (a *Branch) tree_from_branch(_ context.Context, repo *git.Repository, branc
 	return tree, nil
 }
 
-// tree_from_sha retrieves the tree object associated with the given SHA.
-// It looks up the commit by SHA and returns the commit's tree.
+// tree_from_sha gets the tree from a commit SHA.
 func (a *Branch) tree_from_sha(_ context.Context, repo *git.Repository, sha string) (*git.Tree, error) {
 	oid, err := git.NewOid(sha)
 	if err != nil {
@@ -329,10 +361,7 @@ func (a *Branch) tree_from_sha(_ context.Context, repo *git.Repository, sha stri
 	return tree, nil
 }
 
-// diff_to_result converts a git.Diff into a DiffResult.
-//
-// It iterates through the deltas in the diff, categorizing files based on their status (added, deleted etc.).
-// It also calculates the total number of lines added and removed using the diff statistics.
+// diff_to_result converts a git.Diff to a DiffResult.
 func (a *Branch) diff_to_result(_ context.Context, diff *git.Diff) (*eventsv1.Diff, error) {
 	result := &eventsv1.Diff{Files: &eventsv1.DiffFiles{}, Lines: &eventsv1.DiffLines{}}
 
@@ -371,6 +400,7 @@ func (a *Branch) diff_to_result(_ context.Context, diff *git.Diff) (*eventsv1.Di
 	return result, nil
 }
 
+// ExceedLines notifies on chat if lines exceed a limit.
 func (a *Branch) ExceedLines(ctx context.Context, event *events.Event[eventsv1.ChatHook, eventsv1.Diff]) error {
 	if err := kernel.Get().ChatHook(event.Context.Hook).NotifyLinesExceed(ctx, event); err != nil {
 		slog.Error("unable to notify on chat", "error", err.Error())

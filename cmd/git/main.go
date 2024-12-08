@@ -44,8 +44,6 @@ func main() {
 	id := uuid.MustParse("019340e8-e115-7253-816b-2261d3128902")
 	r, _ := db.Queries().GetRepo(ctx, id)
 
-	slog.Info("repo", "repo", r)
-
 	path := utils.MustUUID().String()
 	branch := "one"
 	sha := "0c9b9b0aa97784a5cdfa2cc60d3e97d11def65ba"
@@ -56,7 +54,7 @@ func main() {
 
 	rebase(path, sha, branch)
 
-	// _ = acts.RemoveDir(ctx, path)
+	_ = acts.RemoveDir(ctx, path)
 }
 
 func configure() *Config {

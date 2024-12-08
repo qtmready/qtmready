@@ -3,7 +3,6 @@ package activities
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 
 	ghi "github.com/bradleyfalzon/ghinstallation/v2"
@@ -39,8 +38,6 @@ func (k *Kernel) TokenizedCloneUrl(ctx context.Context, repo *entities.Repo) (st
 	if err != nil {
 		return "", err
 	}
-
-	slog.Info("clone url", "github_repo", ghrepo, "github_installation", install, "client", token)
 
 	return fmt.Sprintf("https://git:%s@github.com/%s.git", token, ghrepo.FullName), nil
 }
