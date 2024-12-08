@@ -27,8 +27,9 @@ func (s *OrgService) SetOrgHooks(
 ) (*connect.Response[emptypb.Empty], error) {
 	hooks, err := json.Marshal(req.Msg.Hooks)
 	if err != nil {
-		return nil, erratic.NewBadRequestError(erratic.AuthModule).WithReason("unable to detect hook")
+		return nil, erratic.NewBadRequestError(erratic.AuthModule).WithReason("unable to detect hook").Wrap(err)
 	}
+
 	params := entities.SetOrgHooksParams{ID: uuid.MustParse(req.Msg.GetOrgId()), Hooks: hooks}
 
 	err = db.Queries().SetOrgHooks(ctx, params)

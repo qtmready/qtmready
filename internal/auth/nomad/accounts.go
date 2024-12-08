@@ -96,11 +96,10 @@ func (s *AccountService) GetAccountByID(
 	account, err := db.Queries().GetOAuthAccountByID(ctx, id)
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, erratic.NewNotFoundError(erratic.AuthModule, "account").
-				AddHint("id", req.Msg.GetId())
+			return nil, erratic.NewNotFoundError(erratic.AuthModule, "account").AddHint("id", req.Msg.GetId())
 		}
-		return nil, erratic.NewDatabaseError(erratic.AuthModule).
-			AddHint("id", req.Msg.GetId()).Wrap(err)
+
+		return nil, erratic.NewDatabaseError(erratic.AuthModule).AddHint("id", req.Msg.GetId()).Wrap(err)
 	}
 
 	return connect.NewResponse(&authv1.GetAccountByIDResponse{Account: cast.AccountToProto(&account)}), nil
