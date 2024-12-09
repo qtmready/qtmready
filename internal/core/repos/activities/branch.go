@@ -120,7 +120,7 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 		result.Status = defs.RebaseStatusFailure // Set Status on error
 		result.Error = fmt.Sprintf("Failed to refresh remote: %v", err)
 
-		return result, err
+		return result, nil
 	}
 
 	branch, err := a.annotated_commit_from_ref(ctx, repo, payload.Rebase.Base)
@@ -128,7 +128,7 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 		result.Status = defs.RebaseStatusFailure // Set Status on error
 		result.Error = fmt.Sprintf("Failed to get annotated commit from ref: %v", err)
 
-		return result, err
+		return result, nil
 	}
 
 	defer branch.Free()
@@ -138,7 +138,7 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 		result.Status = defs.RebaseStatusFailure
 		result.Error = fmt.Sprintf("Failed to get annotated commit from OID: %v", err)
 
-		return result, err
+		return result, nil
 	}
 
 	defer upstream.Free()
@@ -150,7 +150,7 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 		result.Status = defs.RebaseStatusFailure
 		result.Error = fmt.Sprintf("Failed to get default rebase options: %v", err)
 
-		return result, err
+		return result, nil
 	}
 
 	rebase, err := repo.InitRebase(branch, upstream, nil, &opts)
@@ -160,7 +160,7 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 		result.Status = defs.RebaseStatusFailure
 		result.Error = fmt.Sprintf("Failed to initialize rebase: %v", err)
 
-		return result, err
+		return result, nil
 	}
 
 	defer a.rebase_abort(ctx, rebase)
@@ -171,8 +171,9 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 		slog.Warn("rebase: failed to analyze merge", "error", err)
 
 		result.Status = defs.RebaseStatusFailure
+		result.Error = err.Error()
 
-		return result, err
+		return result, nil
 	}
 
 	if merge_analysis == git.MergeAnalysisUpToDate {
@@ -181,13 +182,16 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 		return result, nil
 	}
 
-	if err := a.rebase_run(ctx, repo, rebase, result); err != nil {
-		return result, err
+	if err := a.rebase_each(ctx, repo, rebase, result); err != nil {
+		result.Status = defs.RebaseStatusFailure
+		result.Error = err.Error()
+
+		return result, nil
 	}
 
 	if err := rebase.Finish(); err != nil {
 		result.Status = defs.RebaseStatusFailure
-		return result, err
+		return result, nil
 	}
 
 	result.Status = defs.RebaseStatusSuccess
@@ -195,7 +199,7 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 	return result, nil
 }
 
-func (a *Branch) rebase_run(ctx context.Context, repo *git.Repository, rebase *git.Rebase, result *defs.RebaseResult) error {
+func (a *Branch) rebase_each(ctx context.Context, repo *git.Repository, rebase *git.Rebase, result *defs.RebaseResult) error {
 	for {
 		op, err := rebase.Next()
 		if err != nil {
