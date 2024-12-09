@@ -189,25 +189,7 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 	defer a.rebase_abort(ctx, rebase)
 	defer rebase.Free()
 
-	// merge_analysis, _, err := repo.MergeAnalysis([]*git.AnnotatedCommit{upstream})
-	// if err != nil {
-	// 	slog.Warn(
-	// 		"rebase: failed to analyze merge",
-	// 		"error", err.Error(),
-	// 		"branch", payload.Rebase.Base, "sha", payload.Rebase.Head,
-	// 	)
-
-	// 	result.Status = defs.RebaseStatusFailure
-	// 	result.Error = err.Error()
-
-	// 	return result, nil
-	// }
-
-	// if merge_analysis == git.MergeAnalysisUpToDate {
-	// 	result.Status = defs.RebaseStatusUpToDate
-
-	// 	return result, nil
-	// }
+	result.TotalCommits = rebase.OperationCount()
 
 	if err := a.rebase_each(ctx, repo, rebase, result); err != nil {
 		slog.Warn(
