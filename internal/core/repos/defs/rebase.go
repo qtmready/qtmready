@@ -89,16 +89,16 @@ func NewRebaseResult() *RebaseResult {
 	}
 }
 
-func (r *RebaseResult) SetSuccess() {
+func (r *RebaseResult) SetStatusSuccess() {
 	r.Status = RebaseStatusSuccess
 }
 
-func (r *RebaseResult) SetFailure(err error) {
+func (r *RebaseResult) SetStatusFailure(err error) {
 	r.Status = RebaseStatusFailure
 	r.Error = err.Error()
 }
 
-func (r *RebaseResult) SetUpToDate() {
+func (r *RebaseResult) SetStatusUpToDate() {
 	r.Status = RebaseStatusUpToDate
 }
 
@@ -106,10 +106,10 @@ func (r *RebaseResult) SetStatusConflicts() {
 	r.Status = RebaseStatusConflicts
 }
 
-func (r *RebaseResult) SetAborted() {
+func (r *RebaseResult) SetStatusAborted() {
 	r.Status = RebaseStatusAborted
 }
 
-func (r *RebaseResult) SetPartial() {
+func (r *RebaseResult) SetStatusPartial() {
 	r.Status = RebaseStatusPartial
 }
