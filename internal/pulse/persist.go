@@ -81,7 +81,7 @@ func PersistRepoEvent(ctx context.Context, flat events.Flat[eventsv1.RepoHook]) 
 		)
 }
 
-// PersistChatEvent persists a messaging event to the database.
+// PersistChatEvent persists a chat event to the database.
 func PersistChatEvent(ctx context.Context, flat events.Flat[eventsv1.ChatHook]) error {
 	slug, err := db.Queries().GetOrgSlugByID(ctx, flat.OrgID)
 	if err != nil {

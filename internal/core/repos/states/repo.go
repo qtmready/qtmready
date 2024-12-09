@@ -150,8 +150,8 @@ func (state *Repo) Init(ctx workflow.Context) {
 
 // NewRepo creates a new RepoState instance. It initializes BaseState using the provided context and
 // hydrated repository data.
-func NewRepo(repo *entities.Repo, msg *entities.ChatLink) *Repo {
-	base := &Base{Repo: repo, ChatLink: msg}
+func NewRepo(repo *entities.Repo, chat *entities.ChatLink) *Repo {
+	base := &Base{Repo: repo, ChatLink: chat}
 	triggers := make(BranchTriggers)
 
 	return &Repo{base, triggers, &activities.Repo{}} // Return new RepoState instance.

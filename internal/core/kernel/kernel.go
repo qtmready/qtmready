@@ -3,7 +3,7 @@
 // The Kernel pattern implemented here serves several important purposes:
 //
 //  1. Centralized Configuration: It provides a single point of configuration for all I/O providers
-//     (e.g., repository access, messaging systems) used throughout the application. This centralization makes it
+//     (e.g., repository access, chat systems) used throughout the application. This centralization makes it
 //     easier to manage and modify the application's external dependencies.
 //
 //  2. Dependency Injection: By registering providers in the Kernel, we implement a form of dependency injection. This

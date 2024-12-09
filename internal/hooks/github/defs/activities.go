@@ -29,7 +29,7 @@ type (
 		ShouldFetchParent bool   `json:"should_fetch_parent"`
 	}
 
-	// ChatLinks contains the possible messaging channels for a HydratedRepoEvent.
+	// ChatLinks contains the possible chat_links channels for a HydratedRepoEvent.
 	ChatLinks struct {
 		Org  *entities.ChatLink `json:"org"`
 		Team *entities.ChatLink `json:"team"`

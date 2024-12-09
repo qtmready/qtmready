@@ -16,8 +16,8 @@ func (state *Trunk) Init(ctx workflow.Context) {
 	state.Base.Init(ctx)
 }
 
-func NewTrunk(repo *entities.Repo, msg *entities.ChatLink) *Trunk {
+func NewTrunk(repo *entities.Repo, chat *entities.ChatLink) *Trunk {
 	return &Trunk{
-		&Base{Repo: repo, ChatLink: msg},
+		&Base{Repo: repo, ChatLink: chat},
 	}
 }
