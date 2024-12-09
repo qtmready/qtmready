@@ -2,12 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
 	"log/slog"
 
 	"github.com/google/uuid"
-	git "github.com/jeffwelling/git2go/v37"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
@@ -51,8 +48,9 @@ func main() {
 	clone_pl := &defs.ClonePayload{Repo: &r, Hook: eventsv1.RepoHook_REPO_HOOK_GITHUB, Branch: branch, Path: path, SHA: sha}
 	acts := repos.NewBranchActivities()
 	path, _ = acts.Clone(ctx, clone_pl)
+	rebased, _ := acts.Rebase(ctx, &defs.RebasePayload{Rebase: &eventsv1.Rebase{Base: branch, Head: sha}, Path: path})
 
-	rebase(path, sha, branch)
+	slog.Info("result", "result", rebased)
 
 	_ = acts.RemoveDir(ctx, path)
 }
@@ -76,100 +74,4 @@ func configure() *Config {
 	}
 
 	return config
-}
-
-func rebase(path, sha, name string) {
-	repo, err := git.OpenRepository(path)
-	if err != nil {
-		log.Fatalf("Failed to open repository: %v", err)
-	}
-
-	// Lookup the commit to rebase onto
-	id, err := git.NewOid(sha)
-	if err != nil {
-		log.Fatalf("Failed to create OID from commit hash: %v", err)
-	}
-
-	// Get the annotated commit for the commit to rebase onto
-	head, err := repo.LookupAnnotatedCommit(id)
-	if err != nil {
-		log.Fatalf("Failed to get annotated commit: %v", err)
-	}
-
-	// Lookup the branch to rebase
-	branch, err := repo.LookupBranch(name, git.BranchLocal)
-	if err != nil {
-		log.Fatalf("Failed to lookup branch: %v", err)
-	}
-
-	// Get the annotated commit for the branch
-	upstream, err := repo.AnnotatedCommitFromRef(branch.Reference)
-	if err != nil {
-		log.Fatalf("Failed to get annotated commit: %v", err)
-	}
-
-	// Perform the rebase
-	opts, err := git.DefaultRebaseOptions()
-	if err != nil {
-		log.Fatalf("Failed to get default rebase options: %v", err)
-	}
-
-	analysis, _, err := repo.MergeAnalysis([]*git.AnnotatedCommit{head})
-	if err != nil {
-		log.Fatalf("Failed to get merge analysis: %v", err)
-	}
-
-	if analysis == git.MergeAnalysisUpToDate {
-		return
-	}
-
-	slog.Info("analysis", "analysis", analysis)
-
-	rebase, err := repo.InitRebase(upstream, head, nil, &opts)
-	if err != nil {
-		log.Fatalf("Failed to initialize rebase: %v", err)
-	}
-
-	slog.Info("rebase operations", "count", rebase.OperationCount())
-
-	for {
-		operation, err := rebase.Next()
-		if err != nil {
-			if git.IsErrorCode(err, git.ErrorCodeIterOver) {
-				break
-			}
-
-			log.Fatalf("Failed to get next rebase operation: %v", err)
-		}
-
-		// Apply the rebase operation
-		if operation.Type == git.RebaseOperationPick {
-			commit, err := repo.LookupCommit(operation.Id)
-			if err != nil {
-				log.Fatalf("Failed to lookup commit: %v", err)
-			}
-
-			index, err := repo.Index()
-			if err != nil {
-				log.Fatalf("Failed to get index: %v", err)
-			}
-
-			err = repo.CheckoutIndex(index, &git.CheckoutOptions{Strategy: git.CheckoutForce})
-			if err != nil {
-				log.Fatalf("Failed to checkout index: %v", err)
-			}
-
-			err = rebase.Commit(operation.Id, commit.Author(), commit.Committer(), commit.Message())
-			if err != nil {
-				log.Fatalf("Failed to create commit: %v", err)
-			}
-		}
-	}
-
-	err = rebase.Finish()
-	if err != nil {
-		log.Fatalf("Failed to finish rebase: %v", err)
-	}
-
-	fmt.Println("Rebase completed successfully")
 }
