@@ -64,11 +64,12 @@ func (r *RebaseResult) HasConflicts() bool {
 }
 
 func (r *RebaseResult) AddOperation(op git.RebaseOperationType, status RebaseStatus, head, message string, err error) {
+	err_ := ""
+
 	if err != nil {
 		status = RebaseStatusFailure
+		err_ = err.Error()
 	}
-
-	err_ := err.Error()
 
 	r.Operations = append(
 		r.Operations,

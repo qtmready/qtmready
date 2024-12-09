@@ -23,11 +23,9 @@ type (
 func (a *Branch) Clone(ctx context.Context, payload *defs.ClonePayload) (string, error) {
 	url, err := kernel.Get().RepoHook(payload.Hook).TokenizedCloneUrl(ctx, payload.Repo)
 	if err != nil {
-		slog.Warn("Failed to get tokenized clone URL", "error", err)
+		slog.Warn("clone: unable to get tokenized url ...", "error", err)
 		return "", err
 	}
-
-	slog.Debug("cloning ...", "url", url)
 
 	opts := &git.CloneOptions{
 		CheckoutOptions: git.CheckoutOptions{
@@ -39,13 +37,12 @@ func (a *Branch) Clone(ctx context.Context, payload *defs.ClonePayload) (string,
 
 	cloned, err := git.Clone(url, fmt.Sprintf("/tmp/%s", payload.Path), opts)
 	if err != nil {
-		slog.Warn("Failed to clone repository", "error", err, "url", url, "path", fmt.Sprintf("/tmp/%s", payload.Path))
+		slog.Warn("clone: failed ...", "error", err, "url", url, "path", fmt.Sprintf("/tmp/%s", payload.Path))
+
 		return "", err
 	}
 
 	defer cloned.Free()
-
-	slog.Debug("cloned successfully", "repo", payload.Repo.Url, "cloned", cloned.Workdir())
 
 	return cloned.Workdir(), nil
 }
@@ -192,25 +189,25 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 	defer a.rebase_abort(ctx, rebase)
 	defer rebase.Free()
 
-	merge_analysis, _, err := repo.MergeAnalysis([]*git.AnnotatedCommit{upstream})
-	if err != nil {
-		slog.Warn(
-			"rebase: failed to analyze merge",
-			"error", err.Error(),
-			"branch", payload.Rebase.Base, "sha", payload.Rebase.Head,
-		)
+	// merge_analysis, _, err := repo.MergeAnalysis([]*git.AnnotatedCommit{upstream})
+	// if err != nil {
+	// 	slog.Warn(
+	// 		"rebase: failed to analyze merge",
+	// 		"error", err.Error(),
+	// 		"branch", payload.Rebase.Base, "sha", payload.Rebase.Head,
+	// 	)
 
-		result.Status = defs.RebaseStatusFailure
-		result.Error = err.Error()
+	// 	result.Status = defs.RebaseStatusFailure
+	// 	result.Error = err.Error()
 
-		return result, nil
-	}
+	// 	return result, nil
+	// }
 
-	if merge_analysis == git.MergeAnalysisUpToDate {
-		result.Status = defs.RebaseStatusUpToDate
+	// if merge_analysis == git.MergeAnalysisUpToDate {
+	// 	result.Status = defs.RebaseStatusUpToDate
 
-		return result, nil
-	}
+	// 	return result, nil
+	// }
 
 	if err := a.rebase_each(ctx, repo, rebase, result); err != nil {
 		slog.Warn(
@@ -226,8 +223,16 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 	}
 
 	if err := rebase.Finish(); err != nil {
+		slog.Warn(
+			"rebase: unable to finish",
+			"error", err.Error(),
+			"branch", payload.Rebase.Base, "sha", payload.Rebase.Head,
+		)
+
 		return result, nil
 	}
+
+	rebase = nil
 
 	return result, nil
 }
@@ -305,11 +310,11 @@ func (a *Branch) get_conflicts(_ context.Context, idx *git.Index) ([]string, err
 	conflicts := make([]string, 0)
 
 	if idx == nil {
-		return conflicts, nil // No index, no conflicts.
+		return conflicts, nil
 	}
 
 	if !idx.HasConflicts() {
-		return conflicts, nil // No conflicts present.
+		return conflicts, nil
 	}
 
 	iter, err := idx.ConflictIterator()
@@ -324,7 +329,7 @@ func (a *Branch) get_conflicts(_ context.Context, idx *git.Index) ([]string, err
 		entry, err := iter.Next()
 		if err != nil {
 			if git.IsErrorCode(err, git.ErrorCodeIterOver) {
-				break // End of iterator
+				break
 			}
 
 			slog.Warn("Failed to get next conflict entry", "error", err)
