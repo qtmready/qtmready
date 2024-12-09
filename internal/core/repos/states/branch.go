@@ -63,7 +63,7 @@ func (state *Branch) StaleMonitor(ctx workflow.Context) {
 
 // OnPush resets the stale timer and processes the push event. The repo is cloned, the diff calculated, and
 // notifications sent if change complexity warrants. Author notification is prioritized, falling back to
-// the repo's messaging hook.
+// the repo's chat hook.
 func (state *Branch) OnPush(ctx workflow.Context) durable.ChannelHandler {
 	return func(ch workflow.ReceiveChannel, more bool) {
 		event := &events.Event[eventsv1.RepoHook, eventsv1.Push]{}
@@ -185,8 +185,8 @@ func (state *Branch) notify_user(ctx workflow.Context) error { return nil }
 func (state *Branch) notify_repo(ctx workflow.Context) error { return nil }
 
 // NewBranch constructs a new Branch state.
-func NewBranch(repo *entities.Repo, msg *entities.ChatLink, branch string) *Branch {
-	base := &Base{Repo: repo, ChatLink: msg}
+func NewBranch(repo *entities.Repo, chat *entities.ChatLink, branch string) *Branch {
+	base := &Base{Repo: repo, ChatLink: chat}
 
 	return &Branch{Base: base, Branch: branch, acts: &activities.Branch{}}
 }
