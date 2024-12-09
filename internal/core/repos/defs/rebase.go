@@ -24,11 +24,12 @@ type (
 	}
 
 	RebaseResult struct {
-		Head       string            `json:"head"`
-		Status     RebaseStatus      `json:"status"`
-		Conflicts  []string          `json:"conflicts"`
-		Operations []RebaseOperation `json:"operations"`
-		Error      string            `json:"error,omitempty"`
+		Head         string            `json:"head"`
+		Status       RebaseStatus      `json:"status"`
+		Operations   []RebaseOperation `json:"operations"`
+		TotalCommits uint              `json:"count"`
+		Conflicts    []string          `json:"conflicts"`
+		Error        string            `json:"error,omitempty"`
 	}
 )
 
@@ -61,6 +62,10 @@ var (
 
 func (r *RebaseResult) HasConflicts() bool {
 	return len(r.Conflicts) > 0
+}
+
+func (r *RebaseResult) AppliedCommit() int {
+	return len(r.Operations)
 }
 
 func (r *RebaseResult) AddOperation(op git.RebaseOperationType, status RebaseStatus, head, message string, err error) {
