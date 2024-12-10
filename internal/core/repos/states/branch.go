@@ -114,7 +114,10 @@ func (state *Branch) OnRebase(ctx workflow.Context) durable.ChannelHandler {
 		clone := &defs.ClonePayload{Repo: state.Repo, Hook: event.Context.Hook, Branch: state.Branch, SHA: event.Payload.Head}
 		path := state.clone(session, clone)
 
-		_ = state.run(ctx, "rebase", state.acts.Rebase, &defs.RebasePayload{Rebase: event.Payload, Path: path}, nil)
+		rebase := &defs.RebaseResult{}
+		_ = state.run(ctx, "rebase", state.acts.Rebase, &defs.RebasePayload{Rebase: event.Payload, Path: path}, rebase)
+
+		state.check_merge_conflict(session, event, rebase)
 
 		state.remove_dir(ctx, path)
 	}
@@ -186,6 +189,37 @@ func (state *Branch) compare_diff(
 
 		if err := state.run(ctx, "line_exceed", state.acts.ExceedLines, event, nil); err != nil {
 			state.logger.Error("lines_exceed: unable to to send", "error", err.Error())
+		}
+	}
+}
+
+// check_merge_conflict check the merge conflict and send chat message otherwise nothing.
+func (state *Branch) check_merge_conflict(
+	ctx workflow.Context, rebase *events.Event[eventsv1.RepoHook, eventsv1.Rebase], res *defs.RebaseResult,
+) {
+	if len(res.Conflicts) > 0 {
+		// check the repo's connected chat or user's connected chat.
+		hook := int32(eventsv1.ChatHook_CHAT_HOOK_SLACK)
+
+		// TODO - head and base commits
+		payload := &eventsv1.Merge{
+			HeadBranch: rebase.Payload.Head,
+			BaseBranch: rebase.Payload.Base,
+			Files:      res.Conflicts,
+		}
+
+		event := cast.RebaseEventToMergeConflictEvent(rebase, hook, payload)
+
+		// persist chat event
+		if err := pulse.Persist(ctx, event); err != nil {
+			state.logger.Warn(
+				"attempt_merge: unable to persist merge event",
+				"repo", state.Repo.ID, "branch", payload.HeadBranch, "error", err.Error(),
+			)
+		}
+
+		if err := state.run(ctx, "merge_conflict", state.acts.MergeConflict, event, nil); err != nil {
+			state.logger.Error("merge_conflict: unable to to send", "error", err.Error())
 		}
 	}
 }

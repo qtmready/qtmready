@@ -259,8 +259,6 @@ func (a *Branch) rebase_each(ctx context.Context, repo *git.Repository, rebase *
 			result.SetStatusConflicts()
 			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), commit.Message(), nil)
 
-			// TODO - send conflict message
-
 			continue
 		}
 
@@ -483,6 +481,16 @@ func (a *Branch) diff_to_result(_ context.Context, diff *git.Diff) (*eventsv1.Di
 // ExceedLines notifies on chat if lines exceed a limit.
 func (a *Branch) ExceedLines(ctx context.Context, event *events.Event[eventsv1.ChatHook, eventsv1.Diff]) error {
 	if err := kernel.Get().ChatHook(event.Context.Hook).NotifyLinesExceed(ctx, event); err != nil {
+		slog.Warn("unable to notify on chat", "error", err.Error())
+		return err
+	}
+
+	return nil
+}
+
+// MergeConflict notifies on chat if merge conflict message.
+func (a *Branch) MergeConflict(ctx context.Context, event *events.Event[eventsv1.ChatHook, eventsv1.Merge]) error {
+	if err := kernel.Get().ChatHook(event.Context.Hook).NotifyMergeConflict(ctx, event); err != nil {
 		slog.Warn("unable to notify on chat", "error", err.Error())
 		return err
 	}

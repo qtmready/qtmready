@@ -14,4 +14,5 @@ const (
 	ScopeRebase Scope = "rebase" // ScopeRebase scopes rebase event.
 	ScopeDiff   Scope = "diff"   // ScopeRebase scopes diff event.
 	ScopePr     Scope = "pr"     // ScopeRebase scopes pull request event.
+	ScopeMerge  Scope = "merge"  // ScopeMerge scopes merge event.
 )

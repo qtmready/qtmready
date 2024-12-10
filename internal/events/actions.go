@@ -20,6 +20,7 @@ const (
 	EventActionAdded Action = "added"     // EventActionAdded is the action of an added event.
 	ActionRequested  Action = "requested" // EventActionRequested is the action of a requested event.
 	ActionDiff       Action = "diff"      // ActionDiff is the action of a diff change pushed event.
+	ActionMerge      Action = "merge"     // ActionMerge is the action of a merge change pr event.
 )
 
 // String returns the string representation of the EventAction.
