@@ -15,6 +15,7 @@ import (
 	"go.breu.io/quantm/internal/durable/periodic"
 	"go.breu.io/quantm/internal/events"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
+	"go.breu.io/quantm/internal/pulse"
 )
 
 type (
@@ -174,6 +175,14 @@ func (state *Branch) compare_diff(
 		// check the repo's connected chat or user's connected chat.
 		hook := int32(eventsv1.ChatHook_CHAT_HOOK_SLACK)
 		event := cast.PushEventToDiffEvent(push, hook, diff)
+
+		// persist chat event
+		if err := pulse.Persist(ctx, event); err != nil {
+			state.logger.Warn(
+				"attempt_diff: unable to persist diff event",
+				"repo", state.Repo.ID, "branch", fns.BranchNameFromRef(push.Payload.Ref), "error", err.Error(),
+			)
+		}
 
 		if err := state.run(ctx, "line_exceed", state.acts.ExceedLines, event, nil); err != nil {
 			state.logger.Error("lines_exceed: unable to to send", "error", err.Error())

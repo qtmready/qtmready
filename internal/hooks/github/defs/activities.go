@@ -64,7 +64,7 @@ func (hr *HydratedRepoEvent) GetRepoID() uuid.UUID {
 }
 
 func (hr *HydratedRepoEvent) GetOrgID() uuid.UUID {
-	return hr.Repo.ID
+	return hr.Repo.OrgID
 }
 
 func (hr *HydratedRepoEvent) GetRepoUrl() string {

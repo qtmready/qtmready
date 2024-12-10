@@ -259,6 +259,8 @@ func (a *Branch) rebase_each(ctx context.Context, repo *git.Repository, rebase *
 			result.SetStatusConflicts()
 			result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), commit.Message(), nil)
 
+			// TODO - send conflict message
+
 			continue
 		}
 

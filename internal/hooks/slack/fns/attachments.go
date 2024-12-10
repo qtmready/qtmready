@@ -58,6 +58,34 @@ func LineExceedFields(event *events.Event[eventsv1.ChatHook, eventsv1.Diff]) []s
 	return fields
 }
 
+func MergeConflictFields(event *events.Event[eventsv1.ChatHook, eventsv1.Merge]) []slack.AttachmentField {
+	fields := []slack.AttachmentField{
+		{
+			Title: "*Repository*",
+			Value: fmt.Sprintf("<%s|%s>", event.Context.Source, ExtractRepoName(event.Context.Source)),
+			Short: true,
+		}, {
+			Title: "*Branch*",
+			Value: fmt.Sprintf("<%s/tree/%s|%s>", event.Context.Source, event.Payload.BaseBranch, event.Payload.BaseBranch),
+			Short: true,
+		}, {
+			Title: "Current HEAD",
+			Value: fmt.Sprintf("<%s/tree/%s|%s>", event.Context.Source, event.Payload.HeadBranch, event.Payload.HeadBranch),
+			Short: true,
+		}, {
+			Title: "Conflict HEAD",
+			Value: fmt.Sprintf("<%s|%s>", "", ""),
+			Short: true,
+		}, {
+			Title: "Affected Files",
+			Value: fmt.Sprintf("%s", ""),
+			Short: false,
+		},
+	}
+
+	return fields
+}
+
 func ExtractRepoName(repoURL string) string {
 	parts := strings.Split(repoURL, "/")
 	return parts[len(parts)-1]
