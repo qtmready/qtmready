@@ -62,7 +62,7 @@ func (a *Branch) RemoveDir(ctx context.Context, path string) error {
 func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1.Diff, error) {
 	repo, err := git.OpenRepository(payload.Path)
 	if err != nil {
-		slog.Warn("Failed to open repository", "error", err, "path", payload.Path)
+		slog.Warn("diff: unable to open repository", "error", err, "path", payload.Path)
 		return nil, err
 	}
 
