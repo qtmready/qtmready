@@ -6,6 +6,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/slack-go/slack"
 	"google.golang.org/protobuf/types/known/emptypb"
 
@@ -24,11 +25,11 @@ type (
 )
 
 func (s *SlackService) Oauth(
-	ctx context.Context, reqst *connect.Request[slackv1.OauthRequest],
+	ctx context.Context, req *connect.Request[slackv1.OauthRequest],
 ) (*connect.Response[emptypb.Empty], error) {
 	var c fns.HTTPClient
 
-	linkTo, err := uuid.Parse(reqst.Msg.GetLinkTo())
+	linkTo, err := uuid.Parse(req.Msg.GetLinkTo())
 	if err != nil {
 		return nil, erratic.NewBadRequestError(erratic.HooksSlackModule).
 			WithReason("invalid link_to UUID").Wrap(err)
@@ -36,8 +37,10 @@ func (s *SlackService) Oauth(
 
 	message, err := db.Queries().GetChatLink(ctx, linkTo)
 	if err != nil {
-		return nil, erratic.NewDatabaseError(erratic.HooksSlackModule).
-			WithReason("failed to query message by link_to").Wrap(err)
+		if err != pgx.ErrNoRows {
+			return nil, erratic.NewDatabaseError(erratic.HooksSlackModule).
+				WithReason("failed to query message by link_to").Wrap(err)
+		}
 	}
 
 	if message.ID != uuid.Nil {
@@ -45,18 +48,18 @@ func (s *SlackService) Oauth(
 			WithReason("message with link_to already exists")
 	}
 
-	if reqst.Msg.GetCode() == "" {
+	if req.Msg.GetCode() == "" {
 		return nil, erratic.NewBadRequestError(erratic.HooksSlackModule).WithReason("missing OAuth code")
 	}
 
-	response, err := slack.GetOAuthV2Response(&c, config.ClientID(), config.ClientSecret(), reqst.Msg.GetCode(), config.ClientRedirectURL())
+	response, err := slack.GetOAuthV2Response(&c, config.ClientID(), config.ClientSecret(), req.Msg.GetCode(), config.ClientRedirectURL())
 	if err != nil {
 		return nil, erratic.NewNetworkError(erratic.HooksSlackModule).
 			WithReason("failed to get OAuth response from Slack").Wrap(err)
 	}
 
 	if response.AuthedUser.AccessToken != "" {
-		if err := _user(ctx, reqst, response); err != nil {
+		if err := _user(ctx, req, response); err != nil {
 			return nil, erratic.NewSystemError(erratic.HooksSlackModule).
 				WithReason("failed to process user OAuth").Wrap(err) // More specific reason if possible
 		}
@@ -64,7 +67,7 @@ func (s *SlackService) Oauth(
 		return connect.NewResponse(&emptypb.Empty{}), nil
 	}
 
-	if err := _bot(ctx, reqst, response); err != nil {
+	if err := _bot(ctx, req, response); err != nil {
 		return nil, erratic.NewSystemError(erratic.HooksSlackModule).
 			WithReason("failed to process bot OAuth").Wrap(err) // More specific reason if possible
 	}
