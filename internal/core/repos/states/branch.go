@@ -187,7 +187,7 @@ func (state *Branch) compare_diff(
 			)
 		}
 
-		if err := state.run(ctx, "line_exceed", state.acts.ExceedLines, event, nil); err != nil {
+		if err := state.run(ctx, "line_exceed", state.acts.NotifyLinesExceeded, event, nil); err != nil {
 			state.logger.Error("lines_exceed: unable to to send", "error", err.Error())
 		}
 	}
@@ -218,7 +218,7 @@ func (state *Branch) check_merge_conflict(
 			)
 		}
 
-		if err := state.run(ctx, "merge_conflict", state.acts.MergeConflict, event, nil); err != nil {
+		if err := state.run(ctx, "merge_conflict", state.acts.NotifyMergeConflict, event, nil); err != nil {
 			state.logger.Error("merge_conflict: unable to to send", "error", err.Error())
 		}
 	}
