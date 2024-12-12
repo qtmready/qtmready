@@ -128,11 +128,11 @@ func (s *UserService) CreateUser(
 
 // GetUserByProviderAccount retrieves a user based on their provider and provider account ID.
 func (s *UserService) GetUserByProviderAccount(
-	ctx context.Context, request *connect.Request[authv1.GetUserByProviderAccountRequest],
+	ctx context.Context, req *connect.Request[authv1.GetUserByProviderAccountRequest],
 ) (*connect.Response[authv1.AuthUser], error) {
 	params := entities.GetUserByProviderAccountParams{
-		Provider:          cast.ProtoToAuthProvider(request.Msg.GetProvider()),
-		ProviderAccountID: request.Msg.GetProviderAccountId(),
+		Provider:          cast.ProtoToAuthProvider(req.Msg.GetProvider()),
+		ProviderAccountID: req.Msg.GetProviderAccountId(),
 	}
 
 	one, err := db.Queries().GetUserByProviderAccount(ctx, params)
@@ -140,8 +140,8 @@ func (s *UserService) GetUserByProviderAccount(
 		if err == pgx.ErrNoRows {
 			return nil, erratic.NewNotFoundError(
 				erratic.AuthModule,
-				"provider", request.Msg.GetProvider().String(),
-				"provider_account_id", request.Msg.GetProviderAccountId(),
+				"provider", req.Msg.GetProvider().String(),
+				"provider_account_id", req.Msg.GetProviderAccountId(),
 			)
 		}
 
