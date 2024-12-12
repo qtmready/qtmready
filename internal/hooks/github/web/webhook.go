@@ -84,6 +84,8 @@ func (h *Webhook) on(event defs.WebhookEvent) (WebhookEventHandler, bool) {
 		defs.WebhookEventDelete:                   h.ref,
 		defs.WebhookEventPush:                     h.push,
 		defs.WebhookEventPullRequest:              h.pr,
+		defs.WebhookEventPullRequestReview:        h.pr_review,
+		defs.WebhookEventPullRequestReviewComment: h.pr_review_comment,
 	}
 
 	fn, ok := handlers[event]
@@ -213,11 +215,57 @@ func (h *Webhook) pr(ctx echo.Context, event defs.WebhookEvent, id string) error
 	}
 
 	opts := defs.NewRefWorkflowOptions(
-		payload.GetRepositoryID(), payload.GetHeadBranch(), "pr", fmt.Sprintf("%d", payload.GetNumber()), payload.GetAction(), id)
+		payload.GetRepositoryID(), payload.GetHeadBranch(), "pr", fmt.Sprintf("%d", payload.GetNumber()), payload.GetAction(), id,
+	)
 
 	_, err := durable.
 		OnHooks().
 		ExecuteWorkflow(ctx.Request().Context(), opts, workflows.PullRequest, payload)
+	if err != nil {
+		slog.Error("failed to signal workflow", "error", err.Error())
+		return erratic.NewSystemError(erratic.HooksGithubModule).Wrap(err)
+	}
+
+	return ctx.NoContent(http.StatusNoContent)
+}
+
+// pr_review the pull request review event.
+func (h *Webhook) pr_review(ctx echo.Context, event defs.WebhookEvent, id string) error {
+	payload := &defs.PrReview{}
+	if err := ctx.Bind(payload); err != nil {
+		slog.Error("failed to bind payload", "error", err.Error())
+		return erratic.NewBadRequestError(erratic.AuthModule).WithReason("invalid payload").Wrap(err)
+	}
+
+	opts := defs.NewRefWorkflowOptions(
+		payload.GetRepositoryID(), payload.GetHeadBranch(), "pr_review", fmt.Sprintf("%d", payload.GetPrNumber()), payload.GetAction(), id)
+
+	_, err := durable.
+		OnHooks().
+		ExecuteWorkflow(ctx.Request().Context(), opts, workflows.PullRequestReview, payload)
+	if err != nil {
+		slog.Error("failed to signal workflow", "error", err.Error())
+		return erratic.NewSystemError(erratic.HooksGithubModule).Wrap(err)
+	}
+
+	return ctx.NoContent(http.StatusNoContent)
+}
+
+// pr_review_comment the pull request review comment event.
+func (h *Webhook) pr_review_comment(ctx echo.Context, event defs.WebhookEvent, id string) error {
+	payload := &defs.PrReviewComment{}
+	if err := ctx.Bind(payload); err != nil {
+		slog.Error("failed to bind payload", "error", err.Error())
+		return erratic.NewBadRequestError(erratic.AuthModule).WithReason("invalid payload").Wrap(err)
+	}
+
+	opts := defs.NewRefWorkflowOptions(
+		payload.GetRepositoryID(), payload.GetHeadBranch(), "pr_review_comment",
+		fmt.Sprintf("%d", payload.GetPrNumber()), payload.GetAction(), id)
+
+	_, err := durable.
+		OnHooks().
+		ExecuteWorkflow(ctx.Request().Context(), opts, workflows.PullRequestReview, payload)
 	if err != nil {
 		slog.Error("failed to signal workflow", "error", err.Error())
 		return erratic.NewSystemError(erratic.HooksGithubModule).Wrap(err)

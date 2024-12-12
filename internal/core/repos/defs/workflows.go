@@ -7,16 +7,25 @@ import (
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
+const (
+	LabelMerge    = "quantm-merge"
+	LabelPriority = "quantm-priority"
+)
+
 // signals.
 const (
-	SignalPush   queues.Signal = "push"   // signals a push event.
-	SignalRef    queues.Signal = "ref"    // signals a branch event.
-	SignalPR     queues.Signal = "pr"     // signals a pull request event.
-	SignalRebase queues.Signal = "rebase" // signals a rebase event.
+	SignalPush                     queues.Signal = "push"              // signals a push event.
+	SignalRef                      queues.Signal = "ref"               // signals a branch event.
+	SignalPullRequest              queues.Signal = "pr"                // signals a pull request event.
+	SignalRebase                   queues.Signal = "rebase"            // signals a rebase event.
+	SignalPullRequestLabel         queues.Signal = "pr_label"          // signals a pull request label event.
+	SignalPullRequestReview        queues.Signal = "pr_review"         // signals a pull request review event.
+	SignalPullRequestReviewComment queues.Signal = "pr_review_comment" // signals a pull request review comment event.
+	SignalMergeQueue               queues.Signal = "merge_queue"       // signals a pull request queue event.
 )
 
 const (
-	QueryRepoForEventParent queues.Query = "event_parent"
+	QueryRepoForEventParent queues.Query = "event_parent" // query to find the parent event for the given event
 )
 
 type (

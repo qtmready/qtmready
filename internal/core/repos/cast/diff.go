@@ -15,6 +15,6 @@ func PushEventToDiffEvent(
 		push,
 		eventsv1.ChatHook(hook),
 		events.ScopeDiff,
-		events.ActionDiff,
+		events.ActionRequested,
 	).SetPayload(payload)
 }

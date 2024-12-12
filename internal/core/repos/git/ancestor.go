@@ -22,7 +22,7 @@ func (r *Repository) Ancestor(a, b plumbing.Hash) (*object.Commit, error) {
 	}
 
 	if len(ancestors) == 0 {
-		return nil, ErrNoCommonAncestor
+		return nil, NewCompareError(r, OpAncestor, a.String(), b.String())
 	}
 
 	return ancestors[0], nil

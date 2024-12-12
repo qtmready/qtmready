@@ -57,7 +57,7 @@ func (k *Kernel) NotifyLinesExceed(
 		Fallback:   "Line Exceed Detected",
 		MarkdownIn: []string{"fields"},
 		Footer:     footer,
-		Fields:     fns.LineExceedFields(event),
+		Fields:     fields_lines_exceeded(event),
 		Ts:         ts,
 	}
 
@@ -102,7 +102,7 @@ func (k *Kernel) NotifyMergeConflict(
 		Fallback:   "Merge Conflict Detected",
 		MarkdownIn: []string{"fields"},
 		Footer:     footer,
-		Fields:     fns.MergeConflictFields(event),
+		Fields:     fields_merge_conflict(event),
 		Ts:         ts,
 	}
 

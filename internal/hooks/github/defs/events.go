@@ -33,6 +33,26 @@ type (
 		Sender       User           `json:"sender"`
 		Label        *Label         `json:"label"`
 	}
+
+	PrReview struct {
+		Action       string             `json:"action"`
+		Number       int64              `json:"number"`
+		Installation InstallationID     `json:"installation"`
+		Review       *PullRequestReview `json:"review"`
+		PullRequest  PullRequest        `json:"pull_request"`
+		Repository   RepositoryPR       `json:"repository"`
+		Sender       *User              `json:"sender"`
+	}
+
+	PrReviewComment struct {
+		Action       string              `json:"action"`
+		Number       int64               `json:"number"`
+		Installation InstallationID      `json:"installation"`
+		Comment      *PullRequestComment `json:"comment"`
+		PullRequest  PullRequest         `json:"pull_request"`
+		Repository   RepositoryPR        `json:"repository"`
+		Sender       *User               `json:"sender"`
+	}
 )
 
 // ---------------------------------- Push Event ----------------------------------.
@@ -115,4 +135,102 @@ func (pr *PR) GetInstallationID() int64 {
 
 func (pr *PR) GetSenderEmail() *string {
 	return pr.Sender.Email
+}
+
+func (pr *PR) GetLabelName() string {
+	return pr.Label.Name
+}
+
+// ---------------------------------- Pull Request Review Event ----------------------------------.
+func (prr *PrReview) GetAction() string {
+	return prr.Action
+}
+
+func (prr *PrReview) GetPrNumber() int64 {
+	return prr.Number
+}
+
+func (prr *PrReview) GetRepositoryID() int64 {
+	return prr.Repository.ID
+}
+
+func (prr *PrReview) GetInstallationID() int64 {
+	return prr.Installation.ID
+}
+
+func (prr *PrReview) GetSenderEmail() *string {
+	return prr.Sender.Email
+}
+
+func (prr *PrReview) GetHeadBranch() string {
+	return prr.PullRequest.Head.Ref
+}
+
+func (prr *PrReview) GetPrReviewID() int64 {
+	return prr.Review.ID
+}
+
+func (prr *PrReview) GetSubmittedAt() time.Time {
+	return prr.Review.SubmittedAt
+}
+
+func (prr *PrReview) GetState() string {
+	return prr.Review.State
+}
+
+// ---------------------------------- Pull Request Review Comment Event ----------------------------------.
+func (prrc *PrReviewComment) GetAction() string {
+	return prrc.Action
+}
+
+func (prrc *PrReviewComment) GetCommentID() int64 {
+	return prrc.Comment.ID
+}
+
+func (prrc *PrReviewComment) GetPrNumber() int64 {
+	return prrc.Number
+}
+
+func (prrc *PrReviewComment) GetState() string {
+	return prrc.Comment.Body // TODO - need to decide.
+}
+
+func (prrc *PrReviewComment) GetInReplyTo() *int64 {
+	return prrc.Comment.InReplyTo
+}
+
+func (prrc *PrReviewComment) GetCommitSha() string {
+	return prrc.Comment.CommitID
+}
+
+func (prrc *PrReviewComment) GetReviewID() int64 {
+	return prrc.Comment.PullRequestReviewID
+}
+
+func (prrc *PrReviewComment) GetPath() string {
+	return prrc.Comment.Path
+}
+
+func (prrc *PrReviewComment) GetPosition() int64 {
+	return prrc.Comment.Position
+}
+
+func (prrc *PrReviewComment) GetRepositoryID() int64 {
+	return prrc.Repository.ID
+}
+
+func (prrc *PrReviewComment) GetHeadBranch() string {
+	return prrc.PullRequest.Head.Ref
+}
+
+func (prrc *PrReviewComment) GetInstallationID() int64 {
+	return prrc.Installation.ID
+}
+
+func (prrc *PrReviewComment) GetSenderEmail() *string {
+	return prrc.Sender.Email
+}
+
+func (prrc *PrReviewComment) GetSubmittedAt() time.Time {
+	return prrc.Comment.CreatedAt
 }

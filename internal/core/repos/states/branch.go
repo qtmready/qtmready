@@ -1,6 +1,7 @@
 package states
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -123,6 +124,39 @@ func (state *Branch) OnRebase(ctx workflow.Context) durable.ChannelHandler {
 	}
 }
 
+// OnLabel handles pull request label events.
+func (state *Branch) OnLabel(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		event := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestLabel]{}
+		state.rx(ctx, rx, event)
+
+		switch event.Payload.Name {
+		case "qmerge":
+			fmt.Println("push to the queue based in level of priority")
+		case "priority-qmerge":
+			fmt.Println("push to the queue based in level of priority")
+		default:
+			return
+		}
+	}
+}
+
+// OnPrReview handles pull request review events.
+func (state *Branch) OnPrReview(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		event := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestReview]{}
+		state.rx(ctx, rx, event)
+	}
+}
+
+// OnPRReviewComment handles pull request review comment events.
+func (state *Branch) OnPRReviewComment(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		event := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestReview]{}
+		state.rx(ctx, rx, event)
+	}
+}
+
 // ExitLoop returns true if the branch should exit the event loop.
 func (state *Branch) ExitLoop(ctx workflow.Context) bool {
 	return state.done || workflow.GetInfo(ctx).GetContinueAsNewSuggested()
@@ -187,7 +221,7 @@ func (state *Branch) compare_diff(
 			)
 		}
 
-		if err := state.run(ctx, "line_exceed", state.acts.ExceedLines, event, nil); err != nil {
+		if err := state.run(ctx, "line_exceed", state.acts.NotifyLinesExceeded, event, nil); err != nil {
 			state.logger.Error("lines_exceed: unable to to send", "error", err.Error())
 		}
 	}
@@ -218,14 +252,13 @@ func (state *Branch) check_merge_conflict(
 			)
 		}
 
-		if err := state.run(ctx, "merge_conflict", state.acts.MergeConflict, event, nil); err != nil {
+		if err := state.run(ctx, "merge_conflict", state.acts.NotifyMergeConflict, event, nil); err != nil {
 			state.logger.Error("merge_conflict: unable to to send", "error", err.Error())
 		}
 	}
 }
 
-func (state *Branch) notify_user(ctx workflow.Context) error { return nil }
-func (state *Branch) notify_repo(ctx workflow.Context) error { return nil }
+func (state *Branch) notify_user(_ workflow.Context) error { return nil }
 
 // NewBranch constructs a new Branch state.
 func NewBranch(repo *entities.Repo, chat *entities.ChatLink, branch string) *Branch {

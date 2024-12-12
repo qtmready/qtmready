@@ -8,7 +8,6 @@ import (
 
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/core/repos/cast"
-	"go.breu.io/quantm/internal/core/repos/fns"
 	"go.breu.io/quantm/internal/db/entities"
 )
 
@@ -24,29 +23,28 @@ type (
 
 func (r *Repository) Clone(ctx context.Context) error {
 	if r.cloned != nil {
-		return ErrRepoAlreadyExists
+		return NewRepositoryError(r, OpClone)
 	}
 
 	hook := cast.HookToProto(r.Entity.Hook)
-	ref := plumbing.NewBranchReferenceName(fns.BranchNameToRef(r.Branch))
+	ref := plumbing.NewBranchReferenceName(r.Branch)
 
 	if err := ref.Validate(); err != nil {
-		return ErrInvalidBranch
+		return NewRepositoryError(r, OpClone).Wrap(err)
 	}
 
 	url, err := kernel.Get().RepoHook(hook).TokenizedCloneUrl(ctx, r.Entity)
 	if err != nil {
-		return ErrTokenization
+		return NewRepositoryError(r, OpClone).Wrap(err)
 	}
 
-	cloned, err := gogit.PlainCloneContext(ctx, r.Branch, false, &gogit.CloneOptions{
+	cloned, err := gogit.PlainCloneContext(ctx, r.Path, false, &gogit.CloneOptions{
 		URL:           url,
 		ReferenceName: ref,
-		SingleBranch:  true,
-		Depth:         1,
+		SingleBranch:  false,
 	})
 	if err != nil {
-		return ErrClone
+		return NewRepositoryError(r, OpClone).Wrap(err)
 	}
 
 	r.cloned = cloned
@@ -61,7 +59,7 @@ func (r *Repository) Open() error {
 
 	cloned, err := gogit.PlainOpen(r.Path)
 	if err != nil {
-		return ErrOpen
+		return NewRepositoryError(r, OpOpen).Wrap(err)
 	}
 
 	r.cloned = cloned

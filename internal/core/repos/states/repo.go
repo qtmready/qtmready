@@ -19,6 +19,7 @@ import (
 )
 
 type (
+
 	// Repo defines the state for Repo Workflows. It embeds BaseState to inherit its functionality.
 	Repo struct {
 		*Base    `json:"base"`  // Base workflow state.
@@ -86,6 +87,31 @@ func (state *Repo) OnPR(ctx workflow.Context) durable.ChannelHandler {
 	}
 }
 
+// OnPRReview handles the pull request review event with on the repository.
+func (state *Repo) OnPRReview(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		label := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestReview]{}
+		state.rx(ctx, rx, label)
+	}
+}
+
+// OnPRReviewComment handles the pull request event review comment with on the repository.
+func (state *Repo) OnPRReviewComment(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		label := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestReview]{}
+		state.rx(ctx, rx, label)
+	}
+}
+
+func (state *Repo) OnMergeQueue(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		mq := &events.Event[eventsv1.RepoHook, eventsv1.MergeQueue]{}
+		state.rx(ctx, rx, mq)
+
+		_ = state.forward_to_trunk(ctx, defs.SignalMergeQueue, mq)
+	}
+}
+
 // - query handlers -
 
 // QueryBranchTrigger queries the parent branch for the specified branch.
@@ -146,6 +172,10 @@ func (state *Repo) attempt_rebase(ctx workflow.Context, push *events.Event[event
 
 func (state *Repo) Init(ctx workflow.Context) {
 	state.Base.Init(ctx)
+
+	if state.acts == nil {
+		state.acts = &activities.Repo{}
+	}
 }
 
 // NewRepo creates a new RepoState instance. It initializes BaseState using the provided context and
@@ -154,5 +184,5 @@ func NewRepo(repo *entities.Repo, chat *entities.ChatLink) *Repo {
 	base := &Base{Repo: repo, ChatLink: chat}
 	triggers := make(BranchTriggers)
 
-	return &Repo{base, triggers, &activities.Repo{}} // Return new RepoState instance.
+	return &Repo{base, triggers, &activities.Repo{}}
 }

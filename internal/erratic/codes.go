@@ -22,12 +22,12 @@ const (
 
 // compose combines the module and error type codes into a single error code.
 func compose(module, kind int) int {
-	return module*100 + kind
+	return module*10000 + kind
 }
 
 // Decompose splits a full error code into its module and error type components.
 func Decompose(decompose int) (int, int) {
-	return decompose / 100, decompose % 100
+	return decompose / 10000, decompose % 10000
 }
 
 // NewBadRequestError creates a new BadRequest error.

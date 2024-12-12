@@ -1,10 +1,12 @@
 package cast
 
 import (
+	"slices"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"go.breu.io/quantm/internal/core/repos"
 	"go.breu.io/quantm/internal/hooks/github/defs"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
@@ -45,7 +47,7 @@ func CommitsToProto(commits []defs.Commit) []*eventsv1.Commit {
 	return result
 }
 
-func PrToProto(pr *defs.PR) eventsv1.PullRequest {
+func PullRequestToProto(pr *defs.PR) eventsv1.PullRequest {
 	return eventsv1.PullRequest{
 		Number:     pr.GetNumber(),
 		Title:      pr.GetTitle(),
@@ -54,5 +56,52 @@ func PrToProto(pr *defs.PR) eventsv1.PullRequest {
 		HeadBranch: pr.GetHeadBranch(),
 		BaseBranch: pr.GetBaseBranch(),
 		Timestamp:  timestamppb.New(pr.GetTimestamp()),
+	}
+}
+
+func PullRequestLabelToProto(pr *defs.PR) *eventsv1.MergeQueue {
+	valid := []string{repos.LabelMerge, repos.LabelPriority}
+
+	if slices.Contains(valid, pr.GetLabelName()) {
+		proto := &eventsv1.MergeQueue{
+			Number:    pr.GetNumber(),
+			Branch:    pr.GetHeadBranch(),
+			Timestamp: timestamppb.New(pr.GetTimestamp()),
+		}
+
+		if pr.GetLabelName() == repos.LabelPriority {
+			proto.IsPriority = true
+		}
+
+		return proto
+	}
+
+	return nil
+}
+
+func PrReviewToProto(prr *defs.PrReview) eventsv1.PullRequestReview {
+	return eventsv1.PullRequestReview{
+		Id:                prr.GetPrReviewID(),
+		PullRequestNumber: prr.GetPrNumber(),
+		Branch:            prr.GetHeadBranch(),
+		State:             prr.GetState(),
+		AuthorEmail:       *prr.GetSenderEmail(),
+		SubmittedAt:       timestamppb.New(prr.GetSubmittedAt()),
+	}
+}
+
+func PrReviewCommentToProto(prrc *defs.PrReviewComment) eventsv1.PullRequestReviewComment {
+	return eventsv1.PullRequestReviewComment{
+		Id:                prrc.GetCommentID(),
+		PullRequestNumber: prrc.GetPrNumber(),
+		Branch:            prrc.GetHeadBranch(),
+		State:             prrc.GetState(),
+		ReviewId:          prrc.GetReviewID(),
+		CommitSha:         prrc.GetCommitSha(),
+		Path:              prrc.GetPath(),
+		Position:          prrc.GetPosition(),
+		InReplyTo:         *prrc.GetInReplyTo(),
+		AuthorEmail:       *prrc.GetSenderEmail(),
+		SubmittedAt:       timestamppb.New(prrc.GetSubmittedAt()),
 	}
 }
