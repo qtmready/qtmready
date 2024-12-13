@@ -1,21 +1,24 @@
 package git
 
 import (
-	"fmt"
+	"context"
+	"log/slog"
 )
 
 type (
+	// RepoOp represents the type of repository operation.
+	RepoOp string
+	// ResolveOp represents the type of resolve operation.
+	ResolveOp string
+	// CompareOp represents the type of comparison operation.
+	CompareOp string
+
 	// RepositoryError represents an error related to repository operations.
 	RepositoryError struct {
 		Op         RepoOp // Operation like "clone", "open"
-		Path       string
-		Repo       string
 		Repository *Repository
 		internal   error
 	}
-
-	// RepoOp represents the type of repository operation.
-	RepoOp string
 
 	// ResolveError represents an error during revision/commit resolution.
 	ResolveError struct {
@@ -25,9 +28,6 @@ type (
 		internal   error
 	}
 
-	// ResolveOp represents the type of resolve operation.
-	ResolveOp string
-
 	// CompareError represents an error during comparison operations.
 	CompareError struct {
 		Op         CompareOp // Operation like "diff", "ancestor"
@@ -36,73 +36,115 @@ type (
 		Repository *Repository
 		internal   error
 	}
-
-	// CompareOp represents the type of comparison operation.
-	CompareOp string
 )
 
-// Repo Operation Constants.
+// - Repo Operation Constants -.
 const (
 	OpClone RepoOp = "clone"
 	OpOpen  RepoOp = "open"
 )
 
-// Resolve Operation Constants.
+// - Resolve Operation Constants -.
 const (
 	OpResolveRevision ResolveOp = "resolve revision"
 	OpResolveCommit   ResolveOp = "resolve commit"
 )
 
-// Compare Operation Constants.
+// - Compare Operation Constants -.
 const (
 	OpDiff     CompareOp = "diff"
 	OpAncestor CompareOp = "ancestor"
 )
 
+// - RepositoryError -
+
 // Error method for RepositoryError.
 func (e *RepositoryError) Error() string {
-	if e.internal != nil {
-		return fmt.Sprintf("repository %s error: path: %s, repo: %s, details: %v", e.Op, e.Path, e.Repo, e.internal)
-	}
-
-	return fmt.Sprintf("repository %s error: path: %s, repo: %s, internal: %s", e.Op, e.Path, e.Repo, e.internal.Error())
+	return "repository error"
 }
 
 // Unwrap method for RepositoryError.
-func (e *RepositoryError) Unwrap() error { return e.internal }
-
-// Error method for ResolveError.
-func (e *ResolveError) Error() string {
-	if e.internal != nil {
-		return fmt.Sprintf("resolve %s error: ref: %s, details: %v", e.Op, e.Ref, e.internal)
-	}
-
-	return fmt.Sprintf("resolve %s error: ref: %s", e.Op, e.Ref)
+func (e *RepositoryError) Unwrap() error {
+	return e.internal
 }
 
-// Unwrap method for ResolveError.
-func (e *ResolveError) Unwrap() error { return e.internal }
-
-// Error method for CompareError.
-func (e *CompareError) Error() string {
-	if e.internal != nil {
-		return fmt.Sprintf("compare %s error: from: %s, to: %s, details: %v", e.Op, e.From, e.To, e.internal)
-	}
-
-	return fmt.Sprintf("compare %s error: from: %s, to: %s", e.Op, e.From, e.To)
+// Wrap method to wrap the error.
+func (e *RepositoryError) Wrap(err error) error {
+	e.internal = err
+	return e
 }
 
-// Unwrap method for CompareError.
-func (e *CompareError) Unwrap() error { return e.internal }
+func (e *RepositoryError) ReportError() error {
+	return e.report(slog.LevelError)
+}
+
+func (e *RepositoryError) ReportWarn() error {
+	return e.report(slog.LevelWarn)
+}
+
+func (e *RepositoryError) report(level slog.Level) error {
+	attrs := []any{
+		slog.String("operation", string(e.Op)),
+		slog.String("repo_id", e.Repository.Entity.ID.String()),
+		slog.String("repo_path", e.Repository.Path),
+	}
+	if e.internal != nil {
+		attrs = append(attrs, slog.Any("details", e.internal))
+	}
+
+	slog.Log(context.Background(), level, e.Error(), attrs...)
+
+	return e
+}
 
 // Helper function to create a new RepositoryError.
 func NewRepositoryError(r *Repository, op RepoOp) *RepositoryError {
 	return &RepositoryError{
 		Op:         op,
-		Path:       r.Path,
-		Repo:       r.Entity.ID.String(),
 		Repository: r,
 	}
+}
+
+// - ResolveError -
+
+// Error method for ResolveError.
+func (e *ResolveError) Error() string {
+	return "resolve error"
+}
+
+// Unwrap method for ResolveError.
+func (e *ResolveError) Unwrap() error {
+	return e.internal
+}
+
+// Wrap method to wrap the error.
+func (e *ResolveError) Wrap(err error) error {
+	e.internal = err
+	return e
+}
+
+func (e *ResolveError) ReportError() error {
+	return e.report(slog.LevelError)
+}
+
+func (e *ResolveError) ReportWarn() error {
+	return e.report(slog.LevelWarn)
+}
+
+func (e *ResolveError) report(level slog.Level) error {
+	attrs := []any{
+		slog.String("operation", string(e.Op)),
+		slog.String("repo_id", e.Repository.Entity.ID.String()),
+		slog.String("repo_path", e.Repository.Path),
+		slog.String("ref", e.Ref),
+	}
+	if e.internal != nil {
+		attrs = append(attrs, slog.Any("details", e.internal))
+	}
+
+	slog.Log(context.Background(), level, e.Error(), attrs...)
+
+	return e
 }
 
 // Helper function to create a new ResolveError.
@@ -114,6 +156,49 @@ func NewResolveError(r *Repository, op ResolveOp, ref string) *ResolveError {
 	}
 }
 
+// - CompareError -
+
+// Error method for CompareError.
+func (e *CompareError) Error() string {
+	return "compare error"
+}
+
+// Unwrap method for CompareError.
+func (e *CompareError) Unwrap() error {
+	return e.internal
+}
+
+// Wrap method to wrap the error.
+func (e *CompareError) Wrap(err error) error {
+	e.internal = err
+	return e
+}
+
+func (e *CompareError) ReportError() error {
+	return e.report(slog.LevelError)
+}
+
+func (e *CompareError) ReportWarn() error {
+	return e.report(slog.LevelWarn)
+}
+
+func (e *CompareError) report(level slog.Level) error {
+	attrs := []any{
+		slog.String("operation", string(e.Op)),
+		slog.String("repo_id", e.Repository.Entity.ID.String()),
+		slog.String("repo_path", e.Repository.Path),
+		slog.String("from", e.From),
+		slog.String("to", e.To),
+	}
+	if e.internal != nil {
+		attrs = append(attrs, slog.Any("details", e.internal))
+	}
+
+	slog.Log(context.Background(), level, e.Error(), attrs...)
+
+	return e
+}
+
 // Helper function to create a new CompareError.
 func NewCompareError(r *Repository, op CompareOp, from, to string) *CompareError {
 	return &CompareError{
@@ -122,22 +207,4 @@ func NewCompareError(r *Repository, op CompareOp, from, to string) *CompareError
 		To:         to,
 		Repository: r,
 	}
-}
-
-// Wrap method to wrap the error.
-func (e *RepositoryError) Wrap(err error) error {
-	e.internal = err
-	return e
-}
-
-// Wrap method to wrap the error.
-func (e *ResolveError) Wrap(err error) error {
-	e.internal = err
-	return e
-}
-
-// Wrap method to wrap the error.
-func (e *CompareError) Wrap(err error) error {
-	e.internal = err
-	return e
 }
