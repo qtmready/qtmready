@@ -215,6 +215,21 @@ func (h *Webhook) pr(ctx echo.Context, event defs.WebhookEvent, id string) error
 	opts := defs.NewRefWorkflowOptions(
 		payload.GetRepositoryID(), payload.GetHeadBranch(), "pr", fmt.Sprintf("%d", payload.GetNumber()), payload.GetAction(), id)
 
+	// NOTE - what is the PR and add label events are occur at the same time.
+	// I think we need to call PullRequest each time.
+	// TODO - need discussion.
+	if payload.Label != nil {
+		_, err := durable.
+			OnHooks().
+			ExecuteWorkflow(ctx.Request().Context(), opts, workflows.PullRequestLabel, payload)
+		if err != nil {
+			slog.Error("failed to signal workflow", "error", err.Error())
+			return erratic.NewSystemError(erratic.HooksGithubModule).Wrap(err)
+		}
+
+		return ctx.NoContent(http.StatusNoContent)
+	}
+
 	_, err := durable.
 		OnHooks().
 		ExecuteWorkflow(ctx.Request().Context(), opts, workflows.PullRequest, payload)

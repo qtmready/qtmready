@@ -116,3 +116,7 @@ func (pr *PR) GetInstallationID() int64 {
 func (pr *PR) GetSenderEmail() *string {
 	return pr.Sender.Email
 }
+
+func (pr *PR) GetLabelName() string {
+	return pr.Label.Name
+}
