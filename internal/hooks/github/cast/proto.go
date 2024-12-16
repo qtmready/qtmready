@@ -56,3 +56,12 @@ func PrToProto(pr *defs.PR) eventsv1.PullRequest {
 		Timestamp:  timestamppb.New(pr.GetTimestamp()),
 	}
 }
+
+func PrLabelToProto(pr *defs.PR) eventsv1.PullRequestLabel {
+	return eventsv1.PullRequestLabel{
+		Name:      pr.GetLabelName(),
+		Number:    pr.GetNumber(),
+		Branch:    pr.GetHeadBranch(),
+		Timestamp: timestamppb.New(pr.GetTimestamp()),
+	}
+}

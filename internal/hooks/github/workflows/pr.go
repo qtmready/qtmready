@@ -73,3 +73,60 @@ func PullRequest(ctx workflow.Context, pr *defs.PR) error {
 
 	return workflow.ExecuteActivity(ctx, acts.SignalRepoWithGithubPR, hevent).Get(ctx, nil)
 }
+
+func PullRequestLabel(ctx workflow.Context, pr *defs.PR) error {
+	acts := &activities.PullRequest{}
+	ctx = dispatch.WithDefaultActivityContext(ctx)
+
+	proto := cast.PrLabelToProto(pr)
+	hydrated := &defs.HydratedRepoEvent{} // hre -> hydrated repo event
+
+	email := ""
+	if pr.GetSenderEmail() != nil {
+		email = *pr.GetSenderEmail()
+	}
+
+	{
+		payload := &defs.HydrateRepoEventPayload{
+			RepoID:         pr.GetRepositoryID(),
+			InstallationID: pr.GetInstallationID(),
+			Email:          email,
+			Branch:         repos.BranchNameFromRef(pr.GetHeadBranch()),
+		}
+		if err := workflow.ExecuteActivity(ctx, acts.HydrateGithubPREvent, payload).Get(ctx, hydrated); err != nil {
+			return err
+		}
+	}
+
+	// handle actions
+	event := events.
+		New[eventsv1.RepoHook, eventsv1.PullRequestLabel]().
+		SetHook(eventsv1.RepoHook_REPO_HOOK_GITHUB).
+		SetScope(events.ScopePrLabel).
+		SetAction(events.Action(pr.GetAction())).
+		SetSource(hydrated.GetRepoUrl()).
+		SetOrg(hydrated.GetOrgID()).
+		SetSubjectName(events.SubjectNameRepos).
+		SetSubjectID(hydrated.GetRepoID()).
+		SetPayload(&proto)
+
+	if hydrated.GetParentID() != uuid.Nil {
+		event.SetParents(hydrated.GetParentID())
+	}
+
+	if hydrated.GetTeam() != nil {
+		event.SetTeam(hydrated.GetTeamID())
+	}
+
+	if hydrated.GetUser() != nil {
+		event.SetUser(hydrated.GetUserID())
+	}
+
+	if err := pulse.Persist(ctx, event); err != nil {
+		return err
+	}
+
+	hevent := &defs.HydratedQuantmEvent[eventsv1.PullRequestLabel]{Event: event, Meta: hydrated, Signal: repos.SignalPR}
+
+	return workflow.ExecuteActivity(ctx, acts.SignalRepoWithGithubPR, hevent).Get(ctx, nil)
+}
