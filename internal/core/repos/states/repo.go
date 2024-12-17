@@ -86,6 +86,14 @@ func (state *Repo) OnPR(ctx workflow.Context) durable.ChannelHandler {
 	}
 }
 
+// OnLabel handles the pull request event with label on the repository.
+func (state *Repo) OnLabel(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		label := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestLabel]{}
+		state.rx(ctx, rx, label)
+	}
+}
+
 // - query handlers -
 
 // QueryBranchTrigger queries the parent branch for the specified branch.
