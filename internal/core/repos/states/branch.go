@@ -1,6 +1,7 @@
 package states
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -120,6 +121,23 @@ func (state *Branch) OnRebase(ctx workflow.Context) durable.ChannelHandler {
 		state.check_merge_conflict(session, event, rebase)
 
 		state.remove_dir(ctx, path)
+	}
+}
+
+// on_label handles pull request label events.
+func (state *Branch) OnLabel(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		event := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestLabel]{}
+		state.rx(ctx, rx, event)
+
+		switch event.Payload.Name {
+		case "qmerge":
+			fmt.Println("push to the queue based in level of priority")
+		case "priority-qmerge":
+			fmt.Println("push to the queue based in level of priority")
+		default:
+			return
+		}
 	}
 }
 

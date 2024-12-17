@@ -31,6 +31,9 @@ func Repo(ctx workflow.Context, state *states.Repo) error {
 	pr := workflow.GetSignalChannel(ctx, defs.SignalPR.String())
 	selector.AddReceive(pr, state.OnPR(ctx))
 
+	label := workflow.GetSignalChannel(ctx, defs.SignalPrLabel.String())
+	selector.AddReceive(label, state.OnLabel(ctx))
+
 	// - event loop -
 
 	for !state.RestartRecommended(ctx) {

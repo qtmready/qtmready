@@ -25,6 +25,9 @@ func Branch(ctx workflow.Context, state *states.Branch) error {
 	rebase := workflow.GetSignalChannel(ctx, defs.SignalRebase.String())
 	selector.AddReceive(rebase, state.OnRebase(ctx))
 
+	label := workflow.GetSignalChannel(ctx, defs.SignalPrLabel.String())
+	selector.AddReceive(label, state.OnLabel(ctx))
+
 	// - event loop -
 
 	for !state.ExitLoop(ctx) {
