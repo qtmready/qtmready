@@ -25,3 +25,23 @@ const (
 
 // String returns the string representation of the EventAction.
 func (ea Action) String() string { return string(ea) }
+
+// SetActionCreated sets the action of the Event to ActionCreated.
+func (e *Event[T, P]) SetActionCreated() {
+	e.Context.Action = ActionCreated
+}
+
+// SetActionDeleted sets the action of the Event to ActionDeleted.
+func (e *Event[T, P]) SetActionDeleted() {
+	e.Context.Action = ActionDeleted
+}
+
+// SetActionUpdated sets the action of the Event to ActionUpdated.
+func (e *Event[T, P]) SetActionUpdated() {
+	e.Context.Action = ActionUpdated
+}
+
+// SetActionDismissed sets the action of the Event to ActionDismissed.
+func (e *Event[T, P]) SetActionDismissed() {
+	e.Context.Action = ActionDismissed
+}

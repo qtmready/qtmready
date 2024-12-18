@@ -46,7 +46,7 @@ func PullRequest(ctx workflow.Context, pr *defs.PR) error {
 		New[eventsv1.RepoHook, eventsv1.PullRequest]().
 		SetHook(eventsv1.RepoHook_REPO_HOOK_GITHUB).
 		SetScope(events.ScopePr).
-		SetAction(events.Action(pr.GetAction())).
+		SetAction(events.Action(pr.GetAction())). // TODO - handle the PR actions
 		SetSource(hydrated.GetRepoUrl()).
 		SetOrg(hydrated.GetOrgID()).
 		SetSubjectName(events.SubjectNameRepos).
@@ -103,7 +103,7 @@ func PullRequestLabel(ctx workflow.Context, pr *defs.PR) error {
 		New[eventsv1.RepoHook, eventsv1.PullRequestLabel]().
 		SetHook(eventsv1.RepoHook_REPO_HOOK_GITHUB).
 		SetScope(events.ScopePrLabel).
-		SetAction(events.Action(pr.GetAction())).
+		SetAction(events.Action(pr.GetAction())). // TODO - handle the PR actions
 		SetSource(hydrated.GetRepoUrl()).
 		SetOrg(hydrated.GetOrgID()).
 		SetSubjectName(events.SubjectNameRepos).
@@ -126,7 +126,7 @@ func PullRequestLabel(ctx workflow.Context, pr *defs.PR) error {
 		return err
 	}
 
-	hevent := &defs.HydratedQuantmEvent[eventsv1.PullRequestLabel]{Event: event, Meta: hydrated, Signal: repos.SignalPR}
+	hevent := &defs.HydratedQuantmEvent[eventsv1.PullRequestLabel]{Event: event, Meta: hydrated, Signal: repos.SignalPRLabel}
 
 	return workflow.ExecuteActivity(ctx, acts.SignalRepoWithGithubPR, hevent).Get(ctx, nil)
 }

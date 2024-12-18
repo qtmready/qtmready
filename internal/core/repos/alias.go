@@ -44,9 +44,11 @@ var (
 )
 
 const (
-	SignalPush = defs.SignalPush
-	SignalRef  = defs.SignalRef
-	SignalPR   = defs.SignalPR
+	SignalPush     = defs.SignalPush
+	SignalRef      = defs.SignalRef
+	SignalPR       = defs.SignalPR
+	SignalPRLabel  = defs.SignalPrLabel
+	SignalPRReview = defs.SignalPrReview
 )
 
 const (

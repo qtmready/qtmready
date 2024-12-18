@@ -141,6 +141,14 @@ func (state *Branch) OnLabel(ctx workflow.Context) durable.ChannelHandler {
 	}
 }
 
+// on_label handles pull request label events.
+func (state *Branch) OnPrReview(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		event := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestReview]{}
+		state.rx(ctx, rx, event)
+	}
+}
+
 // ExitLoop returns true if the branch should exit the event loop.
 func (state *Branch) ExitLoop(ctx workflow.Context) bool {
 	return state.done || workflow.GetInfo(ctx).GetContinueAsNewSuggested()
