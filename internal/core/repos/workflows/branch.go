@@ -28,6 +28,9 @@ func Branch(ctx workflow.Context, state *states.Branch) error {
 	label := workflow.GetSignalChannel(ctx, defs.SignalPrLabel.String())
 	selector.AddReceive(label, state.OnLabel(ctx))
 
+	prr := workflow.GetSignalChannel(ctx, defs.SignalPrReview.String())
+	selector.AddReceive(prr, state.OnPrReview(ctx))
+
 	// - event loop -
 
 	for !state.ExitLoop(ctx) {

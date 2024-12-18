@@ -65,3 +65,14 @@ func PrLabelToProto(pr *defs.PR) eventsv1.PullRequestLabel {
 		Timestamp: timestamppb.New(pr.GetTimestamp()),
 	}
 }
+
+func PrReviewToProto(prr *defs.PrReview) eventsv1.PullRequestReview {
+	return eventsv1.PullRequestReview{
+		Id:                prr.GetPrReviewID(),
+		PullRequestNumber: prr.GetPrNumber(),
+		Branch:            prr.GetHeadBranch(),
+		State:             prr.GetState(),
+		AuthorEmail:       *prr.GetSenderEmail(),
+		SubmittedAt:       timestamppb.New(prr.GetSubmittedAt()),
+	}
+}
