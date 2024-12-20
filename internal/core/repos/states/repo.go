@@ -19,10 +19,16 @@ import (
 )
 
 type (
+	MergeQueue struct {
+		Default  *Sequencer[int64, string] `json:"default"`
+		Priority *Sequencer[int64, string] `json:"priority"`
+	}
+
 	// Repo defines the state for Repo Workflows. It embeds BaseState to inherit its functionality.
 	Repo struct {
 		*Base    `json:"base"`  // Base workflow state.
 		Triggers BranchTriggers `json:"triggers"` // Branch triggers.
+		Queues   *MergeQueue    `json:"queues"`   // Branch queues.
 
 		acts *activities.Repo
 	}
@@ -91,6 +97,17 @@ func (state *Repo) OnLabel(ctx workflow.Context) durable.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		label := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestLabel]{}
 		state.rx(ctx, rx, label)
+
+		branch := label.Payload.GetBranch()
+
+		switch label.Payload.Name {
+		case "q0merge":
+			state.Queues.Default.Push(ctx, label.Payload.GetNumber(), &branch)
+		case "qmerge-priority":
+			state.Queues.Priority.Push(ctx, label.Payload.GetNumber(), &branch)
+		default:
+			return
+		}
 	}
 }
 
@@ -162,6 +179,12 @@ func (state *Repo) attempt_rebase(ctx workflow.Context, push *events.Event[event
 
 func (state *Repo) Init(ctx workflow.Context) {
 	state.Base.Init(ctx)
+	state.Queues.Default.Init(ctx)
+	state.Queues.Priority.Init(ctx)
+
+	if state.acts == nil {
+		state.acts = &activities.Repo{}
+	}
 }
 
 // NewRepo creates a new RepoState instance. It initializes BaseState using the provided context and
@@ -169,6 +192,10 @@ func (state *Repo) Init(ctx workflow.Context) {
 func NewRepo(repo *entities.Repo, chat *entities.ChatLink) *Repo {
 	base := &Base{Repo: repo, ChatLink: chat}
 	triggers := make(BranchTriggers)
+	qs := &MergeQueue{
+		Default:  NewSequencer[int64, string](),
+		Priority: NewSequencer[int64, string](),
+	}
 
-	return &Repo{base, triggers, &activities.Repo{}} // Return new RepoState instance.
+	return &Repo{base, triggers, qs, &activities.Repo{}}
 }
