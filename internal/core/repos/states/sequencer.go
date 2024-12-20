@@ -41,6 +41,24 @@ func (q *Sequencer[K, E]) Push(ctx workflow.Context, key K, item *E) {
 	q.Map[key] = node
 }
 
+// Priority adds an item to the front of the queue.
+func (q *Sequencer[K, E]) Priority(ctx workflow.Context, key K, item *E) {
+	_ = q.mutex.Lock(ctx)
+	defer q.mutex.Unlock()
+
+	node := &Node[E]{Item: item}
+	if q.Head == nil {
+		q.Head = node
+		q.Tail = node
+	} else {
+		node.Next = q.Head
+		q.Head.Previous = node
+		q.Head = node
+	}
+
+	q.Map[key] = node
+}
+
 // Pop removes and returns the item at the front of the queue.
 func (q *Sequencer[K, E]) Pop(ctx workflow.Context) *E {
 	_ = q.mutex.Lock(ctx)
@@ -201,6 +219,7 @@ func (q *Sequencer[K, E]) Remove(ctx workflow.Context, key K) {
 	}
 }
 
+// Init restores the lock mutex.
 func (q *Sequencer[K, E]) Init(ctx workflow.Context) {
 	q.mutex = workflow.NewMutex(ctx)
 }
