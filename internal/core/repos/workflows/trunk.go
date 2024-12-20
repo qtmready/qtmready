@@ -3,7 +3,6 @@ package workflows
 import (
 	"go.temporal.io/sdk/workflow"
 
-	"go.breu.io/quantm/internal/core/repos/defs"
 	"go.breu.io/quantm/internal/core/repos/states"
 )
 
@@ -11,9 +10,6 @@ func Trunk(ctx workflow.Context, state *states.Trunk) error {
 	state.Init(ctx)
 
 	selector := workflow.NewSelector(ctx)
-
-	label := workflow.GetSignalChannel(ctx, defs.SignalPrLabel.String())
-	selector.AddReceive(label, state.OnLabel(ctx))
 
 	for !state.RestartRecommended(ctx) {
 		selector.Select(ctx)

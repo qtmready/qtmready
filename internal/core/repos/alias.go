@@ -44,16 +44,20 @@ var (
 )
 
 const (
-	SignalPush     = defs.SignalPush
-	SignalRef      = defs.SignalRef
-	SignalPR       = defs.SignalPR
-	SignalPRLabel  = defs.SignalPrLabel
-	SignalPRReview = defs.SignalPrReview
+	SignalPush              = defs.SignalPush
+	SignalRef               = defs.SignalRef
+	SignalPullRequest       = defs.SignalPullRequest
+	SignalPullRequestReview = defs.SignalPullRequestReview
+	SignalMergeQueue        = defs.SignalMergeQueue
 )
 
 const (
-	// QueryRepoForEventParent is a query used to find the parent event of a given branch.
 	QueryRepoForEventParent = defs.QueryRepoForEventParent
+)
+
+const (
+	LabelMerge    = defs.LabelMerge
+	LabelPriority = defs.LabelPriority
 )
 
 // NewRepoActivities creates a new instance of the Activity struct, which handles repository-related actions.

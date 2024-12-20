@@ -20,8 +20,8 @@ type (
 		OrgID          uuid.UUID         `json:"org_id"`
 	}
 
-	// HydrateRepoEventPayload is the payload for the HydrateRepoEvent activity.
-	HydrateRepoEventPayload struct {
+	// HydratedRepoEventPayload is the payload for the HydrateRepoEvent activity.
+	HydratedRepoEventPayload struct {
 		RepoID            int64  `json:"repo_id"`
 		InstallationID    int64  `json:"installation_id"`
 		Email             string `json:"email"`

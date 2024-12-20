@@ -13,7 +13,7 @@ type (
 )
 
 func (prr *PullRequestReview) HydrateGithubPREvent(
-	ctx context.Context, params *defs.HydrateRepoEventPayload,
+	ctx context.Context, params *defs.HydratedRepoEventPayload,
 ) (*defs.HydratedRepoEvent, error) {
 	return HydrateRepoEvent(ctx, params)
 }

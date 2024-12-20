@@ -28,13 +28,13 @@ func Repo(ctx workflow.Context, state *states.Repo) error {
 	push := workflow.GetSignalChannel(ctx, defs.SignalPush.String())
 	selector.AddReceive(push, state.OnPush(ctx))
 
-	pr := workflow.GetSignalChannel(ctx, defs.SignalPR.String())
+	pr := workflow.GetSignalChannel(ctx, defs.SignalPullRequest.String())
 	selector.AddReceive(pr, state.OnPR(ctx))
 
-	label := workflow.GetSignalChannel(ctx, defs.SignalPrLabel.String())
+	label := workflow.GetSignalChannel(ctx, defs.SignalPullRequestLabel.String())
 	selector.AddReceive(label, state.OnLabel(ctx))
 
-	prr := workflow.GetSignalChannel(ctx, defs.SignalPrReview.String())
+	prr := workflow.GetSignalChannel(ctx, defs.SignalPullRequestReview.String())
 	selector.AddReceive(prr, state.OnPrReview(ctx))
 
 	// - event loop -

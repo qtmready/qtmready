@@ -15,6 +15,6 @@ func RebaseEventToMergeConflictEvent(
 		rebase,
 		eventsv1.ChatHook(hook),
 		events.ScopeMerge,
-		events.ActionMerge,
+		events.ActionFailure,
 	).SetPayload(payload)
 }

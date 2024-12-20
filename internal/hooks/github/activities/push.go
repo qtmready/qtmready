@@ -13,7 +13,7 @@ type (
 	Push struct{}
 )
 
-func (p *Push) HydrateGithubPushEvent(ctx context.Context, params *defs.HydrateRepoEventPayload) (*defs.HydratedRepoEvent, error) {
+func (p *Push) HydrateGithubPushEvent(ctx context.Context, params *defs.HydratedRepoEventPayload) (*defs.HydratedRepoEvent, error) {
 	time.Sleep(2 * time.Second) // FIXME: this is a quick hack to get the parent id.
 
 	return HydrateRepoEvent(ctx, params)
