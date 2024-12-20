@@ -77,7 +77,8 @@ func (s *SequencerTestSuite) Test_001_Push() {
 
 func SequencerTestWorkflow(ctx workflow.Context) error {
 	done := false
-	seq := states.NewSequencer[int64, eventsv1.PullRequest](ctx)
+	seq := states.NewSequencer[int64, eventsv1.PullRequest]()
+	seq.Init(ctx)
 	selector := workflow.NewSelector(ctx)
 
 	// Push Signal Handler

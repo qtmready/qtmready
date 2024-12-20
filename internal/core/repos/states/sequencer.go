@@ -2,13 +2,11 @@ package states
 
 import (
 	"go.temporal.io/sdk/workflow"
-
-	"go.breu.io/quantm/internal/events"
 )
 
 type (
 	// Node[E events.Payload] represents a doubly linked list node containing a payload of type E.
-	Node[E events.Payload] struct {
+	Node[E any] struct {
 		Item     *E       `json:"item"`     // Pointer to the payload item.
 		Previous *Node[E] `json:"previous"` // Pointer to the previous node in the list.
 		Next     *Node[E] `json:"next"`     // Pointer to the next node in the list.
@@ -16,7 +14,7 @@ type (
 
 	// Sequencer[K comparable, E events.Payload] provides a thread-safe, FIFO queue with indexed access.
 	// It utilizes a doubly linked list for queue management and a map for O(1) key-based lookup.
-	Sequencer[K comparable, E events.Payload] struct {
+	Sequencer[K comparable, E any] struct {
 		Head *Node[E]       `json:"head"` // Pointer to the head (front) of the queue.
 		Tail *Node[E]       `json:"tail"` // Pointer to the tail (back) of the queue.
 		Map  map[K]*Node[E] `json:"map"`  // Map providing key-to-node associations.
@@ -203,11 +201,13 @@ func (q *Sequencer[K, E]) Remove(ctx workflow.Context, key K) {
 	}
 }
 
-// NewSequencer[K, E] creates a new Sequencer.
-func NewSequencer[K comparable, E events.Payload](ctx workflow.Context) *Sequencer[K, E] {
-	return &Sequencer[K, E]{
-		mutex: workflow.NewMutex(ctx),
+func (q *Sequencer[K, E]) Init(ctx workflow.Context) {
+	q.mutex = workflow.NewMutex(ctx)
+}
 
+// NewSequencer[K, E] creates a new Sequencer.
+func NewSequencer[K comparable, E any]() *Sequencer[K, E] {
+	return &Sequencer[K, E]{
 		Map: make(map[K]*Node[E]),
 	}
 }
