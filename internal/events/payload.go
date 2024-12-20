@@ -11,6 +11,6 @@ type (
 	Payload interface {
 		eventsv1.GitRef |
 			eventsv1.Push | eventsv1.Rebase | eventsv1.PullRequest | eventsv1.PullRequestLabel | eventsv1.PullRequestReview |
-			eventsv1.Merge | eventsv1.Diff
+			eventsv1.Merge | eventsv1.Diff | eventsv1.MergeQueue
 	}
 )

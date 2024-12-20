@@ -27,7 +27,7 @@ func Ref(ctx workflow.Context, payload *defs.WebhookRef, event defs.WebhookEvent
 	meta := &defs.HydratedRepoEvent{}
 
 	{
-		payload := &defs.HydrateRepoEventPayload{
+		payload := &defs.HydratedRepoEventPayload{
 			RepoID:            payload.Repository.ID,
 			InstallationID:    payload.Installation.ID,
 			ShouldFetchParent: false,

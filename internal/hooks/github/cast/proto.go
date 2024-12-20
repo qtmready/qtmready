@@ -1,10 +1,12 @@
 package cast
 
 import (
+	"slices"
 	"time"
 
 	"google.golang.org/protobuf/types/known/timestamppb"
 
+	"go.breu.io/quantm/internal/core/repos"
 	"go.breu.io/quantm/internal/hooks/github/defs"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
@@ -45,7 +47,7 @@ func CommitsToProto(commits []defs.Commit) []*eventsv1.Commit {
 	return result
 }
 
-func PrToProto(pr *defs.PR) eventsv1.PullRequest {
+func PullRequestToProto(pr *defs.PR) eventsv1.PullRequest {
 	return eventsv1.PullRequest{
 		Number:     pr.GetNumber(),
 		Title:      pr.GetTitle(),
@@ -57,13 +59,24 @@ func PrToProto(pr *defs.PR) eventsv1.PullRequest {
 	}
 }
 
-func PrLabelToProto(pr *defs.PR) eventsv1.PullRequestLabel {
-	return eventsv1.PullRequestLabel{
-		Name:      pr.GetLabelName(),
-		Number:    pr.GetNumber(),
-		Branch:    pr.GetHeadBranch(),
-		Timestamp: timestamppb.New(pr.GetTimestamp()),
+func PullRequestLabelToProto(pr *defs.PR) *eventsv1.MergeQueue {
+	valid := []string{repos.LabelMerge, repos.LabelPriority}
+
+	if slices.Contains(valid, pr.GetLabelName()) {
+		proto := &eventsv1.MergeQueue{
+			Number:    pr.GetNumber(),
+			Branch:    pr.GetHeadBranch(),
+			Timestamp: timestamppb.New(pr.GetTimestamp()),
+		}
+
+		if pr.GetLabelName() == repos.LabelPriority {
+			proto.IsPriority = true
+		}
+
+		return proto
 	}
+
+	return nil
 }
 
 func PrReviewToProto(prr *defs.PrReview) eventsv1.PullRequestReview {

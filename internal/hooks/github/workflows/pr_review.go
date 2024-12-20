@@ -27,7 +27,7 @@ func PullRequestReview(ctx workflow.Context, prr *defs.PrReview) error {
 	}
 
 	{
-		payload := &defs.HydrateRepoEventPayload{
+		payload := &defs.HydratedRepoEventPayload{
 			RepoID:         prr.GetRepositoryID(),
 			InstallationID: prr.GetInstallationID(),
 			Email:          email,
@@ -76,7 +76,7 @@ func PullRequestReview(ctx workflow.Context, prr *defs.PrReview) error {
 		return err
 	}
 
-	hevent := &defs.HydratedQuantmEvent[eventsv1.PullRequestReview]{Event: event, Meta: hydrated, Signal: repos.SignalPRReview}
+	hevent := &defs.HydratedQuantmEvent[eventsv1.PullRequestReview]{Event: event, Meta: hydrated, Signal: repos.SignalPullRequestReview}
 
 	return workflow.ExecuteActivity(ctx, acts.SignalRepoWithGithubPR, hevent).Get(ctx, nil)
 }

@@ -21,7 +21,7 @@ import (
 // HydrateRepoEvent enriches a repository event using database data. It fetches GitHub installation and repository
 // details, optionally adding user information if an email is provided. For non-default branches, it retrieves the
 // parent event ID from the core workflow, accounting for potential asynchronous delays.
-func HydrateRepoEvent(ctx context.Context, payload *defs.HydrateRepoEventPayload) (*defs.HydratedRepoEvent, error) {
+func HydrateRepoEvent(ctx context.Context, payload *defs.HydratedRepoEventPayload) (*defs.HydratedRepoEvent, error) {
 	install, err := db.Queries().GetGithubInstallationByInstallationID(ctx, payload.InstallationID)
 	if err != nil {
 		return nil, err

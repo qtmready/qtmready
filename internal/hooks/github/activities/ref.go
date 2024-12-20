@@ -13,7 +13,7 @@ type (
 )
 
 // HydrateGithubRefEvent hydrates the branch event with the given parameters.
-func (b *Ref) HydrateGithubRefEvent(ctx context.Context, params *defs.HydrateRepoEventPayload) (*defs.HydratedRepoEvent, error) {
+func (b *Ref) HydrateGithubRefEvent(ctx context.Context, params *defs.HydratedRepoEventPayload) (*defs.HydratedRepoEvent, error) {
 	return HydrateRepoEvent(ctx, params)
 }
 

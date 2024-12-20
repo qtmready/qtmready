@@ -26,7 +26,7 @@ func Push(ctx workflow.Context, push *defs.Push) error {
 	hre := &defs.HydratedRepoEvent{} // hre -> hydrated repo event
 
 	{
-		payload := &defs.HydrateRepoEventPayload{
+		payload := &defs.HydratedRepoEventPayload{
 			RepoID:         push.GetRepositoryID(),
 			InstallationID: push.GetInstallationID(),
 			Email:          push.GetPusherEmail(),

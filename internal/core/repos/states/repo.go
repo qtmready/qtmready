@@ -93,7 +93,7 @@ func (state *Repo) OnLabel(ctx workflow.Context) durable.ChannelHandler {
 		label := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestLabel]{}
 		state.rx(ctx, rx, label)
 
-		state.forward_to_trunk(ctx, defs.SignalPrLabel, label)
+		state.forward_to_trunk(ctx, defs.SignalPullRequestLabel, label)
 	}
 }
 
