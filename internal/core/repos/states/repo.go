@@ -88,20 +88,19 @@ func (state *Repo) OnPR(ctx workflow.Context) durable.ChannelHandler {
 }
 
 // OnLabel handles the pull request event with label on the repository.
-func (state *Repo) OnLabel(ctx workflow.Context) durable.ChannelHandler {
-	return func(rx workflow.ReceiveChannel, more bool) {
-		label := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestLabel]{}
-		state.rx(ctx, rx, label)
-
-		state.forward_to_trunk(ctx, defs.SignalPullRequestLabel, label)
-	}
-}
-
-// OnLabel handles the pull request event with label on the repository.
-func (state *Repo) OnPrReview(ctx workflow.Context) durable.ChannelHandler {
+func (state *Repo) OnPRReview(ctx workflow.Context) durable.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		label := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestReview]{}
 		state.rx(ctx, rx, label)
+	}
+}
+
+func (state *Repo) OnMergeQueue(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		mq := &events.Event[eventsv1.RepoHook, eventsv1.MergeQueue]{}
+		state.rx(ctx, rx, mq)
+
+		_ = state.forward_to_trunk(ctx, defs.SignalMergeQueue, mq)
 	}
 }
 

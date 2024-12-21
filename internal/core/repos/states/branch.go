@@ -250,8 +250,7 @@ func (state *Branch) check_merge_conflict(
 	}
 }
 
-func (state *Branch) notify_user(ctx workflow.Context) error { return nil }
-func (state *Branch) notify_repo(ctx workflow.Context) error { return nil }
+func (state *Branch) notify_user(_ workflow.Context) error { return nil }
 
 // NewBranch constructs a new Branch state.
 func NewBranch(repo *entities.Repo, chat *entities.ChatLink, branch string) *Branch {

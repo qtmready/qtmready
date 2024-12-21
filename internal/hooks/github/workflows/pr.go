@@ -14,9 +14,9 @@ import (
 	"go.breu.io/quantm/internal/pulse"
 )
 
-// The PullRequest workflow processes GitHub webhook pull request events, converting the defs.PullRequest payload into a QuantmEvent.
-// This involves hydrating the event with repository, installation, user, team metadata hydrated details and original payload, and
-// finally signaling the repository.
+// The PullRequest workflow processes GitHub webhook pull request events. It hydrates the event with repository,
+// installation, user, and team metadata, then converts the defs.PullRequest payload into a QuantmEvent.
+// Finally, it signals the repository or merge queue based on the event type (PR or label).
 func PullRequest(ctx workflow.Context, pr *defs.PR) error {
 	acts := &activities.PullRequest{}
 	hydrated := &defs.HydratedRepoEvent{}
@@ -46,6 +46,7 @@ func PullRequest(ctx workflow.Context, pr *defs.PR) error {
 	return handle_pr(ctx, pr, hydrated)
 }
 
+// handle_pr processes a pull request event, creating a QuantmEvent and signaling the repository.
 func handle_pr(ctx workflow.Context, pr *defs.PR, repo_evt *defs.HydratedRepoEvent) error {
 	acts := &activities.PullRequest{}
 	proto := cast.PullRequestToProto(pr)
@@ -82,6 +83,7 @@ func handle_pr(ctx workflow.Context, pr *defs.PR, repo_evt *defs.HydratedRepoEve
 	return workflow.ExecuteActivity(ctx, acts.SignalRepoWithGithubPR, hevent).Get(ctx, nil)
 }
 
+// handle_label processes a pull request label event, creating a QuantmEvent and signaling the merge queue, if applicable.
 func handle_label(ctx workflow.Context, pr *defs.PR, repo_evt *defs.HydratedRepoEvent) error {
 	acts := &activities.PullRequest{}
 
