@@ -19,9 +19,11 @@ type (
 		Tail *Node[E]       `json:"tail"` // Pointer to the tail (back) of the queue.
 		Map  map[K]*Node[E] `json:"map"`  // Map providing key-to-node associations.
 
-		mutex workflow.Mutex // Mutex for thread-safe operations.
+		mutex workflow.Mutex // mutex for thread-safe operations.
 	}
 )
+
+// - Queue Manipulation -
 
 // Push adds an item to the end of the queue.
 func (q *Sequencer[K, E]) Push(ctx workflow.Context, key K, item *E) {
@@ -80,46 +82,32 @@ func (q *Sequencer[K, E]) Pop(ctx workflow.Context) *E {
 	return node.Item
 }
 
-// Peek returns the item at the front of the queue without removing it.
-func (q *Sequencer[K, E]) Peek(ctx workflow.Context) *E {
-	if q.Head == nil {
-		return nil
-	}
+// Remove removes a specific item from the queue based on its key.
+func (q *Sequencer[K, E]) Remove(ctx workflow.Context, key K) {
+	_ = q.mutex.Lock(ctx)
+	defer q.mutex.Unlock()
 
-	return q.Head.Item
-}
-
-// Position returns the position of the key in the queue (starting from 1).
-// Returns 0 if the key is not found.
-func (q *Sequencer[K, E]) Position(ctx workflow.Context, key K) int {
 	node, ok := q.Map[key]
 	if !ok {
-		return 0
+		return
 	}
 
-	position := 1
+	delete(q.Map, key)
 
-	for current := q.Head; current != nil; current = current.Next {
-		if current == node {
-			return position
-		}
-
-		position++
+	if node.Previous != nil {
+		node.Previous.Next = node.Next
+	} else {
+		q.Head = node.Next
 	}
 
-	// We should never reach this point.
-	return 0
+	if node.Next != nil {
+		node.Next.Previous = node.Previous
+	} else {
+		q.Tail = node.Previous
+	}
 }
 
-// Length returns the number of items in the queue.
-func (q *Sequencer[K, E]) Length(ctx workflow.Context) int {
-	length := 0
-	for current := q.Head; current != nil; current = current.Next {
-		length++
-	}
-
-	return length
-}
+// - Queue Item Reordering -
 
 // Promote moves an item one position forward in the queue.
 func (q *Sequencer[K, E]) Promote(ctx workflow.Context, key K) {
@@ -181,6 +169,45 @@ func (q *Sequencer[K, E]) Demote(ctx workflow.Context, key K) {
 	next.Next = node
 }
 
+// - Queue Inspection -
+
+// Peek returns the item at the front of the queue without removing it.
+func (q *Sequencer[K, E]) Peek(ctx workflow.Context) *E {
+	return q.Head.Item
+}
+
+// Position returns the position of the key in the queue (starting from 1).
+// Returns 0 if the key is not found.
+func (q *Sequencer[K, E]) Position(ctx workflow.Context, key K) int {
+	node, ok := q.Map[key]
+	if !ok {
+		return 0
+	}
+
+	position := 1
+
+	for current := q.Head; current != nil; current = current.Next {
+		if current == node {
+			return position
+		}
+
+		position++
+	}
+
+	// We should never reach this point.
+	return 0
+}
+
+// Length returns the number of items in the queue.
+func (q *Sequencer[K, E]) Length(ctx workflow.Context) int {
+	length := 0
+	for current := q.Head; current != nil; current = current.Next {
+		length++
+	}
+
+	return length
+}
+
 // All returns all items in the queue.
 func (q *Sequencer[K, E]) All(ctx workflow.Context) []*E {
 	_ = q.mutex.Lock(ctx)
@@ -194,30 +221,7 @@ func (q *Sequencer[K, E]) All(ctx workflow.Context) []*E {
 	return items
 }
 
-// Remove removes a specific item from the queue based on its key.
-func (q *Sequencer[K, E]) Remove(ctx workflow.Context, key K) {
-	_ = q.mutex.Lock(ctx)
-	defer q.mutex.Unlock()
-
-	node, ok := q.Map[key]
-	if !ok {
-		return
-	}
-
-	delete(q.Map, key)
-
-	if node.Previous != nil {
-		node.Previous.Next = node.Next
-	} else {
-		q.Head = node.Next
-	}
-
-	if node.Next != nil {
-		node.Next.Previous = node.Previous
-	} else {
-		q.Tail = node.Previous
-	}
-}
+// - Initialization and Creation -
 
 // Init restores the lock mutex.
 func (q *Sequencer[K, E]) Init(ctx workflow.Context) {
