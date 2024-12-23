@@ -3,16 +3,11 @@ package git
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 
 	"github.com/go-git/go-git/v5/plumbing/format/diff"
 
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
-)
-
-var (
-	InlineDiffRegex = regexp.MustCompile(`(?m)^(?P<space>\s*)(?P<marker>[-+])(?P<content>.+)$`)
 )
 
 // Diff returns a diff between two commits.
@@ -63,7 +58,14 @@ func (r *Repository) Diff(ctx context.Context, from, to string) (*eventsv1.Diff,
 		}
 	}
 
-	has_conflict := commits.ConflictAt != ""
+	stats := patch.Stats()
+
+	for _, stat := range stats {
+		lines.Added += int32(stat.Addition)
+		lines.Removed += int32(stat.Deletion)
+	}
+
+	has_conflict := !(commits.ConflictAt != "")
 
 	return &eventsv1.Diff{
 		Files:       files,
@@ -101,45 +103,7 @@ func PatchToDiff(patch diff.Patch) (*eventsv1.DiffFiles, *eventsv1.DiffLines) {
 		} else {
 			files.Modified = append(files.Modified, from.Path())
 		}
-
-		for _, chunk := range fp.Chunks() {
-			content := chunk.Content()
-
-			switch chunk.Type() {
-			case diff.Add:
-				lines.Added += int32(strings.Count(content, "\n")) // nolint: gosec
-				if len(content) > 0 && content[len(content)-1] != '\n' {
-					lines.Added++
-				}
-			case diff.Delete:
-				lines.Removed += int32(strings.Count(content, "\n")) // nolint: gosec
-				if len(content) > 0 && content[len(content)-1] != '\n' {
-					lines.Removed++
-				}
-			case diff.Equal:
-				ParseInlineDiff(content, lines)
-			default:
-			}
-		}
 	}
 
 	return files, lines
-}
-
-// ParseInlineDiff parses inline diffs and updates the DiffLines struct.
-func ParseInlineDiff(content string, lines *eventsv1.DiffLines) {
-	matches := InlineDiffRegex.FindAllStringSubmatch(content, -1)
-	for _, match := range matches {
-		if len(match) != 4 {
-			continue
-		}
-
-		marker := match[2]
-		switch marker {
-		case "+":
-			lines.Added++
-		case "-":
-			lines.Removed++
-		}
-	}
 }

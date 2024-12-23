@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"os"
 
 	"github.com/google/uuid"
 	"github.com/knadh/koanf/providers/env"
@@ -10,8 +12,7 @@ import (
 	"github.com/knadh/koanf/v2"
 
 	"go.breu.io/quantm/internal/core/kernel"
-	"go.breu.io/quantm/internal/core/repos"
-	"go.breu.io/quantm/internal/core/repos/defs"
+	"go.breu.io/quantm/internal/core/repos/git"
 	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/hooks/github"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
@@ -39,20 +40,48 @@ func main() {
 	_ = db.Connection().Start(ctx)
 
 	id := uuid.MustParse("019340e8-e115-7253-816b-2261d3128902")
-	r, _ := db.Queries().GetRepo(ctx, id)
+	sha := "0c9b9b0aa97784a5cdfa2cc60d3e97d11def65ba"
+
+	r, err := db.Queries().GetRepo(ctx, id)
+	if err != nil {
+		slog.Error("failed to get repo from db", "error", err)
+		os.Exit(1)
+
+		return
+	}
 
 	path := utils.MustUUID().String()
 	branch := "one"
-	sha := "0c9b9b0aa97784a5cdfa2cc60d3e97d11def65ba"
 
-	clone_pl := &defs.ClonePayload{Repo: &r, Hook: eventsv1.RepoHook_REPO_HOOK_GITHUB, Branch: branch, Path: path, SHA: sha}
-	acts := repos.NewBranchActivities()
-	path, _ = acts.Clone(ctx, clone_pl)
-	rebased, _ := acts.Rebase(ctx, &defs.RebasePayload{Rebase: &eventsv1.Rebase{Base: branch, Head: sha}, Path: path})
+	repo := git.NewRepository(&r, branch, path)
 
-	slog.Info("result", "result", rebased)
+	err = repo.Clone(ctx)
+	if err != nil {
+		_ = err.(*git.RepositoryError).ReportError()
 
-	_ = acts.RemoveDir(ctx, path)
+		os.Exit(1)
+
+		return
+	}
+
+	slog.Info("repo cloned successfully", "path", path)
+
+	diff, err := repo.Diff(ctx, branch, sha)
+	if err != nil {
+		_ = err.(git.GitError).ReportError()
+
+		os.Exit(1)
+	}
+
+	fmt.Println(diff.Patch)
+
+	slog.Info("diff generated successfully", "from", branch, "to", sha, "lines", diff.Lines)
+
+	// Cleanup
+	err = os.RemoveAll(path)
+	if err != nil {
+		slog.Error("failed to remove cloned directory", "path", path, "error", err)
+	}
 }
 
 func configure() *Config {

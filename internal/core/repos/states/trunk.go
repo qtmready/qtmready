@@ -11,16 +11,18 @@ import (
 
 type (
 	Trunk struct {
-		*Base
+		*Base      `json:"base"`
 		MergeQueue *Sequencer[int64, eventsv1.MergeQueue] `json:"merge_queue"`
 
-		done     bool
-		channel  workflow.Channel
-		inflight []*eventsv1.MergeQueue
+		done     bool                   // done flag
+		channel  workflow.Channel       // for cross loop communication
+		inflight []*eventsv1.MergeQueue // in-flight merges
 	}
 )
 
-// - queue process -.
+// - queue process -
+
+// OnMergeQueue is the signal handler for the merge queue.
 func (state Trunk) OnMergeQueue(ctx workflow.Context) durable.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		mq := &events.Event[eventsv1.RepoHook, eventsv1.MergeQueue]{}
@@ -42,6 +44,7 @@ func (state Trunk) OnMergeQueue(ctx workflow.Context) durable.ChannelHandler {
 	}
 }
 
+// StartQueue is the main queue processing loop.
 func (state *Trunk) StartQueue(ctx workflow.Context) {
 	log := workflow.GetLogger(ctx)
 
@@ -50,6 +53,12 @@ func (state *Trunk) StartQueue(ctx workflow.Context) {
 
 		// ahead of line testing
 		// we rebase the changes from the branches that are being tested, this way, we can run tests on each.
+		//
+		// TODO: implement ahead of line testing
+		// we will gather all the branches that are being tested and rebase them on top of the current branch.
+		// this will allow us to run tests on each branch and merge them in order.
+		//
+		// we also will create a shadow branch that will be used to merge the changes into the main branch.
 		log.Info("merge_queue: attempting ahead of line merge ...", "next", next, "in_prgress", state.inflight)
 	}
 }

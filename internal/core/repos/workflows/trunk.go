@@ -15,6 +15,7 @@ func Trunk(ctx workflow.Context, state *states.Trunk) error {
 	mq := workflow.GetSignalChannel(ctx, defs.SignalMergeQueue.String())
 	selector.AddReceive(mq, state.OnMergeQueue(ctx))
 
+	// - queue control -
 	workflow.Go(ctx, state.StartQueue)
 
 	for state.Continue() {
