@@ -13,6 +13,9 @@ type (
 	// CompareOp represents the type of comparison operation.
 	CompareOp string
 
+	// CherryPickOp represents the type of cherry-pick operation.
+	CherryPickOp string
+
 	// RepositoryError represents an error related to repository operations.
 	RepositoryError struct {
 		Op         RepoOp // Operation like "clone", "open"
@@ -36,6 +39,14 @@ type (
 		Repository *Repository
 		internal   error
 	}
+
+	// CherryPickError represents an error during cherry-pick operations.
+	CherryPickError struct {
+		Op         CherryPickOp // Operation like "cherry-pick"
+		CommitHash string       // The commit hash that failed to cherry-pick
+		Repository *Repository
+		internal   error
+	}
 )
 
 // - Repo Operation Constants -.
@@ -54,6 +65,11 @@ const (
 const (
 	OpDiff     CompareOp = "diff"
 	OpAncestor CompareOp = "ancestor"
+)
+
+// - CherryPick Operation Constants -.
+const (
+	OpCherryPick CherryPickOp = "cherry-pick"
 )
 
 // - RepositoryError -
@@ -88,6 +104,7 @@ func (e *RepositoryError) report(level slog.Level) error {
 		slog.String("repo_id", e.Repository.Entity.ID.String()),
 		slog.String("repo_path", e.Repository.Path),
 	}
+
 	if e.internal != nil {
 		attrs = append(attrs, slog.Any("details", e.internal))
 	}
@@ -205,6 +222,57 @@ func NewCompareError(r *Repository, op CompareOp, from, to string) *CompareError
 		Op:         op,
 		From:       from,
 		To:         to,
+		Repository: r,
+	}
+}
+
+// - CherryPickError -
+
+// Error method for CherryPickError.
+func (e *CherryPickError) Error() string {
+	return "cherry-pick error"
+}
+
+// Unwrap method for CherryPickError.
+func (e *CherryPickError) Unwrap() error {
+	return e.internal
+}
+
+// Wrap method to wrap the error.
+func (e *CherryPickError) Wrap(err error) error {
+	e.internal = err
+	return e
+}
+
+func (e *CherryPickError) ReportError() error {
+	return e.report(slog.LevelError)
+}
+
+func (e *CherryPickError) ReportWarn() error {
+	return e.report(slog.LevelWarn)
+}
+
+func (e *CherryPickError) report(level slog.Level) error {
+	attrs := []any{
+		slog.String("operation", string(e.Op)),
+		slog.String("repo_id", e.Repository.Entity.ID.String()),
+		slog.String("repo_path", e.Repository.Path),
+		slog.String("commit_hash", e.CommitHash),
+	}
+	if e.internal != nil {
+		attrs = append(attrs, slog.Any("details", e.internal))
+	}
+
+	slog.Log(context.Background(), level, e.Error(), attrs...)
+
+	return e
+}
+
+// Helper function to create a new CherryPickError.
+func NewCherryPickError(r *Repository, op string, commitHash string) *CherryPickError {
+	return &CherryPickError{
+		Op:         CherryPickOp(op),
+		CommitHash: commitHash,
 		Repository: r,
 	}
 }

@@ -14,7 +14,9 @@ type (
 		*Base
 		MergeQueue *Sequencer[int64, eventsv1.MergeQueue] `json:"merge_queue"`
 
-		done bool
+		done     bool
+		channel  workflow.Channel
+		inflight []*eventsv1.MergeQueue
 	}
 )
 
@@ -40,7 +42,17 @@ func (state Trunk) OnMergeQueue(ctx workflow.Context) durable.ChannelHandler {
 	}
 }
 
-func (state *Trunk) StartQueueProcessor(ctx workflow.Context) {}
+func (state *Trunk) StartQueue(ctx workflow.Context) {
+	log := workflow.GetLogger(ctx)
+
+	for state.Continue() && state.MergeQueue.Peek(ctx) != nil {
+		next := state.MergeQueue.Pop(ctx) // next item
+
+		// ahead of line testing
+		// we rebase the changes from the branches that are being tested, this way, we can run tests on each.
+		log.Info("merge_queue: attempting ahead of line merge ...", "next", next, "in_prgress", state.inflight)
+	}
+}
 
 func (state *Trunk) Continue() bool {
 	return !state.done
@@ -49,6 +61,7 @@ func (state *Trunk) Continue() bool {
 func (state *Trunk) Init(ctx workflow.Context) {
 	state.Base.Init(ctx)
 	state.MergeQueue.Init(ctx)
+	state.channel = workflow.NewChannel(ctx)
 }
 
 func NewTrunk(repo *entities.Repo, chat *entities.ChatLink) *Trunk {
@@ -56,5 +69,7 @@ func NewTrunk(repo *entities.Repo, chat *entities.ChatLink) *Trunk {
 		&Base{Repo: repo, ChatLink: chat},
 		NewSequencer[int64, eventsv1.MergeQueue](),
 		false,
+		nil,
+		make([]*eventsv1.MergeQueue, 0),
 	}
 }
