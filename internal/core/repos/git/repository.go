@@ -8,7 +8,6 @@ import (
 
 	"go.breu.io/quantm/internal/core/kernel"
 	"go.breu.io/quantm/internal/core/repos/cast"
-	"go.breu.io/quantm/internal/core/repos/fns"
 	"go.breu.io/quantm/internal/db/entities"
 )
 
@@ -28,7 +27,7 @@ func (r *Repository) Clone(ctx context.Context) error {
 	}
 
 	hook := cast.HookToProto(r.Entity.Hook)
-	ref := plumbing.NewBranchReferenceName(fns.BranchNameToRef(r.Branch))
+	ref := plumbing.NewBranchReferenceName(r.Branch)
 
 	if err := ref.Validate(); err != nil {
 		return NewRepositoryError(r, OpClone).Wrap(err)
@@ -42,8 +41,7 @@ func (r *Repository) Clone(ctx context.Context) error {
 	cloned, err := gogit.PlainCloneContext(ctx, r.Path, false, &gogit.CloneOptions{
 		URL:           url,
 		ReferenceName: ref,
-		SingleBranch:  true,
-		Depth:         1,
+		SingleBranch:  false,
 	})
 	if err != nil {
 		return NewRepositoryError(r, OpClone).Wrap(err)

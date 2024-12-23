@@ -16,6 +16,10 @@ type (
 	// CherryPickOp represents the type of cherry-pick operation.
 	CherryPickOp string
 
+	GitError interface {
+		ReportError() error
+	}
+
 	// RepositoryError represents an error related to repository operations.
 	RepositoryError struct {
 		Op         RepoOp // Operation like "clone", "open"
