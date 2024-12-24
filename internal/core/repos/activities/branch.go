@@ -231,7 +231,7 @@ func (a *Branch) diff_to_result(_ context.Context, diff *git.Diff) (*eventsv1.Di
 		case git.DeltaModified:
 			result.Files.Modified = append(result.Files.Modified, delta.NewFile.Path)
 		case git.DeltaRenamed:
-			result.Files.Renamed = append(result.Files.Renamed, delta.NewFile.Path)
+			result.Files.Renamed = append(result.Files.Renamed, &eventsv1.RenamedFile{Old: delta.OldFile.Path, New: delta.NewFile.Path})
 		}
 	}
 

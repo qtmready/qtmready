@@ -2,7 +2,6 @@ package git
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/go-git/go-git/v5/plumbing/format/diff"
@@ -10,7 +9,8 @@ import (
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
 )
 
-// Diff returns a diff between two commits.
+// Diff retrieves the diff between two commits specified by their hashes, computes the patch, detects conflicts,
+// and returns an *eventsv1.Diff struct with file changes and line counts.
 func (r *Repository) Diff(ctx context.Context, from, to string) (*eventsv1.Diff, error) {
 	if r.cloned == nil {
 		if err := r.Open(); err != nil {
@@ -33,7 +33,7 @@ func (r *Repository) Diff(ctx context.Context, from, to string) (*eventsv1.Diff,
 		return nil, NewCompareError(r, OpDiff, from, to).Wrap(err)
 	}
 
-	files, lines := PatchToDiff(patch)
+	files, lines := patch_to_files(patch)
 
 	commits := &eventsv1.DiffCommits{
 		Base: from_commit.Hash.String(),
@@ -59,13 +59,12 @@ func (r *Repository) Diff(ctx context.Context, from, to string) (*eventsv1.Diff,
 	}
 
 	stats := patch.Stats()
-
 	for _, stat := range stats {
-		lines.Added += int32(stat.Addition)
-		lines.Removed += int32(stat.Deletion)
+		lines.Added += int32(stat.Addition)   // nolint: gosec
+		lines.Removed += int32(stat.Deletion) // nolint: gosec
 	}
 
-	has_conflict := !(commits.ConflictAt != "")
+	has_conflict := commits.ConflictAt != ""
 
 	return &eventsv1.Diff{
 		Files:       files,
@@ -76,16 +75,17 @@ func (r *Repository) Diff(ctx context.Context, from, to string) (*eventsv1.Diff,
 	}, nil
 }
 
-// PatchToDiff converts a git patch to a DiffFiles and DiffLines struct.
-func PatchToDiff(patch diff.Patch) (*eventsv1.DiffFiles, *eventsv1.DiffLines) {
+// patch_to_files extracts file-level changes from a git patch, returning a *eventsv1.DiffFiles summary.
+// Line counts are handled elsewhere.
+func patch_to_files(patch diff.Patch) (*eventsv1.DiffFiles, *eventsv1.DiffLines) {
 	files := &eventsv1.DiffFiles{
-		Added:    make([]string, 0),
-		Deleted:  make([]string, 0),
-		Modified: make([]string, 0),
-		Renamed:  make([]string, 0),
+		Added:    make([]string, 0),                // List of added files.
+		Deleted:  make([]string, 0),                // List of deleted files.
+		Modified: make([]string, 0),                // List of modified files.
+		Renamed:  make([]*eventsv1.RenamedFile, 0), // List of renamed files.
 	}
 
-	lines := &eventsv1.DiffLines{}
+	lines := &eventsv1.DiffLines{} // Struct to hold line counts (populated elsewhere).
 
 	if patch == nil {
 		return files, lines
@@ -99,7 +99,7 @@ func PatchToDiff(patch diff.Patch) (*eventsv1.DiffFiles, *eventsv1.DiffLines) {
 		} else if to == nil {
 			files.Deleted = append(files.Deleted, from.Path())
 		} else if from.Path() != to.Path() {
-			files.Renamed = append(files.Renamed, fmt.Sprintf("%s => %s", from.Path(), to.Path()))
+			files.Renamed = append(files.Renamed, &eventsv1.RenamedFile{Old: from.Path(), New: to.Path()})
 		} else {
 			files.Modified = append(files.Modified, from.Path())
 		}
