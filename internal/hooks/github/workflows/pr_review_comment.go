@@ -14,33 +14,32 @@ import (
 	"go.breu.io/quantm/internal/pulse"
 )
 
-func PullRequestReview(ctx workflow.Context, prr *defs.PrReview) error {
-	acts := &activities.PullRequestReview{}
+func PullRequestReviewComment(ctx workflow.Context, prrc *defs.PrReviewComment) error {
+	acts := &activities.PullRequestReviewComment{}
 	ctx = dispatch.WithDefaultActivityContext(ctx)
 
-	proto := cast.PrReviewToProto(prr)
+	proto := cast.PrReviewCommentToProto(prrc)
 	hydrated := &defs.HydratedRepoEvent{}
 
 	email := ""
-	if prr.GetSenderEmail() != nil {
-		email = *prr.GetSenderEmail()
+	if prrc.GetSenderEmail() != nil {
+		email = *prrc.GetSenderEmail()
 	}
 
 	{
 		payload := &defs.HydratedRepoEventPayload{
-			RepoID:         prr.GetRepositoryID(),
-			InstallationID: prr.GetInstallationID(),
+			RepoID:         prrc.GetRepositoryID(),
+			InstallationID: prrc.GetInstallationID(),
 			Email:          email,
-			Branch:         repos.BranchNameFromRef(prr.GetHeadBranch()),
+			Branch:         repos.BranchNameFromRef(prrc.GetHeadBranch()),
 		}
 		if err := workflow.ExecuteActivity(ctx, acts.HydrateGithubPREvent, payload).Get(ctx, hydrated); err != nil {
 			return err
 		}
 	}
 
-	// handle actions
 	event := events.
-		New[eventsv1.RepoHook, eventsv1.PullRequestReview]().
+		New[eventsv1.RepoHook, eventsv1.PullRequestReviewComment]().
 		SetHook(eventsv1.RepoHook_REPO_HOOK_GITHUB).
 		SetScope(events.ScopePr).
 		SetSource(hydrated.GetRepoUrl()).
@@ -49,12 +48,12 @@ func PullRequestReview(ctx workflow.Context, prr *defs.PrReview) error {
 		SetSubjectID(hydrated.GetRepoID()).
 		SetPayload(&proto)
 
-	switch prr.GetAction() {
-	case "submitted":
+	switch prrc.GetAction() {
+	case "created":
 		event.SetActionCreated()
 	case "edited":
 		event.SetActionUpdated()
-	case "dismissed":
+	case "deleted":
 		event.SetActionDismissed()
 	default:
 		return nil
@@ -76,7 +75,9 @@ func PullRequestReview(ctx workflow.Context, prr *defs.PrReview) error {
 		return err
 	}
 
-	hevent := &defs.HydratedQuantmEvent[eventsv1.PullRequestReview]{Event: event, Meta: hydrated, Signal: repos.SignalPullRequestReview}
+	hevent := &defs.HydratedQuantmEvent[eventsv1.PullRequestReviewComment]{
+		Event: event, Meta: hydrated, Signal: repos.SignalPullRequestReviewComment,
+	}
 
 	return workflow.ExecuteActivity(ctx, acts.SignalRepoWithGithubPR, hevent).Get(ctx, nil)
 }

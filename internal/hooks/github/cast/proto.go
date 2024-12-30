@@ -89,3 +89,19 @@ func PrReviewToProto(prr *defs.PrReview) eventsv1.PullRequestReview {
 		SubmittedAt:       timestamppb.New(prr.GetSubmittedAt()),
 	}
 }
+
+func PrReviewCommentToProto(prrc *defs.PrReviewComment) eventsv1.PullRequestReviewComment {
+	return eventsv1.PullRequestReviewComment{
+		Id:                prrc.GetCommentID(),
+		PullRequestNumber: prrc.GetPrNumber(),
+		Branch:            prrc.GetHeadBranch(),
+		State:             prrc.GetState(),
+		ReviewId:          prrc.GetReviewID(),
+		CommitSha:         prrc.GetCommitSha(),
+		Path:              prrc.GetPath(),
+		Position:          prrc.GetPosition(),
+		InReplyTo:         *prrc.GetInReplyTo(),
+		AuthorEmail:       *prrc.GetSenderEmail(),
+		SubmittedAt:       timestamppb.New(prrc.GetSubmittedAt()),
+	}
+}
