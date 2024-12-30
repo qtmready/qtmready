@@ -57,7 +57,7 @@ type (
 		RepositoryProjects string `json:"repository_projects"`
 	}
 
-	// https://docs.github.com/en/webhooks/webhook-events-and-payloads?actionType=opened#pull_request
+	// https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-a-user
 	// User represents a Github User.
 	User struct {
 		Login             string  `json:"login"`
@@ -364,6 +364,48 @@ type (
 		PullRequestURL    string    `json:"pull_request_url,omitempty"`
 		State             string    `json:"state,omitempty"`
 		AuthorAssociation string    `json:"author_association,omitempty"`
+	}
+
+	PullRequestComment struct {
+		ID                  int64     `json:"id,omitempty"`
+		NodeID              string    `json:"node_id,omitempty"`
+		InReplyTo           *int64    `json:"in_reply_to_id,omitempty"`
+		Body                string    `json:"body,omitempty"`
+		Path                string    `json:"path,omitempty"`
+		DiffHunk            string    `json:"diff_hunk,omitempty"`
+		PullRequestReviewID int64     `json:"pull_request_review_id,omitempty"`
+		Position            int64     `json:"position,omitempty"`
+		OriginalPosition    int64     `json:"original_position,omitempty"`
+		StartLine           int64     `json:"start_line,omitempty"`
+		Line                int64     `json:"line,omitempty"`
+		OriginalLine        int64     `json:"original_line,omitempty"`
+		OriginalStartLine   int64     `json:"original_start_line,omitempty"`
+		Side                string    `json:"side,omitempty"`
+		StartSide           string    `json:"start_side,omitempty"`
+		CommitID            string    `json:"commit_id,omitempty"`
+		OriginalCommitID    string    `json:"original_commit_id,omitempty"`
+		User                User      `json:"user,omitempty"`
+		Reactions           Reactions `json:"reactions,omitempty"`
+		CreatedAt           time.Time `json:"created_at,omitempty"`
+		UpdatedAt           time.Time `json:"updated_at,omitempty"`
+		AuthorAssociation   string    `json:"author_association,omitempty"`
+		URL                 string    `json:"url,omitempty"`
+		HTMLURL             string    `json:"html_url,omitempty"`
+		PullRequestURL      string    `json:"pull_request_url,omitempty"`
+		SubjectType         string    `json:"subject_type,omitempty"`
+	}
+
+	Reactions struct {
+		TotalCount *int    `json:"total_count,omitempty"`
+		PlusOne    *int    `json:"+1,omitempty"`
+		MinusOne   *int    `json:"-1,omitempty"`
+		Laugh      *int    `json:"laugh,omitempty"`
+		Confused   *int    `json:"confused,omitempty"`
+		Heart      *int    `json:"heart,omitempty"`
+		Hooray     *int    `json:"hooray,omitempty"`
+		Rocket     *int    `json:"rocket,omitempty"`
+		Eyes       *int    `json:"eyes,omitempty"`
+		URL        *string `json:"url,omitempty"`
 	}
 )
 

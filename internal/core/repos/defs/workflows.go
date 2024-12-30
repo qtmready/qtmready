@@ -14,13 +14,14 @@ const (
 
 // signals.
 const (
-	SignalPush              queues.Signal = "push"        // signals a push event.
-	SignalRef               queues.Signal = "ref"         // signals a branch event.
-	SignalPullRequest       queues.Signal = "pr"          // signals a pull request event.
-	SignalRebase            queues.Signal = "rebase"      // signals a rebase event.
-	SignalPullRequestLabel  queues.Signal = "pr_label"    // signals a pull request label event.
-	SignalPullRequestReview queues.Signal = "pr_review"   // signals a pull request review event.
-	SignalMergeQueue        queues.Signal = "merge_queue" // signals a pull request queue event.
+	SignalPush                     queues.Signal = "push"              // signals a push event.
+	SignalRef                      queues.Signal = "ref"               // signals a branch event.
+	SignalPullRequest              queues.Signal = "pr"                // signals a pull request event.
+	SignalRebase                   queues.Signal = "rebase"            // signals a rebase event.
+	SignalPullRequestLabel         queues.Signal = "pr_label"          // signals a pull request label event.
+	SignalPullRequestReview        queues.Signal = "pr_review"         // signals a pull request review event.
+	SignalPullRequestReviewComment queues.Signal = "pr_review_comment" // signals a pull request review comment event.
+	SignalMergeQueue               queues.Signal = "merge_queue"       // signals a pull request queue event.
 )
 
 const (

@@ -43,6 +43,16 @@ type (
 		Repository   RepositoryPR       `json:"repository"`
 		Sender       *User              `json:"sender"`
 	}
+
+	PrReviewComment struct {
+		Action       string              `json:"action"`
+		Number       int64               `json:"number"`
+		Installation InstallationID      `json:"installation"`
+		Comment      *PullRequestComment `json:"comment"`
+		PullRequest  PullRequest         `json:"pull_request"`
+		Repository   RepositoryPR        `json:"repository"`
+		Sender       *User               `json:"sender"`
+	}
 )
 
 // ---------------------------------- Push Event ----------------------------------.
@@ -166,4 +176,61 @@ func (prr *PrReview) GetSubmittedAt() time.Time {
 
 func (prr *PrReview) GetState() string {
 	return prr.Review.State
+}
+
+// ---------------------------------- Pull Request Review Comment Event ----------------------------------.
+func (prrc *PrReviewComment) GetAction() string {
+	return prrc.Action
+}
+
+func (prrc *PrReviewComment) GetCommentID() int64 {
+	return prrc.Comment.ID
+}
+
+func (prrc *PrReviewComment) GetPrNumber() int64 {
+	return prrc.Number
+}
+
+func (prrc *PrReviewComment) GetState() string {
+	return prrc.Comment.Body // TODO - need to decide.
+}
+
+func (prrc *PrReviewComment) GetInReplyTo() *int64 {
+	return prrc.Comment.InReplyTo
+}
+
+func (prrc *PrReviewComment) GetCommitSha() string {
+	return prrc.Comment.CommitID
+}
+
+func (prrc *PrReviewComment) GetReviewID() int64 {
+	return prrc.Comment.PullRequestReviewID
+}
+
+func (prrc *PrReviewComment) GetPath() string {
+	return prrc.Comment.Path
+}
+
+func (prrc *PrReviewComment) GetPosition() int64 {
+	return prrc.Comment.Position
+}
+
+func (prrc *PrReviewComment) GetRepositoryID() int64 {
+	return prrc.Repository.ID
+}
+
+func (prrc *PrReviewComment) GetHeadBranch() string {
+	return prrc.PullRequest.Head.Ref
+}
+
+func (prrc *PrReviewComment) GetInstallationID() int64 {
+	return prrc.Installation.ID
+}
+
+func (prrc *PrReviewComment) GetSenderEmail() *string {
+	return prrc.Sender.Email
+}
+
+func (prrc *PrReviewComment) GetSubmittedAt() time.Time {
+	return prrc.Comment.CreatedAt
 }
