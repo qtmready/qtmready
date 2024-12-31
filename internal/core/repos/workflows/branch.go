@@ -31,6 +31,9 @@ func Branch(ctx workflow.Context, state *states.Branch) error {
 	prr := workflow.GetSignalChannel(ctx, defs.SignalPullRequestReview.String())
 	selector.AddReceive(prr, state.OnPrReview(ctx))
 
+	prrc := workflow.GetSignalChannel(ctx, defs.SignalPullRequestReviewComment.String())
+	selector.AddReceive(prrc, state.OnPRReviewComment(ctx))
+
 	// - event loop -
 
 	for !state.ExitLoop(ctx) {
