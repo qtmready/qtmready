@@ -37,6 +37,9 @@ func Repo(ctx workflow.Context, state *states.Repo) error {
 	mq := workflow.GetSignalChannel(ctx, defs.SignalMergeQueue.String())
 	selector.AddReceive(mq, state.OnMergeQueue(ctx))
 
+	prrc := workflow.GetSignalChannel(ctx, defs.SignalPullRequestReviewComment.String())
+	selector.AddReceive(prrc, state.OnPRReviewComment(ctx))
+
 	// - event loop -
 
 	for !state.RestartRecommended(ctx) {

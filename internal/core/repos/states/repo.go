@@ -87,8 +87,16 @@ func (state *Repo) OnPR(ctx workflow.Context) durable.ChannelHandler {
 	}
 }
 
-// OnLabel handles the pull request event with label on the repository.
+// OnPRReview handles the pull request review event with on the repository.
 func (state *Repo) OnPRReview(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		label := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestReview]{}
+		state.rx(ctx, rx, label)
+	}
+}
+
+// OnPRReviewComment handles the pull request event review comment with on the repository.
+func (state *Repo) OnPRReviewComment(ctx workflow.Context) durable.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		label := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestReview]{}
 		state.rx(ctx, rx, label)

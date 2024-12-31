@@ -124,7 +124,7 @@ func (state *Branch) OnRebase(ctx workflow.Context) durable.ChannelHandler {
 	}
 }
 
-// on_label handles pull request label events.
+// OnLabel handles pull request label events.
 func (state *Branch) OnLabel(ctx workflow.Context) durable.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestLabel]{}
@@ -141,8 +141,16 @@ func (state *Branch) OnLabel(ctx workflow.Context) durable.ChannelHandler {
 	}
 }
 
-// on_label handles pull request label events.
+// OnPrReview handles pull request review events.
 func (state *Branch) OnPrReview(ctx workflow.Context) durable.ChannelHandler {
+	return func(rx workflow.ReceiveChannel, more bool) {
+		event := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestReview]{}
+		state.rx(ctx, rx, event)
+	}
+}
+
+// OnPRReviewComment handles pull request review comment events.
+func (state *Branch) OnPRReviewComment(ctx workflow.Context) durable.ChannelHandler {
 	return func(rx workflow.ReceiveChannel, more bool) {
 		event := &events.Event[eventsv1.RepoHook, eventsv1.PullRequestReview]{}
 		state.rx(ctx, rx, event)
