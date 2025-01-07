@@ -31,7 +31,7 @@ cp .env.example .env
 Start the necessary services using Docker Compose. This inlcudes
 
 - temporal-db: Postgres 16.x for required for temporal
-- temporal: 1.25.x, it derives the main logic of the application
+- temporal: 1.25.x, it drives the main logic of the application
 - db: Postgres 16.x for the main database
 
   ```bash
