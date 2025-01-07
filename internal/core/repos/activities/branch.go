@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 
 	git "github.com/jeffwelling/git2go/v37"
 
@@ -23,7 +24,7 @@ type (
 func (a *Branch) Clone(ctx context.Context, payload *defs.ClonePayload) (string, error) {
 	url, err := kernel.Get().RepoHook(payload.Hook).TokenizedCloneUrl(ctx, payload.Repo)
 	if err != nil {
-		slog.Warn("clone: unable to get tokenized url ...", "error", err)
+		slog.Warn("clone: unable to get tokenized url", "error", err)
 		return "", err
 	}
 
@@ -35,10 +36,11 @@ func (a *Branch) Clone(ctx context.Context, payload *defs.ClonePayload) (string,
 		CheckoutBranch: payload.Branch,
 	}
 
-	cloned, err := git.Clone(url, fmt.Sprintf("/tmp/%s", payload.Path), opts)
-	if err != nil {
-		slog.Warn("clone: failed ...", "error", err, "url", url, "path", fmt.Sprintf("/tmp/%s", payload.Path))
+	path := fmt.Sprintf("/tmp/%s", payload.Path)
 
+	cloned, err := git.Clone(url, path, opts)
+	if err != nil {
+		slog.Warn("clone: failed", "error", err, "url", url, "path", path)
 		return "", err
 	}
 
@@ -75,7 +77,7 @@ func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1
 
 	base, err := a.tree_from_branch(ctx, repo, payload.Base)
 	if err != nil {
-		slog.Warn("diff: unable to process base", "base", base)
+		slog.Warn("diff: unable to process base", "base", payload.Base, "error", err)
 		return nil, err
 	}
 
@@ -83,7 +85,7 @@ func (a *Branch) Diff(ctx context.Context, payload *defs.DiffPayload) (*eventsv1
 
 	head, err := a.tree_from_sha(ctx, repo, payload.SHA)
 	if err != nil {
-		slog.Warn("diff: unable to process head", "head", payload.SHA)
+		slog.Warn("diff: unable to process head", "head", payload.SHA, "error", err)
 		return nil, err
 	}
 
@@ -183,8 +185,6 @@ func (a *Branch) Rebase(ctx context.Context, payload *defs.RebasePayload) (*defs
 		return result, nil
 	}
 
-	rebase = nil
-
 	return result, nil
 }
 
@@ -212,28 +212,44 @@ func (a *Branch) NotifyMergeConflict(ctx context.Context, event *events.Event[ev
 // diff_to_result converts a git.Diff to a DiffResult.
 func (a *Branch) diff_to_result(_ context.Context, diff *git.Diff) (*eventsv1.Diff, error) {
 	result := &eventsv1.Diff{Files: &eventsv1.DiffFiles{}, Lines: &eventsv1.DiffLines{}}
-
 	deltas, err := diff.NumDeltas()
+
 	if err != nil {
 		slog.Warn("Failed to get number of deltas", "error", err)
 		return nil, err
 	}
 
-	for idx := 0; idx < deltas; idx++ {
-		delta, _ := diff.Delta(idx)
+	// use a sync.Map for concurrent safe updates
+	var mutex sync.Mutex
 
-		switch delta.Status { // nolint:exhaustive
-		default:
-		case git.DeltaAdded:
-			result.Files.Added = append(result.Files.Added, delta.NewFile.Path)
-		case git.DeltaDeleted:
-			result.Files.Deleted = append(result.Files.Deleted, delta.OldFile.Path)
-		case git.DeltaModified:
-			result.Files.Modified = append(result.Files.Modified, delta.NewFile.Path)
-		case git.DeltaRenamed:
-			result.Files.Renamed = append(result.Files.Renamed, &eventsv1.RenamedFile{Old: delta.OldFile.Path, New: delta.NewFile.Path})
-		}
+	// use a go routine to handle diff deltas in parallel
+	var wg sync.WaitGroup
+
+	wg.Add(deltas)
+
+	for idx := 0; idx < deltas; idx++ {
+		go func(i int) {
+			defer wg.Done()
+
+			delta, _ := diff.Delta(i)
+
+			mutex.Lock()
+			defer mutex.Unlock()
+
+			switch delta.Status { // nolint:exhaustive
+			case git.DeltaAdded:
+				result.Files.Added = append(result.Files.Added, delta.NewFile.Path)
+			case git.DeltaDeleted:
+				result.Files.Deleted = append(result.Files.Deleted, delta.OldFile.Path)
+			case git.DeltaModified:
+				result.Files.Modified = append(result.Files.Modified, delta.NewFile.Path)
+			case git.DeltaRenamed:
+				result.Files.Renamed = append(result.Files.Renamed, &eventsv1.RenamedFile{Old: delta.OldFile.Path, New: delta.NewFile.Path})
+			}
+		}(idx)
 	}
+
+	wg.Wait()
 
 	stats, err := diff.Stats()
 	if err != nil {
@@ -405,13 +421,12 @@ func (a *Branch) rebase_op(
 
 		return err
 	}
-
 	defer idx.Free()
 
-	if conflicts, err := a.get_conflicts(ctx, idx); err != nil {
+	conflicts, err := a.get_conflicts(ctx, idx)
+	if err != nil {
 		result.AddOperation(op.Type, defs.RebaseStatusFailure, commit.Id().String(), commit.Message(), err)
 		result.SetStatusFailure(err)
-
 		a.rebase_abort(ctx, rebase)
 
 		return err
@@ -517,7 +532,6 @@ func (a *Branch) refresh_remote(_ context.Context, repo *git.Repository, branch 
 	if err != nil {
 		return err
 	}
-
 	defer ref.Free()
 
 	_, err = repo.References.Create(fns.BranchNameToRef(branch), ref.Target(), true, "")

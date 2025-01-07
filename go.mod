@@ -12,7 +12,7 @@ require (
 	github.com/gobeam/stringy v0.0.7
 	github.com/gocql/gocql v1.7.0
 	github.com/google/go-github/v62 v62.0.0
-	github.com/gosimple/slug v1.14.0
+	github.com/gosimple/slug v1.15.0
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/jeffwelling/git2go/v37 v37.0.4
 	github.com/knadh/koanf/providers/env v1.0.0
@@ -31,8 +31,6 @@ require (
 	golang.org/x/net v0.33.0
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241223144023-3abc09e42ca8
 )
-
-require github.com/google/go-github/v66 v66.0.0 // indirect
 
 require (
 	cloud.google.com/go/compute/metadata v0.6.0
@@ -61,6 +59,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/google/go-github/v66 v66.0.0 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3 // indirect
@@ -115,3 +114,5 @@ require (
 	gopkg.in/warnings.v0 v0.1.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/jeffwelling/git2go/v37 => github.com/breuhq/git2go/v37 v37.0.4
