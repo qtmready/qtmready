@@ -1,18 +1,38 @@
 {
-  description = "⚛";
+  description = "quantm.io";
 
   inputs = {
-    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixpkgs-unstable";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-24.05";
+    flake-utils.url = "github:numtide/flake-utils";
 
-    # We want to stay as up to date as possible but need to be careful that the
-    # glibc versions used by our dependencies from Nix are compatible with the
-    # system glibc that the user is building for.
-    nixpkgs-stable.url = "github:nixos/nixpkgs/release-24.11";
-
-    # Used for shell.nix
-    flake-compat = {
-      url = "github:edolstra/flake-compat";
-      flake = false;
-    };
+    # breu-go.url = "github:breuhq/flake-go";
+    breu-go.url = "/Users/jay/Work/breu/flake-go";
   };
+
+  outputs = {
+    nixpkgs,
+    breu-go,
+    flake-utils,
+    ...
+  }:
+    flake-utils.lib.eachDefaultSystem (
+      system: let
+        pkgs = import nixpkgs {inherit system;};
+
+        # Apply the breu-go overlay
+        pkgs' = pkgs.extend (final: prev: breu-go.overlay.${system} final prev);
+
+        # Add libgit2 to the base environment
+        base = pkgs'.setup.base [
+          pkgs.openssl
+          pkgs.libgit2
+        ];
+
+        # Set up the development shell with our base packages
+        shell = pkgs'.setup.shell base [];
+      in {
+        devShells.default = shell;
+        # packages.quantm = quantm;
+      }
+    );
 }
