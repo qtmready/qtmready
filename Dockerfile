@@ -1,10 +1,6 @@
 FROM cgr.dev/chainguard/wolfi-base AS builder
 
-ARG version=1.21
-
 WORKDIR /src
-
-RUN apk update && apk search --no-cache -v -d libgit2-dev
 
 # Install build dependencies - go build toolchain, and git2go build dependencies (libgit2)
 RUN apk update && \
@@ -17,7 +13,7 @@ RUN apk update && \
   pcre2-dev \
   zlib-dev \
   libssh2-dev \
-  libgit2-dev=1.7.0-r2
+  libgit2-dev=1.7.2-r0
 
 # Copy source code
 COPY go.mod go.sum ./
