@@ -6,11 +6,11 @@
         "nixpkgs": "nixpkgs"
       },
       "locked": {
-        "lastModified": 1736359215,
-        "narHash": "sha256-ss2vnMvAqFerXBH2PwnOVJK3W//skn6Ayma1iexbW1Q=",
+        "lastModified": 1736505693,
+        "narHash": "sha256-C/NnX2Vn7YZVyefN5OYb16diKTUdkWtphjakMBSiNqs=",
         "owner": "breuhq",
         "repo": "flake-go",
-        "rev": "d005c492d5c20c31f9875f39d0e6f1968cf94576",
+        "rev": "969e5115aa055cb009175dd32b3f4170f102972f",
         "type": "github"
       },
       "original": {

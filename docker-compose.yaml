@@ -39,7 +39,7 @@ services:
     ports:
       - 7233:7233
     volumes:
-      - ./deploy/temporal/dynamicconfig/:/etc/temporal/config/dynamicconfig/
+      - ./tools/temporal/dynamicconfig/:/etc/temporal/config/dynamicconfig/
     networks:
       - ctrlplane
 
