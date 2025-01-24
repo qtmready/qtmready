@@ -46,11 +46,10 @@ var (
 	DefaultConfig = config.Default
 )
 
-// Configure initializes the durable layer with the given configuration options.
+// Configure initializes the durable layer and instantiates the Temporal client.
 //
-// The configuration is applied once, on the first call to Configure. Subsequent calls will have no effect.
-//
-// If initialization fails, an error will be returned.
+// Configuration is applied once; subsequent calls are no-ops. An error is returned if Temporal client
+// initialization fails.
 func Configure(opts ...ConfigOption) error {
 	var err error
 

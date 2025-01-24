@@ -12,14 +12,11 @@ import (
 
 	"go.breu.io/quantm/internal/auth"
 	"go.breu.io/quantm/internal/core/kernel"
-	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/migrations"
 	"go.breu.io/quantm/internal/durable"
 	"go.breu.io/quantm/internal/hooks/github"
 	"go.breu.io/quantm/internal/hooks/slack"
-	"go.breu.io/quantm/internal/nomad"
 	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
-	"go.breu.io/quantm/internal/pulse"
 )
 
 const (
@@ -47,7 +44,6 @@ func main() {
 	quit := make(chan os.Signal, 1)
 
 	// - configure services
-
 	github.Configure(github.WithConfig(cfg.Github))
 	slack.Configure(slack.WithConfig(cfg.Slack))
 	kernel.Configure(
@@ -65,25 +61,15 @@ func main() {
 	q_core()
 	q_hooks()
 
-	nmd := nomad.New(nomad.WithConfig(cfg.Nomad))
-
 	// - configure dependency graph for services
 
 	app := graceful.New()
-
-	app.Add(DB, db.Connection(db.WithConfig(cfg.DB)))
-	app.Add(Pulse, pulse.Instance(pulse.WithConfig(cfg.Pulse)))
-	app.Add(Durable, durable.Instance())
-	app.Add(Github, github.Get())
-	app.Add(CoreQ, durable.OnCore(), DB, Durable, Pulse, Github)
-	app.Add(HooksQ, durable.OnHooks(), DB, Durable, Pulse, Github)
-	app.Add(Nomad, nmd, DB, Durable, Pulse, Github)
-	app.Add(Webhook, NewWebhookServer(), DB, Durable, Github)
-	app.Add(Kernel, kernel.Get(), Github)
+	cfg.Parse(app)
+	cfg.Dependencies(app)
 
 	// - if the migrate flag is set, run migrations and exit
 
-	if cfg.Migrate {
+	if cfg.Mode == ModeMigrate {
 		if err := migrations.Run(ctx, cfg.DB); err != nil {
 			slog.Error("unable to migrate database", "error", err.Error())
 		}
