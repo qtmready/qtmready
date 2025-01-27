@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/go-playground/validator/v10"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/structs"
 	"github.com/knadh/koanf/v2"
@@ -38,10 +39,10 @@ import (
 type (
 	// Config represents the Temporal configuration.
 	Config struct {
-		Namespace string `json:"namespace" koanf:"NAMESPACE"` // Temporal namespace.
-		Host      string `json:"host" koanf:"HOST"`           // Temporal host.
-		Port      int    `json:"port" koanf:"PORT"`           // Temporal port.
-		Skip      int    `json:"skip" koanf:"LOG_SKIP"`       // Skip frames for logging.
+		Namespace string `json:"namespace" koanf:"NAMESPACE" validate:"required"` // Temporal namespace.
+		Host      string `json:"host" koanf:"HOST" validate:"required"`           // Temporal host.
+		Port      int    `json:"port" koanf:"PORT" validate:"required"`           // Temporal port.
+		Skip      int    `json:"skip" koanf:"LOG_SKIP"`                           // Skip frames for logging.
 
 		client client.Client // Temporal client.
 		once   *sync.Once    // We can have only one Temporal client per configuration.
@@ -62,8 +63,18 @@ var (
 	}
 )
 
+func (c *Config) Validate() error {
+	validate := validator.New()
+
+	return validate.Struct(c)
+}
+
 // Start is a no-op function to satisfy the graceful.Service interface.
-func (c *Config) Start(ctx context.Context) error { return nil }
+func (c *Config) Start(ctx context.Context) error {
+	_, err := c.Client()
+
+	return err
+}
 
 // Stop is a no-op function to satisfy the graceful.Service interface.
 func (c *Config) Stop(ctx context.Context) error { return nil }

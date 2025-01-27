@@ -9,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
+	"github.com/go-playground/validator/v10"
 	gh "github.com/google/go-github/v62/github"
 
 	pkgerrors "go.breu.io/quantm/internal/hooks/github/errors"
@@ -17,16 +18,21 @@ import (
 type (
 	// Config holds configuration settings for the GitHub integration.
 	Config struct {
-		AppID              int64  `koanf:"APP_ID"`                // GitHub App ID.
-		ClientID           string `koanf:"CLIENT_ID"`             // GitHub Client ID.
-		WebhookSecret      string `koanf:"WEBHOOK_SECRET"`        // Secret for verifying webhook requests.
-		PrivateKey         string `koanf:"PRIVATE_KEY"`           // Private key for the GitHub API.
-		PrivateKeyIsBase64 bool   `koanf:"PRIVATE_KEY_IS_BASE64"` // If true, the private key is base64 encoded.
+		AppID              int64  `koanf:"APP_ID" validate:"required"`         // GitHub App ID.
+		ClientID           string `koanf:"CLIENT_ID" validate:"required"`      // GitHub Client ID.
+		WebhookSecret      string `koanf:"WEBHOOK_SECRET" validate:"required"` // Secret for verifying webhook requests.
+		PrivateKey         string `koanf:"PRIVATE_KEY" validate:"required"`    // Private key for the GitHub API.
+		PrivateKeyIsBase64 bool   `koanf:"PRIVATE_KEY_IS_BASE64"`              // If true, the private key is base64 encoded.
 	}
 
 	// ConfigOption is a function that modifies a Config.
 	ConfigOption func(*Config)
 )
+
+func (cfg *Config) Validate() error {
+	validate := validator.New()
+	return validate.Struct(cfg)
+}
 
 // Start is a no-op function that satisfies the graceful Service interface.
 func (cfg *Config) Start(ctx context.Context) error {

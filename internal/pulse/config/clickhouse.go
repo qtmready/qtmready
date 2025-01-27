@@ -8,28 +8,29 @@ import (
 
 	"github.com/ClickHouse/clickhouse-go/v2"
 	"github.com/ClickHouse/clickhouse-go/v2/lib/driver"
+	"github.com/go-playground/validator/v10"
 )
 
 type (
-	// Clickhouse encapsulates configuration and connection management for a ClickHouse database.
-	Clickhouse struct {
-		Host     string `json:"host" koanf:"HOST"` // Database host address.
-		Port     int    `json:"port" koanf:"PORT"` // Database port number.
-		User     string `json:"user" koanf:"USER"` // Database username.
-		Password string `json:"pass" koanf:"PASS"` // Database password.
-		Name     string `json:"name" koanf:"NAME"` // Database name.
+	// Config encapsulates configuration and connection management for a ClickHouse database.
+	Config struct {
+		Host     string `json:"host" koanf:"HOST" validate:"required"` // Database host address.
+		Port     int    `json:"port" koanf:"PORT" validate:"required"` // Database port number.
+		User     string `json:"user" koanf:"USER" validate:"required"` // Database username.
+		Password string `json:"pass" koanf:"PASS" validate:"required"` // Database password.
+		Name     string `json:"name" koanf:"NAME" validate:"required"` // Database name.
 
 		conn driver.Conn // Established database connection.
 		once *sync.Once  // Ensures single connection initialization.
 	}
 
-	// ClickhouseOption provides a functional option for customizing Clickhouse configurations.
-	ClickhouseOption func(*Clickhouse)
+	// Option provides a functional option for customizing Clickhouse configurations.
+	Option func(*Config)
 )
 
 var (
-	// DefaultClickhouseConfig defines the default configuration for connecting to a ClickHouse database.
-	DefaultClickhouseConfig = Clickhouse{
+	// DefaultConfig defines the default configuration for connecting to a ClickHouse database.
+	DefaultConfig = Config{
 		Host:     "localhost", // Default host is localhost.
 		Port:     6666,        // Default port is 9000.  Native ClickHouse port.
 		User:     "ctrlplane", // Default username.
@@ -40,10 +41,16 @@ var (
 	}
 )
 
+func (c *Config) Validate() error {
+	v := validator.New()
+
+	return v.Struct(c)
+}
+
 // connect establishes a connection to the ClickHouse database.  The function attempts to connect to ClickHouse using the
 // instance's configuration parameters.  Includes a ping to verify the connection's health.  Returns an error if the connection
 // cannot be established or the ping fails. The context allows for connection timeout and cancellation.
-func (c *Clickhouse) connect(ctx context.Context) error {
+func (c *Config) connect(ctx context.Context) error {
 	slog.Info("pulse/clickhose: connecting clickhouse ...", "host", c.Host, "port", c.Port, "user", c.User, "name", c.Name)
 
 	conn, err := clickhouse.Open(&clickhouse.Options{
@@ -70,19 +77,19 @@ func (c *Clickhouse) connect(ctx context.Context) error {
 }
 
 // GetAddress formats the ClickHouse server address as "host:port".
-func (c *Clickhouse) GetAddress() string {
+func (c *Config) GetAddress() string {
 	return fmt.Sprintf("%s:%d", c.Host, c.Port)
 }
 
 // Connection returns the established ClickHouse database connection.
-func (c *Clickhouse) Connection() driver.Conn {
+func (c *Config) Connection() driver.Conn {
 	return c.conn
 }
 
 // Start initiates a connection to the ClickHouse database.  Uses a sync.Once to ensure the connection is established only
 // once, even with concurrent calls.  The provided context allows for cancellation or timeout during connection establishment.
 // Returns an error from the connect function.
-func (c *Clickhouse) Start(ctx context.Context) error {
+func (c *Config) Start(ctx context.Context) error {
 	var err error
 
 	c.once.Do(func() {
@@ -95,7 +102,7 @@ func (c *Clickhouse) Start(ctx context.Context) error {
 // Stop closes the existing ClickHouse database connection gracefully.  Checks for a nil connection to avoid potential
 // panics. Returns any error encountered while closing the connection. The context is not utilized in the current
 // implementation, but remains for potential future enhancements (e.g., connection draining).
-func (c *Clickhouse) Stop(_ context.Context) error {
+func (c *Config) Stop(_ context.Context) error {
 	if c.conn == nil {
 		return nil
 	}
@@ -103,44 +110,44 @@ func (c *Clickhouse) Stop(_ context.Context) error {
 	return c.conn.Close()
 }
 
-// WithClickhouseHost sets the host address for the ClickHouse connection.
-func WithClickhouseHost(host string) ClickhouseOption {
-	return func(c *Clickhouse) {
+// WithHost sets the host address for the ClickHouse connection.
+func WithHost(host string) Option {
+	return func(c *Config) {
 		c.Host = host
 	}
 }
 
-// WithClickhousePort sets the port number for the ClickHouse connection.
-func WithClickhousePort(port int) ClickhouseOption {
-	return func(c *Clickhouse) {
+// WithPort sets the port number for the ClickHouse connection.
+func WithPort(port int) Option {
+	return func(c *Config) {
 		c.Port = port
 	}
 }
 
-// WithClickhouseUser sets the username for the ClickHouse connection.
-func WithClickhouseUser(user string) ClickhouseOption {
-	return func(c *Clickhouse) {
+// WithUser sets the username for the ClickHouse connection.
+func WithUser(user string) Option {
+	return func(c *Config) {
 		c.User = user
 	}
 }
 
-// WithClickhousePassword sets the password for the ClickHouse connection.
-func WithClickhousePassword(password string) ClickhouseOption {
-	return func(c *Clickhouse) {
+// WithPassword sets the password for the ClickHouse connection.
+func WithPassword(password string) Option {
+	return func(c *Config) {
 		c.Password = password
 	}
 }
 
-// WithClickhouseName sets the database name for the ClickHouse connection.
-func WithClickhouseName(name string) ClickhouseOption {
-	return func(c *Clickhouse) {
+// WithName sets the database name for the ClickHouse connection.
+func WithName(name string) Option {
+	return func(c *Config) {
 		c.Name = name
 	}
 }
 
-// WithClickhouseConfig applies a given Clickhouse configuration.
-func WithClickhouseConfig(cfg *Clickhouse) ClickhouseOption {
-	return func(c *Clickhouse) {
+// WithConfig applies a given Clickhouse configuration.
+func WithConfig(cfg *Config) Option {
+	return func(c *Config) {
 		c.Host = cfg.Host
 		c.Port = cfg.Port
 		c.User = cfg.User
@@ -149,10 +156,10 @@ func WithClickhouseConfig(cfg *Clickhouse) ClickhouseOption {
 	}
 }
 
-// NewClickhouse creates a new Clickhouse instance with the provided options.  Applies the functional options to
+// New creates a new Clickhouse instance with the provided options.  Applies the functional options to
 // customize the default configuration. Returns a pointer to the newly created Clickhouse instance.
-func NewClickhouse(opts ...ClickhouseOption) *Clickhouse {
-	cfg := &DefaultClickhouseConfig
+func New(opts ...Option) *Config {
+	cfg := &DefaultConfig
 
 	for _, opt := range opts {
 		opt(cfg)

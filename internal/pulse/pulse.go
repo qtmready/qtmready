@@ -26,11 +26,11 @@ func WithConfig(cfg *Config) Option {
 	return config.WithConfig(cfg)
 }
 
-// Instance returns the singleton instance of the Pulse configuration.
+// Get returns the singleton instance of the Pulse configuration.
 //
 // It initializes Pulse with the provided options if it hasn't been initialized yet. The initialization is thread-safe,
-// guaranteed by the sync.Once usage.  Instance returns a pointer to the initialized Config instance.
-func Instance(opts ...Option) *Config {
+// guaranteed by the sync.Once usage.  Get returns a pointer to the initialized Config instance.
+func Get(opts ...Option) *Config {
 	once.Do(func() {
 		slog.Info("pulse: configuring ...")
 

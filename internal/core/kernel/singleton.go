@@ -1,7 +1,6 @@
 package kernel
 
 import (
-	"log/slog"
 	"sync"
 )
 
@@ -18,8 +17,6 @@ func Configure(opts ...Option) {
 
 func Get() Kernel {
 	once.Do(func() {
-		slog.Warn("kernel: Get() called before Configure()")
-
 		_k = New()
 	})
 

@@ -41,5 +41,5 @@ func CreateEventsTable(ctx context.Context, slug string) error {
 	table := table_name("events", slug)
 	stmt := fmt.Sprintf(statement__events__create, table)
 
-	return Instance().Connection().Exec(ctx, stmt)
+	return Get().Connection().Exec(ctx, stmt)
 }

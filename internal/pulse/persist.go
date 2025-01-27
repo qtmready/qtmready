@@ -60,7 +60,7 @@ func PersistRepoEvent(ctx context.Context, flat events.Flat[eventsv1.RepoHook]) 
 	table := table_name("events", slug)
 	stmt := fmt.Sprintf(statement__events__persist, table)
 
-	return Instance().
+	return Get().
 		Connection().
 		Exec(
 			ctx,
@@ -91,7 +91,7 @@ func PersistChatEvent(ctx context.Context, flat events.Flat[eventsv1.ChatHook]) 
 	table := table_name("events", slug)
 	stmt := fmt.Sprintf(statement__events__persist, table)
 
-	return Instance().
+	return Get().
 		Connection().
 		Exec(
 			ctx,

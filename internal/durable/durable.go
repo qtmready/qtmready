@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"go.breu.io/durex/queues"
-	sdk "go.temporal.io/sdk/client"
 
 	"go.breu.io/quantm/internal/durable/config"
 )
@@ -16,9 +15,6 @@ var (
 	// configured is the instantiated configuration.
 	configured *Config
 	configonce sync.Once
-
-	// client is the configured Temporal client.
-	client sdk.Client
 
 	// coreq is the core queue.
 	coreq     queues.Queue
@@ -44,51 +40,19 @@ type (
 var (
 	// DefaultConfig is the default configuration for the durable layer.
 	DefaultConfig = config.Default
+
+	WithConfig = config.WithConfig
 )
 
-// Configure initializes the durable layer and instantiates the Temporal client.
+// Get is a singleton that holds the temporal client.
 //
-// Configuration is applied once; subsequent calls are no-ops. An error is returned if Temporal client
-// initialization fails.
-func Configure(opts ...ConfigOption) error {
-	var err error
-
+// Please note that the actual client is not created until the first call Get().Client().
+func Get(opts ...ConfigOption) *Config {
 	configonce.Do(func() {
 		configured = config.New(opts...)
-		client, err = configured.Client()
 	})
 
-	return err
-}
-
-func Instance(opts ...ConfigOption) *Config {
-	if configured == nil {
-		slog.Warn("durable: instance not configured, configuring using default configuration")
-
-		if err := Configure(opts...); err != nil {
-			panic(err)
-		}
-	}
-
 	return configured
-}
-
-// Client returns the configured Temporal client.
-//
-// If the client is not yet initialized, it will be initialized using the default configuration.
-// If initialization fails, the program will panic.
-//
-// For predictable behavior, initialize the client using Configure prior to usage, typically within the main function.
-func Client() sdk.Client {
-	if client == nil {
-		slog.Warn("durable: client not configured, configuring using default configuration")
-
-		if err := Configure(); err != nil {
-			panic(err)
-		}
-	}
-
-	return client
 }
 
 // -- Queues --
@@ -100,7 +64,13 @@ func Client() sdk.Client {
 //	io.ctrlpane.core.{block}.{block_id}.{element}.{element_id}.{modifier}.{modifier_id}....
 func OnCore() queues.Queue {
 	coreqonce.Do(func() {
-		coreq = queues.New(queues.WithName("core"), queues.WithClient(Client()))
+		client, err := Get().Client()
+		if err != nil {
+			slog.Error("durable: unable to connect to durable server ...", "error", err.Error())
+			panic(err)
+		}
+
+		coreq = queues.New(queues.WithName("core"), queues.WithClient(client))
 	})
 
 	return coreq
@@ -113,15 +83,14 @@ func OnCore() queues.Queue {
 //	io.ctrlpane.hooks.{block}.{block_id}.{element}.{element_id}.{modifier}.{modifier_id}....
 func OnHooks() queues.Queue {
 	hooksqonce.Do(func() {
-		hooksq = queues.New(queues.WithName("hooks"), queues.WithClient(Client()))
+		client, err := Get().Client()
+		if err != nil {
+			slog.Error("durable: unable to connect to durable server ...", "error", err.Error())
+			panic(err)
+		}
+
+		hooksq = queues.New(queues.WithName("hooks"), queues.WithClient(client))
 	})
 
 	return hooksq
-}
-
-// -- Helpers --
-
-// WithConfig returns a ConfigOption that sets the configuration.
-func WithConfig(conf *Config) ConfigOption {
-	return config.WithConfig(conf)
 }

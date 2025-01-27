@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/structs"
@@ -25,12 +26,12 @@ var (
 type (
 	// connection struct holds database connection parameters and the established connection.
 	Config struct {
-		Host      string `json:"host" koanf:"HOST"`             // Database host.
-		Name      string `json:"name" koanf:"NAME"`             // Database name.
-		Port      int    `json:"port" koanf:"PORT"`             // Database port.
-		User      string `json:"user" koanf:"USER"`             // Database user.
-		Password  string `json:"pass" koanf:"PASS"`             // Database password.
-		EnableSSL bool   `json:"enable_ssl" koanf:"ENABLE_SSL"` // Enable SSL.
+		Host      string `json:"host" koanf:"HOST" validate:"required"` // Database host.
+		Name      string `json:"name" koanf:"NAME" validate:"required"` // Database name.
+		Port      int    `json:"port" koanf:"PORT" validate:"required"` // Database port.
+		User      string `json:"user" koanf:"USER" validate:"required"` // Database user.
+		Password  string `json:"pass" koanf:"PASS" validate:"required"` // Database password.
+		EnableSSL bool   `json:"enable_ssl" koanf:"ENABLE_SSL"`         // Enable SSL.
 
 		conn *pgx.Conn // Database connection.
 	}
@@ -50,6 +51,12 @@ var (
 		EnableSSL: false,
 	}
 )
+
+func (c *Config) Validate() error {
+	validate := validator.New()
+
+	return validate.Struct(c)
+}
 
 // ConnectionString builds a connection string from connection parameters.
 func (c *Config) ConnectionString() string {
@@ -96,10 +103,10 @@ func (c *Config) Start(ctx context.Context) error {
 		return nil
 	}
 
-	if c.Host == "" || c.Name == "" || c.User == "" {
-		slog.Error("db: invalid configuration.", "host", c.Host, "name", c.Name, "user", c.User)
+	if err := c.Validate(); err != nil {
+		slog.Error("db: invalid configuration.", "error", err.Error())
 
-		return erratic.NewConfigError(erratic.CommonModule, c.Host, "port", "name", c.Name, "user", c.User)
+		return erratic.NewConfigError(erratic.CommonModule, err.Error())
 	}
 
 	slog.Info("db: connecting ...", "host", c.Host, "port", c.Port, "name", c.Name, "user", c.User, "ssl", c.EnableSSL)
