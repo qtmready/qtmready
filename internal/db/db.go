@@ -5,30 +5,30 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
-	dbcfg "go.breu.io/quantm/internal/db/config"
+	"go.breu.io/quantm/internal/db/config"
 	"go.breu.io/quantm/internal/db/entities"
 )
 
 type (
-	Config = dbcfg.Config
+	Config = config.Config
 )
 
 var (
-	DefaultConfig = dbcfg.Default
+	DefaultConfig = config.Default
 )
 
-func WithConfig(conf *Config) dbcfg.ConfigOption {
-	return dbcfg.WithConfig(conf)
+func WithConfig(conf *Config) config.ConfigOption {
+	return config.WithConfig(conf)
 }
 
-// Connection is a wrapper around the dbcfg.Instance singleton.
-func Connection(opts ...dbcfg.ConfigOption) *dbcfg.Config {
-	return dbcfg.Instance(opts...)
+// Get is a wrapper around the dbcfg.Instance singleton.
+func Get(opts ...config.ConfigOption) *config.Config {
+	return config.Instance(opts...)
 }
 
 // Queries is a wrapper around the dbcfg.Queries singleton.
 func Queries() *entities.Queries {
-	return dbcfg.Queries()
+	return config.Queries()
 }
 
 // Transaction begins the transaction and wraps the queries in a transaction.
@@ -49,7 +49,7 @@ func Queries() *entities.Queries {
 //
 //	return nil
 func Transaction(ctx context.Context) (pgx.Tx, *entities.Queries, error) {
-	tx, err := Connection().Get().Begin(ctx)
+	tx, err := Get().Get().Begin(ctx)
 	if err != nil {
 		return nil, nil, err
 	}

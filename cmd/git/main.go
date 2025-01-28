@@ -35,9 +35,9 @@ func main() {
 		kernel.WithRepoHook(eventsv1.RepoHook_REPO_HOOK_GITHUB, &github.KernelImpl{}),
 	)
 
-	db.Connection(db.WithConfig(cfg.DB))
+	db.Get(db.WithConfig(cfg.DB))
 
-	_ = db.Connection().Start(ctx)
+	_ = db.Get().Start(ctx)
 
 	id := uuid.MustParse("019340e8-e115-7253-816b-2261d3128902")
 	sha := "0c9b9b0aa97784a5cdfa2cc60d3e97d11def65ba"

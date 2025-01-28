@@ -7,84 +7,43 @@ import (
 	"os/signal"
 	"syscall"
 
-	"go.breu.io/durex/queues"
 	"go.breu.io/graceful"
 
-	"go.breu.io/quantm/internal/auth"
-	"go.breu.io/quantm/internal/core/kernel"
+	"go.breu.io/quantm/cmd/quantm/config"
+	"go.breu.io/quantm/internal/db"
 	"go.breu.io/quantm/internal/db/migrations"
-	"go.breu.io/quantm/internal/durable"
-	"go.breu.io/quantm/internal/hooks/github"
-	"go.breu.io/quantm/internal/hooks/slack"
-	eventsv1 "go.breu.io/quantm/internal/proto/ctrlplane/events/v1"
-)
-
-const (
-	DB      = "db"
-	Durable = "durable"
-	Pulse   = "pulse"
-	Kernel  = "kernel"
-	Github  = "github"
-	Nomad   = "nomad"
-	CoreQ   = "core_q"
-	HooksQ  = "hooks_q"
-	Webhook = "webhook"
 )
 
 func main() {
-	cfg := &Config{}
-	cfg.Load()
-
-	// - global configuration
-
-	configure_logger(cfg.Debug)
-	auth.SetSecret(cfg.Secret)
-
+	conf := config.New()
 	ctx := context.Background()
-	quit := make(chan os.Signal, 1)
 
-	// - configure services
-	github.Configure(github.WithConfig(cfg.Github))
-	slack.Configure(slack.WithConfig(cfg.Slack))
-	kernel.Configure(
-		kernel.WithRepoHook(eventsv1.RepoHook_REPO_HOOK_GITHUB, &github.KernelImpl{}),
-		kernel.WithChatHook(eventsv1.ChatHook_CHAT_HOOK_SLACK, &slack.KernelImpl{}),
-	)
+	conf.Load()
+	conf.Parse()
 
-	if err := durable.Configure(durable.WithConfig(cfg.Durable)); err != nil {
-		slog.Error("unable to configure durable layer", "error", err.Error())
-		os.Exit(1)
-	}
+	if conf.Mode == config.ModeMigrate {
+		if err := migrations.Run(ctx, db.Get(db.WithConfig(conf.DB))); err != nil {
+			slog.Error("unable to run migrations", "error", err.Error())
 
-	queues.SetDefaultPrefix("ai.ctrlplane.")
-
-	q_core()
-	q_hooks()
-
-	// - configure dependency graph for services
-
-	app := graceful.New()
-	cfg.Parse(app)
-	cfg.Dependencies(app)
-
-	// - if the migrate flag is set, run migrations and exit
-
-	if cfg.Mode == ModeMigrate {
-		if err := migrations.Run(ctx, cfg.DB); err != nil {
-			slog.Error("unable to migrate database", "error", err.Error())
+			os.Exit(1)
 		}
 
 		os.Exit(0)
 	}
 
-	// - start the services as defined in the dependency graph
+	quit := make(chan os.Signal, 1)
+	app := graceful.New()
 
-	if err := app.Start(ctx); err != nil {
-		slog.Error("unable to start service", "error", err.Error())
+	if err := conf.Setup(app); err != nil {
+		slog.Error("unable to setup ...", "error", err.Error())
 		os.Exit(1)
 	}
 
-	// - wait for a signal to stop the services
+	if err := app.Start(ctx); err != nil {
+		slog.Error("unable to start ...", "error", err.Error())
+
+		os.Exit(1)
+	}
 
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, os.Interrupt)
 	<-quit

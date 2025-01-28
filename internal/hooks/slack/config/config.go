@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/slack-go/slack"
 )
 
@@ -15,14 +16,19 @@ var (
 // Config holds the configuration for the Slack client.
 type (
 	Config struct {
-		ClientID     string `koanf:"CLIENT_ID"`
-		ClientSecret string `koanf:"CLIENT_SECRET"`
-		RedirectURL  string `koanf:"REDIRECT_URL"`
+		ClientID     string `koanf:"CLIENT_ID" validate:"required"`
+		ClientSecret string `koanf:"CLIENT_SECRET" validate:"required"`
+		RedirectURL  string `koanf:"REDIRECT_URL" validate:"required"`
 		Debug        bool   `koanf:"DEBUG"`
 	}
 
 	ConfigOption func(*Config)
 )
+
+func (c *Config) Validate() error {
+	validate := validator.New()
+	return validate.Struct(c)
+}
 
 // GetSlackClient creates a new Slack client using the token.
 func GetSlackClient(token string) (*slack.Client, error) {
