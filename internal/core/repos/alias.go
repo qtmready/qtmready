@@ -30,7 +30,11 @@ var (
 	// RepoWorkflow is the main workflow function for managing repository events.
 	RepoWorkflow = workflows.Repo
 
+	// BranchWorkflow is the main workflow function for managing branch events.
 	BranchWorkflow = workflows.Branch
+
+	// TrunkWorkflow is the main workflow function for managing trunk events.
+	TrunkWorkflow = workflows.Trunk
 
 	// NewRepoWorkflowState creates a new state object for the repository workflow.
 	NewRepoWorkflowState = states.NewRepo
@@ -68,4 +72,8 @@ func NewRepoActivities() *activities.Repo {
 
 func NewBranchActivities() *activities.Branch {
 	return &activities.Branch{}
+}
+
+func NewNotifyActivities() *activities.Notify {
+	return &activities.Notify{}
 }

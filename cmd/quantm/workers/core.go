@@ -30,5 +30,11 @@ func Core() {
 		// Register branch workflows and activities
 		q.RegisterWorkflow(repos.BranchWorkflow)
 		q.RegisterActivity(repos.NewBranchActivities())
+
+		// Register trunk workflows and activities
+		q.RegisterWorkflow(repos.TrunkWorkflow)
+
+		// Register notify activities
+		q.RegisterActivity(repos.NewNotifyActivities())
 	}
 }
