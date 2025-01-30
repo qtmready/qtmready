@@ -22,10 +22,17 @@ RUN --mount=type=cache,target=/root/go/pkg/mod,sharing=locked \
 
 COPY . .
 
-# Build the quantm binary with static linking
+# Check libgit2 version
+RUN apk info libgit2-dev
+
+RUN pkg-config --cflags --libs --static libgit2
+
+# Explicitly remove rpath
+RUN sed -i 's/-R\/usr\/lib//g' /usr/lib/pkgconfig/libgit2.pc
+
 RUN --mount=type=cache,target=/root/go/pkg/mod,sharing=locked \
   --mount=type=cache,target=/root/.cache/go-build,sharing=locked \
-  go build -tags static,system_libgit2 \
+  go build -x -v -tags static,system_libgit2 \
   -o /build/quantm \
   ./cmd/quantm
 

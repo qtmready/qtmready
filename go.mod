@@ -1,6 +1,6 @@
 module go.breu.io/quantm
 
-go 1.23.1
+go 1.23.4
 
 require (
 	connectrpc.com/connect v1.17.0
@@ -21,6 +21,7 @@ require (
 	github.com/knadh/koanf/v2 v2.1.2
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/sethvargo/go-password v0.3.1
+	github.com/slack-go/slack v0.15.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.10.0
 	go.breu.io/durex v0.6.2
@@ -98,7 +99,6 @@ require (
 	github.com/sergi/go-diff v1.3.2-0.20230802210424-5b0b94c5c0d3 // indirect
 	github.com/shopspring/decimal v1.4.0 // indirect
 	github.com/skeema/knownhosts v1.2.2 // indirect
-	github.com/slack-go/slack v0.15.0
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
